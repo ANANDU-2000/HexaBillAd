@@ -45,6 +45,11 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — UX-06 (fourth slice): route-specific expenses failure state (PASS locally in browser; NOT live)
+- A second scan (regex over every `catch` block that resets a list to `[]` without any failure flag) found six candidates. Fixed the one that is a user-visible list: route-specific expenses in `RouteDetailPage.jsx` now shows `ErrorState` with Try again (a `success: false` response counts as failure); the empty text only follows a successful empty load.
+- Evidence: `e2e/route-expenses-load-failure.spec.js` **6/6 at m360, t768, d1440** (branch-level and route-specific cases); **new case red on the previous page**. Frontend `npm test` 210/210; lint 0 errors; build exit 0.
+- Left as is, on purpose: dropdown and autocomplete data (`setExpenseCategories`, `setBranches`, `setSupplierSuggestions`) where an empty list degrades to manual entry, the stops map (`setStopsMap`), and the SuperAdmin dashboard tenant-activity panel (`SuperAdminDashboard.jsx`, falls to empty; not browser-testable here). Route summary still falls back to `null` on failure. These are judgement calls, not verified as correct.
+
 ### 2026-10-17 — REL-02 correction: phone Activity button and Recent sessions (PASS locally in browser; NOT live)
 - Correction to the earlier REL-02 entry: the route and error-state fix reached only the desktop Activity button. `UsersPage.jsx` has a second, phone-layout copy of the button with its own inline fetch that still swallowed failures into "No activity recorded" (the exact phone case in S223). Found by the wider scan for `.catch(() => set...([]))`, proved by a browser run (red at 360px on the previous code, desktop already green).
 - Fix: one shared `openActivity(user)` used by both buttons (single call site for `getUserActivity` now); phone button gets a 44px target and an accessible name. Recent sessions had the same swallow and now shows "Sessions could not be loaded. Try again." with the empty text only after a successful empty load.

@@ -43,3 +43,27 @@ test('route branch expenses: failure shows an error with retry, then recovers', 
   await expect(page.getByRole('alert').filter({ hasText: 'Branch expenses could not be loaded' })).toHaveCount(0)
   await expect(page.getByText('Branch Expenses Total:')).toBeVisible()
 })
+
+test('route-specific expenses: failure shows an error with retry, then recovers', async ({ page }) => {
+  const branches = await api('/api/branches')
+  const branchId = (branches.json.data?.items ?? branches.json.data ?? [])[0]?.id
+  expect(branchId, 'a branch must exist (created by the previous test)').toBeTruthy()
+  const created = await api('/api/routes', { method: 'POST', body: JSON.stringify({ branchId, name: `UX Audit Route ${Date.now()}` }) })
+  const routeId = created.json.data?.id
+  expect(routeId).toBeTruthy()
+
+  await signIn(page, SLUG)
+  let failing = true
+  await page.route(new RegExp(`/api/routes/${routeId}/expenses`), (route) => failing
+    ? route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ success: false, message: 'boom' }) })
+    : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data: [{ id: 9201, category: 'Fuel', amount: 120, expenseDate: '2026-10-05T00:00:00Z', description: 'UX route fuel' }] }) }))
+  await page.goto(`${feOrigin(SLUG)}/routes/${routeId}`, { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'Expenses', exact: true }).click()
+
+  await expect(page.getByRole('alert').filter({ hasText: 'Route expenses could not be loaded' })).toBeVisible()
+  await expect(page.getByText('No route expenses in this date range.')).toHaveCount(0)
+
+  failing = false
+  await page.getByRole('alert').filter({ hasText: 'Route expenses could not be loaded' }).getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Route expenses could not be loaded' })).toHaveCount(0)
+})

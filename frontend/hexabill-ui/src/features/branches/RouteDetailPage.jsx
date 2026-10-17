@@ -66,6 +66,7 @@ const RouteDetailPage = () => {
   const [generalExpenses, setGeneralExpenses] = useState([])
   const [generalExpensesLoading, setGeneralExpensesLoading] = useState(false)
   const [generalExpensesFailed, setGeneralExpensesFailed] = useState(false)
+  const [routeExpensesFailed, setRouteExpensesFailed] = useState(false)
   const [generalExpensesReload, setGeneralExpensesReload] = useState(0)
   const [showTodaysRoute, setShowTodaysRoute] = useState(false)
   const [todaysRouteCustomers, setTodaysRouteCustomers] = useState([])
@@ -121,11 +122,15 @@ const RouteDetailPage = () => {
   const loadExpenses = async () => {
     if (!id) return
     try {
+      setRouteExpensesFailed(false)
       const res = await routesAPI.getRouteExpenses(id, fromDate, toDate)
       if (res?.success && res?.data) setExpenses(res.data)
+      else if (res?.success === false) { setExpenses([]); setRouteExpensesFailed(true) }
       else setExpenses([])
     } catch {
+      // A failed load is not "no expenses": show an error with retry.
       setExpenses([])
+      setRouteExpensesFailed(true)
     }
   }
 
@@ -765,7 +770,9 @@ const RouteDetailPage = () => {
           {/* Route Expenses Section */}
           <div className="mb-6">
             <h3 className="text-md font-medium text-neutral-700 mb-3">Route-Specific Expenses (Fuel, Staff, Delivery, etc.)</h3>
-            {expenses.length === 0 ? (
+            {routeExpensesFailed ? (
+              <ErrorState compact title="Route expenses could not be loaded" message="Check your connection and try again. Nothing was changed." onAction={() => loadExpenses()} />
+            ) : expenses.length === 0 ? (
               <p className="text-neutral-500 text-sm py-2">No route expenses in this date range.</p>
             ) : (
               <ul className="space-y-2">
