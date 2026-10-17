@@ -45,6 +45,13 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — UX-04 purchase entry mode and fixed footer spacing (PASS locally in browser; NOT live)
+- Defects: (a) with the voucher open, filters, status chips, "Purchase List" and the "This period" analytics block still rendered under it; (b) `Layout.jsx` set `--hb-bottom-nav-h` from the route only, so when the bottom nav was hidden (inline voucher, modal, software keyboard) the fixed Save bar floated 4.75rem above the screen bottom.
+- Fix: `PurchasesPage.jsx` renders history/analytics only when `!showForm`; Cancel/Save return to history. `Layout.jsx` uses `bottomNavVisible` for the variable (also benefits POS bars that use it).
+- Evidence: `e2e/purchases-entry-mode.spec.js` **5/5 at m360, m390, t768, d1024, d1440**; footer check **red without the Layout change (gap 76px, expected <=2), green with it**. Create->persist->edit->delete through the UI re-run (temporary copy, removed) passed at m360, t768, d1440. Lint 0 errors, build exit 0.
+- NOT TESTED: real software keyboard, orientation change, 820/1180 widths, other pages using the same variable (POS), print.
+- Next: UX-02 responsive tables and identity columns, then UX-03/UX-06 tablet shell.
+
 ### 2026-10-17 — REL-03 branding request dedupe and SEC-02 storage cache policy (PASS locally; NOT live)
 - Branding root cause (code-confirmed): `BrandingProvider.loadBranding` (two requests: `/settings/logo-data-uri` + `/settings`) ran on mount, on every `location.pathname` change and every tab visibility change, with no in-flight dedupe, no platform-host exclusion, and it flipped `loading` each time.
 - Fix: `tenant/brandingLoadGate.js` (platform host without impersonation never loads; passive triggers skip while in flight or under 60s; logo upload, impersonation and manual refresh are forced); `loading` only on first load. Failed loads also wait out the interval.

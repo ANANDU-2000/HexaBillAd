@@ -331,7 +331,7 @@ const Layout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 overflow-x-hidden" style={{ '--hb-bottom-nav-h': routeShowsBottomNav ? '4.75rem' : '0px' }}>
+    <div className="min-h-screen bg-neutral-50 overflow-x-hidden" style={{ '--hb-bottom-nav-h': bottomNavVisible ? '4.75rem' : '0px' }}>
       {/* Skip Link */}
       <a
         href="#main-content"

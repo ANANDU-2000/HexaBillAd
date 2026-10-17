@@ -861,6 +861,7 @@ const PurchasesPage = () => {
       </div>
 
       <div className="p-2 sm:p-4 w-full">
+        {!showForm && (<>
         <div className="mb-3 rounded-lg border border-neutral-200 bg-white p-3">
           {/* Below 1024px the filters sit behind one button (count of active filters), as on Expenses */}
           <button
@@ -950,6 +951,7 @@ const PurchasesPage = () => {
             {statusChip('overdue', 'Overdue', pendingSummary.overdueCount ?? 0)}
           </div>
         )}
+        </>)}
 
         {/* Purchase Form - Tally Style - mobile: single column, no horizontal scroll */}
         {showForm && (
@@ -1347,6 +1349,7 @@ const PurchasesPage = () => {
         )}
 
         {/* Purchases List */}
+        {!showForm && (<>
         <div className="bg-white rounded-lg border-2 border-neutral-200 shadow-sm w-full overflow-hidden">
           <div className="p-3 sm:p-4 border-b-2 border-neutral-200 bg-neutral-50">
             <div className="flex items-center justify-between gap-2">
@@ -1684,6 +1687,7 @@ const PurchasesPage = () => {
             </div>
           )}
         </div>
+        </>)}
       </div>
       <Modal
         isOpen={supplierRegisterModal.open}
