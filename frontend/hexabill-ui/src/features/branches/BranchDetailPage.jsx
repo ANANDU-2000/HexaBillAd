@@ -12,6 +12,7 @@ import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { useAuth } from '../../hooks/useAuth'
 import { localDateString } from '../../utils/dateFormat'
+import ErrorState from '../../components/ui/ErrorState'
 
 const TABS = ['overview', 'routes', 'staff', 'customers', 'expenses', 'performance', 'report']
 
@@ -56,6 +57,9 @@ const BranchDetailPage = () => {
   const [branchCustomers, setBranchCustomers] = useState([])
   const [branchCustomersLoading, setBranchCustomersLoading] = useState(false)
   const [branchStaff, setBranchStaff] = useState([])
+  const [branchCustomersFailed, setBranchCustomersFailed] = useState(false)
+  const [branchStaffFailed, setBranchStaffFailed] = useState(false)
+  const [branchTabReload, setBranchTabReload] = useState(0)
   const [showAssignStaffModal, setShowAssignStaffModal] = useState(false)
   const [staffToAssignList, setStaffToAssignList] = useState([])
   const [assignStaffLoading, setAssignStaffLoading] = useState(false)
@@ -151,18 +155,22 @@ const BranchDetailPage = () => {
   useEffect(() => {
     if (activeTab === 'customers' && id) {
       setBranchCustomersLoading(true)
+      setBranchCustomersFailed(false)
       customersAPI.getCustomers({ branchId: parseInt(id, 10), pageSize: 200 })
         .then(res => {
           if (res?.success && res?.data?.items) setBranchCustomers(res.data.items)
+          else if (res?.success === false) { setBranchCustomers([]); setBranchCustomersFailed(true) }
           else setBranchCustomers([])
         })
-        .catch(() => setBranchCustomers([]))
+        // A failed load is not "no customers": show an error with retry instead.
+        .catch(() => { setBranchCustomers([]); setBranchCustomersFailed(true) })
         .finally(() => setBranchCustomersLoading(false))
     }
-  }, [activeTab, id])
+  }, [activeTab, id, branchTabReload])
 
   useEffect(() => {
     if (activeTab === 'staff' && id) {
+      setBranchStaffFailed(false)
       adminAPI.getUsers()
         .then(res => {
           if (res?.success && res?.data) {
@@ -170,11 +178,11 @@ const BranchDetailPage = () => {
             const items = res.data?.items ?? (Array.isArray(res.data) ? res.data : [])
             const staff = items.filter(u => (u.assignedBranchIds || []).includes(bid))
             setBranchStaff(staff)
-          } else setBranchStaff([])
+          } else { setBranchStaff([]); setBranchStaffFailed(true) }
         })
-        .catch(() => setBranchStaff([]))
+        .catch(() => { setBranchStaff([]); setBranchStaffFailed(true) })
     }
-  }, [activeTab, id])
+  }, [activeTab, id, branchTabReload])
 
   // allBranches and allRoutes from shared context (no fetch when modal opens)
 
@@ -707,7 +715,9 @@ const BranchDetailPage = () => {
               </button>
             )}
           </div>
-          {branchStaff.length === 0 ? (
+          {branchStaffFailed ? (
+            <ErrorState compact title="Staff could not be loaded" message="Check your connection and try again. Nothing was changed." onAction={() => setBranchTabReload(n => n + 1)} />
+          ) : branchStaff.length === 0 ? (
             <p className="text-neutral-500 py-6">No staff assigned to this branch. {canManage && 'Click "Assign staff" or assign from the Users page.'}</p>
           ) : (
             <div className="overflow-x-auto border border-neutral-200 rounded-lg">
@@ -796,6 +806,8 @@ const BranchDetailPage = () => {
           <p className="text-sm text-neutral-500 mb-4">Customers in this branch (from branch/route assignment).</p>
           {branchCustomersLoading ? (
             <div className="py-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" /></div>
+          ) : branchCustomersFailed ? (
+            <ErrorState compact title="Customers could not be loaded" message="Check your connection and try again. Nothing was changed." onAction={() => setBranchTabReload(n => n + 1)} />
           ) : branchCustomers.length === 0 ? (
             <p className="text-neutral-500 py-6">No customers in this branch. Add customers and assign them to a route in this branch.</p>
           ) : (

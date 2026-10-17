@@ -45,6 +45,12 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — UX-06 (second slice): branch Customers and Staff failed loads (PASS locally in browser; NOT live)
+- `BranchDetailPage.jsx`: the Customers and Staff tabs turned any load failure into an empty list ("No customers in this branch", "No staff assigned"). They now show the shared `ErrorState` with Try again (refetches both tabs); the empty messages appear only after a successful empty load. A `success: false` response counts as a failure too.
+- Evidence: `e2e/branch-detail-load-failure.spec.js` **6/6 at m360, t768, d1440** (real branch via API, list responses mocked to fail then succeed). **Both tests red on the previous page, green on the fix.** Frontend `npm test` 210/210; lint 0 errors; build exit 0.
+- Still `.catch(() => set...([]))` and not fixed: `SuperAdminTenantDetailPage.jsx` payment history, `RouteDetailPage.jsx` general expenses and stop-location flag, branch customers refresh at line ~456, plus any page not scanned.
+- NOT TESTED: widths 390/1024 for this spec, the SuperAdmin page.
+
 ### 2026-10-17 — UX-06 (first slice): failed loads are not "empty" on route sales (PASS locally in browser; NOT live)
 - Same bug class as the staff activity dialog (REL-02): `RouteDetailPage` turned a failed invoice load into `[]`, so the tab said "No invoices for this route yet." Now a failed load shows the shared `ErrorState` ("Invoices could not be loaded", Try again) and the empty message appears only after a successful empty load. Retry refetches.
 - Evidence: `e2e/route-sales-responsive.spec.js` now 10/10 (5 widths, layout test plus failure/retry test; mocked 500 until Try again is pressed). The API client already retries failed GETs on its own, so the mock keeps failing until the user retries. **Failure test red on the previous page, green on the fix.** Frontend `npm test` 210/210, lint 0 errors, build exit 0.
