@@ -45,6 +45,12 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — UX-06 (first slice): failed loads are not "empty" on route sales (PASS locally in browser; NOT live)
+- Same bug class as the staff activity dialog (REL-02): `RouteDetailPage` turned a failed invoice load into `[]`, so the tab said "No invoices for this route yet." Now a failed load shows the shared `ErrorState` ("Invoices could not be loaded", Try again) and the empty message appears only after a successful empty load. Retry refetches.
+- Evidence: `e2e/route-sales-responsive.spec.js` now 10/10 (5 widths, layout test plus failure/retry test; mocked 500 until Try again is pressed). The API client already retries failed GETs on its own, so the mock keeps failing until the user retries. **Failure test red on the previous page, green on the fix.** Frontend `npm test` 210/210, lint 0 errors, build exit 0.
+- Same pattern still present, not fixed: `.catch(() => set...([]))` in `BranchDetailPage.jsx`, `SuperAdminTenantDetailPage.jsx`, `RouteDetailPage.jsx` (general expenses, stop-location flag), plus other pages not scanned. A one-by-one pass is the remaining UX-06 work, along with consistent back navigation, filter and action-bar patterns.
+- NOT TESTED: other error states in a browser, ErrorState copy review.
+
 ### 2026-10-17 — UX-02 (continued): route sales phone cards (PASS locally in browser; NOT live)
 - `RouteDetailPage.jsx` sales tab now shows invoice cards below `md` (invoice no, customer, date, total, status, 44px View button); the table is unchanged from `md` up. The other four tables on this page (customers, expenses, summaries, print views) are not changed.
 - Evidence: `e2e/route-sales-responsive.spec.js` **5/5 at m360, m390, t768, d1024, d1440**; **red on the previous page** (no card list), green on the fix. The route and branch are real records created through the API on the synthetic tenant; **only the invoice list response is mocked** (three invoices, one with a very long customer name), so this proves layout and rendering, not invoice data. Frontend `npm test` 210/210; lint 0 errors; build exit 0.

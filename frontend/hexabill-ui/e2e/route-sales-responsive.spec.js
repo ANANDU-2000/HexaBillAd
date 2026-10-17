@@ -66,3 +66,30 @@ test('route sales: cards on phones without sideways scrolling; table from tablet
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1)
 })
+
+test('route sales: a failed load shows an error with retry, never "no invoices"', async ({ page }) => {
+  const branches = await api('/api/branches')
+  const branchId = (branches.json.data?.items ?? branches.json.data ?? [])[0]?.id
+  expect(branchId, 'a branch must exist (created by the previous test)').toBeTruthy()
+  const created = await api('/api/routes', { method: 'POST', body: JSON.stringify({ branchId, name: `UX Audit Route ${Date.now()}` }) })
+  const routeId = created.json.data?.id
+  expect(routeId).toBeTruthy()
+
+  await signIn(page, SLUG)
+  // The API client retries failed GETs itself, so keep failing until the user presses Try again.
+  let failing = true
+  await page.route(/\/api\/sales\?.*routeId=/, (route) => {
+    if (failing) return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ success: false, message: 'boom' }) })
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data: { items: FAKE, totalCount: FAKE.length, page: 1, pageSize: 100 } }) })
+  })
+  await page.goto(`${feOrigin(SLUG)}/routes/${routeId}`, { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'Sales', exact: true }).click()
+
+  await expect(page.getByRole('alert').filter({ hasText: 'Invoices could not be loaded' })).toBeVisible()
+  await expect(page.getByText('No invoices for this route yet.')).toHaveCount(0)
+
+  failing = false
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Invoices could not be loaded' })).toHaveCount(0)
+  await expect(page.getByText('INV-UX-0001').filter({ visible: true }).first()).toBeVisible()
+})

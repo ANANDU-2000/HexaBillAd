@@ -12,6 +12,7 @@ import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { useAuth } from '../../hooks/useAuth'
 import StopLocationMap, { captureDeviceGps } from '../../components/StopLocationMap'
 import { localDateString } from '../../utils/dateFormat'
+import ErrorState from '../../components/ui/ErrorState'
 
 const EXPENSE_CATEGORIES = ['Fuel', 'Staff', 'Delivery', 'Vehicle Maintenance', 'Toll/Parking', 'Misc']
 const ROUTE_TABS = ['overview', 'customers', 'sales', 'expenses', 'staff', 'performance', 'stops']
@@ -60,6 +61,8 @@ const RouteDetailPage = () => {
   const [loadingSheet, setLoadingSheet] = useState(false)
   const [routeSales, setRouteSales] = useState([])
   const [routeSalesLoading, setRouteSalesLoading] = useState(false)
+  const [routeSalesFailed, setRouteSalesFailed] = useState(false)
+  const [routeSalesReload, setRouteSalesReload] = useState(0)
   const [generalExpenses, setGeneralExpenses] = useState([])
   const [generalExpensesLoading, setGeneralExpensesLoading] = useState(false)
   const [showTodaysRoute, setShowTodaysRoute] = useState(false)
@@ -202,15 +205,17 @@ const RouteDetailPage = () => {
   useEffect(() => {
     if (activeTab === 'sales' && id) {
       setRouteSalesLoading(true)
+      setRouteSalesFailed(false)
       salesAPI.getSales({ routeId: parseInt(id, 10), pageSize: 100 })
         .then(res => {
           const items = res?.data?.items ?? res?.items ?? []
           setRouteSales(Array.isArray(items) ? items : [])
         })
-        .catch(() => setRouteSales([]))
+        // A failed load is not "no invoices": keep the two states apart so a retry is offered.
+        .catch(() => { setRouteSales([]); setRouteSalesFailed(true) })
         .finally(() => setRouteSalesLoading(false))
     }
-  }, [activeTab, id])
+  }, [activeTab, id, routeSalesReload])
 
   useEffect(() => {
     if (activeTab === 'expenses' && id && route?.branchId) {
@@ -670,6 +675,8 @@ const RouteDetailPage = () => {
         <div>
           {routeSalesLoading ? (
             <div className="py-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" /></div>
+          ) : routeSalesFailed ? (
+            <ErrorState compact title="Invoices could not be loaded" message="Check your connection and try again. Nothing was changed." onAction={() => setRouteSalesReload(n => n + 1)} />
           ) : routeSales.length === 0 ? (
             <p className="text-neutral-500 py-6">No invoices for this route yet.</p>
           ) : (
