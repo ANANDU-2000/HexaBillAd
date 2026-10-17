@@ -307,4 +307,56 @@ public class AssistantExpenseDraftHttpTests
             if (period != null) { period.Status = "Draft"; await db.SaveChangesAsync(); }
         }
     }
+
+    [Fact]
+    public async Task Staff_WithAnAssignedBranch_ConfirmsAsPending_LikeTheNormalScreen_AndCannotConfirmSomeoneElsesDraft()
+    {
+        const int staffId = 9101;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            if (!await db.Users.IgnoreQueryFilters().AnyAsync(u => u.Id == staffId))
+            {
+                db.Users.Add(new HexaBill.Api.Models.User
+                {
+                    Id = staffId, TenantId = 1, OwnerId = 1, Name = "Draft Staff", Email = "draft-staff@http.test", PasswordHash = "x",
+                    Role = HexaBill.Api.Models.UserRole.Staff, SessionVersion = 1, IsActive = true, CreatedAt = DateTime.UtcNow,
+                });
+                db.BranchStaff.Add(new HexaBill.Api.Models.BranchStaff { BranchId = 1, UserId = staffId, AssignedAt = DateTime.UtcNow });
+                await db.SaveChangesAsync();
+            }
+        }
+
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("http://tenanta.hexabill.company"),
+        });
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", TestJwtFactory.CreateAuthenticatedApiToken(staffId, 1, "tenanta", role: "Staff"));
+        using var staff = client;
+
+        var marker = Marker();
+        var (id, hash, _) = await Propose(staff, new { categoryId = 1, amount = 18.5, date = Today(), note = marker });
+        var response = await Confirm(staff, id, hash, Key());
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = (await Body(response)).GetProperty("data").GetProperty("result");
+        Assert.Equal("Pending", result.GetProperty("status").GetString());
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var row = await db.Expenses.IgnoreQueryFilters().SingleAsync(e => e.TenantId == 1 && e.Note == marker);
+            Assert.Equal(HexaBill.Api.Models.ExpenseStatus.Pending, row.Status); // waits for owner or admin approval
+            Assert.Equal(staffId, row.CreatedBy);
+            Assert.Equal(18.5m, row.Amount);
+        }
+
+        // An owner's draft is not the staff member's to confirm.
+        using var owner = Owner(1, "tenanta");
+        var ownerMarker = Marker();
+        var (ownerDraft, ownerHash, _) = await Propose(owner, new { categoryId = 1, amount = 9, date = Today(), note = ownerMarker });
+        Assert.Equal(HttpStatusCode.NotFound, (await Confirm(staff, ownerDraft, ownerHash, Key())).StatusCode);
+        Assert.Equal((0, 0m), await ExpensesWith(1, ownerMarker));
+    }
 }
