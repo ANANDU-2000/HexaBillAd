@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { X, Maximize2, Minimize2, Search, UserPlus, Receipt, MessageSquare } from 'lucide-react'
+import { X, Maximize2, Minimize2, Search, UserPlus, Receipt, MessageSquare, Mic, Volume2 } from 'lucide-react'
 import { assistantApi } from './assistantApi'
-import { describeChatReply, CHAT_MAX_CHARS, chatMessageProblem } from './assistantChat'
+import { describeChatReply, CHAT_MAX_CHARS, chatMessageProblem, prefillFor } from './assistantChat'
+import {
+  VOICE_LANGUAGES, localeFor, recognitionCtor, ttsSupported, voiceOptedOut, setVoiceOptedOut, appendTranscript, describeVoiceError, readBackText, VOICE_PRIVACY_NOTE,
+} from './voice'
 import {
   canConfirm, describeConfirmFailure, emptyCustomerForm, emptyExpenseForm, fieldErrorMap, newIdempotencyKey, toDraftRequest, toExpenseDraftRequest,
 } from './assistantDraft'
@@ -50,8 +53,77 @@ function ResultRows ({ tool, rows, asOf }) {
   )
 }
 
+/**
+ * Push-to-talk: hold the button, speak, let go. The words land in the text box for the person to read and fix; nothing is sent until
+ * they press Ask. No audio or transcript is kept by HexaBill. The browser's own speech service does the listening.
+ */
+function VoiceInput ({ onText }) {
+  const [optedOut, setOptedOut] = useState(() => voiceOptedOut())
+  const [language, setLanguage] = useState('en')
+  const [listening, setListening] = useState(false)
+  const [problem, setProblem] = useState('')
+  const recognizer = useRef(null)
+  const Ctor = recognitionCtor(globalThis)
+
+  const stop = () => { try { recognizer.current?.stop() } catch { /* already stopped */ } }
+  useEffect(() => () => { try { recognizer.current?.abort?.() } catch { /* nothing to abort */ } }, [])
+  if (!Ctor) return <p className="text-xs text-neutral-500" data-testid="voice-unsupported">Voice input is not available in this browser. You can type instead.</p>
+
+  const start = () => {
+    if (listening || recognizer.current) return
+    setProblem('')
+    const rec = new Ctor()
+    rec.lang = localeFor(language)
+    rec.interimResults = false
+    rec.continuous = false
+    rec.maxAlternatives = 1
+    let heard = ''
+    rec.onresult = (e) => { heard = Array.from(e.results).map((r) => r[0]?.transcript || '').join(' ') }
+    rec.onerror = (e) => { const text = describeVoiceError(e?.error); if (text) setProblem(text) }
+    rec.onend = () => { recognizer.current = null; setListening(false); if (heard.trim()) onText(heard) }
+    recognizer.current = rec
+    try { rec.start(); setListening(true) } catch { recognizer.current = null; setProblem(describeVoiceError('unknown')) }
+  }
+
+  const toggleOptOut = (e) => { setVoiceOptedOut(!e.target.checked); setOptedOut(!e.target.checked); if (!e.target.checked) stop() }
+
+  return (
+    <div className="space-y-2" data-testid="voice-input">
+      <label className="flex items-center gap-2 text-xs text-neutral-700">
+        <input type="checkbox" checked={!optedOut} onChange={toggleOptOut} /> Use voice input
+      </label>
+      {!optedOut && (
+        <>
+          <div className="flex items-center gap-2">
+            <select aria-label="Voice language" className={`${inputClass} flex-1`} value={language} onChange={(e) => setLanguage(e.target.value)}>
+              {VOICE_LANGUAGES.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+            </select>
+            <button
+              type="button"
+              aria-pressed={listening}
+              aria-label="Hold to talk"
+              className={`inline-flex min-h-11 min-w-[8rem] select-none items-center justify-center gap-1 rounded-md border px-3 text-sm font-medium ${listening ? 'border-error bg-error-bg text-error-fg' : 'border-neutral-300 bg-white'}`}
+              style={{ touchAction: 'none' }}
+              onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); start() }}
+              onPointerUp={stop}
+              onPointerCancel={stop}
+              onKeyDown={(e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); start() } }}
+              onKeyUp={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); stop() } }}
+              onBlur={stop}
+            >
+              <Mic className="h-4 w-4" aria-hidden /> {listening ? 'Listening… let go' : 'Hold to talk'}
+            </button>
+          </div>
+          {problem && <p role="alert" className="text-xs text-error" data-testid="voice-problem">{problem}</p>}
+          <p className="text-xs text-neutral-500">{VOICE_PRIVACY_NOTE}</p>
+        </>
+      )}
+    </div>
+  )
+}
+
 /** Ask in plain words. The assistant only chooses a lookup; the numbers shown always come from your records. */
-function AskTab () {
+function AskTab ({ onOpenForm }) {
   const [message, setMessage] = useState('')
   const [state, setState] = useState({ status: 'idle', view: null, error: '' })
   const sending = useRef(false)
@@ -70,12 +142,21 @@ function AskTab () {
   }
 
   const view = state.view
+  const [language] = useState('en')
+  const sayAloud = () => {
+    if (!ttsSupported(globalThis) || !view) return
+    const utterance = new globalThis.SpeechSynthesisUtterance(readBackText(view.formKind, view.fields))
+    utterance.lang = localeFor(language)
+    globalThis.speechSynthesis.cancel()
+    globalThis.speechSynthesis.speak(utterance)
+  }
   return (
     <form onSubmit={ask} className="space-y-3">
       <Field id="assistant-ask" label="Ask about a customer or a product">
         <textarea id="assistant-ask" rows={3} className={inputClass} value={message} maxLength={CHAT_MAX_CHARS} onChange={(e) => setMessage(e.target.value)} placeholder="For example: how much stock of rice do we have?" />
       </Field>
-      <p className="text-xs text-neutral-600">The assistant only picks a lookup. It never changes anything, and the figures come from your records.</p>
+      <VoiceInput onText={(text) => { setMessage((m) => appendTranscript(m, text, CHAT_MAX_CHARS)); setState({ status: 'idle', view: null, error: '' }) }} />
+      <p className="text-xs text-neutral-600">The assistant only picks a lookup or fills in a form for you to check. It never saves anything, and the figures come from your records.</p>
       <button type="submit" disabled={state.status === 'loading'} className="btn btn-primary min-h-11 w-full">
         <MessageSquare className="h-4 w-4" aria-hidden /> {state.status === 'loading' ? 'Thinking…' : 'Ask'}
       </button>
@@ -83,9 +164,27 @@ function AskTab () {
       {state.status === 'done' && view && (
         <div className="space-y-2" data-testid="assistant-answer">
           {view.heading && <p className="text-sm font-medium text-neutral-900" data-testid="assistant-heading">{view.heading}</p>}
+          {view.kind === 'suggestion' && (
+            <div className="space-y-2" data-testid="assistant-suggestion">
+              <dl className="divide-y divide-neutral-200 rounded-md border border-neutral-200 text-sm">
+                {view.rows.map((r) => (
+                  <div key={r.key} className="flex gap-2 px-3 py-2"><dt className="w-24 shrink-0 text-neutral-600">{r.label}</dt><dd className="min-w-0 break-words text-neutral-900">{r.value}</dd></div>
+                ))}
+              </dl>
+              {view.dropped.length > 0 && <p className="text-xs text-warning-fg">Not filled in because it did not look right: {view.dropped.join(', ')}.</p>}
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn btn-primary min-h-11 px-3" onClick={() => onOpenForm(view.formKind, view.fields)}>Open the form to check it</button>
+                {ttsSupported(globalThis) && (
+                  <button type="button" className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 px-3 text-sm" onClick={sayAloud}>
+                    <Volume2 className="h-4 w-4" aria-hidden /> Read it back
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           {view.kind === 'tool' && view.rows.length === 0 && <p className="text-sm text-neutral-600">Nothing found.</p>}
           {view.kind === 'tool' && view.rows.length > 0 && <ResultRows tool={view.tool} rows={view.rows} asOf={view.asOf} />}
-          {view.kind !== 'tool' && view.text && <p className="text-sm text-neutral-800" data-testid="assistant-text">{view.text}</p>}
+          {view.kind !== 'tool' && view.kind !== 'suggestion' && view.text && <p className="text-sm text-neutral-800" data-testid="assistant-text">{view.text}</p>}
           {view.note && <p className="text-xs text-neutral-500">{view.note}</p>}
         </div>
       )}
@@ -129,8 +228,8 @@ function FindTab () {
   )
 }
 
-function NewCustomerTab () {
-  const [form, setForm] = useState(emptyCustomerForm())
+function NewCustomerTab ({ initial }) {
+  const [form, setForm] = useState(() => ({ ...emptyCustomerForm(), ...(initial || {}) }))
   const [draft, setDraft] = useState(null) // the reviewed draft; any edit clears it so what is confirmed is what was shown
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState(null)
@@ -245,8 +344,8 @@ function NewCustomerTab () {
 }
 
 
-function NewExpenseTab () {
-  const [form, setForm] = useState(emptyExpenseForm())
+function NewExpenseTab ({ initial, initialCategoryName }) {
+  const [form, setForm] = useState(() => ({ ...emptyExpenseForm(), ...(initial || {}) }))
   const [categories, setCategories] = useState([])
   const [categoriesState, setCategoriesState] = useState('loading')
   const [draft, setDraft] = useState(null)
@@ -264,7 +363,15 @@ function NewExpenseTab () {
     let cancelled = false
     assistantApi.listExpenseCategories().then((res) => {
       if (cancelled) return
-      if (res.ok && Array.isArray(res.data)) { setCategories(res.data); setCategoriesState('ready') } else setCategoriesState('error')
+      if (res.ok && Array.isArray(res.data)) {
+        setCategories(res.data)
+        setCategoriesState('ready')
+        // A category the assistant suggested is matched by name to this company's own categories; no clear match leaves it for the person to choose.
+        if (initialCategoryName) {
+          const filled = prefillFor('new_expense', { categoryName: initialCategoryName }, res.data)
+          if (filled.categoryId) setForm((f) => (f.categoryId === '' ? { ...f, categoryId: filled.categoryId } : f))
+        }
+      } else setCategoriesState('error')
     })
     return () => { cancelled = true }
   }, [])
@@ -366,6 +473,11 @@ function NewExpenseTab () {
 export default function AssistantPanel ({ open, onClose }) {
   const [tab, setTab] = useState('find')
   const [chatOn, setChatOn] = useState(false)
+  const [prefill, setPrefill] = useState(null) // { kind, fields, key } from an assistant suggestion; the form is still the person's to check and confirm
+  const openSuggestedForm = (kind, fields) => {
+    setPrefill({ kind, fields, key: Date.now() })
+    setTab(kind === 'new_customer' ? 'customer' : 'expense')
+  }
   useEffect(() => {
     let alive = true
     assistantApi.status().then((res) => { if (alive) setChatOn(!!res.data?.chat) })
@@ -410,7 +522,21 @@ export default function AssistantPanel ({ open, onClose }) {
       </div>
       <div className={`flex-1 overflow-y-auto p-4 ${expanded ? 'md:mx-auto md:w-full md:max-w-2xl' : ''}`}>
         <p className="mb-3 text-xs text-neutral-500">Lookups only read your records. Anything that creates data is shown to you first and needs your confirmation.</p>
-        {tab === 'find' ? <FindTab /> : tab === 'ask' && chatOn ? <AskTab /> : tab === 'customer' ? <NewCustomerTab /> : <NewExpenseTab />}
+        {tab === 'find' ? <FindTab /> : tab === 'ask' && chatOn ? <AskTab onOpenForm={openSuggestedForm} /> : tab === 'customer' ? (
+          <>
+            {prefill?.kind === 'new_customer' && <p className="mb-3 rounded-md border border-info-border bg-info-bg p-2 text-xs text-info-fg" data-testid="prefill-note">Filled in by the assistant from what you wrote. Nothing is saved. Check every field.</p>}
+            <NewCustomerTab key={prefill?.kind === 'new_customer' ? prefill.key : 'plain'} initial={prefill?.kind === 'new_customer' ? prefillFor('new_customer', prefill.fields) : undefined} />
+          </>
+        ) : (
+          <>
+            {prefill?.kind === 'new_expense' && <p className="mb-3 rounded-md border border-info-border bg-info-bg p-2 text-xs text-info-fg" data-testid="prefill-note">Filled in by the assistant from what you wrote. Nothing is saved. Check every field, especially the amount and the category.</p>}
+            <NewExpenseTab
+              key={prefill?.kind === 'new_expense' ? prefill.key : 'plain'}
+              initial={prefill?.kind === 'new_expense' ? (({ categoryId, ...rest }) => rest)(prefillFor('new_expense', prefill.fields, [])) : undefined}
+              initialCategoryName={prefill?.kind === 'new_expense' ? prefill.fields.categoryName : undefined}
+            />
+          </>
+        )}
       </div>
     </aside>
   )

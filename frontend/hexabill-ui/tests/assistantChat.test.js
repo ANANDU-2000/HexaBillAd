@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { chatMessageProblem, describeChatReply, CHAT_MAX_CHARS } from '../src/features/assistant/assistantChat.js'
+import { chatMessageProblem, describeChatReply, CHAT_MAX_CHARS, suggestionRows, prefillFor } from '../src/features/assistant/assistantChat.js'
 
 test('messages need a sensible length', () => {
   assert.match(chatMessageProblem(''), /at least 2/)
@@ -39,3 +39,26 @@ test('refusals and outages explain themselves and point to the lookups', () => {
   // A tool mode without a result never invents rows.
   assert.equal(describeChatReply({ mode: 'tool', tool: 'find_customers' }).kind, 'unavailable')
 })
+
+test('a suggested form is described with its own fields and a plain reminder that nothing is saved', () => {
+  const view = describeChatReply({ mode: 'suggestion', suggestion: { kind: 'new_customer', fields: { name: 'Al Noor', phone: '0501234567', ignored: 'x' }, dropped: ['email'] } })
+  assert.equal(view.kind, 'suggestion')
+  assert.match(view.heading, /a new customer/)
+  assert.match(view.note, /Nothing is saved/)
+  assert.deepEqual(view.rows.map((r) => r.label), ['Name', 'Phone'])
+  assert.deepEqual(view.dropped, ['email'])
+  assert.equal(describeChatReply({ mode: 'suggestion' }).kind, 'unavailable')
+  assert.deepEqual(suggestionRows('new_expense', { amount: '10', note: 'n', categoryName: 'Fuel' }).map((r) => r.label), ['Category', 'Amount', 'Note'])
+})
+
+test('suggested values become the normal form\'s starting values; the category is matched by name or left for the person', () => {
+  assert.deepEqual(prefillFor('new_customer', { name: 'A', phone: '1', extra: 'no' }), { name: 'A', phone: '1', email: '', address: '', trn: '' })
+  const categories = [{ id: 3, name: 'Fuel' }, { id: 4, name: 'Vehicle Maintenance' }, { id: 5, name: 'Vehicle Insurance' }]
+  assert.equal(prefillFor('new_expense', { categoryName: 'fuel', amount: '125.5' }, categories).categoryId, '3')
+  assert.equal(prefillFor('new_expense', { categoryName: 'maintenance' }, categories).categoryId, '4')
+  assert.equal(prefillFor('new_expense', { categoryName: 'Vehicle' }, categories).categoryId, '') // two partial matches: not guessed
+  assert.equal(prefillFor('new_expense', { categoryName: 'Rent' }, categories).categoryId, '')
+  assert.equal(prefillFor('new_expense', { amount: '9' }, categories).amount, '9')
+  assert.equal(prefillFor('new_expense', {}, undefined).categoryId, '')
+})
+

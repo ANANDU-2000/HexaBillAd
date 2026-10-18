@@ -13,6 +13,40 @@ export function chatMessageProblem (message) {
 
 const TOOL_NAMES = { find_customers: 'customers', product_stock: 'products', search_company_documents: 'your documents' }
 
+const FORM_LABELS = {
+  new_customer: { title: 'a new customer', fields: { name: 'Name', phone: 'Phone', email: 'Email', address: 'Address', trn: 'TRN' } },
+  new_expense: { title: 'a new expense', fields: { categoryName: 'Category', amount: 'Amount', date: 'Date', note: 'Note' } },
+}
+
+/** Rows to show for a suggested form: what the assistant filled in, in the form's own order. */
+export function suggestionRows (kind, fields) {
+  const labels = FORM_LABELS[kind]?.fields || {}
+  return Object.keys(labels).filter((key) => fields?.[key]).map((key) => ({ key, label: labels[key], value: fields[key] }))
+}
+
+const lower = (value) => String(value || '').trim().toLowerCase()
+
+/**
+ * Suggested fields -> the values the normal form starts with. The category is matched by name against the company's own categories
+ * (exact first, then a clear partial match); no match leaves it empty for the person to choose.
+ */
+export function prefillFor (kind, fields = {}, categories = []) {
+  if (kind === 'new_customer') {
+    return { name: fields.name || '', phone: fields.phone || '', email: fields.email || '', address: fields.address || '', trn: fields.trn || '' }
+  }
+  const wanted = lower(fields.categoryName)
+  const list = Array.isArray(categories) ? categories : []
+  const exact = wanted ? list.find((c) => lower(c.name) === wanted) : null
+  const partial = !exact && wanted.length >= 3 ? list.filter((c) => lower(c.name).includes(wanted) || wanted.includes(lower(c.name))) : []
+  const match = exact || (partial.length === 1 ? partial[0] : null)
+  const out = {}
+  if (fields.amount) out.amount = String(fields.amount)
+  if (fields.date) out.date = fields.date
+  if (fields.note) out.note = fields.note
+  out.categoryId = match ? String(match.id) : ''
+  return out
+}
+
 /**
  * data: the `data` of POST /assistant/chat ({ mode, tool, query, result, text, provider }).
  * kind: tool (rows from the books), reply (model text, labelled), unavailable / refused (a plain explanation).
@@ -29,6 +63,19 @@ export function describeChatReply (data) {
       asOf: data.result.asOf,
       text: null,
       note: null,
+    }
+  }
+  if (mode === 'suggestion' && data.suggestion) {
+    const s = data.suggestion
+    return {
+      kind: 'suggestion',
+      formKind: s.kind,
+      fields: s.fields || {},
+      dropped: s.dropped || [],
+      rows: suggestionRows(s.kind, s.fields),
+      heading: `I filled in ${FORM_LABELS[s.kind]?.title || 'a form'} for you.`,
+      text: null,
+      note: 'Nothing is saved. Check every field, then review and confirm it yourself.',
     }
   }
   if (mode === 'reply') {
