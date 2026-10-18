@@ -1,5 +1,5 @@
 // Pure rules for the route planner and the driver's route screen. No React, no network.
-import { navigationUrl, isValidPoint } from '../../utils/shopLocation.js'
+import { navigationUrl, isValidPoint, LOW_ACCURACY_METERS } from '../../utils/shopLocation.js'
 
 export const STATUS_LABELS = {
   not_reached: 'Not visited',
@@ -81,3 +81,55 @@ export function visitRequest({ customerId, date, status, reason }) {
 
 /** Today's stops that can still be acted on (not delivered). */
 export const openStops = (stops) => orderedStops(stops).filter((s) => s.mapStatus !== 'delivered')
+
+const OPEN_STATUSES = ['not_reached', 'arrived']
+
+/** The stop to go to now: the first one in route order that has no final outcome yet (pinned or not). */
+export function nextStop(stops) {
+  return orderedStops(stops).find((s) => OPEN_STATUSES.includes(s.mapStatus || 'not_reached')) || null
+}
+
+/** Google Maps accepts a destination plus at most 9 waypoints. */
+export const MAX_WAYPOINT_STOPS = 10
+
+/**
+ * One directions link for the remaining stops, in route order, starting from the phone's own position (no origin is sent).
+ * Stops without a pin are skipped and counted; beyond MAX_WAYPOINT_STOPS the later stops are left out and counted.
+ * @returns {{ url: string, count: number, skippedNoPin: number, dropped: number } | null}
+ */
+export function navigationWaypointsUrl(stops) {
+  const open = orderedStops(stops).filter((s) => OPEN_STATUSES.includes(s.mapStatus || 'not_reached'))
+  const pinned = open.filter((s) => isValidPoint(s.mainLatitude, s.mainLongitude))
+  if (!pinned.length) return null
+  const used = pinned.slice(0, MAX_WAYPOINT_STOPS)
+  const point = (s) => `${Number(s.mainLatitude)},${Number(s.mainLongitude)}`
+  const destination = used[used.length - 1]
+  const via = used.slice(0, -1).map(point)
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${point(destination)}${via.length ? `&waypoints=${encodeURIComponent(via.join('|'))}` : ''}`
+  return { url, count: used.length, skippedNoPin: open.length - pinned.length, dropped: pinned.length - used.length }
+}
+
+const round6 = (n) => Math.round(Number(n) * 1e6) / 1e6
+
+/**
+ * The visit request for "I'm here". Needs a real GPS fix, otherwise null and nothing is sent. The shop's saved pin is requested only
+ * when the person may change it (owner/admin), the stop has no pin yet, and the fix is accurate; otherwise the fix stays on the visit.
+ * @returns {{ body: object, savesPin: boolean } | null}
+ */
+export function arrivalRequest({ customerId, date, fix, canSetPin, stopHasPin, now = new Date() }) {
+  if (!fix?.ok || !isValidPoint(fix.lat, fix.lng)) return null
+  const accurate = !(Number(fix.accuracy) > LOW_ACCURACY_METERS)
+  const savesPin = Boolean(canSetPin && !stopHasPin && accurate)
+  const body = { customerId, visitDate: date, status: 'Arrived', reachedAt: now.toISOString(), latitude: round6(fix.lat), longitude: round6(fix.lng) }
+  if (savesPin) body.updateSavedLocation = true
+  return { body, savesPin }
+}
+
+/** What to tell the person after "I'm here" was saved. */
+export function arrivalMessage({ savesPin, canSetPin, stopHasPin, accuracy }) {
+  if (savesPin) return 'Arrived. Shop location saved.'
+  if (canSetPin && stopHasPin) return 'Arrived. The saved shop location was not changed.'
+  if (canSetPin && Number(accuracy) > LOW_ACCURACY_METERS) return 'Arrived. Your GPS was not accurate enough to save as the shop location.'
+  if (!canSetPin && !stopHasPin) return 'Arrived. Your location was sent to the office to confirm as the shop location.'
+  return 'Arrived.'
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Navigation, Play, Square, MapPin, Wallet, ChevronRight, Route as RouteIcon } from 'lucide-react'
+import { Navigation, Play, Square, MapPin, MapPinned, LocateFixed, Wallet, ChevronRight, Route as RouteIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { routesAPI } from '../../services/index'
 import { localDateString } from '../../utils/dateFormat'
@@ -12,11 +12,15 @@ import ErrorState from '../../components/ui/ErrorState'
 import EmptyState from '../../components/ui/EmptyState'
 import BackLink from '../../components/ui/BackLink'
 import Modal from '../../components/Modal'
-import StopLocationMap from '../../components/StopLocationMap'
+import StopLocationMap, { requestDeviceGps } from '../../components/StopLocationMap'
+import { gpsFailureMessage, isValidPoint } from '../../utils/shopLocation'
+import { loadRoadLine } from '../routes/routeLine'
+import { linePoints } from '../routes/routeMapState'
 import LocationSharingPanel from './LocationSharingPanel'
 import {
   statusLabel, needsReason, reasonIsValid, orderedStops, mappableStops, locationNeededStops, stopNavigationUrl,
   runPhase, runSummaryParts, endRouteWarning, visitRequest, MIN_REASON_LENGTH,
+  nextStop, navigationWaypointsUrl, arrivalRequest, arrivalMessage,
 } from './driverRoute'
 
 const STATUS_STYLES = {
@@ -73,19 +77,20 @@ export function DriverRoutesPage() {
   )
 }
 
-function StopCard({ stop, running, busy, onAction, reasonFor, setReasonFor, canRecordPayment }) {
+function StopCard({ stop, running, busy, onAction, reasonFor, setReasonFor, canRecordPayment, locationOn, isNext, onArrive }) {
   const [reason, setReason] = useState('')
   const navUrl = stopNavigationUrl(stop)
   const asking = reasonFor && reasonFor.customerId === stop.customerId ? reasonFor.status : null
   const done = stop.mapStatus === 'delivered'
 
   return (
-    <li className="rounded-lg border border-neutral-200 bg-white p-3 space-y-2" data-testid={`stop-${stop.customerId}`}>
+    <li className={`rounded-lg border bg-white p-3 space-y-2 ${isNext ? 'border-info ring-2 ring-info/30' : 'border-neutral-200'}`} data-testid={`stop-${stop.customerId}`}>
       <div className="flex items-start gap-3">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600 text-sm font-semibold text-white" aria-label={`Stop ${stop.position}`}>
           {stop.position}
         </span>
         <div className="min-w-0 flex-1">
+          {isNext && <p className="text-xs font-semibold uppercase tracking-wide text-info-fg">Next stop</p>}
           <p className="font-medium text-text-primary break-words">{stop.customerName}</p>
           {stop.address && <p className="text-sm text-neutral-600 break-words">{stop.address}</p>}
         </div>
@@ -106,6 +111,18 @@ function StopCard({ stop, running, busy, onAction, reasonFor, setReasonFor, canR
           </Link>
         )}
       </div>
+
+      {running && !done && !asking && locationOn && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onArrive(stop)}
+          data-testid={`im-here-${stop.customerId}`}
+          className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-md border border-info bg-white px-3 text-sm font-medium text-info-fg disabled:opacity-60"
+        >
+          <LocateFixed className="h-4 w-4" aria-hidden="true" /> I'm here
+        </button>
+      )}
 
       {running && !done && !asking && (
         <div className="grid grid-cols-2 gap-2">
@@ -155,11 +172,12 @@ function StopCard({ stop, running, busy, onAction, reasonFor, setReasonFor, canR
   )
 }
 
-/** One route for the driver: start it, work the stops in order, end it. No location is read or sent here. */
+/** One route for the driver: start it, work the stops in order, end it. A location is read only when the person presses "I'm here" or "Show me on map". */
 export default function DriverRoutePage() {
   const { id } = useParams()
   const { user } = useAuth()
   const canRecordPayment = isAdminOrOwner(user)
+  const canSetPin = isAdminOrOwner(user) // only owners and admins may change a shop's saved location
   const routeId = Number(id)
   const date = useMemo(() => localDateString(), [])
   const [load, setLoad] = useState({ loading: true, error: false, notFound: false })
@@ -172,6 +190,8 @@ export default function DriverRoutePage() {
   const [endNote, setEndNote] = useState('')
   const [locationOn, setLocationOn] = useState(false)
   const [liveOn, setLiveOn] = useState(false)
+  const [me, setMe] = useState(null)
+  const [line, setLine] = useState({ path: null, source: 'straight' })
 
   const refresh = useCallback(async (quiet = false) => {
     if (!quiet) setLoad({ loading: true, error: false, notFound: false })
@@ -226,6 +246,25 @@ export default function DriverRoutePage() {
     await refresh(true)
   }, 'That stop could not be saved.')
 
+  // "I'm here": one GPS reading, sent with the arrival. Nothing is sent if the phone cannot give a position.
+  const arriveHere = (stop) => guarded(async () => {
+    const fix = await requestDeviceGps()
+    const stopHasPin = isValidPoint(stop.mainLatitude, stop.mainLongitude)
+    const request = arrivalRequest({ customerId: stop.customerId, date, fix, canSetPin, stopHasPin })
+    if (!request) { toast.error(gpsFailureMessage(fix?.reason)); return }
+    await routesAPI.updateCustomerVisit(routeId, stop.customerId, request.body)
+    setMe({ lat: fix.lat, lng: fix.lng })
+    setReasonFor(null)
+    toast.success(arrivalMessage({ ...request, canSetPin, stopHasPin, accuracy: fix.accuracy }))
+    await refresh(true)
+  }, 'That arrival could not be saved.')
+
+  const showMe = async () => {
+    const fix = await requestDeviceGps()
+    if (fix.ok) setMe({ lat: fix.lat, lng: fix.lng })
+    else toast.error(gpsFailureMessage(fix.reason))
+  }
+
   const endRoute = () => guarded(async () => {
     await routesAPI.endRun(routeId, endNote)
     setEndOpen(false)
@@ -233,6 +272,16 @@ export default function DriverRoutePage() {
     await refresh(true)
     toast.success('Route ended')
   }, 'The route could not be ended.')
+
+  const points = useMemo(() => linePoints(stops), [stops])
+  const pointsKey = points.map((p) => `${p.lat},${p.lng}`).join(';')
+  useEffect(() => {
+    if (!locationOn || points.length < 2) { setLine({ path: null, source: 'straight' }); return undefined }
+    let cancelled = false
+    loadRoadLine(points).then((result) => { if (!cancelled) setLine(result) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pointsKey, locationOn])
 
   if (load.loading) return <div className="mx-auto w-full max-w-2xl px-4 py-4"><LoadingCard /></div>
   if (load.error) {
@@ -251,6 +300,8 @@ export default function DriverRoutePage() {
   const mappable = mappableStops(stops)
   const needLocation = locationOn ? locationNeededStops(stops) : []
   const summaryRun = run.current || run.last
+  const next = nextStop(stops)
+  const nav = locationOn ? navigationWaypointsUrl(stops) : null
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-4 space-y-4">
@@ -298,14 +349,62 @@ export default function DriverRoutePage() {
 
       {liveOn && phase === 'running' && <LocationSharingPanel routeId={routeId} routeRunning={phase === 'running'} />}
 
+      {running && next && (
+        <div className="rounded-sm border border-neutral-200 border-l-4 border-l-info bg-white p-3" data-testid="next-stop">
+          <p className="text-xs font-semibold uppercase tracking-wide text-info-fg">Next stop</p>
+          <p className="mt-0.5 font-medium text-text-primary break-words">{next.position}. {next.customerName}</p>
+          {next.address && <p className="text-sm text-neutral-600 break-words">{next.address}</p>}
+          {stopNavigationUrl(next) && (
+            <a href={stopNavigationUrl(next)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 px-3 text-sm">
+              <Navigation className="h-4 w-4" aria-hidden="true" /> Navigate to next stop
+            </a>
+          )}
+        </div>
+      )}
+
       {locationOn && mappable.length > 0 && (
-        <StopLocationMap stops={mappable} numbered showPath height={260} />
+        <div className="space-y-2">
+          <StopLocationMap
+            stops={mappable}
+            numbered
+            showPath
+            height={260}
+            linePath={line.path}
+            linePathIsRoad={line.source === 'road'}
+            selectedStopId={next?.customerId ?? null}
+            fitKey={`${routeId}|${mappable.length}`}
+            me={me}
+          />
+          {line.source === 'straight' && points.length > 1 && <p className="text-xs text-neutral-600">Straight-line route: road directions are not available right now.</p>}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={showMe} data-testid="show-me" className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-3 text-sm">
+              <MapPinned className="h-4 w-4" aria-hidden="true" /> Show me on map
+            </button>
+            {nav && (
+              <a href={nav.url} target="_blank" rel="noopener noreferrer" data-testid="navigate-remaining" className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-3 text-sm">
+                <Navigation className="h-4 w-4" aria-hidden="true" /> Navigate remaining stops ({nav.count})
+              </a>
+            )}
+          </div>
+          {nav && (nav.dropped > 0 || nav.skippedNoPin > 0) && (
+            <p className="text-xs text-neutral-600" data-testid="navigate-note">
+              {nav.dropped > 0 && `Google Maps takes ${nav.count} stops at a time, so the last ${nav.dropped} are left out. `}
+              {nav.skippedNoPin > 0 && `${nav.skippedNoPin} stop${nav.skippedNoPin === 1 ? ' has' : 's have'} no shop location and ${nav.skippedNoPin === 1 ? 'is' : 'are'} left out.`}
+            </p>
+          )}
+        </div>
+      )}
+
+      {locationOn && running && (
+        <p className="text-xs text-neutral-600" data-testid="im-here-note">
+          “I'm here” reads your phone's location once and sends it with the arrival. Nothing is read until you press it.
+        </p>
       )}
 
       {needLocation.length > 0 && (
         <div className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-3" data-testid="location-needed">
           <p className="flex items-center gap-1 text-sm font-medium text-warning-fg"><MapPin className="h-4 w-4" aria-hidden="true" /> Location needed</p>
-          <p className="mt-1 text-sm text-neutral-700">These stops have no shop location, so they are not on the map and have no directions. Ask the office to add them.</p>
+          <p className="mt-1 text-sm text-neutral-700">These stops have no shop location, so they are not on the map and have no directions. Press “I'm here” when you arrive: your location goes to the office to confirm.</p>
           <ul className="mt-1 list-disc pl-5 text-sm text-neutral-800">
             {needLocation.map((s) => <li key={s.customerId}>{s.position}. {s.customerName}</li>)}
           </ul>
@@ -323,6 +422,9 @@ export default function DriverRoutePage() {
             reasonFor={reasonFor}
             setReasonFor={setReasonFor}
             canRecordPayment={canRecordPayment}
+            locationOn={locationOn}
+            isNext={next?.customerId === s.customerId}
+            onArrive={arriveHere}
           />
         ))}
       </ul>
