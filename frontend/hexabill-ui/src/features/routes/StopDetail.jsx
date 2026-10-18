@@ -2,7 +2,7 @@ import { ExternalLink, MapPinOff, Navigation, Phone, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../../utils/currency'
 import { navigationUrl } from '../../utils/shopLocation'
-import { hasPin, overdueTone } from './routeMapState'
+import { hasPin, overdueTone, pendingFixSummary } from './routeMapState'
 import { StatusTag, overdueLabel } from './StopCard'
 
 const dateText = (value) => {
@@ -26,8 +26,9 @@ const actionClass =
   'inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 sm:min-h-[36px]'
 
 /** The card that opens when a stop is selected (list row or marker). Read-only: opens existing screens, writes nothing. */
-export default function StopDetail({ stop, onClose, showCreditLimit }) {
+export default function StopDetail({ stop, onClose, showCreditLimit, canManage = false, onConfirmPin = null, onDismissFix = null, busy = false }) {
   const pinned = hasPin(stop)
+  const fix = canManage ? pendingFixSummary(stop) : null
   const late = overdueLabel(stop)
   const tone = overdueTone(stop.overdueDays)
   return (
@@ -51,6 +52,30 @@ export default function StopDetail({ stop, onClose, showCreditLimit }) {
         <Fact label="Last visit">{dateText(stop.lastVisitAt)}</Fact>
         {showCreditLimit && stop.creditLimit != null && <Fact label="Credit limit">{formatCurrency(stop.creditLimit)}</Fact>}
       </dl>
+      {fix && (
+        <div className="mx-3 mb-2 border border-neutral-200 border-l-4 border-l-info bg-white px-2.5 py-2" data-testid="pending-fix">
+          <p className="text-xs font-semibold text-neutral-900">Driver reported a location</p>
+          <p className="mt-0.5 text-xs text-neutral-700">{fix.text}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onConfirmPin?.(stop, fix)}
+              className="inline-flex min-h-[44px] items-center border border-info bg-white px-3 text-sm font-medium text-info-fg hover:bg-neutral-50 disabled:opacity-60 sm:min-h-[36px]"
+            >
+              {fix.confirmLabel}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onDismissFix?.(stop, fix)}
+              className="inline-flex min-h-[44px] items-center border border-neutral-300 bg-white px-3 text-sm text-neutral-800 hover:bg-neutral-50 disabled:opacity-60 sm:min-h-[36px]"
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
       {!pinned && (
         <p className="mx-3 mb-2 flex items-center gap-1.5 border-l-4 border-l-warning border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700">
           <MapPinOff className="h-3.5 w-3.5 shrink-0 text-warning" aria-hidden /> This customer has no saved shop location yet.

@@ -107,3 +107,27 @@ export function readFocusParams(search) {
   }
   return { routeId: pick('route'), customerId: pick('focus') }
 }
+
+/**
+ * Words for a driver's GPS fix waiting for the office to confirm (null when there is none).
+ * `replaces` is true when a shop pin is already saved, which changes the button and needs an explicit overwrite on the server.
+ */
+export function pendingFixSummary(stop) {
+  const fix = stop?.pendingFix
+  if (!fix) return null
+  const replaces = hasPin(stop)
+  const when = new Date(fix.visitDate)
+  const day = Number.isNaN(when.getTime()) ? 'a recent visit' : when.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  const who = fix.staffName ? fix.staffName : 'The driver'
+  let tail = 'This customer has no saved shop location.'
+  if (replaces) {
+    const km = distanceKm({ lat: Number(stop.mainLatitude), lng: Number(stop.mainLongitude) }, { lat: Number(fix.latitude), lng: Number(fix.longitude) })
+    tail = `It is about ${formatDistance(km)} from the saved shop location.`
+  }
+  return {
+    replaces,
+    visitId: fix.visitId,
+    text: `${who} reported a location on ${day}. ${tail}`,
+    confirmLabel: replaces ? 'Replace shop pin' : 'Confirm as shop pin',
+  }
+}

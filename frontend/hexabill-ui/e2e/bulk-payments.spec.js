@@ -4,7 +4,7 @@
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin, apiLogin, API, EDGE } from './session.js'
 import { pickValue } from './pickers.js'
-import { ensureOwingCustomers } from './fixtures.js'
+import { createPlainCustomer, ensureOwingCustomers } from './fixtures.js'
 
 const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 
@@ -136,4 +136,43 @@ test('bulk payments: a failed row pauses, then resumes without duplicating the r
       list.filter((p) => Number(p.amount) === amountB && p.customerId === b.id).length,
     ]
   }).toEqual([1, 1])
+})
+
+test('bulk payments: a payment the server refuses is handed back to fix, with no stuck banners', async ({ page }) => {
+  await signIn(page, SLUG)
+  const [a] = await owingCustomers()
+  const nothingOwed = await createPlainCustomer(SLUG) // no invoices: the server answers 400 "no outstanding invoices" and saves nothing for that key
+  const amountA = Number((((Date.now() % 1000) + 1000) / 100).toFixed(2))
+
+  const dialog = await openBulk(page)
+  await pickCustomer(page, dialog, 0, a.id)
+  await amountInput(dialog, 0).fill(amountA.toFixed(2))
+  await dialog.getByRole('button', { name: 'Add Another Payment' }).click()
+  await pickCustomer(page, dialog, 1, nothingOwed.id)
+  await amountInput(dialog, 1).fill('25')
+  await dialog.getByRole('button', { name: /Save All Payments \(2\)/ }).click()
+
+  // The refused row comes back in the form with the server's reason; the first payment stays confirmed; nothing is "waiting for confirmation".
+  await expect(dialog.getByRole('alert').filter({ hasText: /outstanding invoices/i }).first()).toBeVisible({ timeout: 20_000 })
+  await expect(dialog.getByRole('button', { name: /Save All Payments \(1\)/ })).toBeEnabled()
+  await expect(page.getByText(/Saved bulk payments/)).toHaveCount(0)
+  await expect(page.getByText(/is unconfirmed/)).toHaveCount(0)
+  await expect(amountInput(dialog, 0)).toHaveValue('25')
+  await expect(amountInput(dialog, 0)).toBeEnabled()
+  await expect.poll(async () => {
+    const list = items((await api('/api/payments?page=1&pageSize=100')).json)
+    return list.filter((p) => Number(p.amount) === amountA && p.customerId === a.id).length
+  }).toBe(1)
+
+  // Swap in a customer who owes money and save again: it goes through as a new payment.
+  const [, b] = await owingCustomers()
+  const amountB = Number((amountA + 0.71).toFixed(2))
+  await pickCustomer(page, dialog, 0, b.id)
+  await amountInput(dialog, 0).fill(amountB.toFixed(2))
+  await dialog.getByRole('button', { name: /Save All Payments \(1\)/ }).click()
+  await expect(dialog).toBeHidden({ timeout: 20_000 })
+  await expect.poll(async () => {
+    const list = items((await api('/api/payments?page=1&pageSize=100')).json)
+    return list.filter((p) => Number(p.amount) === amountB && p.customerId === b.id).length
+  }).toBe(1)
 })

@@ -78,6 +78,8 @@ export default function RouteMapPage() {
   const [panNonce, setPanNonce] = useState(0)
   const [sheet, setSheet] = useState('peek')
   const [line, setLine] = useState({ path: null, source: 'straight' })
+  const [pinBusy, setPinBusy] = useState(false)
+  const [dismissedFixes, setDismissedFixes] = useState(() => new Set())
   const cardRefs = useRef({})
   const focusApplied = useRef(false)
 
@@ -184,6 +186,23 @@ export default function RouteMapPage() {
     }
   }
 
+  const confirmPin = async (stop, fix) => {
+    if (pinBusy) return
+    setPinBusy(true)
+    try {
+      await routesAPI.confirmPinFromVisit(routeId, stop.customerId, fix.visitId, fix.replaces)
+      toast.success('Shop location saved.')
+      await loadStops(true)
+      setPanNonce((n) => n + 1)
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'The shop location could not be saved.')
+      await loadStops(true)
+    } finally {
+      setPinBusy(false)
+    }
+  }
+  const dismissFix = (stop, fix) => setDismissedFixes((prev) => new Set(prev).add(fix.visitId))
+
   const changeRoute = (value) => {
     const next = Number(value)
     setRouteId(next || null)
@@ -193,7 +212,12 @@ export default function RouteMapPage() {
 
   const visible = useMemo(() => applyView(stops, { search, filter, sort, origin }), [stops, search, filter, sort, origin])
   const totals = useMemo(() => summarize(stops), [stops])
-  const selected = useMemo(() => stops.find((s) => s.customerId === selectedId) || null, [stops, selectedId])
+  const selected = useMemo(() => {
+    const found = stops.find((s) => s.customerId === selectedId) || null
+    // A fix the person chose "Not now" for stays hidden until the page is reloaded.
+    return found?.pendingFix && dismissedFixes.has(found.pendingFix.visitId) ? { ...found, pendingFix: null } : found
+  }, [stops, selectedId, dismissedFixes])
+  const canManage = routes.find((r) => r.routeId === routeId)?.canManage === true
   const mapStops = useMemo(() => visible, [visible])
   const fitKey = `${routeId}|${filter}|${search}|${stops.length}`
   const onlineDrivers = drivers.filter((d) => !d.stale).length
@@ -322,7 +346,7 @@ export default function RouteMapPage() {
           <div className="absolute inset-0 isolate z-0">{map}</div>
           {selected && (
             <div className="absolute right-3 top-3 z-10 w-[320px] max-w-[calc(100%-24px)]">
-              <StopDetail stop={selected} onClose={() => setSelectedId(null)} showCreditLimit={showCreditLimit} />
+              <StopDetail stop={selected} onClose={() => setSelectedId(null)} showCreditLimit={showCreditLimit} canManage={canManage} onConfirmPin={confirmPin} onDismissFix={dismissFix} busy={pinBusy} />
             </div>
           )}
           {line.source === 'straight' && points.length > 1 && (
@@ -338,7 +362,7 @@ export default function RouteMapPage() {
       <div className="absolute inset-0 isolate z-0">{map}</div>
       {selected && (
         <div className="absolute inset-x-2 z-10" style={{ bottom: sheet === 'peek' ? 'calc(196px + 8px)' : undefined, top: sheet === 'peek' ? undefined : 8 }}>
-          <StopDetail stop={selected} onClose={() => setSelectedId(null)} showCreditLimit={showCreditLimit} />
+          <StopDetail stop={selected} onClose={() => setSelectedId(null)} showCreditLimit={showCreditLimit} canManage={canManage} onConfirmPin={confirmPin} onDismissFix={dismissFix} busy={pinBusy} />
         </div>
       )}
       <MapBottomSheet

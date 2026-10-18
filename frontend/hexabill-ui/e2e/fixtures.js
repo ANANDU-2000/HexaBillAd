@@ -55,6 +55,14 @@ export async function ensureCustomerCount (slug, count) {
   return n
 }
 
+/** A brand-new customer with no invoices at all (a payment for them is refused by the server: nothing is owed). */
+export async function createPlainCustomer (slug, name) {
+  const stamp = `${Date.now()}`
+  return call(slug, '/api/customers', 'POST', {
+    name: name || `Fixture no invoices ${stamp}`, phone: `054${stamp.slice(-7)}`, creditLimit: 0, customerType: 'Credit', ...(await branchScope(slug)),
+  })
+}
+
 /** Makes sure at least `count` customers owe more than `minBalance`; returns them, largest balance first. */
 export async function ensureOwingCustomers (slug, count, minBalance = 60) {
   let list = (await call(slug, '/api/customers?page=1&pageSize=100').then(rows)).filter((c) => Number(c.balance) > minBalance)

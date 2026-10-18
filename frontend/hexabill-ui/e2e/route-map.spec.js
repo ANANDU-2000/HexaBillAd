@@ -125,3 +125,34 @@ test('phone: the list is a bottom sheet that expands and collapses', async ({ pa
   await expect(sheet).toHaveAttribute('data-state', 'peek')
   expect(await overflowX(page)).toBeLessThanOrEqual(0)
 })
+
+test('office confirms a driver GPS fix as the shop pin (new pin, then a replacement)', async ({ page }) => {
+  const day = new Date().toISOString().slice(0, 10)
+  const putFix = async (customerId, latitude, longitude) => {
+    const r = await ownerApi(`/api/routes/${fx.routeId}/visits/${customerId}`, { method: 'PUT', body: JSON.stringify({ visitDate: day, status: 'Arrived', latitude, longitude, reachedAt: new Date().toISOString() }) })
+    expect(r.status, JSON.stringify(r.json).slice(0, 200)).toBe(200)
+  }
+  const pinOf = async (customerId) => {
+    const stop = (await ownerApi(`/api/routes/${fx.routeId}/stops-map?date=${day}`)).json.data.find((s) => s.customerId === customerId)
+    return stop.mainLatitude == null ? null : Number(stop.mainLatitude)
+  }
+  await putFix(fx.owingId, 25.31, 55.41) // no saved pin yet
+  await putFix(fx.ids[0], 25.5, 55.6) // far from its saved pin (25.2, 55.27)
+  const desktop = page.viewportSize().width >= 1024
+  await openMap(page)
+  await showList(page, desktop)
+
+  await page.getByTestId(`stop-card-${fx.owingId}`).click()
+  const fix = page.getByTestId('pending-fix')
+  await expect(fix).toContainText('no saved shop location')
+  await fix.getByRole('button', { name: 'Confirm as shop pin' }).click()
+  await expect(page.getByTestId('pending-fix')).toHaveCount(0)
+  expect(await pinOf(fx.owingId)).toBeCloseTo(25.31, 3)
+
+  if (!desktop) await page.getByRole('button', { name: /Expand the stop list/ }).click()
+  await page.getByTestId(`stop-card-${fx.ids[0]}`).click()
+  await expect(page.getByTestId('pending-fix')).toContainText('from the saved shop location')
+  await page.getByTestId('pending-fix').getByRole('button', { name: 'Replace shop pin' }).click()
+  await expect(page.getByTestId('pending-fix')).toHaveCount(0)
+  expect(await pinOf(fx.ids[0])).toBeCloseTo(25.5, 3)
+})

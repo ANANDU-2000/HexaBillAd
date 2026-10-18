@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  applyView, summarize, overdueTone, linePoints, readFocusParams, distanceKm, formatDistance, hasPin, SHOW_FILTERS, SORTS,
+  applyView, summarize, overdueTone, linePoints, readFocusParams, distanceKm, formatDistance, hasPin, SHOW_FILTERS, SORTS, pendingFixSummary,
 } from '../src/features/routes/routeMapState.js'
 import { buildOsrmUrl, parseOsrm, loadRoadLine, clearRoadLineCache, MAX_ROUTE_POINTS } from '../src/features/routes/routeLine.js'
 
@@ -125,4 +125,22 @@ test('road line: nothing to draw below two points, no network above the point li
   assert.equal(r.source, 'straight')
   assert.equal(r.path.length, MAX_ROUTE_POINTS + 1)
   assert.equal(calls, 0)
+})
+
+test('a driver fix is described in plain words, with how far it is from the saved pin', () => {
+  const when = '2026-10-15T08:30:00Z'
+  const noPin = { mainLatitude: null, mainLongitude: null, pendingFix: { visitId: 7, latitude: 25.2, longitude: 55.3, visitDate: when, staffName: 'Ahmed' } }
+  assert.equal(pendingFixSummary(noPin).replaces, false)
+  assert.match(pendingFixSummary(noPin).text, /^Ahmed reported a location on /)
+  assert.match(pendingFixSummary(noPin).text, /This customer has no saved shop location\.$/)
+  assert.equal(pendingFixSummary(noPin).confirmLabel, 'Confirm as shop pin')
+
+  const far = { mainLatitude: 25.0, mainLongitude: 55.0, pendingFix: { visitId: 8, latitude: 25.1, longitude: 55.0, visitDate: when, staffName: null } }
+  assert.equal(pendingFixSummary(far).replaces, true)
+  assert.match(pendingFixSummary(far).text, /^The driver reported a location on /)
+  assert.match(pendingFixSummary(far).text, /about 11 km from the saved shop location\.$/)
+  assert.equal(pendingFixSummary(far).confirmLabel, 'Replace shop pin')
+
+  assert.equal(pendingFixSummary({ mainLatitude: 1, mainLongitude: 1 }), null)
+  assert.equal(pendingFixSummary(null), null)
 })

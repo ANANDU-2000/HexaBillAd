@@ -2447,6 +2447,11 @@ export const routesAPI = {
     const response = await api.get('/route-map/overview', { params })
     return response.data
   },
+  /** Save a driver's visit fix as the customer's shop pin (owner, admin or the route's manager). `overwrite` is required to replace a saved pin. */
+  confirmPinFromVisit: async (routeId, customerId, visitId, overwrite = false) => {
+    const response = await api.post(`/routes/${routeId}/customers/${customerId}/pin-from-visit`, { visitId, overwrite })
+    return response.data
+  },
   getStopLocationFeatureFlag: async () => {
     const response = await api.get('/routes/feature-flags/stop-location')
     return response.data
