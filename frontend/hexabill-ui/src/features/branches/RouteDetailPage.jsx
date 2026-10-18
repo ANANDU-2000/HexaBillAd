@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
-import { MapPin, ArrowLeft, Plus, Trash2, Edit, Printer, Users, UserPlus, Receipt, BarChart3, TrendingUp, DollarSign, FileText, Calendar, Navigation } from 'lucide-react'
+import { MapPin, ArrowLeft, ArrowUp, ArrowDown, ChevronsUp, Plus, Trash2, Edit, Printer, Users, UserPlus, Receipt, BarChart3, TrendingUp, DollarSign, FileText, Calendar, Navigation } from 'lucide-react'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { routesAPI, salesAPI, expensesAPI, adminAPI, branchesAPI } from '../../services/index'
@@ -13,6 +13,8 @@ import { useAuth } from '../../hooks/useAuth'
 import StopLocationMap, { captureDeviceGps } from '../../components/StopLocationMap'
 import { localDateString } from '../../utils/dateFormat'
 import ErrorState from '../../components/ui/ErrorState'
+import { readApiErrorReason } from '../../utils/apiError'
+import { moveStop, moveStopToTop, orderedStops, locationNeededStops, runSummaryParts, statusLabel, stopNavigationUrl } from './driverRoute'
 
 const EXPENSE_CATEGORIES = ['Fuel', 'Staff', 'Delivery', 'Vehicle Maintenance', 'Toll/Parking', 'Misc']
 const ROUTE_TABS = ['overview', 'customers', 'sales', 'expenses', 'staff', 'performance', 'stops']
@@ -82,6 +84,8 @@ const RouteDetailPage = () => {
   const [branches, setBranches] = useState([])
   const [savingRouteEdit, setSavingRouteEdit] = useState(false)
   const [stopLocationEnabled, setStopLocationEnabled] = useState(false)
+  const [orderSaving, setOrderSaving] = useState(false)
+  const [runState, setRunState] = useState(null)
   const [stopsMap, setStopsMap] = useState([])
   const [stopsMapLoading, setStopsMapLoading] = useState(false)
   const [pinModal, setPinModal] = useState({
@@ -360,7 +364,7 @@ const RouteDetailPage = () => {
         if (refreshRes?.success && refreshRes?.data) {
           setCollectionSheet(refreshRes.data)
         }
-        if (stopLocationEnabled) loadStopsMap()
+        loadStopsMap()
       } else {
         toast.error(res?.message || 'Failed to update visit status')
       }
@@ -372,16 +376,31 @@ const RouteDetailPage = () => {
   }
 
   const loadStopsMap = async () => {
-    if (!id || !stopLocationEnabled) return
+    if (!id) return
     setStopsMapLoading(true)
     try {
       const res = await routesAPI.getStopsMap(id, collectionSheetDate)
-      if (res?.success && Array.isArray(res.data)) setStopsMap(res.data)
+      if (res?.success && Array.isArray(res.data)) setStopsMap(orderedStops(res.data))
       else setStopsMap([])
+      routesAPI.getRun(id).then((r) => setRunState(r?.data ?? null)).catch(() => setRunState(null))
     } catch {
       setStopsMap([])
     } finally {
       setStopsMapLoading(false)
+    }
+  }
+
+  // Saves a new visiting order straight away; the list is reloaded from the server so what is shown is what is stored.
+  const saveStopOrder = async (nextIds) => {
+    setOrderSaving(true)
+    try {
+      await routesAPI.reorderStops(id, nextIds)
+      await loadStopsMap()
+    } catch (e) {
+      toast.error(readApiErrorReason(e, 'The stop order could not be saved.'))
+      await loadStopsMap()
+    } finally {
+      setOrderSaving(false)
     }
   }
 
@@ -434,8 +453,8 @@ const RouteDetailPage = () => {
   }, [])
 
   useEffect(() => {
-    if (activeTab === 'stops' && stopLocationEnabled) loadStopsMap()
-  }, [activeTab, stopLocationEnabled, id, collectionSheetDate])
+    if (activeTab === 'stops') loadStopsMap()
+  }, [activeTab, id, collectionSheetDate])
 
   const closeCollectionSheet = () => setCollectionSheet(null)
 
@@ -602,13 +621,13 @@ const RouteDetailPage = () => {
 
       <div className="border-b border-neutral-200 mb-3 overflow-x-auto shrink-0">
         <nav className="-mb-px flex gap-2 min-w-max">
-          {(stopLocationEnabled ? ROUTE_TABS : ROUTE_TABS.filter((t) => t !== 'stops')).map(tab => (
+          {ROUTE_TABS.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`py-2 px-3 border-b-2 font-medium text-sm whitespace-nowrap shrink-0 ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
             >
-              {tab === 'stops' ? 'Stops map' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'stops' ? 'Stops & order' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </nav>
@@ -1073,8 +1092,26 @@ const RouteDetailPage = () => {
         </div>
       )}
 
-      {activeTab === 'stops' && stopLocationEnabled && (
+      {activeTab === 'stops' && (
         <div className="space-y-4">
+          {runState && (runState.current || runState.last) && (
+            <div className="rounded-lg border border-neutral-200 bg-white p-3 space-y-2" data-testid="route-run-card">
+              <p className="text-sm font-medium text-neutral-800">
+                {runState.current
+                  ? `In progress since ${new Date(runState.current.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                  : `Last run ended ${new Date(runState.last.endedAt).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+              </p>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                {runSummaryParts(runState.current || runState.last).map((p) => (
+                  <div key={p.key} className="rounded border border-neutral-200 px-1 py-1">
+                    <div className="font-semibold">{p.value}</div>
+                    <div className="text-xs text-neutral-600">{p.label}</div>
+                  </div>
+                ))}
+              </div>
+              {!runState.current && runState.last?.endNote && <p className="text-sm text-neutral-700">Driver note: {runState.last.endNote}</p>}
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <label className="text-sm text-neutral-600">Date</label>
             <input
@@ -1088,65 +1125,106 @@ const RouteDetailPage = () => {
               onClick={loadStopsMap}
               className="px-3 py-1.5 bg-primary-600 text-white rounded-lg text-sm"
             >
-              Refresh map
+              Refresh
             </button>
           </div>
-          {stopsMapLoading ? (
+          {stopLocationEnabled && (stopsMapLoading ? (
             <p className="text-sm text-neutral-500">Loading stops…</p>
           ) : (
-            <StopLocationMap stops={stopsMap} height={360} />
+            <StopLocationMap stops={stopsMap} height={360} numbered showPath />
+          ))}
+          {stopLocationEnabled && locationNeededStops(stopsMap).length > 0 && (
+            <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-sm" data-testid="planner-location-needed">
+              <p className="font-medium text-warning-fg">Location needed</p>
+              <p className="text-neutral-700">These stops have no shop location, so they are left off the map and the driver has no directions to them: {locationNeededStops(stopsMap).map((s) => s.customerName).join(', ')}.</p>
+            </div>
           )}
-          <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white rounded-lg border border-neutral-200 overflow-x-auto">
+            <table className="w-full text-sm" data-testid="stops-table">
               <thead className="bg-neutral-50 border-b">
                 <tr>
+                  <th className="text-left px-3 py-2 w-10">#</th>
                   <th className="text-left px-3 py-2">Customer</th>
-                  <th className="text-left px-3 py-2">Pin</th>
+                  {stopLocationEnabled && <th className="text-left px-3 py-2">Location</th>}
                   <th className="text-left px-3 py-2">Status</th>
-                  <th className="text-right px-3 py-2 print:hidden">Actions</th>
+                  {canManage && <th className="text-left px-3 py-2 print:hidden">Order</th>}
+                  {stopLocationEnabled && <th className="text-right px-3 py-2 print:hidden">Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {(stopsMap || []).map((s) => (
-                  <tr key={s.customerId} className="border-b border-neutral-100">
-                    <td className="px-3 py-2 font-medium">{s.customerName}</td>
-                    <td className="px-3 py-2 text-neutral-600">
-                      {s.mainLatitude != null
-                        ? 'Location saved'
-                        : <span className="text-warning-fg">No location yet</span>}
+                {(stopsMap || []).map((s, index) => (
+                  <tr key={s.customerId} className="border-b border-neutral-100" data-testid={`planner-stop-${s.customerId}`}>
+                    <td className="px-3 py-2 font-semibold">{s.position}</td>
+                    <td className="px-3 py-2">
+                      <div className="font-medium">{s.customerName}</div>
+                      {s.address && <div className="text-xs text-neutral-600">{s.address}</div>}
                     </td>
-                    <td className="px-3 py-2 capitalize">{(s.mapStatus || '').replace('_', ' ')}</td>
-                    <td className="px-3 py-2 text-right space-x-2 print:hidden">
-                      <button
-                        type="button"
-                        onClick={() => openMarkReached(s, 'reached')}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-success text-white"
-                      >
-                        <Navigation className="h-3 w-3" /> Mark reached
-                      </button>
-                      {canManage && (
+                    {stopLocationEnabled && (
+                      <td className="px-3 py-2 text-neutral-600">
+                        {s.needsLocation
+                          ? <span className="text-warning-fg">No location yet</span>
+                          : <>Location saved{stopNavigationUrl(s) && <> · <a href={stopNavigationUrl(s)} target="_blank" rel="noopener noreferrer" className="text-primary-700 underline">Open in maps</a></>}</>}
+                      </td>
+                    )}
+                    <td className="px-3 py-2">{statusLabel(s.mapStatus)}</td>
+                    {canManage && (
+                      <td className="px-3 py-2 print:hidden">
+                        <div className="flex gap-1">
+                          <button type="button" aria-label={`Move ${s.customerName} up`} disabled={orderSaving || index === 0}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded border border-neutral-300 disabled:opacity-40"
+                            onClick={() => saveStopOrder(moveStop(stopsMap.map((x) => x.customerId), s.customerId, -1))}>
+                            <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          <button type="button" aria-label={`Move ${s.customerName} down`} disabled={orderSaving || index === stopsMap.length - 1}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded border border-neutral-300 disabled:opacity-40"
+                            onClick={() => saveStopOrder(moveStop(stopsMap.map((x) => x.customerId), s.customerId, 1))}>
+                            <ArrowDown className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          <button type="button" aria-label={`Make ${s.customerName} the first stop`} disabled={orderSaving || index === 0}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded border border-neutral-300 disabled:opacity-40"
+                            onClick={() => saveStopOrder(moveStopToTop(stopsMap.map((x) => x.customerId), s.customerId))}>
+                            <ChevronsUp className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                    {stopLocationEnabled && (
+                      <td className="px-3 py-2 text-right space-x-2 print:hidden">
                         <button
                           type="button"
-                          onClick={() => openMarkReached(s, 'update_saved')}
-                          className="text-xs px-2 py-1 rounded border border-neutral-300"
+                          onClick={() => openMarkReached(s, 'reached')}
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-success text-white"
                         >
-                          Update saved
+                          <Navigation className="h-3 w-3" /> Mark reached
                         </button>
-                      )}
-                    </td>
+                        {canManage && (
+                          <button
+                            type="button"
+                            onClick={() => openMarkReached(s, 'update_saved')}
+                            className="text-xs px-2 py-1 rounded border border-neutral-300"
+                          >
+                            Update saved
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {!stopsMapLoading && (!stopsMap || stopsMap.length === 0) && (
-                  <tr><td colSpan={4} className="px-3 py-6 text-center text-neutral-500">No customers on this route.</td></tr>
+                  <tr><td colSpan={6} className="px-3 py-6 text-center text-neutral-500">No customers on this route.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
-          <div className="flex gap-3 text-xs text-neutral-600">
-            <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-success mr-1" />Reached</span>
-            <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-500 mr-1" />Not reached</span>
-            <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-warning mr-1" />Skipped</span>
-          </div>
+          {stopLocationEnabled && (
+            <div className="flex flex-wrap gap-3 text-xs text-neutral-600">
+              <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-500 mr-1" />Not visited</span>
+              <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-600 mr-1" />Arrived</span>
+              <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-success mr-1" />Delivered</span>
+              <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-red-600 mr-1" />Failed</span>
+              <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-warning mr-1" />Skipped</span>
+            </div>
+          )}
         </div>
       )}
       </div>

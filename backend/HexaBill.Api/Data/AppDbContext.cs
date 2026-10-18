@@ -155,6 +155,7 @@ namespace HexaBill.Api.Data
         public DbSet<AssistantDraft> AssistantDrafts { get; set; }
         public DbSet<TenantDocument> TenantDocuments { get; set; }
         public DbSet<TenantDocumentVersion> TenantDocumentVersions { get; set; }
+        public DbSet<RouteRun> RouteRuns { get; set; }
         public DbSet<Setting> Settings { get; set; }
         public DbSet<DamageCategory> DamageCategories { get; set; }
         public DbSet<DamageInventory> DamageInventories { get; set; }
@@ -732,6 +733,16 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.StorageKey).IsRequired().HasMaxLength(300);
                 entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
                 entity.HasIndex(e => new { e.TenantId, e.DocumentId, e.VersionNumber }).IsUnique();
+            });
+
+            modelBuilder.Entity<RouteRun>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.EndNote).HasMaxLength(500);
+                entity.HasOne(e => e.Route).WithMany().HasForeignKey(e => e.RouteId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(e => new { e.TenantId, e.RouteId, e.ServiceDate });
+                // At most one open run per route.
+                entity.HasIndex(e => new { e.TenantId, e.RouteId }).IsUnique().HasFilter("\"EndedAt\" IS NULL");
             });
 
             modelBuilder.Entity<AuditLog>(entity =>

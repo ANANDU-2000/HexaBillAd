@@ -1144,6 +1144,11 @@ namespace HexaBill.Api.Models
 
     public class RouteStopMapDto
     {
+        /// <summary>1-based position of the stop in the visiting order.</summary>
+        public int Position { get; set; }
+        public string? Address { get; set; }
+        /// <summary>True when the customer has no saved shop location, so the stop cannot be shown on the map or navigated to.</summary>
+        public bool NeedsLocation { get; set; }
         public int CustomerId { get; set; }
         public string CustomerName { get; set; } = string.Empty;
         public int? SortOrder { get; set; }
@@ -1153,7 +1158,7 @@ namespace HexaBill.Api.Models
         public decimal? VisitLatitude { get; set; }
         public decimal? VisitLongitude { get; set; }
         public DateTime? ReachedAt { get; set; }
-        /// <summary>reached | not_reached | skipped</summary>
+        /// <summary>not_reached | arrived | delivered | failed | skipped</summary>
         public string MapStatus { get; set; } = "not_reached";
     }
 

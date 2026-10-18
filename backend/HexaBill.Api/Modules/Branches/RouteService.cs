@@ -32,6 +32,8 @@ namespace HexaBill.Api.Modules.Branches
         Task<CustomerVisitDto?> UpdateCustomerVisitAsync(int routeId, int customerId, UpdateCustomerVisitRequest request, int userId, int tenantId, bool allowSavedPinUpdate = false);
         Task<List<CustomerVisitDto>> GetCustomerVisitsAsync(int routeId, int tenantId, DateTime? date);
         Task<List<RouteStopMapDto>?> GetRouteStopsMapAsync(int routeId, int tenantId, DateTime date);
+        /// <summary>Sets the stop order: the listed customers become stops 1..n in that order. False when the route does not exist.</summary>
+        Task<bool> ReorderRouteStopsAsync(int routeId, int tenantId, int userId, IReadOnlyList<int> customerIds);
         bool IsStopLocationEnabled();
     }
 
@@ -66,7 +68,7 @@ namespace HexaBill.Api.Modules.Branches
         }
 
         /// <summary>True if the exception (or inner) is PostgreSQL 42P01 undefined_table. Handles wrapped exceptions and message-based detection.</summary>
-        private static bool IsRelationMissing42P01(Exception ex)
+        internal static bool IsRelationMissing42P01(Exception ex)
         {
             for (var e = ex; e != null; e = e.InnerException)
             {
@@ -346,7 +348,14 @@ namespace HexaBill.Api.Modules.Branches
             customer.RouteId = routeId;
             customer.UpdatedAt = DateTime.UtcNow;
             
-            _context.RouteCustomers.Add(new RouteCustomer { RouteId = routeId, CustomerId = customerId, AssignedAt = DateTime.UtcNow });
+            // A new stop goes to the end of the route, so the order the owner set stays stable.
+            // Older stops that never had an order (sorted by name until now) are numbered first, in that same order,
+            // so the new stop cannot jump ahead of them.
+            var existing = await _context.RouteCustomers.Include(rc => rc.Customer).Where(rc => rc.RouteId == routeId).ToListAsync();
+            var lastOrder = existing.Max(rc => rc.SortOrder) ?? 0;
+            foreach (var unordered in existing.Where(rc => rc.SortOrder == null).OrderBy(rc => rc.Customer.Name).ThenBy(rc => rc.CustomerId))
+                unordered.SortOrder = ++lastOrder;
+            _context.RouteCustomers.Add(new RouteCustomer { RouteId = routeId, CustomerId = customerId, AssignedAt = DateTime.UtcNow, SortOrder = lastOrder + 1 });
             await _context.SaveChangesAsync();
             return true;
         }
@@ -788,6 +797,40 @@ namespace HexaBill.Api.Modules.Branches
             });
         }
 
+        /// <summary>not_reached | arrived | delivered | failed | skipped (the map colours and the driver list use these).</summary>
+        public static string MapStatusOf(VisitStatus? status) => status switch
+        {
+            null or VisitStatus.NotVisited => "not_reached",
+            VisitStatus.Arrived => "arrived",
+            VisitStatus.Delivered or VisitStatus.PaymentCollected or VisitStatus.Visited => "delivered",
+            VisitStatus.Failed or VisitStatus.NotHome => "failed",
+            _ => "skipped", // Skipped, Rescheduled
+        };
+
+        public async Task<bool> ReorderRouteStopsAsync(int routeId, int tenantId, int userId, IReadOnlyList<int> customerIds)
+        {
+            if (!await _context.Routes.AnyAsync(r => r.Id == routeId && r.TenantId == tenantId)) return false;
+            if (customerIds == null || customerIds.Count == 0) throw new ArgumentException("List the stops in the order they should be visited.");
+            if (customerIds.Distinct().Count() != customerIds.Count) throw new ArgumentException("A stop is listed twice.");
+
+            var stops = await _context.RouteCustomers.Where(rc => rc.RouteId == routeId).ToListAsync();
+            var byCustomer = stops.ToDictionary(rc => rc.CustomerId);
+            var unknown = customerIds.Where(id => !byCustomer.ContainsKey(id)).ToList();
+            if (unknown.Count > 0) throw new ArgumentException("A listed customer is not a stop on this route.");
+
+            // Listed stops come first in the given order; any stop not listed keeps its relative order after them.
+            var listed = new HashSet<int>(customerIds);
+            var rest = stops.Where(rc => !listed.Contains(rc.CustomerId))
+                .OrderBy(rc => rc.SortOrder ?? int.MaxValue).ThenBy(rc => rc.CustomerId).Select(rc => rc.CustomerId);
+            var order = 0;
+            foreach (var id in customerIds.Concat(rest))
+                byCustomer[id].SortOrder = ++order;
+
+            _context.AuditLogs.Add(new AuditLog { TenantId = tenantId, OwnerId = tenantId, UserId = userId, Action = "RouteStopsReordered", EntityType = "Route", EntityId = routeId, Details = $"{stops.Count} stops", CreatedAt = DateTime.UtcNow });
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         public async Task<List<CustomerVisitDto>> GetCustomerVisitsAsync(int routeId, int tenantId, DateTime? date)
         {
             try
@@ -835,8 +878,8 @@ namespace HexaBill.Api.Modules.Branches
 
         public async Task<List<RouteStopMapDto>?> GetRouteStopsMapAsync(int routeId, int tenantId, DateTime date)
         {
-            if (!IsStopLocationEnabled())
-                return null;
+            // The ordered stop list works with the location feature off; only the map points are withheld then.
+            var locationOn = IsStopLocationEnabled();
 
             var route = await _context.Routes.AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Id == routeId && (tenantId <= 0 || r.TenantId == tenantId));
@@ -850,6 +893,7 @@ namespace HexaBill.Api.Modules.Branches
                 .Include(rc => rc.Customer)
                 .OrderBy(rc => rc.SortOrder ?? int.MaxValue)
                 .ThenBy(rc => rc.Customer.Name)
+                .ThenBy(rc => rc.CustomerId)
                 .ToListAsync();
 
             List<CustomerVisit> visits;
@@ -870,26 +914,27 @@ namespace HexaBill.Api.Modules.Branches
                 .GroupBy(v => v.CustomerId)
                 .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt).First());
 
+            var position = 0;
             return stops.Select(rc =>
             {
                 visitByCustomer.TryGetValue(rc.CustomerId, out var visit);
                 var status = visit?.Status.ToString() ?? VisitStatus.NotVisited.ToString();
-                var mapStatus = visit == null || visit.Status == VisitStatus.NotVisited
-                    ? "not_reached"
-                    : visit.Status is VisitStatus.NotHome or VisitStatus.Rescheduled
-                        ? "skipped"
-                        : "reached";
+                var mapStatus = MapStatusOf(visit?.Status);
+                var hasPin = locationOn && rc.Customer?.MainLatitude != null && rc.Customer?.MainLongitude != null;
 
                 return new RouteStopMapDto
                 {
+                    Position = ++position,
+                    Address = rc.Customer?.Address,
+                    NeedsLocation = locationOn && !hasPin,
                     CustomerId = rc.CustomerId,
                     CustomerName = rc.Customer?.Name ?? "",
                     SortOrder = rc.SortOrder,
-                    MainLatitude = rc.Customer?.MainLatitude,
-                    MainLongitude = rc.Customer?.MainLongitude,
+                    MainLatitude = locationOn ? rc.Customer?.MainLatitude : null,
+                    MainLongitude = locationOn ? rc.Customer?.MainLongitude : null,
                     VisitStatus = status,
-                    VisitLatitude = visit?.Latitude,
-                    VisitLongitude = visit?.Longitude,
+                    VisitLatitude = locationOn ? visit?.Latitude : null,
+                    VisitLongitude = locationOn ? visit?.Longitude : null,
                     ReachedAt = visit?.ReachedAt,
                     MapStatus = mapStatus
                 };

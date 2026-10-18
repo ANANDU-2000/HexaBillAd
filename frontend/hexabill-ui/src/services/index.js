@@ -2426,6 +2426,24 @@ export const routesAPI = {
     const response = await api.get('/routes/feature-flags/stop-location')
     return response.data
   },
+  /** Set the visiting order: customerIds in the order they should be visited. */
+  reorderStops: async (routeId, customerIds) => {
+    const response = await api.put(`/routes/${routeId}/stops/order`, { customerIds })
+    return response.data
+  },
+  /** { current: open run with live counts | null, last: last finished run | null } */
+  getRun: async (routeId) => {
+    const response = await api.get(`/routes/${routeId}/run`)
+    return response.data
+  },
+  startRun: async (routeId, date = null) => {
+    const response = await api.post(`/routes/${routeId}/run/start`, date ? { date } : {})
+    return response.data
+  },
+  endRun: async (routeId, note = '') => {
+    const response = await api.post(`/routes/${routeId}/run/end`, { note })
+    return response.data
+  },
 }
 
 // Demo Request API (public + SuperAdmin)

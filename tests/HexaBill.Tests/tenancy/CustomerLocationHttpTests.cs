@@ -16,7 +16,7 @@ public class CustomerLocationHttpTests
     public CustomerLocationHttpTests(HexaBillWebApplicationFactory factory) => _factory = factory;
 
     private static string Phone() => $"052{Random.Shared.Next(1000000, 9999999)}";
-    private static string Name() => $"Pin Customer {Guid.NewGuid():N}";
+    private static string Name() => $"Shoploc {Guid.NewGuid():N}";
 
     [Fact]
     public async Task Customer_WithoutALocation_IsCreated_AndHasNoPin()

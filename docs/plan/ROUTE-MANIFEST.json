@@ -1,7 +1,7 @@
 {
   "source": "frontend/hexabill-ui/src/app/App.jsx",
-  "verifiedAt": "2026-10-08",
-  "uniqueRoutePathCount": 62,
+  "verifiedAt": "2026-10-18",
+  "uniqueRoutePathCount": 64,
   "paths": [
     "*",
     "/",
@@ -26,6 +26,8 @@
     "/ledger",
     "/login",
     "/more",
+    "/my-routes",
+    "/my-routes/:id",
     "/onboarding",
     "/payments",
     "/pos",

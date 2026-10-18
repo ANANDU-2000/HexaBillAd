@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { gpsFailureReason } from '../utils/shopLocation'
@@ -34,15 +34,28 @@ function MapClickHandler({ enabled, onPick }) {
 
 const STATUS_COLORS = {
   reached: '#059669',
+  delivered: '#059669',
+  arrived: '#2563eb',
+  failed: '#dc2626',
   not_reached: '#64748b',
   skipped: '#d97706',
 }
+
+const numberIcon = (number, color) => L.divIcon({
+  className: '',
+  html: `<div style="background:${color};color:#fff;width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;font:600 13px system-ui,sans-serif">${number}</div>`,
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+  popupAnchor: [0, -14],
+})
 
 /**
  * Shared stop / pin map.
  * - stops: [{ customerId, customerName, mainLatitude, mainLongitude, mapStatus }]
  * - pickMode: click map to choose a pin
  * - selected: { lat, lng } preview pin
+ * - numbered: show each stop as its visiting number (stops must carry `position`), coloured by status
+ * - showPath: draw a straight line through the stops in order (not a road route)
  */
 export default function StopLocationMap({
   stops = [],
@@ -51,6 +64,8 @@ export default function StopLocationMap({
   selected = null,
   onPick = null,
   center = null,
+  numbered = false,
+  showPath = false,
 }) {
   const [mapCenter, setMapCenter] = useState(center || UAE_CENTER)
 
@@ -59,6 +74,7 @@ export default function StopLocationMap({
       .filter((s) => s.mainLatitude != null && s.mainLongitude != null)
       .map((s) => ({
         id: s.customerId,
+        position: s.position,
         name: s.customerName,
         lat: Number(s.mainLatitude),
         lng: Number(s.mainLongitude),
@@ -93,7 +109,20 @@ export default function StopLocationMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapClickHandler enabled={pickMode} onPick={onPick} />
-        {markers.map((m) => (
+        {numbered && showPath && markers.length > 1 && (
+          <Polyline positions={markers.map((m) => [m.lat, m.lng])} pathOptions={{ color: '#64748b', weight: 3, dashArray: '6 6' }} />
+        )}
+        {numbered && markers.map((m, index) => (
+          <Marker key={m.id} position={[m.lat, m.lng]} icon={numberIcon(m.position || index + 1, STATUS_COLORS[m.status] || STATUS_COLORS.not_reached)}>
+            <Popup>
+              <div className="text-sm">
+                <div className="font-medium">{m.position || index + 1}. {m.name}</div>
+                <div className="text-neutral-500 capitalize">{(m.status || '').replace('_', ' ')}</div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+        {!numbered && markers.map((m) => (
           <CircleMarker
             key={m.id}
             center={[m.lat, m.lng]}

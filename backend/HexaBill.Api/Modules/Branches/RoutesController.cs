@@ -14,15 +14,18 @@ namespace HexaBill.Api.Modules.Branches
     public class RoutesController : RouteScopedController
     {
         private readonly IRouteService _routeService;
+        private readonly IRouteRunService _runService;
         private readonly HexaBill.Api.Core.Infrastructure.IRouteScopeService _routeScopeService;
         private readonly ILogger<RoutesController> _logger;
 
         public RoutesController(
             IRouteService routeService,
+            IRouteRunService runService,
             HexaBill.Api.Core.Infrastructure.IRouteScopeService routeScopeService,
             ILogger<RoutesController> logger) : base(routeScopeService)
         {
             _routeService = routeService;
+            _runService = runService;
             _routeScopeService = routeScopeService;
             _logger = logger;
         }
@@ -259,16 +262,6 @@ namespace HexaBill.Api.Modules.Branches
                 var tenantId = CurrentTenantId;
                 if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
                 if (await RouteAccessAsync(id) == RouteAccessLevel.None) return RouteNotFound<List<RouteStopMapDto>>();
-                if (!_routeService.IsStopLocationEnabled())
-                {
-                    return Ok(new ApiResponse<List<RouteStopMapDto>>
-                    {
-                        Success = false,
-                        Message = "Customer stop location feature is disabled.",
-                        Data = new List<RouteStopMapDto>()
-                    });
-                }
-
                 var day = date?.Date ?? DateTime.UtcNow.Date;
                 var stops = await _routeService.GetRouteStopsMapAsync(id, tenantId, day);
                 if (stops == null)
@@ -297,6 +290,78 @@ namespace HexaBill.Api.Modules.Branches
             return NotAllowed<T>("Only an owner, admin or the manager of this route can change routes.");
         }
 
+        /// <summary>Set the visiting order. Body lists customer ids in the order they should be visited.</summary>
+        [HttpPut("{id}/stops/order")]
+        public async Task<ActionResult<ApiResponse<object>>> ReorderStops(int id, [FromBody] ReorderStopsRequest request)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            var denied = await ManageDeniedAsync<object>(id);
+            if (denied != null) return denied;
+            try
+            {
+                var ok = await _routeService.ReorderRouteStopsAsync(id, tenantId, CurrentUserId, request?.CustomerIds ?? new List<int>());
+                if (!ok) return RouteNotFound<object>();
+                return Ok(new ApiResponse<object> { Success = true, Message = "Stop order saved." });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+        }
+
+        /// <summary>The open run (with live counts) and the last finished run.</summary>
+        [HttpGet("{id}/run")]
+        public async Task<ActionResult<ApiResponse<RouteRunStateDto>>> GetRun(int id)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (await RouteAccessAsync(id) == RouteAccessLevel.None) return RouteNotFound<RouteRunStateDto>();
+            return Ok(new ApiResponse<RouteRunStateDto> { Success = true, Data = await _runService.GetStateAsync(id, tenantId) });
+        }
+
+        /// <summary>Start the route (or return the run already open). Assigned staff and managers of the route can do this.</summary>
+        [HttpPost("{id}/run/start")]
+        public async Task<ActionResult<ApiResponse<RouteRunDto>>> StartRun(int id, [FromBody] StartRouteRunRequest? request)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (await RouteAccessAsync(id) == RouteAccessLevel.None) return RouteNotFound<RouteRunDto>();
+            try
+            {
+                var run = await _runService.StartAsync(id, tenantId, CurrentUserId, request?.Date ?? DateTime.UtcNow.Date);
+                if (run == null) return RouteNotFound<RouteRunDto>();
+                return Ok(new ApiResponse<RouteRunDto> { Success = true, Data = run });
+            }
+            catch (InvalidOperationException ex) when (ex.Message == RouteRunService.UnavailableMessage)
+            {
+                return StatusCode(503, new ApiResponse<RouteRunDto> { Success = false, Message = ex.Message });
+            }
+        }
+
+        /// <summary>End the open run and freeze its stop counts.</summary>
+        [HttpPost("{id}/run/end")]
+        public async Task<ActionResult<ApiResponse<RouteRunDto>>> EndRun(int id, [FromBody] EndRouteRunRequest? request)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (await RouteAccessAsync(id) == RouteAccessLevel.None) return RouteNotFound<RouteRunDto>();
+            try
+            {
+                var run = await _runService.EndAsync(id, tenantId, CurrentUserId, request?.Note);
+                if (run == null) return NotFound(new ApiResponse<RouteRunDto> { Success = false, Message = "This route has not been started." });
+                return Ok(new ApiResponse<RouteRunDto> { Success = true, Data = run });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<RouteRunDto> { Success = false, Message = ex.Message });
+            }
+            catch (InvalidOperationException ex) when (ex.Message == RouteRunService.UnavailableMessage)
+            {
+                return StatusCode(503, new ApiResponse<RouteRunDto> { Success = false, Message = ex.Message });
+            }
+        }
+
         [HttpGet("feature-flags/stop-location")]
         public ActionResult<ApiResponse<object>> GetStopLocationFeatureFlag()
         {
@@ -306,5 +371,20 @@ namespace HexaBill.Api.Modules.Branches
                 Data = new { enabled = _routeService.IsStopLocationEnabled() }
             });
         }
+    }
+
+    public class ReorderStopsRequest
+    {
+        public List<int> CustomerIds { get; set; } = new();
+    }
+
+    public class StartRouteRunRequest
+    {
+        public DateTime? Date { get; set; }
+    }
+
+    public class EndRouteRunRequest
+    {
+        public string? Note { get; set; }
     }
 }

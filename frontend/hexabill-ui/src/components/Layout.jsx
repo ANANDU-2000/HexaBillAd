@@ -264,6 +264,7 @@ const Layout = () => {
     '/worksheet': 'Worksheet',
     '/branches': 'Branches & Routes',
     '/routes': 'Branches & Routes',
+    '/my-routes': 'My routes',
     '/customers': 'Customers',
     '/more': 'More',
     '/users': 'Users',
@@ -281,7 +282,7 @@ const Layout = () => {
     if (pathname.startsWith('/products/')) return 'Product'
     if (pathname.startsWith('/suppliers/')) return 'Supplier'
     if (pathname.startsWith('/branches/')) return 'Branch'
-    if (pathname.startsWith('/routes/')) return 'Route'
+    if (pathname.startsWith('/routes/') || pathname.startsWith('/my-routes/')) return 'Route'
     if (pathname.startsWith('/customers/')) return 'Customer'
     if (pathname.startsWith('/quotations')) return 'Quotation'
     if (pathname.startsWith('/agreements')) return 'Agreement'

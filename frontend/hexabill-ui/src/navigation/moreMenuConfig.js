@@ -14,6 +14,7 @@ import {
   Package,
   Building2,
   LayoutGrid,
+  Navigation,
   List,
   RotateCcw,
   BadgeDollarSign,
@@ -103,6 +104,7 @@ export const MORE_MENU_GROUPS = [
     label: 'Operations',
     sidebar: true,
     items: [
+      { id: 'my-routes', label: 'My routes', href: '/my-routes', icon: Navigation, sidebar: true },
       { id: 'stock-adjustments', label: 'Stock Adjustments', href: '/stock-adjustments', icon: Boxes, pageId: 'products', sidebar: true },
       { id: 'quotations', label: 'Quotations', href: '/quotations', icon: Quote, sidebar: true },
       { id: 'delivery-notes', label: 'Delivery Notes', href: '/delivery-notes', icon: PackageCheck, sidebar: true },

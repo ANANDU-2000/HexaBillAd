@@ -317,6 +317,7 @@ builder.Services.AddScoped<HexaBill.Api.Modules.DailyClose.IDailyCloseService, H
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Branches.IBranchService, HexaBill.Api.Modules.Branches.BranchService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Branches.IRouteService, HexaBill.Api.Modules.Branches.RouteService>();
+builder.Services.AddScoped<HexaBill.Api.Modules.Branches.IRouteRunService, HexaBill.Api.Modules.Branches.RouteRunService>();
 builder.Services.AddScoped<HexaBill.Api.Core.Infrastructure.IRouteScopeService, HexaBill.Api.Core.Infrastructure.RouteScopeService>();
 builder.Services.AddScoped<HexaBill.Api.Core.Infrastructure.ISalesSchemaService, HexaBill.Api.Core.Infrastructure.SalesSchemaService>();
 builder.Services.AddScoped<IReportService, ReportService>();
