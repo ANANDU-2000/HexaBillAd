@@ -70,11 +70,11 @@ namespace HexaBill.Api.Modules.Notifications
                     // CRITICAL: tenantId=0 only for system-wide (backup). Tenant-specific alerts MUST have TenantId set.
                     TenantId = targetTenantId,
                     Type = type.ToString(),
-                    Title = title,
-                    Message = message,
+                    Title = Clip(title, TitleMax) ?? string.Empty,
+                    Message = Clip(message, MessageMax),
                     Severity = severity.ToString(),
                     CreatedAt = DateTime.UtcNow,
-                    Metadata = metadata != null ? JsonSerializer.Serialize(metadata) : null
+                    Metadata = ToMetadataJson(metadata)
                 };
 
                 _context.Alerts.Add(alert);
@@ -90,6 +90,24 @@ namespace HexaBill.Api.Modules.Notifications
             {
                 _logger.LogError(ex, "Failed to create alert: {Type} - {Title}", type, title);
             }
+        }
+
+        // Column limits of the Alerts table (model: Title 200, Message 2000, Metadata 500). A value over the limit makes PostgreSQL reject the
+        // whole insert (22001), so the alert would silently never be created.
+        public const int TitleMax = 200;
+        public const int MessageMax = 2000;
+        public const int MetadataMax = 500;
+
+        private static string? Clip(string? value, int max) =>
+            value == null || value.Length <= max ? value : value[..(max - 1)] + "…";
+
+        /// <summary>Metadata as JSON that always fits the column. If the real detail is too long, a short summary says that it was cut.</summary>
+        public static string? ToMetadataJson(object? metadata)
+        {
+            if (metadata == null) return null;
+            var json = JsonSerializer.Serialize(metadata);
+            if (json.Length <= MetadataMax) return json;
+            return JsonSerializer.Serialize(new { truncated = true, originalLength = json.Length });
         }
 
         public async Task<List<Alert>> GetAlertsAsync(bool unreadOnly = false, int limit = 50, int? tenantId = null)
@@ -502,11 +520,11 @@ namespace HexaBill.Api.Modules.Notifications
                 {
                     TenantId = tenantId,
                     Type = type.ToString(),
-                    Title = title,
-                    Message = message,
+                    Title = Clip(title, TitleMax) ?? string.Empty,
+                    Message = Clip(message, MessageMax),
                     Severity = severity.ToString(),
                     CreatedAt = DateTime.UtcNow,
-                    Metadata = metadata != null ? JsonSerializer.Serialize(metadata) : null
+                    Metadata = ToMetadataJson(metadata)
                 };
                 _context.Alerts.Add(alert);
                 await _context.SaveChangesAsync();
