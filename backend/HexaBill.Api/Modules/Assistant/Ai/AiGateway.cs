@@ -232,6 +232,7 @@ public sealed class AiGateway
     {
         if (!_options.Enabled) return new AiResult(AiOutcome.Disabled, null, null, "AI is not enabled.");
         if (call.TenantId <= 0) return new AiResult(AiOutcome.Refused, null, null, "No company scope.");
+        if (call.UserId <= 0) return new AiResult(AiOutcome.Refused, null, null, "No user scope.");
         if (string.IsNullOrWhiteSpace(call.Prompt)) return new AiResult(AiOutcome.Refused, null, null, "Empty request.");
         if (call.Prompt.Length > _options.MaxPromptChars) return new AiResult(AiOutcome.Refused, null, null, "The request is too long.");
         if (call.ContainsCustomerData && !_options.AllowCustomerData)

@@ -41,11 +41,14 @@ public sealed class AssistantToolRegistry
         _tools = tools.ToDictionary(t => t.Name, StringComparer.Ordinal);
 
     public IReadOnlyList<IAssistantTool> ToolsFor(AssistantCaller caller) =>
-        _tools.Values.Where(t => t.AllowedFor(caller)).OrderBy(t => t.Name, StringComparer.Ordinal).ToList();
+        caller.TenantId <= 0 || caller.UserId <= 0
+            ? Array.Empty<IAssistantTool>()
+            : _tools.Values.Where(t => t.AllowedFor(caller)).OrderBy(t => t.Name, StringComparer.Ordinal).ToList();
 
     public async Task<AssistantToolResult> RunAsync(AssistantCaller caller, string name, JsonElement args, CancellationToken ct)
     {
         if (caller.TenantId <= 0) throw new AssistantToolException(403, "No company scope.");
+        if (caller.UserId <= 0) throw new AssistantToolException(403, "No user scope.");
         // Unknown and not-allowed look the same, so the list of hidden tools is not discoverable.
         if (!_tools.TryGetValue(name ?? string.Empty, out var tool) || !tool.AllowedFor(caller))
             throw new AssistantToolException(404, "Unknown tool.");

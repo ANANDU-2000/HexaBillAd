@@ -35,3 +35,11 @@ Browser fixture findings: an inherited pair of Node color variables made PowerSh
 Independent prerequisite check: the existing uncommitted `VatPeriodWritesPostgreSqlTests` case passed with PostgreSQL (1 passed/0 failed/skipped, exit 0). That does not commit, deploy, or fully release-verify the VAT changes.
 
 NOT TESTED: real provider behavior, live authenticated save/refetch, real speech, production document-storage persistence, broad production acceptance. No production variables, database writes, deploys, pushes or paid/model network calls were made. Build output still reports existing ImageSharp vulnerability advisories; dependency remediation is separate.
+
+## AI-SEC-02 — caller identity
+
+Six new negative tests failed before the change (exit 1, 6 failed/0 passed/skipped): a non-positive user ID could reach the provider and reserve budget, and the registry exposed tools without a valid tenant/user pair. The controller, gateway and registry now require positive authenticated IDs. Existing role checks remain in place. A positive control still runs an allowed tool. An additional HTTP case verifies forged tenant/user/role fields in the chat body and query cannot select another company.
+
+The assistant/document suite with PostgreSQL passed 169/169 after the guards (zero skipped, exit 0). After adding the forged-scope HTTP case, the full backend command `dotnet test tests/HexaBill.Tests/HexaBill.Tests.csproj --no-restore -v quiet --logger 'console;verbosity=quiet'` on fresh synthetic PostgreSQL database `hexabill_ai_release_beb106711ea4` returned exit 0: **1128 passed, 0 failed, 1 skipped**. The skip is NOT counted as a pass; fresh migration-history rehearsal remains an opt-in historical issue. The full run includes pre-existing uncommitted VAT code/tests; those changes are excluded from this AI checkpoint.
+
+Owner decisions received during this work: each client owner must opt in before external typed prompts; Gemini is primary and Groq fallback. Implementing durable per-client consent is the next bounded task. Exact models, provider account settings, retention/region approval and usable rotated secrets remain unverified.

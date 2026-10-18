@@ -110,6 +110,19 @@ public class AiGatewayTests
         Assert.True((await gateway.CompleteAsync(Call(new string('x', 50)))).Ok);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task MissingUserScope_ContactsNoProviderAndReservesNoBudget(int userId)
+    {
+        var handler = new StubHandler(_ => Task.FromResult(Json(OpenAiOk)));
+        var (gateway, ledger, _) = Build(new AiOptions { Enabled = true, Provider = "p" }, new OpenAiCompatibleProvider("p", OpenAi(), new HttpClient(handler)));
+        var result = await gateway.CompleteAsync(new AiCall(1, userId, "test", "Hello", false));
+        Assert.Equal(AiOutcome.Refused, result.Outcome);
+        Assert.Empty(handler.Calls);
+        Assert.Equal(0, ledger.Snapshot(1, DateTime.UtcNow).Calls);
+    }
+
     [Fact]
     public async Task OpenAiCompatible_SendsTheRightRequest_ParsesTheAnswer_AndNeverLogsKeyOrPrompt()
     {

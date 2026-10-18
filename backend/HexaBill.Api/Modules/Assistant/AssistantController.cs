@@ -37,7 +37,7 @@ public class AssistantController : TenantScopedController
         // A platform administrator has no company scope here; they use the platform tools, not company data.
         if (tenantId <= 0 || IsSystemAdmin) return false;
         var userClaim = User.FindFirst("UserId") ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("id");
-        if (userClaim == null || !int.TryParse(userClaim.Value, out var userId)) return false;
+        if (userClaim == null || !int.TryParse(userClaim.Value, out var userId) || userId <= 0) return false;
         caller = new AssistantCaller(tenantId, userId, User.IsInRole("Owner") || User.IsInRole("Admin"), IsStaff,
             User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty);
         return true;

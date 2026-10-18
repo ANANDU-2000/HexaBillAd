@@ -55,6 +55,12 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-18 ? AI-SEC-02: require tenant and user identity before AI/tool execution (PASS locally; NOT deployed)
+- Parent checkpoint `923564c`, branch `main`; checkpoint is the commit containing this entry. Six missing-identity tests failed before the fix (exit 1); positive IDs are now required in controller, gateway and registry before quota/provider/tool work. Positive control and forged chat tenant/user/role body/query coverage included; authorization roles unchanged.
+- Targeted suite with PostgreSQL: 169 passed/0 failed/skipped. After the extra forged-scope case, full backend on new synthetic PG database `hexabill_ai_release_beb106711ea4`: 1128 passed/0 failed/1 skipped, exit 0. Skip is NOT TESTED (opt-in historical fresh migration-history rehearsal). See `docs/qa/AI-GUARDRAILS-2026-10-18.md`. Existing VAT working-tree code/tests were included in the run but are excluded from this commit; unrelated work preserved.
+- Owner approved per-client owner opt-in, Gemini primary and Groq fallback in this session. No model/API call or production mutation was performed. Exact models, retention/processing region, provider billing tier and valid rotated secrets still require verification.
+- Resume: last completed task AI-SEC-02; next task AI-SEC-03 ? durable owner-only per-tenant consent, fail-closed model/status gate, policy-change invalidation, revocation and UI; reproduce missing consent first. Use existing tenant/service patterns; append an EF migration, test on synthetic PostgreSQL, update the release proposal. Production remains gated; do not infer approval for paid calls or silently enable sharing.
+
 ### 2026-10-18 ? AI-SEC-01: strict model-command boundary and fixed fallback help (PASS locally; NOT deployed)
 - Branch `main`, starting HEAD `bf0ff18`; checkpoint is the commit containing this entry. Existing VAT/UX/tracker changes were preserved and excluded.
 - Reproduced 15 hostile command/free-text cases: all 15 failed before the fix (exit 1), then passed. Reject duplicate JSON keys, extra command/scope/action fields and JSON embedded in prose; suppress ungrounded model answers in both API and UI; strengthen the system prompt. Human review/hash/idempotency remains authoritative for suggested forms.

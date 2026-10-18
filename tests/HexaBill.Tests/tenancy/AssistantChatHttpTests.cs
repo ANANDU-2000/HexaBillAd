@@ -72,6 +72,22 @@ public class AssistantChatHttpTests
         Assert.Empty(data.GetProperty("result").GetProperty("data").EnumerateArray());
     }
 
+    [Fact]
+    public async Task ForgedChatScopeInBodyAndQuery_CannotSelectAnotherCompany()
+    {
+        _ai.Good.Reply = "{\"tool\":\"find_customers\",\"query\":\"Cust B\"}";
+        using var owner = Owner();
+        var response = await owner.PostAsJsonAsync("/api/assistant/chat?tenantId=2&userId=2", new
+        {
+            message = "Find Cust B", tenantId = 2, userId = 2, role = "SystemAdmin"
+        });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var data = await Data(response);
+        Assert.Equal("tool", data.GetProperty("mode").GetString());
+        Assert.Empty(data.GetProperty("result").GetProperty("data").EnumerateArray());
+        Assert.Equal(1, _ai.Good.Calls);
+    }
+
     [Theory]
     [InlineData("{\"tool\":\"delete_all\",\"query\":\"x\"}")]
     [InlineData("{\"tool\":\"run_sql\",\"query\":\"select * from \\\"Users\\\"\"}")]
