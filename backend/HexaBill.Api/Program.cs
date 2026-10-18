@@ -310,6 +310,10 @@ builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantConsentServic
 builder.Services.AddScoped<HexaBill.Api.Modules.TenantDocuments.TenantDocumentService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.TenantDocuments.TenantDocumentSearch>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.SearchDocumentsTool>();
+builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.RouteOverdueTool>();
+builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.RouteUnvisitedTool>();
+builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.CustomersWithoutPinTool>();
+builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.RouteSummaryTool>();
 // AI gateway: off unless the "Ai" configuration section enables it; nothing calls it yet. Keys come from server configuration only.
 HexaBill.Api.Modules.Assistant.Ai.AiServiceRegistration.AddAiGateway(builder.Services, builder.Configuration);
 builder.Services.AddScoped<ICustomerItemPriceService, CustomerItemPriceService>();

@@ -2435,6 +2435,18 @@ export const routesAPI = {
     const response = await api.get(`/routes/${routeId}/stops-map`, { params })
     return response.data
   },
+  /** Stops with balance, overdue days and last payment for the Route Map. */
+  getMapStops: async (routeId, date = null) => {
+    const params = date ? { date } : {}
+    const response = await api.get(`/routes/${routeId}/map-stops`, { params })
+    return response.data
+  },
+  /** One summary per route the caller may see (stops, visited, outstanding, overdue). */
+  getMapOverview: async (date = null) => {
+    const params = date ? { date } : {}
+    const response = await api.get('/route-map/overview', { params })
+    return response.data
+  },
   getStopLocationFeatureFlag: async () => {
     const response = await api.get('/routes/feature-flags/stop-location')
     return response.data

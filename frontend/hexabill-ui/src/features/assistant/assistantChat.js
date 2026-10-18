@@ -11,7 +11,44 @@ export function chatMessageProblem (message) {
   return null
 }
 
-const TOOL_NAMES = { find_customers: 'customers', product_stock: 'products', search_company_documents: 'your documents' }
+const TOOL_NAMES = {
+  find_customers: 'customers',
+  product_stock: 'products',
+  search_company_documents: 'your documents',
+  route_overdue: 'overdue customers on your routes',
+  route_unvisited: 'stops not visited today',
+  customers_without_pin: 'customers without a map pin',
+  route_summary: 'your routes',
+}
+
+export const ROUTE_TOOLS = new Set(['route_overdue', 'route_unvisited', 'customers_without_pin', 'route_summary'])
+
+const money = (n) => Number(n || 0).toFixed(2)
+
+/** One short line under a route-answer row. Amounts come from the server; this only formats them. */
+export function routeRowDetail (tool, row) {
+  switch (tool) {
+    case 'route_overdue':
+      return `${row.route} · ${money(row.overdueAmount)} overdue, ${row.overdueDays} day${row.overdueDays === 1 ? '' : 's'} late`
+    case 'route_unvisited':
+      return `${row.route} · stop ${row.position}${Number(row.balance) > 0 ? ` · owes ${money(row.balance)}` : ''}`
+    case 'customers_without_pin':
+      return `${row.route} · no saved location`
+    case 'route_summary':
+      return `${row.visitedToday}/${row.stops} visited today · owed ${money(row.outstandingTotal)} · overdue ${money(row.overdueTotal)} (${row.overdueCustomers})`
+    default:
+      return ''
+  }
+}
+
+/** Link that opens the Route Map on a route (and one customer when the row has one). Ids must be positive whole numbers. */
+export function routeMapLink (row) {
+  const id = (v) => (Number.isInteger(v) && v > 0 ? v : null)
+  const route = id(row?.routeId)
+  if (!route) return null
+  const customer = id(row?.customerId)
+  return `/route-map?route=${route}${customer ? `&focus=${customer}` : ''}`
+}
 
 const FORM_LABELS = {
   new_customer: { title: 'a new customer', fields: { name: 'Name', phone: 'Phone', email: 'Email', address: 'Address', trn: 'TRN' } },
@@ -79,7 +116,7 @@ export function describeChatReply (data) {
     }
   }
   if (mode === 'reply') {
-    return { kind: 'reply', tool: null, heading: 'Assistant help', rows: [], text: 'I can look up customers and product stock, search your documents, or help fill in a new customer or expense. Try asking for one of those.', note: 'Use the Look up tab for records from your company.' }
+    return { kind: 'reply', tool: null, heading: 'Assistant help', rows: [], text: 'I can look up customers and product stock, answer questions about your routes (overdue, not visited, no map pin), search your documents, or help fill in a new customer or expense. Try asking for one of those.', note: 'Use the Look up tab for records from your company.' }
   }
   if (mode === 'refused') {
     return { kind: 'refused', tool: null, heading: null, rows: [], text: data.text || 'The assistant cannot answer this right now.', note: 'You can still use the Look up tab.' }

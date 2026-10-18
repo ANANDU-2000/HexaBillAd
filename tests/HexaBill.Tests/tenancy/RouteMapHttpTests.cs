@@ -184,4 +184,65 @@ public class RouteMapHttpTests
             .EnumerateArray().Select(r => r.GetProperty("routeId").GetInt32()).Where(i => i >= 9410).ToArray();
         Assert.Equal(new[] { OtherRoute }, theirs);
     }
+
+    private static async Task<JsonElement[]> Tool(HttpClient client, string tool, string query)
+    {
+        var response = await client.PostAsJsonAsync($"/api/assistant/tools/{tool}", new { query, limit = 10 });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await Data(response)).GetProperty("data").EnumerateArray().ToArray();
+    }
+
+    [Fact]
+    public async Task AssistantRouteTools_AnswerFromTheCallersOwnRoutesOnly()
+    {
+        using var owner = As(Owner, "Owner");
+        var overdue = await Tool(owner, "route_overdue", "Map route A");
+        var row = Assert.Single(overdue);
+        Assert.Equal(Owing, row.GetProperty("customerId").GetInt32());
+        Assert.Equal(RouteA, row.GetProperty("routeId").GetInt32());
+        Assert.Equal(150m, row.GetProperty("overdueAmount").GetDecimal());
+
+        var everything = (await Tool(owner, "route_summary", "all")).Select(r => r.GetProperty("routeId").GetInt32()).Where(i => i >= 9410).ToArray();
+        Assert.Contains(RouteA, everything);
+        Assert.Contains(RouteB, everything);
+        Assert.DoesNotContain(OtherRoute, everything); // another company
+
+        var unpinned = (await Tool(owner, "customers_without_pin", "Map route A")).Select(r => r.GetProperty("customerId").GetInt32()).ToArray();
+        Assert.Equal(new[] { Owing, Settled }, unpinned);
+        var notVisited = (await Tool(owner, "route_unvisited", "Map route A")).Select(r => r.GetProperty("customerId").GetInt32()).ToArray();
+        Assert.Equal(new[] { Owing, Settled }, notVisited);
+
+        using var driver = As(Driver, "Staff");
+        var mine = (await Tool(driver, "route_summary", "all")).Select(r => r.GetProperty("routeId").GetInt32()).Where(i => i >= 9410).ToArray();
+        Assert.Equal(new[] { RouteA }, mine);
+        Assert.Empty(await Tool(driver, "route_overdue", "Map route B")); // not theirs, so it simply is not found
+
+        using var staff = As(OtherStaff, "Staff");
+        Assert.Empty((await Tool(staff, "route_summary", "all")).Where(r => r.GetProperty("routeId").GetInt32() >= 9410));
+    }
+
+    [Fact]
+    public async Task AssistantRouteTools_RejectExtraArguments()
+    {
+        using var owner = As(Owner, "Owner");
+        var response = await owner.PostAsJsonAsync("/api/assistant/tools/route_overdue", new { query = "all", routeId = RouteB });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TheModelMayPickARouteTool_AndTheServerRunsItForTheCaller()
+    {
+        var ai = _factory.Services.GetRequiredService<TestAiControl>();
+        ai.ResetAll();
+        ai.Good.Reply = "{\"tool\":\"route_summary\",\"query\":\"all\"}";
+        using var owner = HttpIntegrationClient.Create(_factory, 1, "tenanta");
+        var response = await owner.PostAsJsonAsync("/api/assistant/chat", new { message = "how are my routes doing today?" });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var data = await Data(response);
+        Assert.Equal("tool", data.GetProperty("mode").GetString());
+        Assert.Equal("route_summary", data.GetProperty("tool").GetString());
+        // Company 1's own routes only, never the fixtures of other companies in this database.
+        Assert.DoesNotContain(data.GetProperty("result").GetProperty("data").EnumerateArray(), r => r.GetProperty("routeId").GetInt32() >= 9410);
+        Assert.DoesNotContain("Map route", ai.Good.LastSystem ?? "");
+    }
 }

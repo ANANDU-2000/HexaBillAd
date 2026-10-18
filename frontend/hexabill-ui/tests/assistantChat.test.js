@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { chatMessageProblem, describeChatReply, CHAT_MAX_CHARS, suggestionRows, prefillFor } from '../src/features/assistant/assistantChat.js'
+import { chatMessageProblem, describeChatReply, CHAT_MAX_CHARS, suggestionRows, prefillFor, routeRowDetail, routeMapLink, ROUTE_TOOLS } from '../src/features/assistant/assistantChat.js'
 
 test('messages need a sensible length', () => {
   assert.match(chatMessageProblem(''), /at least 2/)
@@ -64,3 +64,21 @@ test('suggested values become the normal form\'s starting values; the category i
   assert.equal(prefillFor('new_expense', {}, undefined).categoryId, '')
 })
 
+
+test('route answers read as one line and link to the Route Map with positive ids only', () => {
+  assert.equal(ROUTE_TOOLS.has('route_overdue'), true)
+  assert.equal(ROUTE_TOOLS.has('find_customers'), false)
+  assert.equal(routeRowDetail('route_overdue', { route: 'Route 3', overdueAmount: 150, overdueDays: 1 }), 'Route 3 · 150.00 overdue, 1 day late')
+  assert.equal(routeRowDetail('route_overdue', { route: 'Route 3', overdueAmount: 20.5, overdueDays: 40 }), 'Route 3 · 20.50 overdue, 40 days late')
+  assert.equal(routeRowDetail('route_unvisited', { route: 'R', position: 2, balance: 0 }), 'R · stop 2')
+  assert.equal(routeRowDetail('customers_without_pin', { route: 'R' }), 'R · no saved location')
+  assert.match(routeRowDetail('route_summary', { visitedToday: 2, stops: 5, outstandingTotal: 10, overdueTotal: 4, overdueCustomers: 1 }), /^2\/5 visited today/)
+  assert.equal(routeMapLink({ routeId: 7, customerId: 12 }), '/route-map?route=7&focus=12')
+  assert.equal(routeMapLink({ routeId: 7 }), '/route-map?route=7')
+  assert.equal(routeMapLink({ customerId: 12 }), null)
+  assert.equal(routeMapLink({ routeId: '7; drop' }), null)
+  assert.equal(routeMapLink({ routeId: -1 }), null)
+  const view = describeChatReply({ mode: 'tool', tool: 'route_overdue', query: 'all', result: { data: [{ routeId: 1, customerId: 2, name: 'X' }] } })
+  assert.match(view.heading, /overdue customers on your routes for “all”/)
+  assert.equal(view.rows.length, 1)
+})

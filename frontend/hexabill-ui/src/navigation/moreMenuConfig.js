@@ -14,6 +14,7 @@ import {
   Package,
   Building2,
   LayoutGrid,
+  MapPinned,
   Navigation,
   FolderOpen,
   List,
@@ -107,6 +108,7 @@ export const MORE_MENU_GROUPS = [
     items: [
       { id: 'documents', label: 'Documents', href: '/documents', icon: FolderOpen, sidebar: true },
       { id: 'my-routes', description: 'Your delivery routes and stops for today', label: 'My routes', href: '/my-routes', icon: Navigation, sidebar: true },
+      { id: 'route-map', description: 'Customers, balances and the route on a map', label: 'Route map', href: '/route-map', icon: MapPinned, sidebar: true },
       { id: 'stock-adjustments', description: 'Correct stock counts', label: 'Stock Adjustments', href: '/stock-adjustments', icon: Boxes, pageId: 'products', sidebar: true },
       { id: 'quotations', description: 'Send price quotes to customers', label: 'Quotations', href: '/quotations', icon: Quote, sidebar: true },
       { id: 'delivery-notes', description: 'Record goods delivered', label: 'Delivery Notes', href: '/delivery-notes', icon: PackageCheck, sidebar: true },

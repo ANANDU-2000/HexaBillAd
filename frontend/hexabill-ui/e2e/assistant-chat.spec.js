@@ -87,3 +87,18 @@ test('Ask: a lookup shows real records; plain chatter shows fixed help', async (
   await panel.getByRole('button', { name: 'Ask', exact: true }).click()
   await expect(panel.getByRole('alert')).toContainText('at least 2')
 })
+
+test('Ask: a route question lists routes from the books and "Show on map" opens the Route Map', async ({ page }) => {
+  test.skip(!MOCK_ON, 'needs the API started with the mock AI provider (HEXABILL_E2E_AI_MOCK=1)')
+  const panel = await openPanel(page)
+  await panel.getByRole('tab', { name: 'Ask' }).click()
+  await panel.getByLabel('Ask about a customer or a product').fill('{"tool":"route_summary","query":"all"}')
+  await panel.getByRole('button', { name: 'Ask', exact: true }).click()
+  const answer = panel.getByTestId('assistant-answer')
+  await expect(answer.getByTestId('assistant-heading')).toContainText('I looked up your routes')
+  const row = answer.getByTestId('route-answer-row').first()
+  await expect(row).toContainText('visited today')
+  await row.getByRole('link', { name: 'Show on map' }).click()
+  await expect(page).toHaveURL(/\/route-map\?route=\d+/)
+  await expect(page.getByTestId('route-map-page')).toBeVisible()
+})

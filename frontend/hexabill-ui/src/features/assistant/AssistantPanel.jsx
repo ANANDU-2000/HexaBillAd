@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { X, Maximize2, Minimize2, Search, UserPlus, Receipt, MessageSquare, Mic, Volume2 } from 'lucide-react'
 import { assistantApi } from './assistantApi'
-import { describeChatReply, CHAT_MAX_CHARS, chatMessageProblem, prefillFor } from './assistantChat'
+import { describeChatReply, CHAT_MAX_CHARS, chatMessageProblem, prefillFor, ROUTE_TOOLS, routeRowDetail, routeMapLink } from './assistantChat'
 import {
   VOICE_LANGUAGES, localeFor, recognitionCtor, ttsSupported, voiceOptedOut, setVoiceOptedOut, appendTranscript, describeVoiceError, readBackText, VOICE_PRIVACY_NOTE,
 } from './voice'
@@ -27,7 +27,13 @@ function ResultRows ({ tool, rows, asOf }) {
   return (
     <>
       <ul aria-label="Results" className="divide-y divide-neutral-200 rounded-md border border-neutral-200">
-        {rows.map((r) => (
+        {rows.map((r) => ROUTE_TOOLS.has(tool) ? (
+          <li key={`${r.routeId}-${r.customerId ?? 'route'}`} className="px-3 py-2 text-sm" data-testid="route-answer-row">
+            <p className="font-medium text-neutral-900">{r.name}</p>
+            <p className="text-xs text-neutral-600">{routeRowDetail(tool, r)}</p>
+            {routeMapLink(r) && <Link to={routeMapLink(r)} className="text-xs text-primary-700 underline">Show on map</Link>}
+          </li>
+        ) : (
           <li key={r.id} className="px-3 py-2 text-sm">
             {tool === 'search_company_documents' ? (
               <>

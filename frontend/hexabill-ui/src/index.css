@@ -101,6 +101,11 @@
   }
 }
 
+/* Route Map: quiet base map so status colours and the route line stand out */
+.hb-map-muted .leaflet-tile-pane {
+  filter: grayscale(0.85) contrast(0.95) brightness(1.04);
+}
+
 /* Notifications: a short fade and 4px slide, nothing bouncy */
 @keyframes hb-toast-in {
   from { opacity: 0; transform: translateY(-4px); }

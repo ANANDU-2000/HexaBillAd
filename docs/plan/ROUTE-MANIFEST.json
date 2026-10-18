@@ -1,7 +1,7 @@
 {
   "source": "frontend/hexabill-ui/src/app/App.jsx",
   "verifiedAt": "2026-10-18",
-  "uniqueRoutePathCount": 65,
+  "uniqueRoutePathCount": 66,
   "paths": [
     "*",
     "/",
@@ -44,6 +44,7 @@
     "/reports",
     "/reports/outstanding",
     "/returns/create",
+    "/route-map",
     "/routes",
     "/routes/:id",
     "/salary-certificates",

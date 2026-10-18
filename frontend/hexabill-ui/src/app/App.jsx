@@ -56,6 +56,7 @@ const BranchesPage = lazy(() => import('../features/branches/BranchesPage'))
 const BranchDetailPage = lazy(() => import('../features/branches/BranchDetailPage'))
 const RoutesPage = lazy(() => import('../features/branches/RoutesPage'))
 const RouteDetailPage = lazy(() => import('../features/branches/RouteDetailPage'))
+const RouteMapPage = lazy(() => import('../features/routes/RouteMapPage'))
 const DocumentsPage = lazy(() => import('../features/documents/DocumentsPage'))
 const DriverRoutePage = lazy(() => import('../features/branches/DriverRoutePage'))
 const DriverRoutesPage = lazy(() => import('../features/branches/DriverRoutePage').then((m) => ({ default: m.DriverRoutesPage })))
@@ -287,6 +288,7 @@ function App() {
               <Route path="/routes/:id" element={isStaffOnly ? <Navigate to="/dashboard" replace /> : <RouteDetailPage />} />
               {/* The driver's own routes: every signed-in role can open them; the server limits the list to the caller's assignments */}
               <Route path="/documents" element={<DocumentsPage />} />
+              <Route path="/route-map" element={<RouteMapPage />} />
               <Route path="/my-routes" element={<DriverRoutesPage />} />
               <Route path="/my-routes/:id" element={<DriverRoutePage />} />
               <Route path="/customers" element={<CustomersPage />} />

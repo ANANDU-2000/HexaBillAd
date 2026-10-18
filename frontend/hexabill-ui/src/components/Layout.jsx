@@ -265,6 +265,7 @@ const Layout = () => {
     '/branches': 'Branches & Routes',
     '/routes': 'Branches & Routes',
     '/my-routes': 'My routes',
+    '/route-map': 'Route map',
     '/documents': 'Documents',
     '/customers': 'Customers',
     '/more': 'More',
@@ -324,6 +325,7 @@ const Layout = () => {
     location.pathname === '/branches' ||
     location.pathname.startsWith('/branches/') ||
     location.pathname === '/routes' ||
+    location.pathname === '/route-map' ||
     location.pathname.startsWith('/routes/') ||
     location.pathname === '/users' ||
     location.pathname === '/reports' ||
