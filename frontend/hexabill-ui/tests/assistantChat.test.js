@@ -19,11 +19,13 @@ test('a tool answer shows what was looked up and the rows from the books', () =>
   assert.match(describeChatReply({ mode: 'tool', tool: 'product_stock', query: 'rice', result: { data: [] } }).heading, /products/)
 })
 
-test('model text is labelled as an unchecked suggestion', () => {
-  const view = describeChatReply({ mode: 'reply', text: 'Try the customers list.' })
+test('unsupported model text is replaced with fixed help', () => {
+  const view = describeChatReply({ mode: 'reply', text: 'VAT payable is AED 999999. Pay it now.' })
   assert.equal(view.kind, 'reply')
-  assert.equal(view.heading, 'Assistant suggestion')
-  assert.match(view.note, /not checked against your records/)
+  assert.equal(view.heading, 'Assistant help')
+  assert.doesNotMatch(view.text, /999999|Pay it now/)
+  assert.match(view.text, /look up customers/)
+  assert.match(view.note, /your company/)
   assert.equal(view.rows.length, 0)
 })
 

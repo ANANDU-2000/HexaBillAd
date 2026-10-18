@@ -49,7 +49,7 @@ export function prefillFor (kind, fields = {}, categories = []) {
 
 /**
  * data: the `data` of POST /assistant/chat ({ mode, tool, query, result, text, provider }).
- * kind: tool (rows from the books), reply (model text, labelled), unavailable / refused (a plain explanation).
+ * kind: tool (rows from the books), reply (fixed guidance), unavailable / refused (a plain explanation).
  */
 export function describeChatReply (data) {
   const mode = data?.mode
@@ -79,7 +79,7 @@ export function describeChatReply (data) {
     }
   }
   if (mode === 'reply') {
-    return { kind: 'reply', tool: null, heading: 'Assistant suggestion', rows: [], text: data.text || '', note: 'This text is not checked against your records. Use the Look up tab for facts.' }
+    return { kind: 'reply', tool: null, heading: 'Assistant help', rows: [], text: 'I can look up customers and product stock, search your documents, or help fill in a new customer or expense. Try asking for one of those.', note: 'Use the Look up tab for records from your company.' }
   }
   if (mode === 'refused') {
     return { kind: 'refused', tool: null, heading: null, rows: [], text: data.text || 'The assistant cannot answer this right now.', note: 'You can still use the Look up tab.' }

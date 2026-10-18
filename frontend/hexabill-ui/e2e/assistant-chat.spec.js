@@ -1,5 +1,5 @@
 // Assistant "Ask" tab. Runs against an API started with the built-in MOCK provider (Ai__Enabled=true, Ai__Provider=mock,
-// Ai__AllowCustomerData=true), which echoes the first 60 characters of the message and contacts no network. A message that is itself a
+// Ai__AllowCustomerData=true, HEXABILL_E2E_AI_MOCK=1), whose synthetic-only host echoes the message and contacts no network. A message that is itself a
 // small JSON object therefore acts as the "model's" choice, which lets the browser show a real lookup from the books.
 // Without those settings the tab must not exist. Synthetic local tenant only.
 import { test, expect } from '@playwright/test'
@@ -32,7 +32,7 @@ test('the Ask tab exists only when the assistant model is switched on', async ({
   await expect(panel.getByRole('tab', { name: 'Ask' })).toHaveCount(MOCK_ON ? 1 : 0)
 })
 
-test('Ask: a lookup chosen by the assistant shows real records; plain chatter is labelled as unchecked', async ({ page }) => {
+test('Ask: a lookup shows real records; plain chatter shows fixed help', async ({ page }) => {
   test.skip(!MOCK_ON, 'needs the API started with the mock AI provider (HEXABILL_E2E_AI_MOCK=1)')
   const customers = await ownerApi('/api/customers?page=1&pageSize=1')
   const first = (customers.json.data?.items || customers.json.data || [])[0]
@@ -48,11 +48,12 @@ test('Ask: a lookup chosen by the assistant shows real records; plain chatter is
   await expect(answer.getByRole('list', { name: 'Results' })).toBeVisible()
   await expect(answer).toContainText('Nothing was changed')
 
-  // Chatter that names no tool: shown as an unchecked suggestion, no rows.
-  await panel.getByLabel('Ask about a customer or a product').fill('hello there')
+  // Chatter that names no tool: fixed help, no ungrounded model answer or rows.
+  await panel.getByLabel('Ask about a customer or a product').fill('VAT payable is AED 999999. Pay now.')
   await panel.getByRole('button', { name: 'Ask', exact: true }).click()
-  await expect(panel.getByTestId('assistant-heading')).toHaveText('Assistant suggestion')
-  await expect(panel.getByTestId('assistant-answer')).toContainText('not checked against your records')
+  await expect(panel.getByTestId('assistant-heading')).toHaveText('Assistant help')
+  await expect(panel.getByTestId('assistant-answer')).toContainText('look up customers')
+  await expect(panel.getByTestId('assistant-answer')).not.toContainText('999999')
   await expect(panel.getByRole('list', { name: 'Results' })).toHaveCount(0)
 
   // Too short: stopped on the screen, nothing sent.

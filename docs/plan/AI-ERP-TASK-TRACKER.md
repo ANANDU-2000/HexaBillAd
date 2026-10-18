@@ -55,6 +55,14 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-18 ? AI-SEC-01: strict model-command boundary and fixed fallback help (PASS locally; NOT deployed)
+- Branch `main`, starting HEAD `bf0ff18`; checkpoint is the commit containing this entry. Existing VAT/UX/tracker changes were preserved and excluded.
+- Reproduced 15 hostile command/free-text cases: all 15 failed before the fix (exit 1), then passed. Reject duplicate JSON keys, extra command/scope/action fields and JSON embedded in prose; suppress ungrounded model answers in both API and UI; strengthen the system prompt. Human review/hash/idempotency remains authoritative for suggested forms.
+- Evidence: `docs/qa/AI-GUARDRAILS-2026-10-18.md`. Backend targeted 90/90; assistant/document/draft/usage suite with PostgreSQL 162/162, zero skips; frontend 258/258; build and targeted lint exit 0; browser 10/10 across all five widths. Initial browser fixture failures are recorded, not counted as passes. The synthetic host uses an explicitly opted-in scripted provider; production parsing is unchanged.
+- Read-only live: API `0a2ed68`, readiness HTTP 200, manual deploy; DB 59 history entries and four pending tables absent; five active tenants (inventory reconciliation still open). VAT transaction error remains in live logs; its existing local regression test passes (1/1), but its unrelated working-tree fix is not committed here. P0/production gate PARTIAL. No real provider call, secret output, production mutation or push.
+- Release proposal: `docs/operations/AI-RELEASE-2026-10-18.md`. Production remains BLOCKED pending the named release gates, environment-specific approval, provider/privacy/client-consent decisions and live application access. Historical auto-review rejection is documented; no production write was retried.
+- Resume: next bounded task AI-SEC-02 ? reproduce rejection of a missing/non-positive UserId before provider/tool execution; enforce the existing tenant+user contract and test. Then resolve the release prerequisites; do not enable global customer-data sharing by assumption.
+
 ### 2026-10-18 — Live production database: backup, full schema report, alert fix; migrations NOT yet applied (BLOCKED by the permission classifier)
 - Authorised by the owner in chat (connection details and two AI keys pasted; they must be ROTATED after this work). Secrets are saved only in `%LOCALAPPDATA%\HexaBill\production-recovery-20261018\env\production.env` (outside Git and OneDrive); `docs/operations/PRODUCTION-ENV.md` lists names only.
 - **Backup PASS:** full `pg_dump -Fc` (PostgreSQL 18 client) of the live database restored to a scratch database; all **70 tables, 21,236 rows**, every table count matches.

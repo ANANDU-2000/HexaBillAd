@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Text.Json;
 using HexaBill.Api.Modules.SuperAdmin;
+using HexaBill.Api.Modules.Assistant.Ai;
+using Microsoft.Extensions.Options;
 
 // Test-only HTTP bridge to the actual API TestServer. No product readiness bypass.
 var connection = Environment.GetEnvironmentVariable("HEXABILL_TEST_POSTGRES")
@@ -87,6 +89,23 @@ sealed class BrowserApiFactory(string apiRoot, string connection) : WebApplicati
         builder.ConfigureTestServices(services =>
         {
             foreach (var descriptor in services.Where(d => d.ServiceType == typeof(IHostedService)).ToList()) services.Remove(descriptor);
+            if (Environment.GetEnvironmentVariable("HEXABILL_E2E_AI_MOCK") == "1")
+            {
+                // This host already requires loopback and the four synthetic tenants. Return the scripted provider choice
+                // without the general mock's display prefix so strict production JSON parsing is exercised unchanged.
+                foreach (var descriptor in services.Where(d => d.ServiceType == typeof(AiGateway)).ToList()) services.Remove(descriptor);
+                services.AddSingleton(sp => new AiGateway(sp.GetRequiredService<IOptions<AiOptions>>(),
+                    new IAiProvider[] { new BrowserChoiceProvider() }, sp.GetRequiredService<IAiUsageLedger>(), sp.GetRequiredService<ILogger<AiGateway>>()));
+            }
         });
     }
+}
+
+sealed class BrowserChoiceProvider : IAiProvider
+{
+    public string Key => "mock";
+    public bool Paid => false;
+    public bool IsConfigured => true;
+    public Task<ProviderReply> CompleteAsync(string? system, string prompt, CancellationToken ct) =>
+        Task.FromResult(new ProviderReply(prompt, prompt.Length / 4, 8));
 }
