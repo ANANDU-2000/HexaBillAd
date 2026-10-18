@@ -38,10 +38,71 @@ public class RouteMapHttpTests
     private static readonly object FixtureLock = new();
     private readonly HexaBillWebApplicationFactory _factory;
 
+    // Route C: stops with a driver's GPS fix on a visit, for "confirm as shop pin".
+    private const int RouteC = 9413;
+    private const int DriverC = 9416;     // assigned to route C
+    private const int ManagerC = 9417;    // Manager with a RouteStaff grant on route C
+    private const int NoPin = 9414;       // no saved pin, driver fix on a visit
+    private const int FarPin = 9415;      // saved pin, driver fix 15 km away
+    private const int SamePin = 9416;     // saved pin equal to the driver fix
+    private const int NoPin2 = 9417;      // no saved pin, driver fix (manager test)
+    private const int NoCoords = 9418;    // visit without coordinates
+    private int _visitNoPin, _visitFar, _visitSame, _visitNoPin2, _visitNoCoords;
+
     public RouteMapHttpTests(HexaBillWebApplicationFactory factory)
     {
         _factory = factory;
         EnsureFixture();
+        EnsureRouteCFixture();
+    }
+
+    private static readonly object RouteCLock = new();
+
+    private void EnsureRouteCFixture()
+    {
+        lock (RouteCLock)
+        {
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SetRequestTenantScope(null, true);
+            if (!db.Routes.IgnoreQueryFilters().Any(r => r.Id == RouteC))
+            {
+                var now = DateTime.UtcNow;
+                db.Users.AddRange(
+                    new User { Id = DriverC, TenantId = Company, OwnerId = Company, Name = "Map driver C", Email = "map-c-driver@http.test", PasswordHash = "x", Role = UserRole.Staff, SessionVersion = 1, IsActive = true, CreatedAt = now },
+                    new User { Id = ManagerC, TenantId = Company, OwnerId = Company, Name = "Map manager C", Email = "map-c-mgr@http.test", PasswordHash = "x", Role = UserRole.Staff, SessionVersion = 1, IsActive = true, CreatedAt = now });
+                db.Routes.Add(new HexaBill.Api.Models.Route { Id = RouteC, BranchId = 9410, TenantId = Company, Name = "Map route C", IsActive = true, CreatedAt = now });
+                Customer C(int id, string name, decimal? lat = null, decimal? lng = null) =>
+                    new() { Id = id, TenantId = Company, OwnerId = Company, Name = name, MainLatitude = lat, MainLongitude = lng, CreatedAt = now, UpdatedAt = now };
+                db.Customers.AddRange(C(NoPin, "Pin none"), C(FarPin, "Pin far", 25.0m, 55.0m), C(SamePin, "Pin same", 25.1m, 55.1m), C(NoPin2, "Pin none two"), C(NoCoords, "Pin no coords"));
+                db.SaveChanges();
+                db.RouteStaff.AddRange(new RouteStaff { RouteId = RouteC, UserId = DriverC, AssignedAt = now }, new RouteStaff { RouteId = RouteC, UserId = ManagerC, AssignedAt = now });
+                db.RouteCustomers.AddRange(new[] { NoPin, FarPin, SamePin, NoPin2, NoCoords }.Select((c, i) => new RouteCustomer { RouteId = RouteC, CustomerId = c, SortOrder = i + 1, AssignedAt = now }));
+                CustomerVisit V(int customer, decimal? lat, decimal? lng) => new()
+                {
+                    RouteId = RouteC, CustomerId = customer, TenantId = Company, StaffId = DriverC, VisitDate = DateTime.UtcNow.Date.AddDays(-3), Status = VisitStatus.Arrived,
+                    Latitude = lat, Longitude = lng, ReachedAt = now.AddDays(-3), CreatedAt = now.AddDays(-3),
+                };
+                db.CustomerVisits.AddRange(V(NoPin, 25.2m, 55.3m), V(FarPin, 25.1m, 55.1m), V(SamePin, 25.1m, 55.1m), V(NoPin2, 25.4m, 55.5m), V(NoCoords, null, null));
+                db.SaveChanges();
+            }
+            _visitNoPin = VisitOf(db, NoPin); _visitFar = VisitOf(db, FarPin); _visitSame = VisitOf(db, SamePin); _visitNoPin2 = VisitOf(db, NoPin2); _visitNoCoords = VisitOf(db, NoCoords);
+        }
+    }
+
+    private static int VisitOf(AppDbContext db, int customerId) =>
+        db.CustomerVisits.IgnoreQueryFilters().Where(v => v.RouteId == RouteC && v.CustomerId == customerId).Select(v => v.Id).First();
+
+    private static Task<HttpResponseMessage> ConfirmPin(HttpClient client, int route, int customer, int visitId, bool overwrite = false) =>
+        client.PostAsJsonAsync($"/api/routes/{route}/customers/{customer}/pin-from-visit", new { visitId, overwrite });
+
+    private (decimal? Lat, decimal? Lng) PinOf(int customerId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.SetRequestTenantScope(null, true);
+        var c = db.Customers.IgnoreQueryFilters().Single(x => x.Id == customerId);
+        return (c.MainLatitude, c.MainLongitude);
     }
 
     private void EnsureFixture()
@@ -244,5 +305,98 @@ public class RouteMapHttpTests
         // Company 1's own routes only, never the fixtures of other companies in this database.
         Assert.DoesNotContain(data.GetProperty("result").GetProperty("data").EnumerateArray(), r => r.GetProperty("routeId").GetInt32() >= 9410);
         Assert.DoesNotContain("Map route", ai.Good.LastSystem ?? "");
+    }
+
+    [Fact]
+    public async Task OfficeSeesADriversFix_OnlyWhenThereIsNoPinOrItIsFarFromIt_AndDriversDoNot()
+    {
+        using var owner = As(Owner, "Owner");
+        var stops = await Data(await owner.GetAsync($"/api/routes/{RouteC}/map-stops"));
+        Assert.Equal(JsonValueKind.Object, Stop(stops, NoPin).GetProperty("pendingFix").ValueKind);
+        Assert.Equal(25.2m, Stop(stops, NoPin).GetProperty("pendingFix").GetProperty("latitude").GetDecimal());
+        Assert.Equal(_visitNoPin, Stop(stops, NoPin).GetProperty("pendingFix").GetProperty("visitId").GetInt32());
+        Assert.Equal("Map driver C", Stop(stops, NoPin).GetProperty("pendingFix").GetProperty("staffName").GetString());
+        Assert.Equal(JsonValueKind.Object, Stop(stops, FarPin).GetProperty("pendingFix").ValueKind);
+        Assert.Equal(JsonValueKind.Null, Stop(stops, SamePin).GetProperty("pendingFix").ValueKind);   // fix equals the saved pin
+        Assert.Equal(JsonValueKind.Null, Stop(stops, NoCoords).GetProperty("pendingFix").ValueKind);  // a visit without coordinates is no fix
+
+        using var driver = As(DriverC, "Staff");
+        var seen = await Data(await driver.GetAsync($"/api/routes/{RouteC}/map-stops"));
+        Assert.All(seen.EnumerateArray(), s => Assert.Equal(JsonValueKind.Null, s.GetProperty("pendingFix").ValueKind));
+    }
+
+    [Fact]
+    public async Task Overview_SaysWhoMayManageARoute()
+    {
+        using var owner = As(Owner, "Owner");
+        var ownerRoutes = (await Data(await owner.GetAsync("/api/route-map/overview"))).GetProperty("routes").EnumerateArray().Where(r => r.GetProperty("routeId").GetInt32() >= 9410).ToArray();
+        Assert.All(ownerRoutes, r => Assert.True(r.GetProperty("canManage").GetBoolean()));
+        using var driver = As(DriverC, "Staff");
+        var driverRoutes = (await Data(await driver.GetAsync("/api/route-map/overview"))).GetProperty("routes").EnumerateArray().Where(r => r.GetProperty("routeId").GetInt32() >= 9410).ToArray();
+        Assert.Equal(new[] { RouteC }, driverRoutes.Select(r => r.GetProperty("routeId").GetInt32()).ToArray());
+        Assert.All(driverRoutes, r => Assert.False(r.GetProperty("canManage").GetBoolean()));
+        using var manager = As(ManagerC, "Manager");
+        var managed = (await Data(await manager.GetAsync("/api/route-map/overview"))).GetProperty("routes").EnumerateArray().Where(r => r.GetProperty("routeId").GetInt32() >= 9410).ToArray();
+        Assert.Equal(new[] { RouteC }, managed.Select(r => r.GetProperty("routeId").GetInt32()).ToArray());
+        Assert.True(managed[0].GetProperty("canManage").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Owner_ConfirmsADriversFix_AsTheShopPin_WithAnAuditEntry()
+    {
+        using var owner = As(Owner, "Owner");
+        var response = await ConfirmPin(owner, RouteC, NoPin, _visitNoPin);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal((25.2m, 55.3m), PinOf(NoPin));
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SetRequestTenantScope(null, true);
+            var log = db.AuditLogs.IgnoreQueryFilters().Single(a => a.Action == "CustomerPinConfirmedFromVisit" && a.EntityId == NoPin);
+            Assert.Equal(Owner, log.UserId);
+            Assert.Equal(Company, log.TenantId);
+        }
+        // Once the pin matches, the fix is no longer pending.
+        var stops = await Data(await owner.GetAsync($"/api/routes/{RouteC}/map-stops"));
+        Assert.Equal(JsonValueKind.Null, Stop(stops, NoPin).GetProperty("pendingFix").ValueKind);
+    }
+
+    [Fact]
+    public async Task ReplacingASavedPin_NeedsAnExplicitOverwrite()
+    {
+        using var owner = As(Owner, "Owner");
+        var refused = await ConfirmPin(owner, RouteC, FarPin, _visitFar);
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal((25.0m, 55.0m), PinOf(FarPin));
+        var allowed = await ConfirmPin(owner, RouteC, FarPin, _visitFar, overwrite: true);
+        Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
+        Assert.Equal((25.1m, 55.1m), PinOf(FarPin));
+    }
+
+    [Fact]
+    public async Task OnlyManagersOfTheRoute_MayConfirm_OthersLookBlockedOrMissing()
+    {
+        using var driver = As(DriverC, "Staff");
+        Assert.Equal(HttpStatusCode.Forbidden, (await ConfirmPin(driver, RouteC, NoPin2, _visitNoPin2)).StatusCode);
+        using var noGrant = As(ManagerNone, "Manager");
+        Assert.Equal(HttpStatusCode.NotFound, (await ConfirmPin(noGrant, RouteC, NoPin2, _visitNoPin2)).StatusCode);
+        using var other = As(OtherOwner, "Owner", OtherCompany, OtherSlug);
+        Assert.Equal(HttpStatusCode.NotFound, (await ConfirmPin(other, RouteC, NoPin2, _visitNoPin2)).StatusCode);
+        Assert.Equal((null, null), PinOf(NoPin2));
+
+        using var manager = As(ManagerC, "Manager");
+        Assert.Equal(HttpStatusCode.OK, (await ConfirmPin(manager, RouteC, NoPin2, _visitNoPin2)).StatusCode);
+        Assert.Equal((25.4m, 55.5m), PinOf(NoPin2));
+    }
+
+    [Fact]
+    public async Task AVisitThatIsNotThisStopsFixWithCoordinates_IsRefused()
+    {
+        using var owner = As(Owner, "Owner");
+        Assert.Equal(HttpStatusCode.BadRequest, (await ConfirmPin(owner, RouteC, NoCoords, _visitNoCoords)).StatusCode);   // no coordinates
+        Assert.Equal(HttpStatusCode.BadRequest, (await ConfirmPin(owner, RouteC, NoCoords, _visitSame)).StatusCode);       // another customer's visit
+        Assert.Equal(HttpStatusCode.BadRequest, (await ConfirmPin(owner, RouteC, NoCoords, 99999999)).StatusCode);         // no such visit
+        Assert.Equal(HttpStatusCode.NotFound, (await ConfirmPin(owner, RouteA, NoCoords, _visitNoCoords)).StatusCode);     // customer is not on that route
+        Assert.Equal((null, null), PinOf(NoCoords));
     }
 }

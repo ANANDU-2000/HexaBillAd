@@ -15,6 +15,25 @@ namespace HexaBill.Api.Models
         public DateTime? LastVisitAt { get; set; }
         /// <summary>Only owners and admins see credit limits.</summary>
         public decimal? CreditLimit { get; set; }
+        /// <summary>A driver's GPS fix from a visit that differs from (or fills in) the saved shop pin. Only callers who may manage the route get it.</summary>
+        public RoutePendingFixDto? PendingFix { get; set; }
+    }
+
+    public class RoutePendingFixDto
+    {
+        public int VisitId { get; set; }
+        public decimal Latitude { get; set; }
+        public decimal Longitude { get; set; }
+        public DateTime? ReachedAt { get; set; }
+        public DateTime VisitDate { get; set; }
+        public string? StaffName { get; set; }
+    }
+
+    public class ConfirmPinFromVisitRequest
+    {
+        public int VisitId { get; set; }
+        /// <summary>Required to replace a pin that is already saved.</summary>
+        public bool Overwrite { get; set; }
     }
 
     public class RouteMapRouteSummaryDto
@@ -28,6 +47,8 @@ namespace HexaBill.Api.Models
         public decimal OutstandingTotal { get; set; }
         public decimal OverdueTotal { get; set; }
         public int OverdueCustomers { get; set; }
+        /// <summary>The caller may change this route (and confirm shop pins on it).</summary>
+        public bool CanManage { get; set; }
     }
 
     public class RouteMapOverviewDto
