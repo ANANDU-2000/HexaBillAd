@@ -27,18 +27,7 @@ public class AssistantChatHttpTests
         Reset();
     }
 
-    private void Reset()
-    {
-        _ai.Good.Reset();
-        _ai.Broken.Reset();
-        _ai.Broken.Failure = new HttpRequestException("secret=OTHER-SECRET-VALUE url=http://broken.invalid", null, HttpStatusCode.Unauthorized);
-        _ai.Options.Enabled = true;
-        _ai.Options.AllowCustomerData = true;
-        _ai.Options.Provider = "scripted";
-        _ai.Options.FallbackProvider = "";
-        _ai.Options.DailyCallLimitPerTenant = 100000;
-        _ai.Options.DailyTokenLimitPerTenant = 100_000_000;
-    }
+    private void Reset() => _ai.ResetAll();
 
     private HttpClient Owner(int tenantId = 1, string slug = "tenanta") => HttpIntegrationClient.Create(_factory, tenantId, slug);
 

@@ -16,7 +16,7 @@ public sealed class DocumentException : Exception
 }
 
 public sealed record DocumentVersionView(Guid Id, int VersionNumber, string FileName, string ContentType, long SizeBytes,
-    string Sha256, string Status, DateTime? ExpiresOn, DateTime UploadedAt, DateTime? ReviewedAt);
+    string Sha256, string Status, DateTime? ExpiresOn, DateTime UploadedAt, DateTime? ReviewedAt, string SearchStatus = "None", string? SearchNote = null);
 
 public sealed record DocumentView(Guid Id, string Title, string DocType, string Visibility, string Status, Guid? CurrentVersionId,
     DateTime UpdatedAt, IReadOnlyList<DocumentVersionView> Versions);
@@ -24,9 +24,9 @@ public sealed record DocumentView(Guid Id, string Title, string DocType, string 
 public sealed record DocumentDownload(byte[] Bytes, string ContentType, string FileName);
 
 /// <summary>
-/// Company documents: validated upload, versions, owner approval, authorised download, delete.
-/// Not built yet: text extraction, search/retrieval, malware scanning, expiry reminders, UI.
-/// Uploading never trains or calls any model, and nothing here is read by the assistant yet.
+/// Company documents: validated upload, versions, owner approval, authorised download, delete, and text indexing of the approved
+/// version (see DocumentTextExtractor and TenantDocumentSearch). Uploading never trains or calls any model.
+/// Not built: malware scanning (the check below is a type and sanity check only), OCR for scans and images, expiry reminders.
 /// </summary>
 public sealed class TenantDocumentService
 {
@@ -152,9 +152,49 @@ public sealed class TenantDocumentService
         version.ReviewedAt = now;
         doc.CurrentVersionId = version.Id;
         doc.UpdatedAt = now;
-        AddAudit(caller, "TenantDocumentApproved", $"document={documentId:N}; version={version.VersionNumber}");
+        // Only the approved version is searchable: the older text goes in the same save, so it is never findable once superseded.
+        await IndexApprovedVersionAsync(caller.TenantId, doc.Id, version, ct);
+        AddAudit(caller, "TenantDocumentApproved", $"document={documentId:N}; version={version.VersionNumber}; search={version.SearchStatus}; chunks={version.ChunkCount}");
         await _db.SaveChangesAsync(ct);
         return await GetAsync(caller, documentId, ct);
+    }
+
+    /// <summary>Reads the text again for the current approved version (for versions approved before search existed, or after a fix).</summary>
+    public async Task<DocumentView> ReindexAsync(DocumentCaller caller, Guid documentId, CancellationToken ct)
+    {
+        RequireManage(caller);
+        var doc = await _db.TenantDocuments.FirstOrDefaultAsync(d => d.Id == documentId && d.TenantId == caller.TenantId && d.Status == "Active", ct)
+            ?? throw new DocumentException(404, "Document not found.");
+        var version = doc.CurrentVersionId == null ? null
+            : await _db.TenantDocumentVersions.FirstOrDefaultAsync(v => v.Id == doc.CurrentVersionId && v.DocumentId == documentId && v.TenantId == caller.TenantId && v.Status == "Approved", ct);
+        if (version == null) throw new DocumentException(409, "This document has no approved version to index.");
+        await IndexApprovedVersionAsync(caller.TenantId, doc.Id, version, ct);
+        AddAudit(caller, "TenantDocumentReindexed", $"document={documentId:N}; version={version.VersionNumber}; search={version.SearchStatus}; chunks={version.ChunkCount}");
+        await _db.SaveChangesAsync(ct);
+        return await GetAsync(caller, documentId, ct);
+    }
+
+    private async Task IndexApprovedVersionAsync(int tenantId, Guid documentId, TenantDocumentVersion version, CancellationToken ct)
+    {
+        // Every earlier passage of this document goes first, whichever version it came from.
+        _db.TenantDocumentChunks.RemoveRange(await _db.TenantDocumentChunks.Where(c => c.TenantId == tenantId && c.DocumentId == documentId).ToListAsync(ct));
+        ExtractionResult result;
+        try
+        {
+            var bytes = await _storage.ReadBytesAsync(version.StorageKey);
+            result = DocumentTextExtractor.Extract(version.ContentType, bytes);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or IOException)
+        {
+            result = ExtractionResult.Unsupported("The stored file could not be read, so it is not searchable.");
+        }
+        var now = DateTime.UtcNow;
+        var index = 0;
+        foreach (var chunk in result.Chunks)
+            _db.TenantDocumentChunks.Add(new TenantDocumentChunk { Id = Guid.NewGuid(), TenantId = tenantId, DocumentId = documentId, VersionId = version.Id, ChunkIndex = index++, Location = chunk.Location, Text = chunk.Text, CreatedAt = now });
+        version.SearchStatus = result.Supported ? "Searchable" : "NotSearchable";
+        version.SearchNote = result.Supported ? null : result.Note;
+        version.ChunkCount = result.Supported ? index : 0;
     }
 
     /// <summary>
@@ -195,7 +235,8 @@ public sealed class TenantDocumentService
         doc.DeletedAt = now;
         doc.UpdatedAt = now;
         doc.CurrentVersionId = null;
-        foreach (var v in versions) v.Status = "Deleted";
+        foreach (var v in versions) { v.Status = "Deleted"; v.SearchStatus = "None"; v.ChunkCount = 0; }
+        _db.TenantDocumentChunks.RemoveRange(await _db.TenantDocumentChunks.Where(c => c.TenantId == caller.TenantId && c.DocumentId == documentId).ToListAsync(ct));
         AddAudit(caller, "TenantDocumentDeleted", $"document={documentId:N}; versions={versions.Count}");
         await _db.SaveChangesAsync(ct);
         foreach (var v in versions)
@@ -218,7 +259,7 @@ public sealed class TenantDocumentService
         var visible = caller.CanManage ? versions : versions.Where(v => v.Id == d.CurrentVersionId && v.Status == "Approved").ToList();
         return new DocumentView(d.Id, d.Title, d.DocType, d.Visibility, d.Status, d.CurrentVersionId, d.UpdatedAt,
             visible.OrderByDescending(v => v.VersionNumber).Select(v =>
-                new DocumentVersionView(v.Id, v.VersionNumber, v.OriginalFileName, v.ContentType, v.SizeBytes, v.Sha256, v.Status, v.ExpiresOn, v.UploadedAt, v.ReviewedAt)).ToList());
+                new DocumentVersionView(v.Id, v.VersionNumber, v.OriginalFileName, v.ContentType, v.SizeBytes, v.Sha256, v.Status, v.ExpiresOn, v.UploadedAt, v.ReviewedAt, v.SearchStatus, v.SearchNote)).ToList());
     }
 
     private void AddAudit(DocumentCaller caller, string action, string details) =>

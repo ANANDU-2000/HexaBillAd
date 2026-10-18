@@ -1,7 +1,7 @@
 {
   "source": "frontend/hexabill-ui/src/app/App.jsx",
   "verifiedAt": "2026-10-18",
-  "uniqueRoutePathCount": 64,
+  "uniqueRoutePathCount": 65,
   "paths": [
     "*",
     "/",
@@ -20,6 +20,7 @@
     "/dashboard",
     "/delivery-notes",
     "/delivery-notes/:saleId",
+    "/documents",
     "/expenses",
     "/feedback",
     "/help",

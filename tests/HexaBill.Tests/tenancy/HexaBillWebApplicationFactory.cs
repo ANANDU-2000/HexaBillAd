@@ -592,4 +592,18 @@ public sealed class TestAiControl
     };
     public ScriptedAiProvider Good { get; } = new("scripted");
     public ScriptedAiProvider Broken { get; } = new("broken");
+
+    /// <summary>Back to the normal test settings. Every test class that touches the model calls this first.</summary>
+    public void ResetAll()
+    {
+        Good.Reset();
+        Broken.Reset();
+        Broken.Failure = new HttpRequestException("secret=OTHER-SECRET-VALUE url=http://broken.invalid", null, System.Net.HttpStatusCode.Unauthorized);
+        Options.Enabled = true;
+        Options.AllowCustomerData = true;
+        Options.Provider = "scripted";
+        Options.FallbackProvider = "";
+        Options.DailyCallLimitPerTenant = 100000;
+        Options.DailyTokenLimitPerTenant = 100_000_000;
+    }
 }

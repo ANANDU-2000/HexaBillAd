@@ -265,6 +265,7 @@ const Layout = () => {
     '/branches': 'Branches & Routes',
     '/routes': 'Branches & Routes',
     '/my-routes': 'My routes',
+    '/documents': 'Documents',
     '/customers': 'Customers',
     '/more': 'More',
     '/users': 'Users',

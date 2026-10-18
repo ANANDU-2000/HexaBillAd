@@ -118,7 +118,7 @@ public class AssistantToolsHttpTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
         var names = json.GetProperty("data").EnumerateArray().Select(t => t.GetProperty("name").GetString()).OrderBy(n => n).ToArray();
-        Assert.Equal(new[] { "find_customers", "product_stock" }, names);
+        Assert.Equal(new[] { "find_customers", "product_stock", "search_company_documents" }, names);
     }
 
     [Fact]

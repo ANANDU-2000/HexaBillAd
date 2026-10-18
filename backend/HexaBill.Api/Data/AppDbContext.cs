@@ -155,6 +155,7 @@ namespace HexaBill.Api.Data
         public DbSet<AssistantDraft> AssistantDrafts { get; set; }
         public DbSet<TenantDocument> TenantDocuments { get; set; }
         public DbSet<TenantDocumentVersion> TenantDocumentVersions { get; set; }
+        public DbSet<TenantDocumentChunk> TenantDocumentChunks { get; set; }
         public DbSet<RouteRun> RouteRuns { get; set; }
         public DbSet<DriverLocationCurrent> DriverLocationCurrents { get; set; }
         public DbSet<AiUsageDaily> AiUsageDailies { get; set; }
@@ -735,6 +736,17 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.StorageKey).IsRequired().HasMaxLength(300);
                 entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
                 entity.HasIndex(e => new { e.TenantId, e.DocumentId, e.VersionNumber }).IsUnique();
+                entity.Property(e => e.SearchStatus).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.SearchNote).HasMaxLength(300);
+            });
+
+            modelBuilder.Entity<TenantDocumentChunk>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Location).IsRequired().HasMaxLength(40);
+                entity.Property(e => e.Text).IsRequired().HasColumnType(Database.IsNpgsql() ? "text" : "TEXT");
+                entity.HasIndex(e => new { e.TenantId, e.DocumentId, e.VersionId, e.ChunkIndex }).IsUnique();
+                entity.HasIndex(e => new { e.TenantId, e.VersionId });
             });
 
             modelBuilder.Entity<AiUsageDaily>(entity =>

@@ -11,7 +11,7 @@ export function chatMessageProblem (message) {
   return null
 }
 
-const TOOL_NAMES = { find_customers: 'customers', product_stock: 'products' }
+const TOOL_NAMES = { find_customers: 'customers', product_stock: 'products', search_company_documents: 'your documents' }
 
 /**
  * data: the `data` of POST /assistant/chat ({ mode, tool, query, result, text, provider }).

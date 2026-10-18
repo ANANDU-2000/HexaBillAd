@@ -17,7 +17,7 @@ public sealed record ChatReply(string Mode, string? Tool, string? Query, Assista
 public sealed class AssistantChatService
 {
     /// <summary>The only tools the model may pick. Read-only. Writes go through the draft, review and confirm path, not through here.</summary>
-    public static readonly IReadOnlySet<string> ModelCallableTools = new HashSet<string>(StringComparer.Ordinal) { "find_customers", "product_stock" };
+    public static readonly IReadOnlySet<string> ModelCallableTools = new HashSet<string>(StringComparer.Ordinal) { "find_customers", "product_stock", "search_company_documents" };
 
     public const int MaxMessageChars = 500;
     public const int MaxReplyChars = 300;

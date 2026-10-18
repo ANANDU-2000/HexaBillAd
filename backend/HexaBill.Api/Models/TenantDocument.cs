@@ -80,5 +80,39 @@ namespace HexaBill.Api.Models
         public DateTime UploadedAt { get; set; }
         public int? ReviewedByUserId { get; set; }
         public DateTime? ReviewedAt { get; set; }
+
+        /// <summary>None (not approved yet), Searchable (text was read and indexed) or NotSearchable (stored and approved, but its text could not be read).</summary>
+        [Required]
+        [MaxLength(20)]
+        public string SearchStatus { get; set; } = "None";
+
+        /// <summary>Plain-words reason when the version is NotSearchable.</summary>
+        [MaxLength(300)]
+        public string? SearchNote { get; set; }
+
+        public int ChunkCount { get; set; }
+    }
+
+    /// <summary>
+    /// One searchable passage of an APPROVED version, with where it came from (page, rows or lines). Keyed by company, document and
+    /// version. Removed when a newer version is approved, when the document is deleted, or when the version is replaced, so old text
+    /// can never be found after the owner has moved on. Derived data: the stored file is the record.
+    /// </summary>
+    public class TenantDocumentChunk
+    {
+        public Guid Id { get; set; }
+        public int TenantId { get; set; }
+        public Guid DocumentId { get; set; }
+        public Guid VersionId { get; set; }
+        public int ChunkIndex { get; set; }
+
+        [Required]
+        [MaxLength(40)]
+        public string Location { get; set; } = string.Empty;
+
+        [Required]
+        public string Text { get; set; } = string.Empty;
+
+        public DateTime CreatedAt { get; set; }
     }
 }

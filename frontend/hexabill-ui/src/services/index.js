@@ -2339,6 +2339,19 @@ export const branchesAPI = {
   },
 }
 
+export const documentsAPI = {
+  list: async () => (await api.get('/tenant-documents')).data,
+  upload: async (formData, onProgress) => (await api.post('/tenant-documents', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
+    onUploadProgress: (e) => onProgress?.(e.total ? Math.min(100, Math.round((e.loaded * 100) / e.total)) : null),
+  })).data,
+  approve: async (id, versionId) => (await api.post(`/tenant-documents/${id}/versions/${versionId}/approve`)).data,
+  reindex: async (id) => (await api.post(`/tenant-documents/${id}/reindex`)).data,
+  remove: async (id) => (await api.delete(`/tenant-documents/${id}`)).data,
+  download: async (id, versionId) => (await api.get(`/tenant-documents/${id}/download`, { params: versionId ? { versionId } : {}, responseType: 'blob' })).data,
+}
+
 export const routesAPI = {
   getRoutes: async (branchId = null) => {
     const params = branchId != null ? { branchId } : {}

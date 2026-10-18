@@ -26,8 +26,16 @@ function ResultRows ({ tool, rows, asOf }) {
       <ul aria-label="Results" className="divide-y divide-neutral-200 rounded-md border border-neutral-200">
         {rows.map((r) => (
           <li key={r.id} className="px-3 py-2 text-sm">
-            <p className="font-medium text-neutral-900">{r.name}{r.sku ? ` · ${r.sku}` : ''}</p>
-            {tool === 'find_customers' ? (
+            {tool === 'search_company_documents' ? (
+              <>
+                <p className="font-medium text-neutral-900">{r.title} <span className="font-normal text-neutral-600">· version {r.version} · {r.location}</span></p>
+                <p className="mt-1 text-xs text-neutral-700 break-words">“{r.snippet}”</p>
+                <Link to="/documents" className="text-xs text-primary-700 underline">Open documents</Link>
+              </>
+            ) : (
+              <p className="font-medium text-neutral-900">{r.name}{r.sku ? ` · ${r.sku}` : ''}</p>
+            )}
+            {tool === 'search_company_documents' ? null : tool === 'find_customers' ? (
               <p className="text-xs text-neutral-600">{r.phone || 'No phone'}{r.balance != null ? ` · Balance ${Number(r.balance).toFixed(2)}` : ''}</p>
             ) : (
               <p className="text-xs text-neutral-600">
@@ -105,9 +113,10 @@ function FindTab () {
         <select id="assistant-find-kind" className={inputClass} value={tool} onChange={(e) => { setTool(e.target.value); setState({ status: 'idle', rows: [], message: '' }) }}>
           <option value="find_customers">Customers</option>
           <option value="product_stock">Products and stock</option>
+          <option value="search_company_documents">Company documents</option>
         </select>
       </Field>
-      <Field id="assistant-find-query" label="Name, phone or SKU">
+      <Field id="assistant-find-query" label={tool === 'search_company_documents' ? 'Words to look for' : 'Name, phone or SKU'}>
         <input id="assistant-find-query" className={inputClass} value={query} onChange={(e) => setQuery(e.target.value)} maxLength={60} />
       </Field>
       <button type="submit" disabled={state.status === 'loading'} className="btn btn-primary min-h-11 w-full">

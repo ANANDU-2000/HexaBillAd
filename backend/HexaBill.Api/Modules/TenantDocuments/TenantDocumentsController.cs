@@ -93,6 +93,10 @@ public class TenantDocumentsController : TenantScopedController
     [HttpPost("{id:guid}/versions/{versionId:guid}/approve")]
     public Task<IActionResult> Approve(Guid id, Guid versionId, CancellationToken ct) => Run(c => _documents.ApproveAsync(c, id, versionId, ct));
 
+    /// <summary>Read the text of the current approved version again (owners and admins).</summary>
+    [HttpPost("{id:guid}/reindex")]
+    public Task<IActionResult> Reindex(Guid id, CancellationToken ct) => Run(c => _documents.ReindexAsync(c, id, ct));
+
     [HttpDelete("{id:guid}")]
     public Task<IActionResult> Delete(Guid id, CancellationToken ct) => Run(async c => { await _documents.DeleteAsync(c, id, ct); return true; });
 
