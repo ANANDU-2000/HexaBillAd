@@ -19,7 +19,7 @@ Owner-supplied plan for the phone layout of the tenant web app. Evidence in the 
 |---|---|---|
 | 1 | Home (`features/dashboard/DashboardTally.jsx`): KPI cards, New sale + Receive payment, Needs attention (3 rows), charts/branches below, no duplicate buttons | **DONE locally 2026-10-18** (phone layout; see tracker). Open: period picker still drives all KPIs (plan wants KPIs fixed to today, period for charts only); "Net sales 0 vs Top customers 15.75" mismatch is backend data, not investigated |
 | 2 | POS (`features/sales/pos/PosEnterprisePage.jsx`): one summary row for customer/branch/route/date, sticky total + Checkout, inline stock errors, bottom-sheet pickers | **PARTLY DONE 2026-10-18**: summary line + Bill details sheet done; sticky total + Checkout already existed; inline stock errors and picker sheets not started |
-| 3 | Invoice preview: one Share sheet (WhatsApp/Email/PDF/Print), one New sale button, Return items into "…" | not started |
+| 3 | Invoice preview: one Share sheet (WhatsApp/Email/PDF/Print), one New sale button, Return items into "…" | **DONE locally 2026-10-18** (phone tests pass; desktop not tested) |
 | 4 | Inputs ≥16 px on phones | already enforced globally (`index.css`, max-width 767px); NOT verified on a real iPhone |
 | 4b | Header back/hamburger rule; icon buttons get labels and 44 px targets | not started |
 

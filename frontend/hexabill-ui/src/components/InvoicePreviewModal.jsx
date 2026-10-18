@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Printer, Download, Share2, Mail, MessageCircle, RotateCcw } from 'lucide-react'
+import { X, Printer, Download, Share2, Mail, MessageCircle, RotateCcw, MoreHorizontal } from 'lucide-react'
 import { salesAPI } from '../services'
 import { formatCurrency } from '../utils/currency'
 import toast from 'react-hot-toast'
@@ -15,6 +15,7 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
   const [loading, setLoading] = useState(false)
   const [invoice, setInvoice] = useState(null)
   const [showPrintOptions, setShowPrintOptions] = useState(false)
+  const [sheet, setSheet] = useState(null) // null | 'share' | 'more'
   const [dangerModal, setDangerModal] = useState({
     isOpen: false,
     title: '',
@@ -276,8 +277,9 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
   }
 
   const handleNewInvoice = () => {
-    if (onNew) onNew()
     onClose()
+    if (onNew) onNew()
+    else navigate('/pos')
   }
 
   const handleReturnItems = () => {
@@ -289,21 +291,22 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
   if (!saleId) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Invoice preview">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90dvh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-neutral-200">
-          <h2 className="text-xl font-bold text-neutral-900">Invoice Preview - {invoice?.invoiceNo || invoiceNo || `#${saleId}`}</h2>
+        <div className="flex items-center justify-between gap-2 p-4 sm:p-6 border-b border-neutral-200">
+          <h2 className="min-w-0 truncate text-lg sm:text-xl font-bold text-neutral-900">Invoice Preview - {invoice?.invoiceNo || invoiceNo || `#${saleId}`}</h2>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-neutral-600"
+            className="flex h-11 w-11 shrink-0 items-center justify-center text-neutral-400 hover:text-neutral-600"
+            aria-label="Close"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
 
         {/* Invoice Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {loading ? (
             <div className="text-center py-8">Loading invoice...</div>
           ) : invoice ? (
@@ -324,19 +327,19 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
               <table className="min-w-full divide-y divide-neutral-200">
                 <thead className="bg-neutral-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Item</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Qty</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Price</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Total</th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Item</th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Qty</th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Price</th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Total</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-neutral-200">
                   {invoice.items?.map((item, idx) => (
                     <tr key={idx}>
-                      <td className="px-4 py-3">{item.productName}</td>
-                      <td className="px-4 py-3">{item.qty} {item.unitType}</td>
-                      <td className="px-4 py-3">{formatCurrency(item.unitPrice)}</td>
-                      <td className="px-4 py-3 font-medium">{formatCurrency(item.lineTotal)}</td>
+                      <td className="px-2 sm:px-4 py-3">{item.productName}</td>
+                      <td className="px-2 sm:px-4 py-3">{item.qty} {item.unitType}</td>
+                      <td className="px-2 sm:px-4 py-3">{formatCurrency(item.unitPrice)}</td>
+                      <td className="px-2 sm:px-4 py-3 font-medium">{formatCurrency(item.lineTotal)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -365,57 +368,68 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
           )}
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-between p-6 border-t border-neutral-200 bg-neutral-50">
+        {/* Actions: one primary (Share), one secondary (New sale), everything else behind two small sheets. */}
+        <div className="flex items-center gap-2 p-4 sm:p-6 border-t border-neutral-200 bg-neutral-50">
           <button
-            onClick={handleNewInvoice}
-            className="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-md hover:bg-neutral-300"
+            type="button"
+            onClick={() => setSheet('share')}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md bg-primary-600 px-4 text-sm font-semibold text-white hover:bg-primary-700"
+            aria-haspopup="dialog"
           >
-            New Invoice
+            <Share2 className="h-4 w-4" aria-hidden />
+            Share
           </button>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={handleReturnItems}
-              className="inline-flex items-center px-3 py-2 bg-warning text-white rounded-md hover:bg-amber-700 text-sm"
-              title="Return Items"
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Return Items
-            </button>
-            <button
-              onClick={handlePrint}
-              className="inline-flex items-center px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
-              title="Print Invoice"
-            >
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </button>
-            <button
-              onClick={handleDownload}
-              className="inline-flex items-center px-3 py-2 bg-success text-white rounded-md hover:bg-green-700 text-sm"
-              title="Download PDF"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              PDF
-            </button>
-            <button
-              onClick={handleWhatsAppShare}
-              className="inline-flex items-center px-3 py-2 bg-green-500 text-white rounded-md hover:bg-success text-sm"
-              title="Share via WhatsApp"
-            >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              WhatsApp
-            </button>
-            <button
-              onClick={handleEmailShare}
-              className="inline-flex items-center px-3 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 text-sm"
-              title="Send via Email"
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              Email
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleNewInvoice}
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-800 hover:bg-neutral-100"
+          >
+            New sale
+          </button>
+          <button
+            type="button"
+            onClick={() => setSheet('more')}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+            aria-label="More actions"
+            aria-haspopup="dialog"
+          >
+            <MoreHorizontal className="h-5 w-5" aria-hidden />
+          </button>
         </div>
+
+        {sheet && (
+          <div className="absolute inset-0 z-10 flex flex-col justify-end" role="dialog" aria-modal="true" aria-label={sheet === 'share' ? 'Share invoice' : 'More actions'}>
+            <div className="absolute inset-0 bg-black/40" onClick={() => setSheet(null)} aria-hidden />
+            <div className="relative rounded-t-xl bg-white p-2 pb-4 shadow-xl">
+              <p className="px-3 pt-2 pb-1 text-sm font-semibold text-neutral-900">{sheet === 'share' ? 'Share invoice' : 'More actions'}</p>
+              {(sheet === 'share'
+                ? [
+                  { key: 'whatsapp', label: 'WhatsApp', hint: customerPhone ? 'Send to the customer' : 'Opens WhatsApp', icon: MessageCircle, onClick: handleWhatsAppShare },
+                  { key: 'email', label: 'Email', hint: 'Send the PDF by email', icon: Mail, onClick: handleEmailShare },
+                  { key: 'pdf', label: 'Download PDF', hint: 'Save a copy on this device', icon: Download, onClick: handleDownload },
+                  { key: 'print', label: 'Print', hint: 'Choose a layout and print', icon: Printer, onClick: handlePrint }
+                ]
+                : [
+                  { key: 'return', label: 'Return items', hint: 'Create a sales return for this invoice', icon: RotateCcw, onClick: handleReturnItems }
+                ]
+              ).map(({ key, label, hint, icon: Icon, onClick }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => { setSheet(null); onClick() }}
+                  className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left hover:bg-neutral-100"
+                >
+                  <Icon className="h-5 w-5 shrink-0 text-neutral-600" aria-hidden />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-neutral-900">{label}</span>
+                    <span className="block text-xs text-neutral-500">{hint}</span>
+                  </span>
+                </button>
+              ))}
+              <button type="button" onClick={() => setSheet(null)} className="mt-1 min-h-11 w-full rounded-lg text-sm font-medium text-neutral-600 hover:bg-neutral-100">Cancel</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Print Options Modal */}
