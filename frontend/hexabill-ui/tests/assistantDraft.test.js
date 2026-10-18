@@ -6,16 +6,24 @@ import {
 
 const memory = (initial = {}) => { const m = new Map(Object.entries(initial)); return { getItem: (k) => m.get(k) ?? null } }
 
-test('assistant is off by default and on only by build flag or browser switch', () => {
-  assert.equal(isAssistantEnabled({}, memory()), false)
+test('the assistant button is on by default and off only by the build kill switch or the browser switch', () => {
+  assert.equal(isAssistantEnabled({}, memory()), true)
   assert.equal(isAssistantEnabled({ VITE_ENABLE_ASSISTANT: 'true' }, memory()), true)
   assert.equal(isAssistantEnabled({ VITE_ENABLE_ASSISTANT: 'false' }, memory()), false)
-  assert.equal(isAssistantEnabled({}, memory({ [ASSISTANT_STORAGE_KEY]: '1' })), true)
+  assert.equal(isAssistantEnabled({ VITE_ENABLE_ASSISTANT: 'FALSE' }, memory()), false)
   assert.equal(isAssistantEnabled({}, memory({ [ASSISTANT_STORAGE_KEY]: '0' })), false)
+  assert.equal(isAssistantEnabled({}, memory({ [ASSISTANT_STORAGE_KEY]: '1' })), true)
+  // The build switch wins over the browser: "false" cannot be turned back on by a stored 1.
+  assert.equal(isAssistantEnabled({ VITE_ENABLE_ASSISTANT: 'false' }, memory({ [ASSISTANT_STORAGE_KEY]: '1' })), false)
 })
 
-test('unavailable storage never turns the assistant on or throws', () => {
-  assert.equal(isAssistantEnabled({}, { getItem() { throw new Error('blocked') } }), false)
+test('a platform administrator never gets the company assistant', () => {
+  assert.equal(isAssistantEnabled({}, memory(), { platformAdmin: true }), false)
+  assert.equal(isAssistantEnabled({ VITE_ENABLE_ASSISTANT: 'true' }, memory({ [ASSISTANT_STORAGE_KEY]: '1' }), { platformAdmin: true }), false)
+})
+
+test('unavailable storage does not hide the assistant and never throws', () => {
+  assert.equal(isAssistantEnabled({}, { getItem() { throw new Error('blocked') } }), true)
 })
 
 test('field errors map to the first message per field', () => {

@@ -43,8 +43,15 @@ const openPanel = async (page) => {
   return dialog
 }
 
-test.describe('flag off (default)', () => {
-  test('no assistant entry point exists', async ({ page }) => {
+test.describe('visibility', () => {
+  test('the assistant button is there by default', async ({ page }) => {
+    await signIn(page, SLUG)
+    await page.goto(`${feOrigin(SLUG)}/dashboard`, { waitUntil: 'networkidle' })
+    await expect(page.getByRole('button', { name: 'Open assistant' }).filter({ visible: true }).first()).toBeVisible()
+  })
+
+  test('the browser switch hexabill.assistant=0 hides it', async ({ page }) => {
+    await page.addInitScript(() => { try { localStorage.setItem('hexabill.assistant', '0') } catch { /* storage blocked */ } })
     await signIn(page, SLUG)
     await page.goto(`${feOrigin(SLUG)}/dashboard`, { waitUntil: 'networkidle' })
     await expect(page.getByRole('button', { name: 'Open assistant' })).toHaveCount(0)

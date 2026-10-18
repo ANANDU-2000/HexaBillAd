@@ -2,13 +2,18 @@
 
 export const ASSISTANT_STORAGE_KEY = 'hexabill.assistant'
 
-/** The panel is off unless the build or this browser switches it on, so shipping the code changes nothing for users. */
-export const isAssistantEnabled = (env = {}, storage = globalThis.localStorage) => {
-  if (String(env?.VITE_ENABLE_ASSISTANT || '').toLowerCase() === 'true') return true
+/**
+ * The assistant button shows for company users by default. Turn it off for a build with VITE_ENABLE_ASSISTANT=false, or for one browser
+ * with localStorage hexabill.assistant=0. A platform administrator never gets it. Showing the button sends nothing anywhere: the Ask tab
+ * still needs a configured provider and the company Owner's approval, and the Look up tab reads only the company's own records.
+ */
+export const isAssistantEnabled = (env = {}, storage = globalThis.localStorage, { platformAdmin = false } = {}) => {
+  if (platformAdmin) return false
+  if (String(env?.VITE_ENABLE_ASSISTANT || '').toLowerCase() === 'false') return false
   try {
-    return storage?.getItem(ASSISTANT_STORAGE_KEY) === '1'
+    return storage?.getItem(ASSISTANT_STORAGE_KEY) !== '0'
   } catch {
-    return false
+    return true
   }
 }
 

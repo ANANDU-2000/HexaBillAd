@@ -58,8 +58,8 @@ const Layout = () => {
   const [moreOpen, setMoreOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
-  // Off unless VITE_ENABLE_ASSISTANT=true or this browser sets localStorage hexabill.assistant=1.
-  const assistantEnabled = isAssistantEnabled(import.meta.env)
+  // On by default; off with VITE_ENABLE_ASSISTANT=false, localStorage hexabill.assistant=0, or for a platform administrator.
+  const assistantEnabled = isAssistantEnabled(import.meta.env, undefined, { platformAdmin: isSystemAdmin(user) })
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [navTip, setNavTip] = useState(null)
   const closeMore = useCallback(() => setMoreOpen(false), [])
