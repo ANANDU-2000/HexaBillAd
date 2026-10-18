@@ -21,7 +21,7 @@ Owner-supplied plan for the phone layout of the tenant web app. Evidence in the 
 | 2 | POS (`features/sales/pos/PosEnterprisePage.jsx`): one summary row for customer/branch/route/date, sticky total + Checkout, inline stock errors, bottom-sheet pickers | **PARTLY DONE 2026-10-18**: summary line + Bill details sheet done; sticky total + Checkout already existed; inline stock errors and picker sheets not started |
 | 3 | Invoice preview: one Share sheet (WhatsApp/Email/PDF/Print), one New sale button, Return items into "…" | **DONE locally 2026-10-18** (phone tests pass; desktop not tested) |
 | 4 | Inputs ≥16 px on phones | already enforced globally (`index.css`, max-width 767px); NOT verified on a real iPhone |
-| 4b | Header back/hamburger rule; icon buttons get labels and 44 px targets | not started |
+| 4b | Header back/hamburger rule; icon buttons get labels and 44 px targets | **BLOCKED on owner decision** (hamburger already only on focused routes; back-arrow choice in tracker). Unlabeled-button sweep not run |
 
 ## Phase 2 — P1
 5 Checkout sheet order (quick amounts, Cash/Cheque/Online first) · 6 Ledger filter sheet; Add-customer mobile flow (Name + Phone, "More details") · 7 Price list as cards; route tabs as chip row; Users as cards with "…" actions (delete red, last, confirmed) · 8 Daily close as steps; VAT return status card + one Export sheet.
