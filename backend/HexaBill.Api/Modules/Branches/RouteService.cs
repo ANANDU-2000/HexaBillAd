@@ -29,7 +29,7 @@ namespace HexaBill.Api.Modules.Branches
         Task<bool> DeleteRouteExpenseAsync(int id, int tenantId);
         Task<RouteSummaryDto?> GetRouteSummaryAsync(int routeId, int tenantId, DateTime? fromDate, DateTime? toDate);
         Task<RouteCollectionSheetDto?> GetRouteCollectionSheetAsync(int routeId, int tenantId, DateTime date);
-        Task<CustomerVisitDto?> UpdateCustomerVisitAsync(int routeId, int customerId, UpdateCustomerVisitRequest request, int userId, int tenantId);
+        Task<CustomerVisitDto?> UpdateCustomerVisitAsync(int routeId, int customerId, UpdateCustomerVisitRequest request, int userId, int tenantId, bool allowSavedPinUpdate = false);
         Task<List<CustomerVisitDto>> GetCustomerVisitsAsync(int routeId, int tenantId, DateTime? date);
         Task<List<RouteStopMapDto>?> GetRouteStopsMapAsync(int routeId, int tenantId, DateTime date);
         bool IsStopLocationEnabled();
@@ -654,7 +654,7 @@ namespace HexaBill.Api.Modules.Branches
             };
         }
 
-        public async Task<CustomerVisitDto?> UpdateCustomerVisitAsync(int routeId, int customerId, UpdateCustomerVisitRequest request, int userId, int tenantId)
+        public async Task<CustomerVisitDto?> UpdateCustomerVisitAsync(int routeId, int customerId, UpdateCustomerVisitRequest request, int userId, int tenantId, bool allowSavedPinUpdate = false)
         {
             var route = await _context.Routes
                 .FirstOrDefaultAsync(r => r.Id == routeId && (tenantId <= 0 || r.TenantId == tenantId));
@@ -663,6 +663,10 @@ namespace HexaBill.Api.Modules.Branches
             var customer = await _context.Customers
                 .FirstOrDefaultAsync(c => c.Id == customerId && (tenantId <= 0 || c.TenantId == tenantId));
             if (customer == null) return null;
+
+            // A visit can only be recorded for a customer who is on this route.
+            var onRoute = await _context.RouteCustomers.AnyAsync(rc => rc.RouteId == routeId && rc.CustomerId == customerId);
+            if (!onRoute) return null;
 
             // Enum.TryParse also accepts any number ("99"), so a defined name is required as well.
             if (!Enum.TryParse<VisitStatus>(request.Status, true, out var visitStatus) || !Enum.IsDefined(typeof(VisitStatus), visitStatus)
@@ -737,10 +741,9 @@ namespace HexaBill.Api.Modules.Branches
                         visit.Longitude = request.Longitude;
                         visit.ReachedAt = request.ReachedAt ?? DateTime.UtcNow;
 
-                        var shouldWriteMain = request.UpdateSavedLocation
-                            || cust.MainLatitude == null
-                            || cust.MainLongitude == null;
-                        if (shouldWriteMain)
+                        // A visit fix belongs to the visit. The long-term shop pin changes only on an explicit request
+                        // from a caller who may manage it (never as a fallback for an empty pin).
+                        if (request.UpdateSavedLocation && allowSavedPinUpdate)
                         {
                             cust.MainLatitude = request.Latitude;
                             cust.MainLongitude = request.Longitude;

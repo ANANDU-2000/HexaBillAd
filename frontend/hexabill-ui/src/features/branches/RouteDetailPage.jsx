@@ -1124,13 +1124,15 @@ const RouteDetailPage = () => {
                       >
                         <Navigation className="h-3 w-3" /> Mark reached
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => openMarkReached(s, 'update_saved')}
-                        className="text-xs px-2 py-1 rounded border border-neutral-300"
-                      >
-                        Update saved
-                      </button>
+                      {canManage && (
+                        <button
+                          type="button"
+                          onClick={() => openMarkReached(s, 'update_saved')}
+                          className="text-xs px-2 py-1 rounded border border-neutral-300"
+                        >
+                          Update saved
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

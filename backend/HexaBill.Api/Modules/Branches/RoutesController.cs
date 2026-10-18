@@ -3,6 +3,7 @@
  */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using HexaBill.Api.Core.Infrastructure;
 using HexaBill.Api.Models;
 
 namespace HexaBill.Api.Modules.Branches
@@ -10,7 +11,7 @@ namespace HexaBill.Api.Modules.Branches
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class RoutesController : TenantScopedController
+    public class RoutesController : RouteScopedController
     {
         private readonly IRouteService _routeService;
         private readonly HexaBill.Api.Core.Infrastructure.IRouteScopeService _routeScopeService;
@@ -19,7 +20,7 @@ namespace HexaBill.Api.Modules.Branches
         public RoutesController(
             IRouteService routeService,
             HexaBill.Api.Core.Infrastructure.IRouteScopeService routeScopeService,
-            ILogger<RoutesController> logger)
+            ILogger<RoutesController> logger) : base(routeScopeService)
         {
             _routeService = routeService;
             _routeScopeService = routeScopeService;
@@ -46,14 +47,12 @@ namespace HexaBill.Api.Modules.Branches
                 
                 var list = await _routeService.GetRoutesAsync(tenantId, branchId);
 
-                // Staff: only assigned routes (Owner/Admin unrestricted)
-                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
-                if (int.TryParse(userIdClaim, out var userId) && tenantId > 0)
+                // Staff: only assigned routes. Manager: only granted routes. Owner/Admin unrestricted.
+                if (tenantId > 0)
                 {
-                    var restricted = await _routeScopeService.GetRestrictedRouteIdsAsync(userId, tenantId, role);
-                    if (restricted != null)
-                        list = list.Where(r => restricted.Contains(r.Id)).ToList();
+                    var accessible = await _routeScopeService.GetAccessibleRouteIdsAsync(CurrentUserId, tenantId, CurrentRole);
+                    if (accessible != null)
+                        list = list.Where(r => accessible.Contains(r.Id)).ToList();
                 }
 
                 return Ok(new ApiResponse<List<RouteDto>> { Success = true, Data = list });
@@ -78,6 +77,7 @@ namespace HexaBill.Api.Modules.Branches
             {
                 var tenantId = CurrentTenantId;
                 if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (await RouteAccessAsync(id) == RouteAccessLevel.None) return RouteNotFound<RouteDetailDto>();
                 var route = await _routeService.GetRouteByIdAsync(id, tenantId);
                 if (route == null) return NotFound(new ApiResponse<RouteDetailDto> { Success = false, Message = "Route not found." });
                 return Ok(new ApiResponse<RouteDetailDto> { Success = true, Data = route });
@@ -96,6 +96,7 @@ namespace HexaBill.Api.Modules.Branches
             {
                 var tenantId = CurrentTenantId;
                 if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (await RouteAccessAsync(id) == RouteAccessLevel.None) return RouteNotFound<RouteSummaryDto>();
                 var summary = await _routeService.GetRouteSummaryAsync(id, tenantId, fromDate, toDate);
                 if (summary == null) return NotFound(new ApiResponse<RouteSummaryDto> { Success = false, Message = "Route not found." });
                 return Ok(new ApiResponse<RouteSummaryDto> { Success = true, Data = summary });
@@ -112,6 +113,7 @@ namespace HexaBill.Api.Modules.Branches
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (await RouteAccessAsync(id) == RouteAccessLevel.None) return RouteNotFound<RouteCollectionSheetDto>();
             var sheetDate = date ?? DateTime.UtcNow.Date;
             var sheet = await _routeService.GetRouteCollectionSheetAsync(id, tenantId, sheetDate);
             if (sheet == null) return NotFound(new ApiResponse<RouteCollectionSheetDto> { Success = false, Message = "Route not found." });
@@ -125,6 +127,7 @@ namespace HexaBill.Api.Modules.Branches
             {
                 var tenantId = CurrentTenantId;
                 if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (!CanCreateRoutes()) return NotAllowed<RouteDto>("Only an owner, admin or manager can create routes.");
 
                 // SECURITY: Prevent Super Admin from creating global routes (TenantId=0)
                 if (tenantId <= 0 && IsSystemAdmin)
@@ -156,6 +159,8 @@ namespace HexaBill.Api.Modules.Branches
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            var denied = await ManageDeniedAsync<RouteDto>(id);
+            if (denied != null) return denied;
             var route = await _routeService.UpdateRouteAsync(id, request, tenantId);
             if (route == null) return NotFound(new ApiResponse<RouteDto> { Success = false, Message = "Route not found." });
             return Ok(new ApiResponse<RouteDto> { Success = true, Data = route });
@@ -166,6 +171,8 @@ namespace HexaBill.Api.Modules.Branches
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            var denied = await ManageDeniedAsync<object>(id);
+            if (denied != null) return denied;
             var ok = await _routeService.DeleteRouteAsync(id, tenantId);
             if (!ok) return NotFound(new ApiResponse<object> { Success = false, Message = "Route not found." });
             return Ok(new ApiResponse<object> { Success = true, Message = "Route deleted." });
@@ -176,6 +183,8 @@ namespace HexaBill.Api.Modules.Branches
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            var denied = await ManageDeniedAsync<object>(id);
+            if (denied != null) return denied;
             var ok = await _routeService.AssignCustomerToRouteAsync(id, customerId, tenantId);
             if (!ok) return BadRequest(new ApiResponse<object> { Success = false, Message = "Route or customer not found." });
             return Ok(new ApiResponse<object> { Success = true, Message = "Customer assigned to route." });
@@ -186,6 +195,8 @@ namespace HexaBill.Api.Modules.Branches
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            var denied = await ManageDeniedAsync<object>(id);
+            if (denied != null) return denied;
             var ok = await _routeService.UnassignCustomerFromRouteAsync(id, customerId, tenantId);
             if (!ok) return NotFound(new ApiResponse<object> { Success = false, Message = "Assignment not found." });
             return Ok(new ApiResponse<object> { Success = true, Message = "Customer unassigned." });
@@ -196,6 +207,8 @@ namespace HexaBill.Api.Modules.Branches
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            var denied = await ManageDeniedAsync<object>(id);
+            if (denied != null) return denied;
             var ok = await _routeService.AssignStaffToRouteAsync(id, userId, tenantId);
             if (!ok) return BadRequest(new ApiResponse<object> { Success = false, Message = "Route or user not found." });
             return Ok(new ApiResponse<object> { Success = true, Message = "Staff assigned to route." });
@@ -206,6 +219,8 @@ namespace HexaBill.Api.Modules.Branches
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            var denied = await ManageDeniedAsync<object>(id);
+            if (denied != null) return denied;
             var ok = await _routeService.UnassignStaffFromRouteAsync(id, userId, tenantId);
             if (!ok) return NotFound(new ApiResponse<object> { Success = false, Message = "Assignment not found." });
             return Ok(new ApiResponse<object> { Success = true, Message = "Staff unassigned." });
@@ -216,8 +231,12 @@ namespace HexaBill.Api.Modules.Branches
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var visit = await _routeService.UpdateCustomerVisitAsync(id, customerId, request, userId, tenantId);
+            var access = await RouteAccessAsync(id);
+            if (access == RouteAccessLevel.None) return RouteNotFound<CustomerVisitDto>();
+            // A visit never moves the saved shop pin on its own; only a manager of the route may ask for that.
+            if (request.UpdateSavedLocation && access != RouteAccessLevel.Manage)
+                return NotAllowed<CustomerVisitDto>("Only an owner, admin or the manager of this route can change a customer's saved location.");
+            var visit = await _routeService.UpdateCustomerVisitAsync(id, customerId, request, CurrentUserId, tenantId, access == RouteAccessLevel.Manage);
             if (visit == null) return NotFound(new ApiResponse<CustomerVisitDto> { Success = false, Message = "Route or customer not found." });
             return Ok(new ApiResponse<CustomerVisitDto> { Success = true, Data = visit });
         }
@@ -227,6 +246,7 @@ namespace HexaBill.Api.Modules.Branches
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (await RouteAccessAsync(id) == RouteAccessLevel.None) return RouteNotFound<List<CustomerVisitDto>>();
             var visits = await _routeService.GetCustomerVisitsAsync(id, tenantId, date);
             return Ok(new ApiResponse<List<CustomerVisitDto>> { Success = true, Data = visits });
         }
@@ -238,6 +258,7 @@ namespace HexaBill.Api.Modules.Branches
             {
                 var tenantId = CurrentTenantId;
                 if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (await RouteAccessAsync(id) == RouteAccessLevel.None) return RouteNotFound<List<RouteStopMapDto>>();
                 if (!_routeService.IsStopLocationEnabled())
                 {
                     return Ok(new ApiResponse<List<RouteStopMapDto>>
@@ -265,6 +286,15 @@ namespace HexaBill.Api.Modules.Branches
                     Errors = new List<string> { ex.Message }
                 });
             }
+        }
+
+        /// <summary>Null when the caller may change the route; otherwise the response to return (404 if hidden, 403 if only assigned).</summary>
+        private async Task<ActionResult?> ManageDeniedAsync<T>(int routeId)
+        {
+            var access = await RouteAccessAsync(routeId);
+            if (access == RouteAccessLevel.Manage) return null;
+            if (access == RouteAccessLevel.None) return RouteNotFound<T>();
+            return NotAllowed<T>("Only an owner, admin or the manager of this route can change routes.");
         }
 
         [HttpGet("feature-flags/stop-location")]

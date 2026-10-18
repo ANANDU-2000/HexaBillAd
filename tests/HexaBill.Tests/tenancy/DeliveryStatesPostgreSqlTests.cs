@@ -43,6 +43,8 @@ public class DeliveryStatesPostgreSqlTests
         var route = new HexaBill.Api.Models.Route { TenantId = t, BranchId = branch.Id, Name = "Synthetic route", CreatedAt = now };
         db.Routes.Add(route);
         await db.SaveChangesAsync();
+        db.RouteCustomers.Add(new RouteCustomer { RouteId = route.Id, CustomerId = customer.Id, AssignedAt = now });
+        await db.SaveChangesAsync();
 
         db.SetRequestTenantScope(t, false);
         var service = new RouteService(db, new SalesSchemaService(db), new ConfigurationBuilder().Build(), NullLogger<RouteService>.Instance);
@@ -63,6 +65,25 @@ public class DeliveryStatesPostgreSqlTests
         var row = Assert.Single(rows);
         Assert.Equal(VisitStatus.Delivered, row.Status);
         Assert.NotNull(row.ReachedAt);
+
+        // With the stop-location flag on, a visit GPS fix is stored on the visit and never fills the empty shop pin.
+        var located = new RouteService(db, new SalesSchemaService(db),
+            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["FeatureFlags:CustomerStopLocation"] = "true" }).Build(),
+            NullLogger<RouteService>.Instance);
+        var fixDay = day.AddDays(-1);
+        var withFix = await located.UpdateCustomerVisitAsync(route.Id, customer.Id,
+            new UpdateCustomerVisitRequest { VisitDate = fixDay, Status = "Arrived", Latitude = 25.2m, Longitude = 55.3m }, t, t, allowSavedPinUpdate: true);
+        Assert.Equal(25.2m, withFix!.Latitude);
+        db.ChangeTracker.Clear();
+        var afterFix = await db.Customers.AsNoTracking().FirstAsync(c => c.Id == customer.Id);
+        Assert.Null(afterFix.MainLatitude);
+        Assert.Null(afterFix.MainLongitude);
+
+        // A customer who is not on the route cannot get a visit.
+        var stranger = new Customer { TenantId = t, OwnerId = t, Name = "Not on the route", CreatedAt = now, UpdatedAt = now };
+        db.Customers.Add(stranger);
+        await db.SaveChangesAsync();
+        Assert.Null(await service.UpdateCustomerVisitAsync(route.Id, stranger.Id, new UpdateCustomerVisitRequest { VisitDate = day, Status = "Delivered" }, t, t));
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             service.UpdateCustomerVisitAsync(route.Id, customer.Id, new UpdateCustomerVisitRequest { VisitDate = day, Status = "Skipped" }, t, t));

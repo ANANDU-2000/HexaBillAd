@@ -4,20 +4,20 @@
  */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using HexaBill.Api.Core.Infrastructure;
 using HexaBill.Api.Models;
-using System.Security.Claims;
 
 namespace HexaBill.Api.Modules.Branches
 {
     [ApiController]
     [Route("api/routes/{routeId:int}/visits")]
     [Authorize]
-    public class CustomerVisitsController : TenantScopedController
+    public class CustomerVisitsController : RouteScopedController
     {
         private readonly IRouteService _routeService;
         private readonly ILogger<CustomerVisitsController> _logger;
 
-        public CustomerVisitsController(IRouteService routeService, ILogger<CustomerVisitsController> logger)
+        public CustomerVisitsController(IRouteService routeService, IRouteScopeService routeScopeService, ILogger<CustomerVisitsController> logger) : base(routeScopeService)
         {
             _routeService = routeService;
             _logger = logger;
@@ -31,8 +31,12 @@ namespace HexaBill.Api.Modules.Branches
                 var tenantId = CurrentTenantId;
                 if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
 
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var staffId = int.TryParse(userIdClaim, out var uid) ? uid : 0;
+                var access = await RouteAccessAsync(routeId);
+                if (access == RouteAccessLevel.None) return RouteNotFound<CustomerVisitDto>("Route or customer not found.");
+                // A visit never moves the saved shop pin on its own; only a manager of the route may ask for that.
+                if (request.UpdateSavedLocation && access != RouteAccessLevel.Manage)
+                    return NotAllowed<CustomerVisitDto>("Only an owner, admin or the manager of this route can change a customer's saved location.");
+                var staffId = CurrentUserId;
 
                 var update = new UpdateCustomerVisitRequest
                 {
@@ -47,7 +51,7 @@ namespace HexaBill.Api.Modules.Branches
                     ManualPin = request.ManualPin
                 };
 
-                var visit = await _routeService.UpdateCustomerVisitAsync(routeId, request.CustomerId, update, staffId, tenantId);
+                var visit = await _routeService.UpdateCustomerVisitAsync(routeId, request.CustomerId, update, staffId, tenantId, access == RouteAccessLevel.Manage);
                 if (visit == null)
                     return NotFound(new ApiResponse<CustomerVisitDto> { Success = false, Message = "Route or customer not found." });
 
@@ -76,6 +80,7 @@ namespace HexaBill.Api.Modules.Branches
             {
                 var tenantId = CurrentTenantId;
                 if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (await RouteAccessAsync(routeId) == RouteAccessLevel.None) return RouteNotFound<List<CustomerVisitDto>>();
                 var visits = await _routeService.GetCustomerVisitsAsync(routeId, tenantId, date);
                 return Ok(new ApiResponse<List<CustomerVisitDto>> { Success = true, Data = visits });
             }

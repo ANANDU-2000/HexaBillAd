@@ -128,6 +128,10 @@ public class HexaBillWebApplicationFactory : WebApplicationFactory<Program>
         db.Customers.AddRange(
             new Customer { Id = 1, TenantId = 1, OwnerId = 1, Name = "Cust A", CreatedAt = now, UpdatedAt = now },
             new Customer { Id = 2, TenantId = 2, OwnerId = 2, Name = "Cust B", CreatedAt = now, UpdatedAt = now });
+        // A visit can only be recorded for a customer who is on the route.
+        db.RouteCustomers.AddRange(
+            new RouteCustomer { Id = 1, RouteId = 1, CustomerId = 1, AssignedAt = now },
+            new RouteCustomer { Id = 2, RouteId = 2, CustomerId = 2, AssignedAt = now });
         db.Payments.AddRange(
             new Payment
             {
