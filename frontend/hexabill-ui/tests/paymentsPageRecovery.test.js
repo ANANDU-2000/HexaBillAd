@@ -35,7 +35,8 @@ beforeEach(()=>{
   const customer={id:1,name:'Synthetic customer',balance:100}
   globalThis.paymentsPageFixture={user:{id:2,tenantId:1,role:'Owner'},params:new URLSearchParams(),form:{customerId:'1',saleId:'',amount:'20',method:'Cash',paymentDate:'2026-10-08'},loseAt:20,customers:{getCustomers:async()=>({success:true,data:{items:[customer]}}),getCustomer:async()=>({success:true,data:customer}),getOutstandingInvoices:async()=>({success:true,data:[]})},api:{getPayments:async()=>({success:true,data:{items:[]}}),createPayment:async(body,key)=>{
     assert.ok(key,'every component POST must supply its saved idempotency key')
-    calls.push({body:structuredClone(body),key});committed.set(key,body)
+    calls.push({body:structuredClone(body),key});if(!globalThis.paymentsPageFixture.rejectAmounts?.includes(body.amount))committed.set(key,body)
+    if(globalThis.paymentsPageFixture.rejectAmounts?.includes(body.amount)){calls[calls.length-1].rejected=true;throw Object.assign(new Error('Request failed with status code 400'),{response:{status:400,data:{message:'Customer has no outstanding invoices. Payment cannot be processed without an invoice reference.'}}})}
     if(globalThis.paymentsPageFixture.loseAt===body.amount){globalThis.paymentsPageFixture.loseAt=null;throw new Error('Lost committed response')}
     return{success:true,data:{payment:{id:committed.size,...body,status:['CHEQUE','CREDIT'].includes(body.mode)?'PENDING':'CLEARED'}}}
   }}}
@@ -86,4 +87,47 @@ test('pending/credit form choice posts the existing CREDIT mode with a saved key
   assert.equal(calls[0].body.mode,'CREDIT')
   assert.equal(calls[0].body.paymentDate,'2026-10-08T00:00:00.000Z')
   assert.equal(rows.size,0)
+})
+
+test('a payment the server rejects is released: no stuck banner, nothing to retry, the form stays open',async()=>{
+  globalThis.paymentsPageFixture.rejectAmounts=[20]
+  await mount();await click('Add Payment')
+  await act(async()=>{await renderer.root.findByType('form').props.onSubmit()})
+  assert.equal(calls.length,1)
+  assert.equal(rows.size,0,'the saved request is released')
+  assert.equal(button('Retry previous payment'),undefined)
+  assert.doesNotMatch(textOf(renderer.root),/is unconfirmed/)
+  // A corrected amount is a new payment with a new key.
+  globalThis.paymentsPageFixture.form.amount='15'
+  await act(async()=>{await renderer.root.findByType('form').props.onSubmit()})
+  assert.equal(calls.length,2)
+  assert.notEqual(calls[1].key,calls[0].key)
+  assert.equal(committed.size,1)
+})
+
+test('a lost response still keeps the retry banner, and names the customer',async()=>{
+  await mount();await click('Add Payment')
+  await act(async()=>{await renderer.root.findByType('form').props.onSubmit()})
+  assert.match(textOf(renderer.root),/Previous payment of .* for customer Synthetic customer is unconfirmed/)
+  assert.ok(button('Retry previous payment'))
+})
+
+test('server-rejected bulk row is released and editable; confirmed rows stay confirmed',async()=>{
+  globalThis.paymentsPageFixture.rejectAmounts=[20]
+  globalThis.paymentsPageFixture.loseAt=null
+  await mount();await click('Bulk Payment')
+  const setRow=async(index,label,value)=>{await act(async()=>{renderer.root.findAll(node=>node.props['aria-label']===label)[index].props.onChange({target:{value}})})}
+  await setRow(0,'Customer','1');await setRow(0,'Amount','10')
+  await click('Add Another Payment');await setRow(1,'Customer','1');await setRow(1,'Amount','20')
+  await click('Add Another Payment');await setRow(2,'Customer','1');await setRow(2,'Amount','30')
+  await click('Save All Payments')
+  assert.deepEqual(calls.map(c=>c.body.amount),[10,20],'the third payment is never sent')
+  assert.equal(committed.size,1)
+  assert.equal(rows.size,0,'no saved batch and no saved payment is left')
+  assert.doesNotMatch(textOf(renderer.root),/Saved bulk payments/)
+  assert.equal(button('Resume bulk payments'),undefined)
+  const amounts=renderer.root.findAll(node=>node.props['aria-label']==='Amount')
+  assert.deepEqual(amounts.map(a=>a.props.value),['20','30'],'rejected and unsent rows are back in the form')
+  assert.ok(amounts.every(a=>!a.props.disabled),'the rows are editable again')
+  assert.match(textOf(renderer.root),/no outstanding invoices/i,'the reason is shown with the row')
 })

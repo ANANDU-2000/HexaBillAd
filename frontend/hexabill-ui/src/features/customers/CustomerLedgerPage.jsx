@@ -34,7 +34,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { readApiErrorReason, saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import { formatCurrency, formatBalance, roundMoney } from '../../utils/currency'
-import { createLedgerPaymentJournal, ledgerPaymentForm, ledgerPaymentScope } from '../../utils/ledgerPaymentIntent'
+import { createLedgerPaymentJournal, isDefinitivePaymentRejection, ledgerPaymentForm, ledgerPaymentScope } from '../../utils/ledgerPaymentIntent'
 import { invoiceBillTotals } from '../../utils/invoiceBillTotals'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
@@ -1845,9 +1845,9 @@ const CustomerLedgerPage = () => {
         }
       }, 2000)
     } catch (error) {
-      // A rejected first attempt can be released, but a rejected retry cannot
-      // prove whether its earlier unconfirmed attempt committed.
-      if (!confirmed && !recovering && intent && [400, 403, 404, 422].includes(error.response?.status)) {
+      // A 400/422 proves this key saved nothing (the server looks the key up before it validates), so it is released even on a
+      // retry. Access errors (403/404) are only trusted on a first attempt: they say nothing about an earlier unconfirmed one.
+      if (!confirmed && intent && (isDefinitivePaymentRejection(error) || (!recovering && [403, 404].includes(error.response?.status)))) {
         paymentJournal.complete(scope, intent.idempotencyKey)
         if (scope === paymentScopeRef.current) setUnconfirmedPayment(null)
       }

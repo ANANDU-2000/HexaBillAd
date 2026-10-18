@@ -15,7 +15,7 @@ import {
 import { formatCurrency } from '../utils/currency'
 import { useBranding } from '../tenant/TenantBrandingContext'
 import { useAuth } from '../hooks/useAuth'
-import { createLedgerPaymentJournal, ledgerPaymentForm, ledgerPaymentScope } from '../utils/ledgerPaymentIntent'
+import { createLedgerPaymentJournal, isDefinitivePaymentRejection, ledgerPaymentForm, ledgerPaymentScope } from '../utils/ledgerPaymentIntent'
 
 const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess, onReceiptPreview }) => {
   const { user } = useAuth()
@@ -220,8 +220,8 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
       submitButtonRef.current.disabled = true
     }
     
+    let intent = savedIntent
     try {
-      let intent = savedIntent
       if (!intent) {
         const paymentData = {
           saleId: invoiceId || null,
@@ -288,6 +288,11 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
         setShowConfirmation(false) // Reset confirmation on error
       }
     } catch (error) {
+      // A 400/422 means the server refused this payment and saved nothing for its key: release it so no retry banner is left behind.
+      if (intent && isDefinitivePaymentRejection(error)) {
+        paymentJournal.discard(scope, intent.idempotencyKey)
+        if (scope === paymentScopeRef.current) setUnconfirmedPayment(null)
+      }
       if (scope !== paymentScopeRef.current) return
       
       setShowConfirmation(false) // Reset confirmation on error

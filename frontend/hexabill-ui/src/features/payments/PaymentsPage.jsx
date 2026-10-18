@@ -47,7 +47,7 @@ import { offerReceiptPreviewAfterPayment } from '../../utils/offerReceiptPreview
 import { canReceivePaymentReceipt, currentReceiptSelection, receiptIneligibilityReason, paymentStatusLabel, receiptSelectionSummary, toggleVisibleReceiptSelection, mergeSelectedPaymentRecords } from '../../utils/receiptEligibility'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import Alert from '../../components/ui/Alert'
-import { createLedgerPaymentJournal, createPaymentBatchJournal, ledgerPaymentAccountPrefix, ledgerPaymentForm, ledgerPaymentScope, paymentBatchScope } from '../../utils/ledgerPaymentIntent'
+import { bulkRowFromSaved, createLedgerPaymentJournal, createPaymentBatchJournal, isDefinitivePaymentRejection, ledgerPaymentAccountPrefix, ledgerPaymentForm, ledgerPaymentScope, paymentBatchScope, paymentRejectionMessage } from '../../utils/ledgerPaymentIntent'
 
 const PaymentsPage = () => {
   const { user } = useAuth()
@@ -129,6 +129,7 @@ const PaymentsPage = () => {
   }, [accountPrefix])
   const [unconfirmedPayments, setUnconfirmedPayments] = useState([])
   const [savedBatch, setSavedBatch] = useState(null)
+  const [bulkRowErrors, setBulkRowErrors] = useState({})
   const [recoveryError, setRecoveryError] = useState(null)
   const refreshRecovery = useCallback(() => {
     try {
@@ -142,6 +143,13 @@ const PaymentsPage = () => {
     setSavedBatch(null)
     refreshRecovery()
   }, [refreshRecovery])
+
+  // The name when the customer is in the loaded list; otherwise the id, never a bare number pretending to be a name.
+  const customerLabel = (id) => {
+    if (id == null) return 'Cash Customer'
+    const found = customers.find(c => String(c.id) === String(id))
+    return found?.name || `#${id}`
+  }
 
   const bulkRows = savedBatch ? savedBatch.rows.map(row => ({
     ...row.request, method: row.request.mode, paymentDate: JSON.parse(row.form).date,
@@ -348,7 +356,10 @@ const PaymentsPage = () => {
       window.dispatchEvent(new CustomEvent('paymentCreated', { detail: { payment: response.data } }))
       window.dispatchEvent(new CustomEvent('dataUpdated'))
     } catch (error) {
-      if (prefix === accountPrefixRef.current) toast.error(error?.response?.data?.message || error.message || 'Payment is unconfirmed. Retry the previous payment.')
+      // A 400/422 means the server refused this payment and saved nothing for its key: release it instead of leaving a retry banner.
+      const refused = isDefinitivePaymentRejection(error)
+      if (refused) paymentJournal.discard(intent.scope, intent.idempotencyKey)
+      if (prefix === accountPrefixRef.current) toast.error(refused ? paymentRejectionMessage(error) : (error?.response?.data?.message || error.message || 'Payment is unconfirmed. Retry the previous payment.'))
     } finally {
       submittingRef.current = false
       if (prefix === accountPrefixRef.current) { setSubmitting(false); refreshRecovery() }
@@ -434,7 +445,17 @@ const PaymentsPage = () => {
         return paymentsAPI.createPayment(request,key)
       }, progress => { if (prefix === accountPrefixRef.current) setSavedBatch(progress) })
       if (prefix !== accountPrefixRef.current) return
+      if (batch.rejected) {
+        // The server refused a payment (nothing saved for it). Confirmed rows stay recorded; the refused row and the unsent ones come back editable.
+        if (batch.rows.length) toast.success(`Confirmed ${batch.rows.length} payment(s).`)
+        toast.error(batch.rejected.message)
+        setBulkPayments(batch.rejected.rows.map(bulkRowFromSaved))
+        setBulkRowErrors({ 0: batch.rejected.message })
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
+        return
+      }
       toast.success(`Confirmed ${batch.rows.length} payment(s).`)
+      setBulkRowErrors({})
       setShowBulkPaymentModal(false)
       setBulkPayments([{customerId:'',amount:'',method:'Cash',paymentDate:localDateString(new Date())}])
       window.dispatchEvent(new CustomEvent('dataUpdated'))
@@ -613,7 +634,7 @@ const PaymentsPage = () => {
           tone="warning"
           action={<button type="button" disabled={submitting} onClick={() => executePayment(intent)} className="min-h-[36px] rounded-sm border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 disabled:opacity-50">Retry previous payment</button>}
         >
-          Previous payment of {money(intent.request.amount)} for customer {intent.request.customerId ?? 'Cash Customer'} is unconfirmed. Confirm it before recording another payment for this customer.
+          Previous payment of {money(intent.request.amount)} for customer {customerLabel(intent.request.customerId)} is unconfirmed. Confirm it before recording another payment for this customer.
         </Alert>
       ))}
       {savedBatch && (
@@ -1393,7 +1414,7 @@ const PaymentsPage = () => {
           </div>
           {bulkRows.map((payment, index) => {
             const locked = submitting || Boolean(savedBatch)
-            const patch = (fields) => { const updated = [...bulkPayments]; updated[index] = { ...updated[index], ...fields }; setBulkPayments(updated) }
+            const patch = (fields) => { const updated = [...bulkPayments]; updated[index] = { ...updated[index], ...fields }; setBulkPayments(updated); setBulkRowErrors(({ [index]: _cleared, ...rest }) => rest) }
             const refRequired = ['CHEQUE', 'ONLINE'].includes(String(payment.method).toUpperCase())
             const cell = 'min-w-0'
             const mini = (text) => <span className="mb-0.5 block text-[11px] font-medium text-neutral-500 md:hidden">{text}</span>
@@ -1442,6 +1463,9 @@ const PaymentsPage = () => {
                     <span className="hidden text-[11px] text-neutral-500 md:inline" title={payment.confirmed ? 'Confirmed' : 'Awaiting confirmation'}>{payment.confirmed ? '✓' : '…'}</span>
                   ) : null}
                 </div>
+                {bulkRowErrors[index] && (
+                  <p role="alert" className="col-span-2 border-l-4 border-l-error bg-white py-1 pl-2 text-xs text-neutral-800 md:col-span-7">{bulkRowErrors[index]}</p>
+                )}
               </div>
             )
           })}
