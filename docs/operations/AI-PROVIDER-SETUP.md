@@ -25,6 +25,7 @@ Ai__Providers__<key>__BaseUrl=<URL up to, not including, /chat/completions>
 Ai__Providers__<key>__Model=<model id from the provider>
 Ai__Providers__<key>__ApiKey=<secret>
 Ai__Providers__<key>__Paid=false
+Ai__Providers__<key>__MaxOutputTokens=512  # bounded to 64..2048 by the server
 ```
 Confirm the current URL, model id, privacy terms, price and quota in the provider's own documentation first. Do not copy model names from old notes.
 
@@ -39,6 +40,7 @@ Confirm the current URL, model id, privacy terms, price and quota in the provide
 ## What to watch
 - Daily call and token counts per company are in `AiUsageDaily` (counts only). A company at its limit gets "The daily AI limit for this company is used up."
 - Logs carry provider, company id, purpose and timing, never prompts, answers or keys.
+- Per-provider output token caps are sent to the provider; reservations include the larger allowed answer cap. Daily token counts still use estimated input and provider-reported usage, and are not an exact bill or currency spend cap. Provider-side billing controls are also required; failed/timed-out attempts may incur charges that this ledger cannot reconcile.
 - A provider outage, timeout or refusal never breaks the normal screens.
 - Turn it off at once with `Ai__Enabled=false` (or by removing the provider key).
 

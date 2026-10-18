@@ -52,6 +52,8 @@ public sealed class AiProviderOptions
     public string ApiKey { get; set; } = string.Empty;
     /// <summary>True when calls cost money. A paid provider is never used as a silent fallback.</summary>
     public bool Paid { get; set; }
+    public int MaxOutputTokens { get; set; } = 512;
+    public int EffectiveMaxOutputTokens => Math.Clamp(MaxOutputTokens, 64, 2048);
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(Model) && !string.IsNullOrWhiteSpace(BaseUrl)
@@ -81,6 +83,7 @@ public interface IAiProvider
     string Key { get; }
     bool Paid { get; }
     bool IsConfigured { get; }
+    int MaxOutputTokens => 512;
     Task<ProviderReply> CompleteAsync(string? system, string prompt, CancellationToken ct);
 }
 
@@ -130,6 +133,7 @@ public sealed class OpenAiCompatibleProvider : IAiProvider
     public string Key { get; }
     public bool Paid => _options.Paid;
     public bool IsConfigured => _options.IsConfigured;
+    public int MaxOutputTokens => _options.EffectiveMaxOutputTokens;
 
     public OpenAiCompatibleProvider(string key, AiProviderOptions options, HttpClient http) { Key = key; _options = options; _http = http; }
 
@@ -140,7 +144,7 @@ public sealed class OpenAiCompatibleProvider : IAiProvider
         messages.Add(new { role = "user", content = prompt });
         using var request = new HttpRequestMessage(HttpMethod.Post, _options.BaseUrl.TrimEnd('/') + "/chat/completions")
         {
-            Content = new StringContent(JsonSerializer.Serialize(new { model = _options.Model, messages }), Encoding.UTF8, "application/json"),
+            Content = new StringContent(JsonSerializer.Serialize(new { model = _options.Model, messages, max_tokens = MaxOutputTokens }), Encoding.UTF8, "application/json"),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
         using var response = await _http.SendAsync(request, ct);
@@ -166,17 +170,19 @@ public sealed class GeminiProvider : IAiProvider
     public string Key { get; }
     public bool Paid => _options.Paid;
     public bool IsConfigured => _options.IsConfigured;
+    public int MaxOutputTokens => _options.EffectiveMaxOutputTokens;
 
     public GeminiProvider(string key, AiProviderOptions options, HttpClient http) { Key = key; _options = options; _http = http; }
 
     public async Task<ProviderReply> CompleteAsync(string? system, string prompt, CancellationToken ct)
     {
         object body = string.IsNullOrWhiteSpace(system)
-            ? new { contents = new[] { new { role = "user", parts = new[] { new { text = prompt } } } } }
+            ? new { contents = new[] { new { role = "user", parts = new[] { new { text = prompt } } } }, generationConfig = new { maxOutputTokens = MaxOutputTokens } }
             : new
             {
                 systemInstruction = new { parts = new[] { new { text = system } } },
                 contents = new[] { new { role = "user", parts = new[] { new { text = prompt } } } },
+                generationConfig = new { maxOutputTokens = MaxOutputTokens },
             };
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_options.BaseUrl.TrimEnd('/')}/models/{Uri.EscapeDataString(_options.Model)}:generateContent")
         {
@@ -230,7 +236,7 @@ public sealed class AiGateway
         _clock = clock ?? (() => DateTime.UtcNow);
     }
 
-    private static int EstimateTokens(AiCall call) => Math.Max(1, ((call.Prompt?.Length ?? 0) + (call.System?.Length ?? 0)) / 4) + 256; // rough input plus allowance for the answer
+    private static int EstimateTokens(AiCall call, int maxOutputTokens) => Math.Max(1, ((call.Prompt?.Length ?? 0) + (call.System?.Length ?? 0)) / 4) + Math.Clamp(maxOutputTokens, 64, 2048); // estimated input plus the bounded answer
 
     public async Task<AiResult> CompleteAsync(AiCall call, CancellationToken ct = default)
     {
@@ -246,7 +252,9 @@ public sealed class AiGateway
         if (primary == null) return new AiResult(AiOutcome.Unavailable, null, null, "No AI provider is configured.");
 
         var now = _clock();
-        var estimate = EstimateTokens(call);
+        var fallback = Resolve(_options.FallbackProvider);
+        var canFallback = fallback != null && !ReferenceEquals(fallback, primary) && (!fallback.Paid || _options.AllowPaidFallback);
+        var estimate = EstimateTokens(call, Math.Max(primary.MaxOutputTokens, canFallback ? fallback!.MaxOutputTokens : 0));
         bool reserved;
         try
         {
@@ -264,9 +272,8 @@ public sealed class AiGateway
         var attempt = await TryProviderAsync(primary, call, ct);
         if (attempt == null)
         {
-            var fallback = Resolve(_options.FallbackProvider);
-            if (fallback != null && !ReferenceEquals(fallback, primary) && (!fallback.Paid || _options.AllowPaidFallback))
-                attempt = await TryProviderAsync(fallback, call, ct);
+            if (canFallback)
+                attempt = await TryProviderAsync(fallback!, call, ct);
         }
 
         if (attempt == null)
@@ -312,7 +319,7 @@ public sealed class AiGateway
             if (_options.Providers.TryGetValue(key, out var p))
             {
                 if (!p.IsConfigured) return (null, "The provider configuration is not ready. Use the Look up tab.");
-                providers.Add(new { key, p.Kind, p.BaseUrl, p.Model, p.Paid });
+                providers.Add(new { key, p.Kind, p.BaseUrl, p.Model, p.Paid, p.EffectiveMaxOutputTokens });
             }
             else if (key == "mock") providers.Add(new { key, Model = "synthetic-only" });
             else return (null, "The provider configuration is not ready. Use the Look up tab.");
@@ -320,7 +327,7 @@ public sealed class AiGateway
         if (providers.Count == 0) return (null, "The provider configuration is not ready. Use the Look up tab.");
         var policy = JsonSerializer.Serialize(new { _options.DataPolicyVersion, _options.DataPolicyNotice, _options.AllowPaidFallback, providers });
         var names = string.Join("; ", new[] { _options.Provider, _options.FallbackProvider }.Where(k => !string.IsNullOrWhiteSpace(k))
-            .Select(k => _options.Providers.TryGetValue(k, out var p) ? $"{k}: {p.Model}" : k));
+            .Select(k => _options.Providers.TryGetValue(k, out var p) ? $"{k}: {p.Model} (up to {p.EffectiveMaxOutputTokens} output tokens)" : k));
         return (Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(policy))).ToLowerInvariant(),
             $"{_options.DataPolicyNotice}\nProviders in order: {names}. Policy: {_options.DataPolicyVersion}.");
     }

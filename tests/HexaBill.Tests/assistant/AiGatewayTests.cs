@@ -141,6 +141,7 @@ public class AiGatewayTests
         Assert.Equal("Bearer " + FakeKey, request.Headers.Authorization!.ToString());
         using var json = JsonDocument.Parse(body);
         Assert.Equal("model-from-config", json.RootElement.GetProperty("model").GetString());
+        Assert.Equal(512, json.RootElement.GetProperty("max_tokens").GetInt32());
         Assert.Equal("system", json.RootElement.GetProperty("messages")[0].GetProperty("role").GetString());
         Assert.Equal(secretPrompt, json.RootElement.GetProperty("messages")[1].GetProperty("content").GetString());
 
@@ -166,6 +167,46 @@ public class AiGatewayTests
         Assert.DoesNotContain(FakeKey, request.RequestUri!.ToString());
         Assert.Equal(FakeKey, request.Headers.GetValues("x-goog-api-key").Single());
         Assert.Contains("systemInstruction", body);
+        using var json = JsonDocument.Parse(body);
+        Assert.Equal(512, json.RootElement.GetProperty("generationConfig").GetProperty("maxOutputTokens").GetInt32());
+    }
+
+    [Fact]
+    public async Task TokenReservation_CoversTheConfiguredAnswerLimit_BeforeCallingTheProvider()
+    {
+        var handler = new StubHandler(_ => Task.FromResult(Json(OpenAiOk)));
+        var (gateway, _, _) = Build(new AiOptions { Enabled = true, Provider = "p", DailyTokenLimitPerTenant = 400 }, new OpenAiCompatibleProvider("p", OpenAi(), new HttpClient(handler)));
+        Assert.Equal(AiOutcome.Refused, (await gateway.CompleteAsync(Call())).Outcome);
+        Assert.Empty(handler.Calls);
+    }
+
+    [Theory]
+    [InlineData(-1, 64)]
+    [InlineData(128, 128)]
+    [InlineData(100000, 2048)]
+    public async Task BothAdapters_BoundConfiguredOutput_EvenWithoutSystemText(int configured, int expected)
+    {
+        var compatible = new StubHandler(_ => Task.FromResult(Json(OpenAiOk)));
+        var options = OpenAi(); options.MaxOutputTokens = configured;
+        await new OpenAiCompatibleProvider("p", options, new HttpClient(compatible)).CompleteAsync(null, "hello", default);
+        using var c = JsonDocument.Parse(Assert.Single(compatible.Calls).Body);
+        Assert.Equal(expected, c.RootElement.GetProperty("max_tokens").GetInt32());
+        var gemini = new StubHandler(_ => Task.FromResult(Json(GeminiOk)));
+        await new GeminiProvider("g", options, new HttpClient(gemini)).CompleteAsync(null, "hello", default);
+        using var g = JsonDocument.Parse(Assert.Single(gemini.Calls).Body);
+        Assert.Equal(expected, g.RootElement.GetProperty("generationConfig").GetProperty("maxOutputTokens").GetInt32());
+    }
+
+    [Fact]
+    public async Task ReservationCoversALargerAllowedFallback_BeforeAnyAttempt()
+    {
+        var handler = new StubHandler(_ => Task.FromResult(Json(OpenAiOk)));
+        var primary = OpenAi(); primary.MaxOutputTokens = 64;
+        var fallback = OpenAi(); fallback.MaxOutputTokens = 1024;
+        var (gateway, _, _) = Build(new AiOptions { Enabled = true, Provider = "p", FallbackProvider = "f", DailyTokenLimitPerTenant = 800 },
+            new OpenAiCompatibleProvider("p", primary, new HttpClient(handler)), new OpenAiCompatibleProvider("f", fallback, new HttpClient(handler)));
+        Assert.Equal(AiOutcome.Refused, (await gateway.CompleteAsync(Call())).Outcome);
+        Assert.Empty(handler.Calls);
     }
 
     [Fact]
@@ -183,9 +224,9 @@ public class AiGatewayTests
     [Fact]
     public async Task TokenLimit_CountsActualUsage_AndRefusesAnOversizedRequest()
     {
-        // Actual usage reported by the provider is 290 tokens, so a second call (estimate about 266) would pass 300.
+        // Actual usage is 290 tokens; another reservation including its 512-token answer exceeds the remaining 310.
         var handler = new StubHandler(_ => Task.FromResult(Json("{\"choices\":[{\"message\":{\"content\":\"x\"}}],\"usage\":{\"prompt_tokens\":200,\"completion_tokens\":90}}")));
-        var (gateway, ledger, _) = Build(new AiOptions { Enabled = true, Provider = "p", DailyTokenLimitPerTenant = 300 }, new OpenAiCompatibleProvider("p", OpenAi(), new HttpClient(handler)));
+        var (gateway, ledger, _) = Build(new AiOptions { Enabled = true, Provider = "p", DailyTokenLimitPerTenant = 600 }, new OpenAiCompatibleProvider("p", OpenAi(), new HttpClient(handler)));
         Assert.True((await gateway.CompleteAsync(Call(new string('a', 40)))).Ok);
         Assert.Equal(290, ledger.Snapshot(1, DateTime.UtcNow).Tokens);
         Assert.Equal(AiOutcome.Refused, (await gateway.CompleteAsync(Call(new string('a', 40)))).Outcome);
