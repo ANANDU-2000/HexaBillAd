@@ -1,4 +1,8 @@
-# Voice and live-location: consent and data-use design (PROPOSAL, nothing built)
+# Voice and live-location: consent and data-use design
+
+**Implementation status (2026-10-18, local, not deployed):** built behind switches, using the rules below as written. Push-to-talk (section A) is in the assistant's Ask tab: hold to talk, editable transcript, language choice (English, Malayalam, Hindi, Arabic), opt-out stored per browser, privacy note, browser speech service only, no audio or transcript kept by HexaBill, nothing acts until the person presses Ask and then reviews and confirms. Live location (section B) is off unless `FeatureFlags:LiveDriverLocation` is true: opt-in per run with an explanation, foreground only, one overwritten row per route and driver, deleted on Stop sharing or End route, expires, shown to owners, admins and granted managers with a "not recent" flag, no coordinates on screen or in audit rows. Real microphone use, real Malayalam recognition, real phones and background behaviour are NOT TESTED. The decisions listed at the end of each section are still the owner's to make before anyone switches these on in production.
+
+(Original proposal text follows.)
 
 Status: proposal for the owner to approve or change. No code, schema or provider was added for this. It follows `AGENTS.md`: no background microphone or location, no consequential action from an unconfirmed transcript, provider keys server-side, no silent paid fallback, tenant isolation on every object.
 
