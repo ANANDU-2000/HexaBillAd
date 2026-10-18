@@ -12,7 +12,6 @@ import {
   Download,
   Phone,
   Mail,
-  MapPin,
   CreditCard,
   Filter,
   RefreshCw,
@@ -37,7 +36,8 @@ import { TabNavigation } from '../../components/ui/index'
 import { useDebounce } from '../../hooks/useDebounce'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
-import StopLocationMap, { captureDeviceGps } from '../../components/StopLocationMap'
+import CustomerPinField from '../../components/CustomerPinField'
+import { isValidPoint } from '../../utils/shopLocation'
 import { localDateString } from '../../utils/dateFormat'
 import { saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 import { readCustomersStateFromParams, syncCustomersSearchParams } from '../../utils/customersUrl'
@@ -103,7 +103,6 @@ const CustomersPage = () => {
   })
   const [duplicateConfirm, setDuplicateConfirm] = useState({ isOpen: false, data: null, existingName: '' })
   const [stopLocationEnabled, setStopLocationEnabled] = useState(false)
-  const [gpsPinModal, setGpsPinModal] = useState({ open: false, selected: null })
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -125,6 +124,10 @@ const CustomersPage = () => {
   const selectedBranchId = watch('branchId')
   const watchMainLat = watch('mainLatitude')
   const watchMainLng = watch('mainLongitude')
+  const watchClearMain = watch('clearMainLocation')
+  const savedPoint = isValidPoint(selectedCustomer?.mainLatitude, selectedCustomer?.mainLongitude)
+    ? { lat: Number(selectedCustomer.mainLatitude), lng: Number(selectedCustomer.mainLongitude) }
+    : null
 
   useEffect(() => {
     routesAPI.getStopLocationFeatureFlag()
@@ -1197,43 +1200,16 @@ const CustomersPage = () => {
               />
             </div>
             {stopLocationEnabled && (
-              <div className="md:col-span-2 space-y-2 border border-neutral-200 rounded-lg p-3 bg-neutral-50">
-                <p className="text-sm font-medium text-neutral-800 flex items-center gap-1">
-                  <MapPin className="h-4 w-4" /> Delivery GPS pin
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input label="Latitude" type="number" step="any" {...register('mainLatitude')} />
-                  <Input label="Longitude" type="number" step="any" {...register('mainLongitude')} />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="text-xs px-2 py-1 border rounded bg-white"
-                    onClick={() => setGpsPinModal({
-                      open: true,
-                      selected: (watchMainLat && watchMainLng)
-                        ? { lat: Number(watchMainLat), lng: Number(watchMainLng) }
-                        : null,
-                    })}
-                  >
-                    Pick on map
-                  </button>
-                  <button
-                    type="button"
-                    className="text-xs px-2 py-1 border rounded bg-white"
-                    onClick={async () => {
-                      const gps = await captureDeviceGps()
-                      if (gps) {
-                        setValue('mainLatitude', gps.lat)
-                        setValue('mainLongitude', gps.lng)
-                        setValue('clearMainLocation', false)
-                      } else toast.error('GPS unavailable')
-                    }}
-                  >
-                    Use device GPS
-                  </button>
-                </div>
-              </div>
+              <>
+                <input type="hidden" {...register('mainLatitude')} />
+                <input type="hidden" {...register('mainLongitude')} />
+                <CustomerPinField
+                  lat={watchMainLat}
+                  lng={watchMainLng}
+                  onChange={({ lat, lng }) => { setValue('mainLatitude', lat); setValue('mainLongitude', lng); setValue('clearMainLocation', false) }}
+                  onClear={() => { setValue('mainLatitude', ''); setValue('mainLongitude', '') }}
+                />
+              </>
             )}
           </div>
 
@@ -1387,48 +1363,23 @@ const CustomersPage = () => {
             </div>
 
             {stopLocationEnabled && (
-              <div className="md:col-span-2 space-y-2 border border-neutral-200 rounded-lg p-3 bg-neutral-50">
-                <p className="text-sm font-medium text-neutral-800 flex items-center gap-1">
-                  <MapPin className="h-4 w-4" /> Delivery GPS pin
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input label="Latitude" type="number" step="any" {...register('mainLatitude')} />
-                  <Input label="Longitude" type="number" step="any" {...register('mainLongitude')} />
-                </div>
-                <div className="flex flex-wrap gap-2 items-center">
-                  <button
-                    type="button"
-                    className="text-xs px-2 py-1 border rounded bg-white"
-                    onClick={() => setGpsPinModal({
-                      open: true,
-                      selected: (watchMainLat && watchMainLng)
-                        ? { lat: Number(watchMainLat), lng: Number(watchMainLng) }
-                        : null,
-                    })}
-                  >
-                    Pick on map
-                  </button>
-                  <button
-                    type="button"
-                    className="text-xs px-2 py-1 border rounded bg-white"
-                    onClick={async () => {
-                      const gps = await captureDeviceGps()
-                      if (gps) {
-                        setValue('mainLatitude', gps.lat)
-                        setValue('mainLongitude', gps.lng)
-                        setValue('clearMainLocation', false)
-                      } else toast.error('GPS unavailable')
-                    }}
-                  >
-                    Use device GPS
-                  </button>
-                  <label className="text-xs flex items-center gap-1 ml-auto">
-                    <input type="checkbox" {...register('clearMainLocation')} />
-                    Clear saved pin
-                  </label>
-                </div>
-              </div>
+              <>
+                <input type="hidden" {...register('mainLatitude')} />
+                <input type="hidden" {...register('mainLongitude')} />
+                <CustomerPinField
+                  lat={watchMainLat}
+                  lng={watchMainLng}
+                  saved={savedPoint}
+                  updatedAt={selectedCustomer?.locationUpdatedAt}
+                  updatedByMe={!!selectedCustomer?.locationUpdatedBy && selectedCustomer.locationUpdatedBy === user?.id}
+                  clearing={!!watchClearMain}
+                  onChange={({ lat, lng }) => { setValue('mainLatitude', lat); setValue('mainLongitude', lng); setValue('clearMainLocation', false) }}
+                  onClear={() => { setValue('mainLatitude', savedPoint ? savedPoint.lat : ''); setValue('mainLongitude', savedPoint ? savedPoint.lng : '') }}
+                  onRemoveSaved={(remove) => setValue('clearMainLocation', !!remove)}
+                />
+              </>
             )}
+
 
             {/* Branch and Route Assignment */}
             {branches.length > 0 && (
@@ -1665,48 +1616,6 @@ const CustomersPage = () => {
           </div>
         </div>
       </Modal>
-
-      {gpsPinModal.open && (
-        <Modal
-          isOpen
-          title="Pick delivery GPS pin"
-          onClose={() => setGpsPinModal({ open: false, selected: null })}
-        >
-          <div className="space-y-3">
-            <StopLocationMap
-              pickMode
-              selected={gpsPinModal.selected}
-              onPick={(coords) => setGpsPinModal((p) => ({ ...p, selected: coords }))}
-              height={280}
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="px-3 py-2 border rounded-lg"
-                onClick={() => setGpsPinModal({ open: false, selected: null })}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="px-3 py-2 bg-primary-600 text-white rounded-lg"
-                onClick={() => {
-                  if (!gpsPinModal.selected) {
-                    toast.error('Tap the map to choose a pin')
-                    return
-                  }
-                  setValue('mainLatitude', gpsPinModal.selected.lat)
-                  setValue('mainLongitude', gpsPinModal.selected.lng)
-                  setValue('clearMainLocation', false)
-                  setGpsPinModal({ open: false, selected: null })
-                }}
-              >
-                Use this pin
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
 
       <ConfirmDangerModal
         isOpen={dangerModal.isOpen}

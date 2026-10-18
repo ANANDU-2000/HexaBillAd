@@ -1112,7 +1112,7 @@ const RouteDetailPage = () => {
                     <td className="px-3 py-2 font-medium">{s.customerName}</td>
                     <td className="px-3 py-2 text-neutral-600">
                       {s.mainLatitude != null
-                        ? `${Number(s.mainLatitude).toFixed(5)}, ${Number(s.mainLongitude).toFixed(5)}`
+                        ? 'Location saved'
                         : <span className="text-warning-fg">No location yet</span>}
                     </td>
                     <td className="px-3 py-2 capitalize">{(s.mapStatus || '').replace('_', ' ')}</td>

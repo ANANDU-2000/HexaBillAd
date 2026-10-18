@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { gpsFailureReason } from '../utils/shopLocation'
 
 // Vite: fix default marker icon paths
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
@@ -126,22 +127,26 @@ export default function StopLocationMap({
   )
 }
 
-/** Capture device GPS; returns { lat, lng } or null. */
-export function captureDeviceGps(timeoutMs = 12000) {
+/**
+ * Ask the device for its position once. Resolves to { ok: true, lat, lng, accuracy } or { ok: false, reason }
+ * where reason is denied | timeout | unavailable | unsupported (see utils/shopLocation.js for the wording).
+ */
+export function requestDeviceGps(timeoutMs = 12000) {
   return new Promise((resolve) => {
-    if (!navigator?.geolocation) {
-      resolve(null)
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      resolve({ ok: false, reason: 'unsupported' })
       return
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        resolve({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        })
-      },
-      () => resolve(null),
+      (pos) => resolve({ ok: true, lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+      (err) => resolve({ ok: false, reason: gpsFailureReason(err) }),
       { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 }
     )
   })
+}
+
+/** Capture device GPS; returns { lat, lng } or null. */
+export async function captureDeviceGps(timeoutMs = 12000) {
+  const result = await requestDeviceGps(timeoutMs)
+  return result.ok ? { lat: result.lat, lng: result.lng } : null
 }

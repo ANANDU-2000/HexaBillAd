@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { customersAPI } from '../../services/index'
 import { LoadingCard } from '../../components/Loading'
 import { localDateString } from '../../utils/dateFormat'
+import { navigationUrl } from '../../utils/shopLocation'
 
 const CustomerDetailPage = () => {
   const { id } = useParams()
@@ -241,9 +242,12 @@ const CustomerDetailPage = () => {
           <div>
             <label className="text-sm font-medium text-neutral-500">Location</label>
             <div className="mt-1 text-sm text-neutral-900">{customer.location || 'N/A'}</div>
-            {(customer.mainLatitude != null && customer.mainLongitude != null) && (
+            {navigationUrl(customer.mainLatitude, customer.mainLongitude) && (
               <div className="mt-2 text-sm text-neutral-700">
-                GPS: {Number(customer.mainLatitude).toFixed(6)}, {Number(customer.mainLongitude).toFixed(6)}
+                Shop location saved.{' '}
+                <a href={navigationUrl(customer.mainLatitude, customer.mainLongitude)} target="_blank" rel="noopener noreferrer" className="text-primary-700 underline">
+                  Open in maps
+                </a>
               </div>
             )}
           </div>

@@ -739,8 +739,15 @@ namespace HexaBill.Api.Modules.Customers
                 return;
             }
 
+            if (request.MainLatitude.HasValue != request.MainLongitude.HasValue)
+                throw new InvalidOperationException("The shop location needs both a latitude and a longitude, or neither.");
+
             if (request.MainLatitude.HasValue && request.MainLongitude.HasValue)
             {
+                var lat = request.MainLatitude.Value;
+                var lng = request.MainLongitude.Value;
+                if (Math.Abs(lat) > 90 || Math.Abs(lng) > 180 || (lat == 0 && lng == 0))
+                    throw new InvalidOperationException("The shop location is not a valid map point. Choose it on the map or use your device location again.");
                 customer.MainLatitude = request.MainLatitude;
                 customer.MainLongitude = request.MainLongitude;
                 customer.LocationUpdatedAt = DateTime.UtcNow;
