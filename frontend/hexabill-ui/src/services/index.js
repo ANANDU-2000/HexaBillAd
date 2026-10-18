@@ -2431,6 +2431,24 @@ export const routesAPI = {
     const response = await api.put(`/routes/${routeId}/stops/order`, { customerIds })
     return response.data
   },
+  getLiveLocationFeatureFlag: async () => {
+    const response = await api.get('/routes/feature-flags/live-location')
+    return response.data
+  },
+  /** Driver shares their position (needs an open run and consent in the body). */
+  shareLocation: async (routeId, body) => {
+    const response = await api.post(`/routes/${routeId}/location`, body)
+    return response.data
+  },
+  stopSharingLocation: async (routeId) => {
+    const response = await api.delete(`/routes/${routeId}/location`)
+    return response.data
+  },
+  /** Current positions: everyone for owners and managers of the route, only the caller's own for a driver. */
+  getLiveLocations: async (routeId) => {
+    const response = await api.get(`/routes/${routeId}/location`)
+    return response.data
+  },
   /** { current: open run with live counts | null, last: last finished run | null } */
   getRun: async (routeId) => {
     const response = await api.get(`/routes/${routeId}/run`)

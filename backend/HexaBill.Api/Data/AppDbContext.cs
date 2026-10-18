@@ -156,6 +156,7 @@ namespace HexaBill.Api.Data
         public DbSet<TenantDocument> TenantDocuments { get; set; }
         public DbSet<TenantDocumentVersion> TenantDocumentVersions { get; set; }
         public DbSet<RouteRun> RouteRuns { get; set; }
+        public DbSet<DriverLocationCurrent> DriverLocationCurrents { get; set; }
         public DbSet<Setting> Settings { get; set; }
         public DbSet<DamageCategory> DamageCategories { get; set; }
         public DbSet<DamageInventory> DamageInventories { get; set; }
@@ -733,6 +734,18 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.StorageKey).IsRequired().HasMaxLength(300);
                 entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
                 entity.HasIndex(e => new { e.TenantId, e.DocumentId, e.VersionNumber }).IsUnique();
+            });
+
+            modelBuilder.Entity<DriverLocationCurrent>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.SessionId).IsRequired().HasMaxLength(64);
+                entity.Property(e => e.Latitude).HasColumnType("decimal(9,6)");
+                entity.Property(e => e.Longitude).HasColumnType("decimal(9,6)");
+                entity.Property(e => e.AccuracyMeters).HasColumnType("decimal(8,1)");
+                // One current position per route and driver; no history table.
+                entity.HasIndex(e => new { e.TenantId, e.RouteId, e.UserId }).IsUnique();
+                entity.HasIndex(e => e.RunId);
             });
 
             modelBuilder.Entity<RouteRun>(entity =>

@@ -41,6 +41,14 @@ const STATUS_COLORS = {
   skipped: '#d97706',
 }
 
+const driverIcon = (stale) => L.divIcon({
+  className: '',
+  html: `<div style="background:${stale ? '#94a3b8' : '#1d4ed8'};color:#fff;width:30px;height:30px;border-radius:6px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font:700 12px system-ui,sans-serif">DR</div>`,
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+  popupAnchor: [0, -15],
+})
+
 const numberIcon = (number, color) => L.divIcon({
   className: '',
   html: `<div style="background:${color};color:#fff;width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;font:600 13px system-ui,sans-serif">${number}</div>`,
@@ -56,6 +64,7 @@ const numberIcon = (number, color) => L.divIcon({
  * - selected: { lat, lng } preview pin
  * - numbered: show each stop as its visiting number (stops must carry `position`), coloured by status
  * - showPath: draw a straight line through the stops in order (not a road route)
+ * - drivers: [{ id, name, lat, lng, stale }] live driver markers (grey when the last update is old)
  */
 export default function StopLocationMap({
   stops = [],
@@ -66,6 +75,7 @@ export default function StopLocationMap({
   center = null,
   numbered = false,
   showPath = false,
+  drivers = [],
 }) {
   const [mapCenter, setMapCenter] = useState(center || UAE_CENTER)
 
@@ -140,6 +150,16 @@ export default function StopLocationMap({
               </div>
             </Popup>
           </CircleMarker>
+        ))}
+        {(drivers || []).filter((d) => Number.isFinite(d.lat) && Number.isFinite(d.lng)).map((d) => (
+          <Marker key={`driver-${d.id}`} position={[d.lat, d.lng]} icon={driverIcon(d.stale)} zIndexOffset={1000}>
+            <Popup>
+              <div className="text-sm">
+                <div className="font-medium">{d.name}</div>
+                <div className="text-neutral-500">{d.stale ? 'Last update is not recent' : 'Live position'}</div>
+              </div>
+            </Popup>
+          </Marker>
         ))}
         {selected?.lat != null && selected?.lng != null && (
           <Marker position={[selected.lat, selected.lng]}>

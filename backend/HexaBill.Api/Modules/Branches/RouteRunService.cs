@@ -166,9 +166,24 @@ namespace HexaBill.Api.Modules.Branches
             run.StopsFailed = counts.failed;
             run.StopsSkipped = counts.skipped;
             run.StopsNotVisited = counts.notVisited;
+            await ClearSharedLocationsAsync(run.RouteId, run.TenantId);
             Audit(run.TenantId, userId, "RouteRunEnded",
                 $"route {run.RouteId}: {counts.delivered} delivered, {counts.failed} failed, {counts.skipped} skipped, {counts.notVisited} not visited of {counts.total}");
             await _db.SaveChangesAsync();
+        }
+
+        /// <summary>A finished run leaves no live positions behind. If the table is not installed yet there is nothing to clear.</summary>
+        private async Task ClearSharedLocationsAsync(int routeId, int tenantId)
+        {
+            try
+            {
+                var rows = await _db.DriverLocationCurrents.Where(l => l.RouteId == routeId && l.TenantId == tenantId).ToListAsync();
+                if (rows.Count > 0) _db.DriverLocationCurrents.RemoveRange(rows);
+            }
+            catch (Exception ex) when (RouteService.IsRelationMissing42P01(ex))
+            {
+                // Live location is not installed on this database.
+            }
         }
 
         /// <summary>Latest visit per stop for the service day decides each stop's outcome.</summary>

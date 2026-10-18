@@ -13,6 +13,7 @@ import EmptyState from '../../components/ui/EmptyState'
 import BackLink from '../../components/ui/BackLink'
 import Modal from '../../components/Modal'
 import StopLocationMap from '../../components/StopLocationMap'
+import LocationSharingPanel from './LocationSharingPanel'
 import {
   statusLabel, needsReason, reasonIsValid, orderedStops, mappableStops, locationNeededStops, stopNavigationUrl,
   runPhase, runSummaryParts, endRouteWarning, visitRequest, MIN_REASON_LENGTH,
@@ -170,20 +171,23 @@ export default function DriverRoutePage() {
   const [endOpen, setEndOpen] = useState(false)
   const [endNote, setEndNote] = useState('')
   const [locationOn, setLocationOn] = useState(false)
+  const [liveOn, setLiveOn] = useState(false)
 
   const refresh = useCallback(async (quiet = false) => {
     if (!quiet) setLoad({ loading: true, error: false, notFound: false })
     try {
-      const [routeRes, stopsRes, runRes, flagRes] = await Promise.all([
+      const [routeRes, stopsRes, runRes, flagRes, liveRes] = await Promise.all([
         routesAPI.getRoute(routeId),
         routesAPI.getStopsMap(routeId, date),
         routesAPI.getRun(routeId),
         routesAPI.getStopLocationFeatureFlag().catch(() => null),
+        routesAPI.getLiveLocationFeatureFlag().catch(() => null),
       ])
       setRoute(routeRes?.data ?? routeRes)
       setStops(orderedStops(stopsRes?.data ?? []))
       setRun(runRes?.data ?? { current: null, last: null })
       setLocationOn(!!(flagRes?.data?.enabled ?? flagRes?.enabled))
+      setLiveOn(!!(liveRes?.data?.enabled ?? liveRes?.enabled))
       setLoad({ loading: false, error: false, notFound: false })
     } catch (e) {
       setLoad({ loading: false, error: true, notFound: e?.response?.status === 404 })
@@ -291,6 +295,8 @@ export default function DriverRoutePage() {
           ))}
         </div>
       )}
+
+      {liveOn && phase === 'running' && <LocationSharingPanel routeId={routeId} routeRunning={phase === 'running'} />}
 
       {locationOn && mappable.length > 0 && (
         <StopLocationMap stops={mappable} numbered showPath height={260} />

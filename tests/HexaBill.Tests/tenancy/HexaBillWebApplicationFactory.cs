@@ -58,6 +58,8 @@ public class HexaBillWebApplicationFactory : WebApplicationFactory<Program>
                 ["Hosting:BaseDomain"] = "hexabill.company",
                 ["Hosting:PlatformHost"] = "admin.hexabill.company",
                 ["Hosting:ApiHost"] = "api.hexabill.company",
+                ["FeatureFlags:LiveDriverLocation"] = "true",
+                ["LiveLocation:MinSecondsBetweenUpdates"] = "1",
             });
         });
 

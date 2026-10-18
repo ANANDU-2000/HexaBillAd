@@ -15,6 +15,7 @@ import { localDateString } from '../../utils/dateFormat'
 import ErrorState from '../../components/ui/ErrorState'
 import { readApiErrorReason } from '../../utils/apiError'
 import { moveStop, moveStopToTop, orderedStops, locationNeededStops, runSummaryParts, statusLabel, stopNavigationUrl } from './driverRoute'
+import { describeDrivers, POLL_INTERVAL_MS } from './liveLocation'
 
 const EXPENSE_CATEGORIES = ['Fuel', 'Staff', 'Delivery', 'Vehicle Maintenance', 'Toll/Parking', 'Misc']
 const ROUTE_TABS = ['overview', 'customers', 'sales', 'expenses', 'staff', 'performance', 'stops']
@@ -86,6 +87,9 @@ const RouteDetailPage = () => {
   const [stopLocationEnabled, setStopLocationEnabled] = useState(false)
   const [orderSaving, setOrderSaving] = useState(false)
   const [runState, setRunState] = useState(null)
+  const [liveOn, setLiveOn] = useState(false)
+  const [drivers, setDrivers] = useState([])
+  const [liveError, setLiveError] = useState(false)
   const [stopsMap, setStopsMap] = useState([])
   const [stopsMapLoading, setStopsMapLoading] = useState(false)
   const [pinModal, setPinModal] = useState({
@@ -442,6 +446,29 @@ const RouteDetailPage = () => {
       setPinModal((p) => ({ ...p, saving: false }))
     }
   }
+
+  useEffect(() => {
+    routesAPI.getLiveLocationFeatureFlag().then((res) => setLiveOn(!!(res?.data?.enabled ?? res?.enabled))).catch(() => setLiveOn(false))
+  }, [])
+
+  // Driver positions: only while the Stops tab is open, the route is running and the page is visible; modest polling.
+  const routeRunning = !!runState?.current
+  useEffect(() => {
+    if (!liveOn || activeTab !== 'stops' || !routeRunning || !id) { setDrivers([]); return undefined }
+    let cancelled = false
+    const poll = async () => {
+      if (document.visibilityState === 'hidden') return
+      try {
+        const res = await routesAPI.getLiveLocations(id)
+        if (!cancelled) { setDrivers(describeDrivers(res?.data ?? [])); setLiveError(false) }
+      } catch {
+        if (!cancelled) setLiveError(true)
+      }
+    }
+    poll()
+    const timer = setInterval(poll, POLL_INTERVAL_MS)
+    return () => { cancelled = true; clearInterval(timer) }
+  }, [liveOn, activeTab, routeRunning, id])
 
   useEffect(() => {
     routesAPI.getStopLocationFeatureFlag()
@@ -1131,8 +1158,30 @@ const RouteDetailPage = () => {
           {stopLocationEnabled && (stopsMapLoading ? (
             <p className="text-sm text-neutral-500">Loading stops…</p>
           ) : (
-            <StopLocationMap stops={stopsMap} height={360} numbered showPath />
+            <StopLocationMap
+              stops={stopsMap}
+              height={360}
+              numbered
+              showPath
+              drivers={drivers.map((d) => ({ id: d.userId, name: d.userName, lat: Number(d.latitude), lng: Number(d.longitude), stale: d.stale }))}
+            />
           ))}
+          {liveOn && routeRunning && (
+            <div className="rounded-lg border border-neutral-200 bg-white p-3 space-y-1" data-testid="driver-location-card">
+              <p className="text-sm font-medium text-neutral-800">Driver location</p>
+              {drivers.length === 0 && !liveError && <p className="text-sm text-neutral-600">No driver is sharing a location right now.</p>}
+              {liveError && <p className="text-sm text-warning-fg">The driver positions could not be refreshed. They will be tried again.</p>}
+              <ul className="space-y-1">
+                {drivers.map((d) => (
+                  <li key={d.userId} className="flex flex-wrap items-center gap-2 text-sm" data-testid={`driver-row-${d.userId}`}>
+                    <span className="font-medium">{d.userName}</span>
+                    <span className="text-neutral-600">updated {d.ageLabel}{d.accuracyLabel ? `, accurate to ${d.accuracyLabel}` : ''}</span>
+                    {d.stale && <span className="rounded-full bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning-fg">Not recent</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {stopLocationEnabled && locationNeededStops(stopsMap).length > 0 && (
             <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-sm" data-testid="planner-location-needed">
               <p className="font-medium text-warning-fg">Location needed</p>

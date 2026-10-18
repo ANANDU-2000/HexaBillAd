@@ -15,17 +15,20 @@ namespace HexaBill.Api.Modules.Branches
     {
         private readonly IRouteService _routeService;
         private readonly IRouteRunService _runService;
+        private readonly IDriverLocationService _locationService;
         private readonly HexaBill.Api.Core.Infrastructure.IRouteScopeService _routeScopeService;
         private readonly ILogger<RoutesController> _logger;
 
         public RoutesController(
             IRouteService routeService,
             IRouteRunService runService,
+            IDriverLocationService locationService,
             HexaBill.Api.Core.Infrastructure.IRouteScopeService routeScopeService,
             ILogger<RoutesController> logger) : base(routeScopeService)
         {
             _routeService = routeService;
             _runService = runService;
+            _locationService = locationService;
             _routeScopeService = routeScopeService;
             _logger = logger;
         }
@@ -361,6 +364,84 @@ namespace HexaBill.Api.Modules.Branches
                 return StatusCode(503, new ApiResponse<RouteRunDto> { Success = false, Message = ex.Message });
             }
         }
+
+        /// <summary>Share the driver position. Needs an open run, an assigned driver and the driver consent.</summary>
+        [HttpPost("{id}/location")]
+        public async Task<ActionResult<ApiResponse<object>>> ShareLocation(int id, [FromBody] ShareLocationRequest request)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0) return Forbid();
+            if (!_locationService.IsEnabled()) return NotFound(new ApiResponse<object> { Success = false, Message = "Live location is not switched on." });
+            if (await RouteAccessAsync(id) == RouteAccessLevel.None) return RouteNotFound<object>();
+            try
+            {
+                var result = await _locationService.ShareAsync(id, tenantId, CurrentUserId, request ?? new ShareLocationRequest());
+                return result.Status switch
+                {
+                    ShareStatus.Ok => Ok(new ApiResponse<object> { Success = true }),
+                    ShareStatus.NotEnabled => NotFound(new ApiResponse<object> { Success = false, Message = result.Message }),
+                    ShareStatus.NotAssigned => NotAllowed<object>(result.Message ?? "Not allowed."),
+                    ShareStatus.NoOpenRun => Conflict(new ApiResponse<object> { Success = false, Message = result.Message }),
+                    ShareStatus.ConsentRequired => Conflict(new ApiResponse<object> { Success = false, Message = result.Message, Errors = new List<string> { "consent_required" } }),
+                    ShareStatus.TooSoon => TooSoon(result),
+                    _ => BadRequest(new ApiResponse<object> { Success = false, Message = result.Message }),
+                };
+            }
+            catch (Exception ex) when (RouteService.IsRelationMissing42P01(ex))
+            {
+                return StatusCode(503, new ApiResponse<object> { Success = false, Message = "Live location is not available until the server update is installed." });
+            }
+        }
+
+        private ActionResult TooSoon(ShareResult result)
+        {
+            Response.Headers["Retry-After"] = result.RetryAfterSeconds.ToString();
+            return StatusCode(429, new ApiResponse<object> { Success = false, Message = result.Message });
+        }
+
+        /// <summary>The driver stops sharing; their position is deleted at once.</summary>
+        [HttpDelete("{id}/location")]
+        public async Task<ActionResult<ApiResponse<object>>> StopLocation(int id)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0) return Forbid();
+            if (!_locationService.IsEnabled()) return NotFound(new ApiResponse<object> { Success = false, Message = "Live location is not switched on." });
+            if (await RouteAccessAsync(id) == RouteAccessLevel.None) return RouteNotFound<object>();
+            try
+            {
+                await _locationService.StopAsync(id, tenantId, CurrentUserId);
+                return Ok(new ApiResponse<object> { Success = true, Message = "Sharing stopped." });
+            }
+            catch (Exception ex) when (RouteService.IsRelationMissing42P01(ex))
+            {
+                return Ok(new ApiResponse<object> { Success = true, Message = "Nothing was being shared." });
+            }
+        }
+
+        /// <summary>Current driver positions. Owners, admins and managers of the route see every driver; a driver sees only their own.</summary>
+        [HttpGet("{id}/location")]
+        public async Task<ActionResult<ApiResponse<List<DriverLocationDto>>>> GetLocations(int id)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0) return Forbid();
+            if (!_locationService.IsEnabled()) return NotFound(new ApiResponse<List<DriverLocationDto>> { Success = false, Message = "Live location is not switched on." });
+            var access = await RouteAccessAsync(id);
+            if (access == RouteAccessLevel.None) return RouteNotFound<List<DriverLocationDto>>();
+            try
+            {
+                var list = await _locationService.ListAsync(id, tenantId, CurrentUserId, access == RouteAccessLevel.Manage);
+                Response.Headers["Cache-Control"] = "no-store";
+                return Ok(new ApiResponse<List<DriverLocationDto>> { Success = true, Data = list });
+            }
+            catch (Exception ex) when (RouteService.IsRelationMissing42P01(ex))
+            {
+                return Ok(new ApiResponse<List<DriverLocationDto>> { Success = true, Data = new List<DriverLocationDto>() });
+            }
+        }
+
+        [HttpGet("feature-flags/live-location")]
+        public ActionResult<ApiResponse<object>> GetLiveLocationFeatureFlag() =>
+            Ok(new ApiResponse<object> { Success = true, Data = new { enabled = _locationService.IsEnabled() } });
 
         [HttpGet("feature-flags/stop-location")]
         public ActionResult<ApiResponse<object>> GetStopLocationFeatureFlag()
