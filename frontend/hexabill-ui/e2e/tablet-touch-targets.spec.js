@@ -23,7 +23,7 @@ for (const [w, h] of TABLETS) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), `${path} horizontal overflow`).toBeLessThanOrEqual(1)
       }
       await page.goto(`${feOrigin(SLUG)}/dashboard`, { waitUntil: 'networkidle' })
-      const newInvoice = page.getByRole('button', { name: /New invoice/ }).first()
+      const newInvoice = page.getByRole('button', { name: /New (invoice|sale)/ }).first()
       if (await newInvoice.count()) {
         const box = await newInvoice.boundingBox()
         expect(box.height).toBeGreaterThanOrEqual(43.5)

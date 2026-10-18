@@ -10,7 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGri
 import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency } from '../../utils/currency'
 import { reportsAPI } from '../../services/index'
-import { canAccessPage, isAdminOrOwner, isOwner } from '../../utils/roles'
+import { canAccessPage, canManagePayments, isAdminOrOwner, isOwner } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
 import Button from '../../components/ui/Button'
@@ -35,29 +35,30 @@ const num = (value) => {
 const surfaceClass = 'rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-primary)]'
 const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2'
 
-const MetricCard = ({ label, value, helper, icon: Icon, valueClass = '', onClick, loading, emphasis = false }) => {
+// On phones the helper line is hidden to keep the cards short (it returns from sm up).
+const MetricCard = ({ label, value, helper, icon: Icon, valueClass = '', onClick, loading, emphasis = false, className = '' }) => {
     const body = (
         <>
-            <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-medium text-[var(--text-secondary)]">{label}</p>
-                <Icon className="h-4 w-4 shrink-0 text-[var(--text-tertiary)]" strokeWidth={2} aria-hidden />
+            <div className="flex items-start justify-between gap-1">
+                <p className="truncate text-xs font-medium text-[var(--text-secondary)]">{label}</p>
+                <Icon className="hidden h-4 w-4 shrink-0 text-[var(--text-tertiary)] sm:block" strokeWidth={2} aria-hidden />
             </div>
             {loading ? (
-                <div className="mt-2 h-7 w-28 animate-pulse rounded bg-[var(--bg-elevated)]" aria-hidden />
+                <div className="mt-2 h-6 w-full max-w-28 animate-pulse rounded bg-[var(--bg-elevated)] sm:h-7" aria-hidden />
             ) : (
-                <p className={`mt-1 font-semibold tabular-nums leading-none ${emphasis ? 'text-[28px]' : 'text-[22px]'} ${valueClass}`}>{formatCurrency(value)}</p>
+                <p className={`mt-1 font-semibold tabular-nums leading-none ${emphasis ? 'text-[24px] sm:text-[28px]' : 'text-[16px] sm:text-[22px]'} ${valueClass}`}>{formatCurrency(value)}</p>
             )}
-            {helper ? <p className="mt-1 text-xs text-[var(--text-secondary)]">{helper}</p> : null}
+            {helper ? <p className="mt-1 hidden text-xs text-[var(--text-secondary)] sm:block">{helper}</p> : null}
         </>
     )
     if (!onClick) {
-        return <div className={`${surfaceClass} p-3 lg:p-4`}>{body}</div>
+        return <div className={`${surfaceClass} min-w-0 p-2.5 sm:p-3 lg:p-4 ${className}`}>{body}</div>
     }
     return (
         <button
             type="button"
             onClick={onClick}
-            className={`${surfaceClass} p-3 text-left transition-colors duration-150 hover:bg-[var(--bg-raised)] motion-reduce:transition-none lg:p-4 ${focusClass}`}
+            className={`${surfaceClass} min-w-0 p-2.5 text-left transition-colors duration-150 hover:bg-[var(--bg-raised)] motion-reduce:transition-none sm:p-3 lg:p-4 ${focusClass} ${className}`}
         >
             {body}
         </button>
@@ -67,23 +68,29 @@ const MetricCard = ({ label, value, helper, icon: Icon, valueClass = '', onClick
 const AttentionRow = ({ label, count, unit, amount, action, tone = 'warning', onClick }) => {
     const accent = tone === 'danger' ? 'var(--error)' : tone === 'info' ? 'var(--info)' : 'var(--warning)'
     const labelClass = tone === 'danger' ? 'text-[var(--error)]' : tone === 'info' ? 'text-[var(--text-primary)]' : 'text-[var(--warning)]'
-    const className = `flex min-h-11 w-full items-start justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-3 text-left ${onClick ? `transition-colors duration-150 hover:bg-[var(--bg-raised)] motion-reduce:transition-none ${focusClass}` : ''}`
+    const className = `flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-left lg:items-start lg:py-3 ${onClick ? `transition-colors duration-150 hover:bg-[var(--bg-raised)] motion-reduce:transition-none ${focusClass}` : ''}`
+    // Phones: one line per row (label, count and unit, amount, chevron). From lg up: the stacked card with a big count.
     const inner = (
         <>
-            <span className="min-w-0">
+            <span className="min-w-0 flex-1">
                 <span className={`block text-sm font-semibold ${labelClass}`}>{label}</span>
+                <span className="block text-xs text-[var(--text-secondary)] lg:hidden">
+                    {[count != null ? count : null, unit].filter((part) => part != null && part !== '').join(' ')}
+                </span>
                 {count != null ? (
-                    <span className="mt-1 block text-[28px] font-semibold leading-none tabular-nums text-[var(--text-primary)]">{count}</span>
+                    <span className="mt-1 hidden text-[28px] font-semibold leading-none tabular-nums text-[var(--text-primary)] lg:block">{count}</span>
                 ) : null}
-                {unit ? <span className="mt-1 block text-xs text-[var(--text-secondary)]">{unit}</span> : null}
-                {amount ? <span className="mt-1 block text-sm font-semibold tabular-nums text-[var(--text-primary)]">{amount}</span> : null}
+                {unit ? <span className="mt-1 hidden text-xs text-[var(--text-secondary)] lg:block">{unit}</span> : null}
+                {amount ? <span className="mt-1 hidden text-sm font-semibold tabular-nums text-[var(--text-primary)] lg:block">{amount}</span> : null}
                 {action ? (
-                    <span className="mt-2 inline-flex items-center gap-0.5 text-xs font-medium text-primary-700">
+                    <span className="mt-2 hidden items-center gap-0.5 text-xs font-medium text-primary-700 lg:inline-flex">
                         {action}
                         <ChevronRight className="h-3.5 w-3.5" aria-hidden />
                     </span>
                 ) : null}
             </span>
+            {amount ? <span className="shrink-0 text-sm font-semibold tabular-nums text-[var(--text-primary)] lg:hidden">{amount}</span> : null}
+            {onClick ? <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-tertiary)] lg:hidden" aria-hidden /> : null}
         </>
     )
     if (!onClick) {
@@ -144,6 +151,7 @@ const DashboardTally = () => {
         overdueAmountTotal: 0,
         netVatPayablePeriod: 0
     })
+    const [showAllAttention, setShowAllAttention] = useState(false)
     const [branchBreakdown, setBranchBreakdown] = useState([])
     const [dailySalesTrend, setDailySalesTrend] = useState([])
     const [topCustomers, setTopCustomers] = useState([])
@@ -404,7 +412,7 @@ const DashboardTally = () => {
     }
 
     const periodChip = (active) =>
-        `min-h-[44px] rounded-md px-3 text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${focusClass} ${
+        `min-h-[44px] rounded-md px-1 text-sm font-medium transition-colors sm:px-3 duration-150 motion-reduce:transition-none ${focusClass} ${
             active
                 ? 'bg-primary-600 text-white'
                 : 'border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-primary)] hover:bg-[var(--bg-raised)]'
@@ -414,6 +422,7 @@ const DashboardTally = () => {
     const showExpenses = (isAdminOrOwner(user) || selectedBranchId) && canShow('expensesToday')
     const canOpenReports = canAccessPage(user, 'reports')
     const canOpenPos = canAccessPage(user, 'pos')
+    const canReceivePayment = canManagePayments(user)
     const canOpenProducts = canAccessPage(user, 'products')
     const showSkeleton = !hasFigures && refreshing
     const trendSales = dailySalesTrend.reduce((sum, point) => sum + num(point.sales), 0)
@@ -486,6 +495,22 @@ const DashboardTally = () => {
         showExpenses ? `Expenses ${formatCurrency(stats.expensesToday)}` : null
     ].filter(Boolean).join(' · ')
 
+    const profitCard = (
+        <MetricCard
+            label="Profit"
+            value={stats.profitToday}
+            helper={profitHelper || undefined}
+            icon={TrendingUp}
+            valueClass={profitClass}
+            loading={showSkeleton}
+            className="h-full"
+        />
+    )
+    // Neutral, not a warning: it explains how the profit figure is built, it is not something to act on.
+    const profitNote = hasFigures && showProfit && stats.estimatedCostLineCount > 0
+        ? `Profit uses current product cost for ${stats.estimatedCostLineCount} invoice lines that have no saved historical cost, so it can change when product costs change.`
+        : null
+
     const setupSteps = [
         { done: setupStatus?.hasBranch, label: 'Add branch', path: '/branches' },
         { done: setupStatus?.hasRoute, label: 'Add route', path: '/routes' },
@@ -500,8 +525,8 @@ const DashboardTally = () => {
         <div className={`${mobilePageShellClass} max-w-[1600px] space-y-4`}>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <h1 className="sr-only">Dashboard</h1>
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="grid min-w-0 flex-1 grid-cols-4 gap-2 sm:flex sm:flex-none sm:flex-wrap">
                         <button type="button" onClick={() => applyPeriod('today')} className={periodChip(dateRange === 'today')} aria-pressed={dateRange === 'today'}>Today</button>
                         <button type="button" onClick={() => applyPeriod('week')} className={periodChip(dateRange === 'week')} aria-pressed={dateRange === 'week'}>Week</button>
                         <button type="button" onClick={() => applyPeriod('month')} className={periodChip(dateRange === 'month')} aria-pressed={dateRange === 'month'}>Month</button>
@@ -511,7 +536,7 @@ const DashboardTally = () => {
                         <select
                             value={selectedBranchId || ''}
                             onChange={(e) => setSelectedBranchId(e.target.value ? parseInt(e.target.value, 10) : null)}
-                            className={`min-h-[44px] rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-primary)] ${focusClass}`}
+                            className={`order-last min-h-[44px] basis-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-primary)] sm:order-none sm:basis-auto ${focusClass}`}
                             aria-label="Branch"
                         >
                             <option value="">All branches</option>
@@ -551,6 +576,105 @@ const DashboardTally = () => {
                 </div>
             )}
 
+            {summaryError && (
+                <div className={`${surfaceClass} flex flex-wrap items-center justify-between gap-3 p-4`} role="alert">
+                    <p className="text-sm text-[var(--text-primary)]">Unable to load this period.</p>
+                    <Button variant="secondary" onClick={handleRefresh} disabled={refreshing}>Retry</Button>
+                </div>
+            )}
+
+            {(hasFigures || showSkeleton) && (
+            <section className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4" aria-label="Period summary">
+                {canShow('netSalesToday') && (
+                    <MetricCard
+                        className="col-span-2 lg:col-span-1"
+                        label="Net sales"
+                        value={stats.netSalesToday}
+                        helper={`Gross ${formatCurrency(stats.salesToday)} · Returns ${formatCurrency(stats.returnsToday)} (${stats.returnsCountToday})`}
+                        icon={DollarSign}
+                        emphasis
+                        loading={showSkeleton}
+                    />
+                )}
+                {canShow('cashCollections') !== false && (
+                    <MetricCard
+                        label="Collections"
+                        value={stats.cashCollectionsTotal}
+                        helper={canShow('creditInvoiced') !== false ? `On account ${formatCurrency(stats.creditInvoicedTotal)}` : undefined}
+                        icon={Banknote}
+                        loading={showSkeleton}
+                    />
+                )}
+                {showProfit && (
+                    <div className="hidden lg:block">{profitCard}</div>
+                )}
+                {canShow('pendingAmount') !== false && (
+                    <MetricCard
+                        label="Receivables"
+                        value={stats.pendingBillsAmount}
+                        icon={Wallet}
+                        valueClass={`sm:!text-[28px] ${stats.pendingBillsAmount > 0 ? 'text-[var(--warning)]' : ''}`}
+                        loading={showSkeleton}
+                        onClick={canOpenReports ? () => navigate('/reports?tab=outstanding') : undefined}
+                    />
+                )}
+            </section>
+            )}
+
+            {canShow('quickActions') && (canOpenPos || canReceivePayment) && (
+                <div className="grid grid-cols-2 gap-2 lg:hidden">
+                    {canOpenPos && (
+                        <Button className={`!min-h-[48px] whitespace-nowrap !px-2 ${canReceivePayment ? '' : 'col-span-2'}`} onClick={() => navigate('/pos')}>
+                            <ShoppingCart className="h-4 w-4" aria-hidden />
+                            New sale
+                        </Button>
+                    )}
+                    {canReceivePayment && (
+                        <Button variant="secondary" className={`!min-h-[48px] whitespace-nowrap !px-2 ${canOpenPos ? '' : 'col-span-2'}`} onClick={() => navigate('/payments')}>
+                            <Banknote className="h-4 w-4 shrink-0" aria-hidden />
+                            Receive payment
+                        </Button>
+                    )}
+                </div>
+            )}
+
+            {hasFigures && (
+            <section className="space-y-2">
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Needs attention</h2>
+                {attention.length === 0 ? (
+                    <p className="text-sm text-[var(--text-secondary)]">All clear. Nothing needs attention in this period.</p>
+                ) : (
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                        {attention.map((row, idx) => (
+                            <div key={row.key} className={idx >= 3 && !showAllAttention ? 'hidden lg:block' : ''}>
+                            <AttentionRow
+                                label={row.label}
+                                count={row.count}
+                                unit={row.unit}
+                                amount={row.amount}
+                                action={row.action}
+                                tone={row.tone}
+                                onClick={row.onClick}
+                            />
+                            </div>
+                        ))}
+                        {attention.length > 3 && (
+                            <button
+                                type="button"
+                                onClick={() => setShowAllAttention((v) => !v)}
+                                aria-expanded={showAllAttention}
+                                className={`min-h-11 rounded-lg px-3 text-sm font-medium text-primary-700 hover:bg-[var(--bg-raised)] lg:hidden ${focusClass}`}
+                            >
+                                {showAllAttention ? 'Show fewer' : `Show all (${attention.length})`}
+                            </button>
+                        )}
+                    </div>
+                )}
+            </section>
+            )}
+
+            {isAdminOrOwner(user) && <DailyCloseStatusCard branchId={selectedBranchId} />}
+
             {showGetStarted && (
                 <div className={`${surfaceClass} relative p-4`}>
                     <button
@@ -585,92 +709,8 @@ const DashboardTally = () => {
                 </div>
             )}
 
-            {summaryError && (
-                <div className={`${surfaceClass} flex flex-wrap items-center justify-between gap-3 p-4`} role="alert">
-                    <p className="text-sm text-[var(--text-primary)]">Unable to load this period.</p>
-                    <Button variant="secondary" onClick={handleRefresh} disabled={refreshing}>Retry</Button>
-                </div>
-            )}
-
-            {hasFigures && showProfit && stats.estimatedCostLineCount > 0 && (
-                <div className={`${surfaceClass} border-warning-border bg-warning-bg p-3 text-sm text-amber-900`} role="status">
-                    Profit includes current-cost estimates for {stats.estimatedCostLineCount} invoice lines without saved historical costs. Product cost changes can change these estimates.
-                </div>
-            )}
-
-            {(hasFigures || showSkeleton) && (
-            <section className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Period summary">
-                {canShow('netSalesToday') && (
-                    <MetricCard
-                        label="Net sales"
-                        value={stats.netSalesToday}
-                        helper={`Gross ${formatCurrency(stats.salesToday)} · Returns ${formatCurrency(stats.returnsToday)} (${stats.returnsCountToday})`}
-                        icon={DollarSign}
-                        emphasis
-                        loading={showSkeleton}
-                    />
-                )}
-                {canShow('cashCollections') !== false && (
-                    <MetricCard
-                        label="Collections"
-                        value={stats.cashCollectionsTotal}
-                        helper={canShow('creditInvoiced') !== false ? `On account ${formatCurrency(stats.creditInvoicedTotal)}` : undefined}
-                        icon={Banknote}
-                        loading={showSkeleton}
-                    />
-                )}
-                {showProfit && (
-                    <MetricCard
-                        label="Profit"
-                        value={stats.profitToday}
-                        helper={profitHelper || undefined}
-                        icon={TrendingUp}
-                        valueClass={profitClass}
-                        loading={showSkeleton}
-                    />
-                )}
-                {canShow('pendingAmount') !== false && (
-                    <MetricCard
-                        label="Receivables"
-                        value={stats.pendingBillsAmount}
-                        icon={Wallet}
-                        emphasis
-                        valueClass={stats.pendingBillsAmount > 0 ? 'text-[var(--warning)]' : ''}
-                        loading={showSkeleton}
-                        onClick={canOpenReports ? () => navigate('/reports?tab=outstanding') : undefined}
-                    />
-                )}
-            </section>
-            )}
-
-            {hasFigures && (
-            <section className="space-y-2">
-                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Needs attention</h2>
-                {attention.length === 0 ? (
-                    <p className="text-sm text-[var(--text-secondary)]">All clear. Nothing needs attention in this period.</p>
-                ) : (
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                        {attention.map((row) => (
-                            <AttentionRow
-                                key={row.key}
-                                label={row.label}
-                                count={row.count}
-                                unit={row.unit}
-                                amount={row.amount}
-                                action={row.action}
-                                tone={row.tone}
-                                onClick={row.onClick}
-                            />
-                        ))}
-                    </div>
-                )}
-            </section>
-            )}
-
-            {isAdminOrOwner(user) && <DailyCloseStatusCard branchId={selectedBranchId} />}
-
             {canShow('quickActions') && (
-                <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2 lg:flex lg:flex-row">
+                <div className="hidden lg:flex lg:flex-row lg:gap-2">
                     {canOpenPos && (
                         <Button className="!min-h-[44px] w-full lg:w-auto" onClick={() => navigate('/pos')} aria-keyshortcuts="F3">
                             <ShoppingCart className="h-4 w-4" aria-hidden />
@@ -701,7 +741,16 @@ const DashboardTally = () => {
                 </div>
             )}
 
-            {(hasFigures || showSkeleton) && (
+            {(hasFigures || showSkeleton) && showProfit && (
+                <div className="space-y-2 lg:hidden">
+                    {profitCard}
+                    {profitNote ? <p className="px-1 text-xs text-[var(--text-secondary)]" role="status">{profitNote}</p> : null}
+                </div>
+            )}
+            {profitNote ? <p className="hidden text-xs text-[var(--text-secondary)] lg:block" role="status">{profitNote}</p> : null}
+
+            {/* A chart needs at least 3 days to show a trend; with fewer it is one lonely bar that repeats the Net sales card. */}
+            {(hasFigures || showSkeleton) && (showSkeleton || dailySalesTrend.length >= 3) && (
             <section className={`${surfaceClass} p-4`}>
                 <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Sales trend</h2>
                 {showSkeleton ? (
@@ -747,14 +796,19 @@ const DashboardTally = () => {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     {topCustomers.length > 0 && (
                         <section className={`${surfaceClass} p-4`}>
-                            <h2 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Top customers</h2>
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Top customers</h2>
+                                {topCustomers.length > 3 && canAccessPage(user, 'customers') && (
+                                    <button type="button" onClick={() => navigate('/customers')} className={`min-h-11 px-2 text-xs font-medium text-primary-700 lg:hidden ${focusClass}`}>See all</button>
+                                )}
+                            </div>
                             <div className="space-y-1">
                                 {topCustomers.map((customer, idx) => (
                                     <button
                                         key={customer.customerId}
                                         type="button"
                                         onClick={() => navigate(buildCustomerLedgerHref({ customerId: customer.customerId }), { state: { returnTo: location.pathname + location.search } })}
-                                        className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-2 text-left text-sm hover:bg-[var(--bg-raised)] ${focusClass}`}
+                                        className={`min-h-11 w-full items-center justify-between gap-3 rounded-md px-2 text-left text-sm hover:bg-[var(--bg-raised)] ${idx >= 3 ? 'hidden lg:flex' : 'flex'} ${focusClass}`}
                                     >
                                         <span className="min-w-0 truncate">
                                             <span className="text-[var(--text-tertiary)]">#{idx + 1} </span>
@@ -771,14 +825,19 @@ const DashboardTally = () => {
                     )}
                     {topProducts.length > 0 && (
                         <section className={`${surfaceClass} p-4`}>
-                            <h2 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Top products</h2>
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Top products</h2>
+                                {topProducts.length > 3 && canOpenProducts && (
+                                    <button type="button" onClick={() => navigate('/products')} className={`min-h-11 px-2 text-xs font-medium text-primary-700 lg:hidden ${focusClass}`}>See all</button>
+                                )}
+                            </div>
                             <div className="space-y-1">
                                 {topProducts.map((product, idx) => (
                                     <button
                                         key={product.productId}
                                         type="button"
                                         onClick={() => navigate(`/products?productId=${product.productId}`)}
-                                        className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-2 text-left text-sm hover:bg-[var(--bg-raised)] ${focusClass}`}
+                                        className={`min-h-11 w-full items-center justify-between gap-3 rounded-md px-2 text-left text-sm hover:bg-[var(--bg-raised)] ${idx >= 3 ? 'hidden lg:flex' : 'flex'} ${focusClass}`}
                                     >
                                         <span className="min-w-0 truncate">
                                             <span className="text-[var(--text-tertiary)]">#{idx + 1} </span>
@@ -807,23 +866,26 @@ const DashboardTally = () => {
                                 onClick={() => navigate(`/branches/${branch.branchId}`)}
                                 className={`w-full rounded-md border border-[var(--border)] p-3 text-left hover:bg-[var(--bg-raised)] ${focusClass}`}
                             >
-                                <div className="mb-2 flex items-center justify-between gap-2">
-                                    <span className="min-w-0 truncate text-sm font-medium">{branch.branchName}</span>
+                                <div className="flex items-center justify-between gap-2 md:mb-2">
+                                    <span className="min-w-0">
+                                        <span className="block truncate text-sm font-medium">{branch.branchName}</span>
+                                        <span className="block text-xs tabular-nums text-[var(--text-secondary)] md:hidden">Sales {formatCurrency(branch.sales)} · {branch.invoiceCount} invoices</span>
+                                    </span>
                                     <span className={`shrink-0 text-sm font-semibold tabular-nums ${branch.profit >= 0 ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
                                         {formatCurrency(branch.profit)}
                                     </span>
                                 </div>
-                                <span className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                                <span className="hidden grid-cols-2 gap-2 text-xs md:grid sm:grid-cols-4">
                                     <span><span className="block text-[var(--text-tertiary)]">Sales</span><span className="tabular-nums">{formatCurrency(branch.sales)}</span></span>
                                     <span><span className="block text-[var(--text-tertiary)]">Paid</span><span className="tabular-nums">{formatCurrency(branch.paidAmount ?? 0)}</span></span>
                                     <span><span className="block text-[var(--text-tertiary)]">Unpaid</span><span className="tabular-nums">{formatCurrency(branch.unpaidAmount ?? 0)}</span></span>
                                     <span><span className="block text-[var(--text-tertiary)]">Expenses</span><span className="tabular-nums">{formatCurrency(branch.expenses)}</span></span>
                                 </span>
-                                <span className="mt-1 block text-xs text-[var(--text-tertiary)]">{branch.invoiceCount} invoices</span>
+                                <span className="mt-1 hidden text-xs text-[var(--text-tertiary)] md:block">{branch.invoiceCount} invoices</span>
                             </button>
                         ))}
                     </div>
-                    <p className="mt-2 text-xs text-[var(--text-secondary)]">Branch expenses only. Total expenses include company-level expenses that are not assigned to a branch.</p>
+                    <p className="mt-2 hidden text-xs text-[var(--text-secondary)] md:block">Branch expenses only. Total expenses include company-level expenses that are not assigned to a branch.</p>
                 </section>
             )}
         </div>
