@@ -134,6 +134,7 @@ const PosEnterprisePage = () => {
     return localDateString(today) // YYYY-MM-DD format
   })
   const [showPaymentSheet, setShowPaymentSheet] = useState(false) // Mobile: payment in bottom sheet
+  const [showMetaSheet, setShowMetaSheet] = useState(false) // Mobile: branch, route and date live in one sheet
   const [paymentPanelOpen, setPaymentPanelOpen] = useState(true) // Desktop: payment panel open by default
   const [showDiscountPopup, setShowDiscountPopup] = useState(false)
   const [discountMode, setDiscountMode] = useState('flat') // 'flat' | 'percent'
@@ -2589,6 +2590,15 @@ const PosEnterprisePage = () => {
       </>
   )
 
+  const branchSelectDisabled = branchesRoutesLoading || branches.length === 0 || (!isAdminOrOwner(user) && branches.length === 1)
+  const routeSelectDisabled = branchesRoutesLoading || routes.length === 0 || !selectedBranchId || (!isAdminOrOwner(user) && (selectedBranchId ? routes.filter(r => r.branchId === parseInt(selectedBranchId, 10)) : routes).length <= 1)
+  const routesForBranch = routes.filter(r => !selectedBranchId || r.branchId === parseInt(selectedBranchId))
+  const metaSummary = [
+    branches.find(b => String(b.id) === String(selectedBranchId))?.name || 'Branch',
+    routes.find(r => String(r.id) === String(selectedRouteId))?.name || 'Route',
+    /^\d{4}-\d{2}-\d{2}$/.test(invoiceDate || '') ? `${invoiceDate.slice(8, 10)}-${invoiceDate.slice(5, 7)}` : 'Date'
+  ].join(' · ')
+
   const posToolbar = (
       <>
       {/* Compact meta toolbar 48px */}
@@ -2656,13 +2666,24 @@ const PosEnterprisePage = () => {
               {formatBalance(selectedCustomer?.balance || 0)}
             </span>
           )}
+          {/* Phones: branch, route and date collapse into one line that opens a sheet, so the cart stays on screen. */}
+          <button
+            type="button"
+            onClick={() => setShowMetaSheet(true)}
+            disabled={isFormDisabled}
+            className="md:hidden flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-neutral-300 bg-white px-3 text-left text-sm disabled:opacity-50"
+            aria-label={`Change branch, route and date. Now ${metaSummary}`}
+          >
+            <span className="min-w-0 truncate">{staffHasNoAssignments ? (invoiceDate || 'Date') : metaSummary}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+          </button>
           {staffHasNoAssignments && (
             <span className="text-micro text-warning-fg flex items-center gap-1">
               <AlertTriangle className="h-3.5 w-3.5" /> No branch/route
             </span>
           )}
           {!staffHasNoAssignments && (
-            <>
+            <div className="hidden md:contents">
               <div className="relative inline-flex items-center">
                 <select
                   value={selectedBranchId}
@@ -2698,13 +2719,13 @@ const PosEnterprisePage = () => {
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500" aria-hidden />
               </div>
-            </>
+            </div>
           )}
           <input
             type="date"
             value={invoiceDate}
             onChange={(e) => setInvoiceDate(e.target.value)}
-            className="h-9 px-1.5 border border-neutral-300 rounded-md text-xs font-medium bg-white"
+            className="hidden md:block h-9 px-1.5 border border-neutral-300 rounded-md text-xs font-medium bg-white"
             title="Invoice date"
           />
           <button
@@ -2736,7 +2757,7 @@ const PosEnterprisePage = () => {
             type="button"
             onClick={handleRefreshData}
             disabled={refreshingData}
-            className="h-9 px-2 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60 inline-flex items-center"
+            className="hidden md:inline-flex h-9 px-2 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60 items-center"
             title="Refresh"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshingData ? 'animate-spin' : ''}`} />
@@ -3513,6 +3534,79 @@ const PosEnterprisePage = () => {
           <span>{isEditMode ? 'Update' : 'Checkout'}</span>
         </button>
       </div>
+
+      {/* Mobile: Branch / route / date sheet. Native full-width selects, so nothing is clipped at the screen edge. */}
+      {showMetaSheet && (
+        <div className="md:hidden fixed inset-0 z-[60] flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="Bill details">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMetaSheet(false)} aria-hidden />
+          <div className="relative flex max-h-[90dvh] flex-col rounded-t-xl bg-white shadow-xl animate-slideUp">
+            <div className="flex flex-shrink-0 items-center justify-between px-4 pt-4 pb-2">
+              <h3 className="text-lg font-bold text-[#0F172A]">Bill details</h3>
+              <button type="button" onClick={() => setShowMetaSheet(false)} className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-[#F8FAFC]" aria-label="Close">
+                <X className="h-5 w-5 text-[#475569]" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-3">
+              {!staffHasNoAssignments && (
+                <>
+                  <label className="block text-xs font-medium text-[#475569]">
+                    Branch
+                    <select
+                      value={selectedBranchId}
+                      onChange={(e) => {
+                        setSelectedBranchId(e.target.value)
+                        setSelectedRouteId('')
+                      }}
+                      disabled={branchSelectDisabled}
+                      className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-3 text-[#0F172A] disabled:opacity-50"
+                    >
+                      <option value="">{branchesRoutesLoading ? '…' : 'Branch'}</option>
+                      {branches.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-xs font-medium text-[#475569]">
+                    Route
+                    <select
+                      value={selectedRouteId}
+                      onChange={(e) => setSelectedRouteId(e.target.value)}
+                      disabled={routeSelectDisabled}
+                      className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-3 text-[#0F172A] disabled:opacity-50"
+                    >
+                      <option value="">Route</option>
+                      {routesForBranch.map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              )}
+              <label className="block text-xs font-medium text-[#475569]">
+                Invoice date
+                <input
+                  type="date"
+                  value={invoiceDate}
+                  onChange={(e) => setInvoiceDate(e.target.value)}
+                  className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-3 text-[#0F172A]"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleRefreshData}
+                disabled={refreshingData}
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-neutral-300 text-sm font-medium text-neutral-800 disabled:opacity-60"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshingData ? 'animate-spin' : ''}`} aria-hidden />
+                Refresh products and customers
+              </button>
+            </div>
+            <div className="flex-shrink-0 border-t border-[#E5E7EB] px-4 py-3">
+              <button type="button" onClick={() => setShowMetaSheet(false)} className="min-h-11 w-full rounded-lg bg-primary-600 text-sm font-bold text-white hover:bg-primary-700">Done</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile: Payment bottom sheet (discount, payment, notes, confirm) — CTA always visible above bottom nav */}
       {showPaymentSheet && (
