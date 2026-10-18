@@ -210,13 +210,23 @@ public class AssistantChatHttpTests
     [Fact]
     public async Task FreeFallbackIsUsed_WhenThePrimaryFails()
     {
-        _ai.Options.Provider = "broken";
-        _ai.Options.FallbackProvider = "scripted";
-        _ai.Good.Reply = "{\"tool\":\"product_stock\",\"query\":\"Prod A\"}";
         using var owner = Owner();
-        var data = await Data(await Chat(owner, "stock of Prod A"));
-        Assert.Equal("tool", data.GetProperty("mode").GetString());
-        Assert.Equal("scripted", data.GetProperty("provider").GetString());
+        async Task ApproveCurrentPolicy()
+        {
+            var policy = await Data(await owner.GetAsync("/api/assistant/consent"));
+            Assert.Equal(HttpStatusCode.OK, (await owner.PutAsJsonAsync("/api/assistant/consent", new { enabled = true, policyFingerprint = policy.GetProperty("policyFingerprint").GetString() })).StatusCode);
+        }
+        try
+        {
+            _ai.Options.Provider = "broken";
+            _ai.Options.FallbackProvider = "scripted";
+            await ApproveCurrentPolicy();
+            _ai.Good.Reply = "{\"tool\":\"product_stock\",\"query\":\"Prod A\"}";
+            var data = await Data(await Chat(owner, "stock of Prod A"));
+            Assert.Equal("tool", data.GetProperty("mode").GetString());
+            Assert.Equal("scripted", data.GetProperty("provider").GetString());
+        }
+        finally { _ai.ResetAll(); await ApproveCurrentPolicy(); }
     }
 
     [Theory]

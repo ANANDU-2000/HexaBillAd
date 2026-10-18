@@ -34,11 +34,13 @@ public sealed class AssistantChatService
 
     private readonly AiGateway _gateway;
     private readonly AssistantToolRegistry _registry;
+    private readonly AssistantConsentService _consent;
 
-    public AssistantChatService(AiGateway gateway, AssistantToolRegistry registry)
+    public AssistantChatService(AiGateway gateway, AssistantToolRegistry registry, AssistantConsentService consent)
     {
         _gateway = gateway;
         _registry = registry;
+        _consent = consent;
     }
 
     /// <summary>
@@ -49,6 +51,8 @@ public sealed class AssistantChatService
 
     public async Task<ChatReply> AskAsync(AssistantCaller caller, string message, CancellationToken ct)
     {
+        if (!await _consent.IsApprovedAsync(caller.TenantId, ct))
+            return new ChatReply("refused", null, null, null, "This company's owner must approve the current AI privacy policy before messages can be sent. Use the Look up tab.", null);
         var allowed = _registry.ToolsFor(caller).Where(t => ModelCallableTools.Contains(t.Name)).ToList();
         var result = await _gateway.CompleteAsync(new AiCall(caller.TenantId, caller.UserId, "assistant.route", message, ContainsCustomerData: true, System: SystemPrompt(allowed)), ct);
 
@@ -62,6 +66,8 @@ public sealed class AssistantChatService
                 return new ChatReply("unavailable", null, null, null, "The assistant is not available right now. You can still use the lookups.", result.Provider);
         }
 
+        if (!await _consent.IsApprovedAsync(caller.TenantId, ct))
+            return new ChatReply("refused", null, null, null, "AI consent changed while answering. Use the Look up tab.", null);
         var choice = Parse(result.Text, allowed.Select(t => t.Name).ToHashSet(StringComparer.Ordinal));
         if (choice.Suggestion != null)
             return new ChatReply("suggestion", choice.Suggestion.Kind, null, null, null, result.Provider, choice.Suggestion);

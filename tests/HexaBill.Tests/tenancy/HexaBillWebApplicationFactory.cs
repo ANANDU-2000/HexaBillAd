@@ -444,6 +444,11 @@ public class HexaBillWebApplicationFactory : WebApplicationFactory<Program>
         SeedSharedLegalSourceTenant(db, now);
         SeedBackupAgentFixtures(db, now);
         db.SaveChanges();
+        // Explicit synthetic owner consents for existing chat fixtures; new tenants remain opted out.
+        var policy = services.GetRequiredService<HexaBill.Api.Modules.Assistant.Ai.AiGateway>().ConsentPolicy();
+        foreach (var tenantId in new[] { 1, 2, 5 })
+            db.TenantAiConsents.Add(new TenantAiConsent { TenantId = tenantId, Enabled = true, PolicyFingerprint = policy.Fingerprint!, UpdatedByUserId = tenantId, UpdatedAt = now });
+        db.SaveChanges();
         SeedTenantStorageFixture();
     }
 
@@ -584,6 +589,7 @@ public sealed class TestAiControl
     public HexaBill.Api.Modules.Assistant.Ai.AiOptions Options { get; } = new()
     {
         Enabled = true, Provider = "scripted", AllowCustomerData = true, DailyCallLimitPerTenant = 100000, DailyTokenLimitPerTenant = 100_000_000,
+        DataPolicyVersion = "synthetic-v1", DataPolicyNotice = "Synthetic scripted provider only. No external transmission; no prompts retained; loopback test environment.",
         Providers =
         {
             ["scripted"] = new HexaBill.Api.Modules.Assistant.Ai.AiProviderOptions { Kind = "openai-compatible", BaseUrl = "http://scripted.invalid", Model = "scripted-model", ApiKey = "SECRET-KEY-VALUE" },
@@ -601,6 +607,8 @@ public sealed class TestAiControl
         Broken.Failure = new HttpRequestException("secret=OTHER-SECRET-VALUE url=http://broken.invalid", null, System.Net.HttpStatusCode.Unauthorized);
         Options.Enabled = true;
         Options.AllowCustomerData = true;
+        Options.DataPolicyVersion = "synthetic-v1";
+        Options.DataPolicyNotice = "Synthetic scripted provider only. No external transmission; no prompts retained; loopback test environment.";
         Options.Provider = "scripted";
         Options.FallbackProvider = "";
         Options.DailyCallLimitPerTenant = 100000;

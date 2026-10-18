@@ -18,14 +18,16 @@ public class AssistantController : TenantScopedController
     private readonly AssistantToolRegistry _registry;
     private readonly AssistantDraftService _drafts;
     private readonly AssistantChatService _chat;
+    private readonly AssistantConsentService _consent;
     private readonly AppDbContext _context;
     private readonly ILogger<AssistantController> _logger;
 
-    public AssistantController(AssistantToolRegistry registry, AssistantDraftService drafts, AssistantChatService chat, AppDbContext context, ILogger<AssistantController> logger)
+    public AssistantController(AssistantToolRegistry registry, AssistantDraftService drafts, AssistantChatService chat, AssistantConsentService consent, AppDbContext context, ILogger<AssistantController> logger)
     {
         _registry = registry;
         _drafts = drafts;
         _chat = chat;
+        _consent = consent;
         _context = context;
         _logger = logger;
     }
@@ -84,10 +86,38 @@ public class AssistantController : TenantScopedController
 
     /// <summary>Tells the screen whether to offer the Ask tab. Says nothing about providers, keys or settings.</summary>
     [HttpGet("status")]
-    public IActionResult Status()
+    public async Task<IActionResult> Status(CancellationToken ct)
     {
-        if (!TryCaller(out _)) return Forbid();
-        return Ok(new ApiResponse<object> { Success = true, Data = new { chat = _chat.IsAvailable } });
+        if (!TryCaller(out var caller)) return Forbid();
+        Response.Headers["Cache-Control"] = "no-store";
+        return Ok(new ApiResponse<object> { Success = true, Data = new { chat = _chat.IsAvailable && await _consent.IsApprovedAsync(caller.TenantId, ct) } });
+    }
+
+    public sealed class ConsentRequest
+    {
+        public bool Enabled { get; set; }
+        public string? PolicyFingerprint { get; set; }
+    }
+
+    [HttpGet("consent")]
+    public Task<IActionResult> Consent(CancellationToken ct) => RunConsent(c => _consent.ViewAsync(c, ct));
+
+    [HttpPut("consent")]
+    [Authorize(Roles = "Owner")]
+    public Task<IActionResult> SetConsent([FromBody] ConsentRequest request, CancellationToken ct) =>
+        RunConsent(c => _consent.SetAsync(c, request.Enabled, request.PolicyFingerprint, ct));
+
+    private async Task<IActionResult> RunConsent(Func<AssistantCaller, Task<AssistantConsentView>> work)
+    {
+        if (!TryCaller(out var caller)) return Forbid();
+        Response.Headers["Cache-Control"] = "no-store";
+        try { return Ok(new ApiResponse<AssistantConsentView> { Success = true, Data = await work(caller) }); }
+        catch (AssistantToolException ex) { return StatusCode(ex.StatusCode, new ApiResponse<object> { Success = false, Message = ex.Message }); }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("AI consent update unavailable ({Error}). Tenant {TenantId}", ex.GetType().Name, caller.TenantId);
+            return StatusCode(503, new ApiResponse<object> { Success = false, Message = "AI privacy settings are unavailable. Refresh their status before trying again." });
+        }
     }
 
     public sealed class ChatRequest

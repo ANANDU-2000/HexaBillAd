@@ -43,3 +43,25 @@ Six new negative tests failed before the change (exit 1, 6 failed/0 passed/skipp
 The assistant/document suite with PostgreSQL passed 169/169 after the guards (zero skipped, exit 0). After adding the forged-scope HTTP case, the full backend command `dotnet test tests/HexaBill.Tests/HexaBill.Tests.csproj --no-restore -v quiet --logger 'console;verbosity=quiet'` on fresh synthetic PostgreSQL database `hexabill_ai_release_beb106711ea4` returned exit 0: **1128 passed, 0 failed, 1 skipped**. The skip is NOT counted as a pass; fresh migration-history rehearsal remains an opt-in historical issue. The full run includes pre-existing uncommitted VAT code/tests; those changes are excluded from this AI checkpoint.
 
 Owner decisions received during this work: each client owner must opt in before external typed prompts; Gemini is primary and Groq fallback. Implementing durable per-client consent is the next bounded task. Exact models, provider account settings, retention/region approval and usable rotated secrets remain unverified.
+
+## AI-SEC-03 — owner consent (PASS locally, NOT deployed)
+
+Implemented durable `TenantAiConsents`, owner-only GET/PUT consent workflow, tenant-scoped audit, status/API refusal before any model call and another consent check before using the result. Approval records a hash of the reviewed notice/version and provider order/model/URL/paid policy. Changed configuration invalidates consent; key rotation does not. New clients start opted out. Staff/Admin cannot consent, and browser flags never grant approval. The owner can read the notice, explicitly agree, enable and withdraw through AI privacy. Existing deterministic lookups remain available.
+
+The owner selected Gemini primary/Groq fallback, approved per-client owner consent and confirmed a billing-enabled Gemini project. This is not paid-call or production deployment approval. `docs/operations/ai-render-disabled.env.example` is the disabled configuration proposal; model availability, real keys, actual retention/region controls and accepted privacy notice remain unverified.
+
+| Check | Evidence |
+| --- | --- |
+| Missing consent reproduction | FAIL as expected: consent endpoint absent (HTTP 404), 1 failed, exit 1 |
+| Assistant/document suite with PostgreSQL | PASS: 176 passed, 0 failed/skipped, exit 0 |
+| Focused `AssistantConsentPostgreSqlTests` after fixture correction | PASS: 1 passed, exit 0; durable approval across contexts, tenant isolation, owner withdrawal and audit |
+| Full backend, fresh PostgreSQL `hexabill_consent_final_7995c1f1e0` | PASS for executed cases: 1135 passed, 0 failed, 1 skipped, exit 0; TRX `%TEMP%/hexabill-ai-consent-results/consent-final.trx` |
+| Full-suite skip | NOT TESTED: `MigrationRehearsalPostgreSqlTests.FreshMigrationHistory_MatchesTheModel_WithoutRuntimeRepair` (opt-in historical fresh-chain defect) |
+| `npm test`; `npm run build` | PASS: 258/258, no skips; build exit 0 |
+| Targeted ESLint | 0 errors; 2 existing `AssistantPanel.jsx` warnings retained |
+| Guarded browser runner, `e2e/assistant-chat.spec.js`, all five widths, synthetic mock/policy opt-in | PASS: 15/15, no skips, exit 0; database `hexabill_codex_browser_consent_e129023e29` |
+| New consent migration | SQL artifact matches EF Up; on `hexabill_consent_migration_140725f6`, injected division-by-zero rolled back both table and history; subsequent first and second runs exit 0, one history entry, 0 consent rows, 5 columns, application test role owns table |
+
+Earlier full attempt: 1134 passed/1 failed/1 skipped because the new PG fixture did not seed its audit user (foreign key rejection); corrected by seeding an isolated synthetic tenant/owner. An attempted concurrent rebuild failed because the running testhost locked its assembly; the corrected focused test and final full run were sequential. These failures are not counted as passes.
+
+New migration: `20261018180000_AddTenantAiConsent`, separate additive script `docs/database/AI-CONSENT-MIGRATION-2026-10-18.sql`. Together with the previous four pending migrations, production history would increase from 59 to 64 after an approved rehearsal/application. Nothing was applied to production, no source was pushed, and no provider call was made in this checkpoint.

@@ -159,6 +159,7 @@ namespace HexaBill.Api.Data
         public DbSet<RouteRun> RouteRuns { get; set; }
         public DbSet<DriverLocationCurrent> DriverLocationCurrents { get; set; }
         public DbSet<AiUsageDaily> AiUsageDailies { get; set; }
+        public DbSet<TenantAiConsent> TenantAiConsents { get; set; }
         public DbSet<Setting> Settings { get; set; }
         public DbSet<DamageCategory> DamageCategories { get; set; }
         public DbSet<DamageInventory> DamageInventories { get; set; }
@@ -755,6 +756,13 @@ namespace HexaBill.Api.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Day).HasColumnType(Database.IsNpgsql() ? "date" : "TEXT");
                 entity.HasIndex(e => new { e.TenantId, e.Day }).IsUnique();
+            });
+
+            modelBuilder.Entity<TenantAiConsent>(entity =>
+            {
+                entity.HasKey(e => e.TenantId);
+                entity.Property(e => e.TenantId).ValueGeneratedNever();
+                entity.Property(e => e.PolicyFingerprint).IsRequired().HasMaxLength(64);
             });
 
             modelBuilder.Entity<DriverLocationCurrent>(entity =>

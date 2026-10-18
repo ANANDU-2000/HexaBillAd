@@ -466,10 +466,55 @@ function NewExpenseTab ({ initial, initialCategoryName }) {
   )
 }
 
-/**
- * Right-side assistant panel (full-screen on phones, optionally full-screen on larger screens).
- * No model is involved: it runs read-only lookups and a draft, review, confirm flow, all enforced by the server.
- */
+function AiPrivacy ({ onChanged }) {
+  const [consent, setConsent] = useState(null)
+  const [agreed, setAgreed] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let alive = true
+    assistantApi.consent().then((res) => {
+      if (!alive) return
+      if (res.ok) setConsent(res.data)
+      else setError(res.message || 'AI privacy settings could not be loaded. Use the Look up tab.')
+    })
+    return () => { alive = false }
+  }, [])
+  const save = async (enabled) => {
+    if (busy) return
+    setBusy(true)
+    setError('')
+    const res = await assistantApi.setConsent(enabled, consent?.policyFingerprint)
+    if (res.ok) { setConsent(res.data); setAgreed(false) }
+    else {
+      setError(res.message || 'Refresh privacy settings to check whether the change was saved.')
+      const fresh = await assistantApi.consent()
+      if (fresh.ok) setConsent(fresh.data)
+      setAgreed(false)
+    }
+    setBusy(false)
+    onChanged()
+  }
+  return (
+    <details className="mb-3 rounded-md border border-neutral-200 p-3 text-sm" data-testid="assistant-privacy">
+      <summary className="min-h-7 cursor-pointer font-medium">AI privacy {consent ? (consent.enabled ? '— allowed for this company' : '— off for this company') : ''}</summary>
+      <p className="mt-2 text-xs text-neutral-600">Typed messages go to the configured AI providers only after your company owner agrees. Never include passwords or API keys. Lookups remain available without AI.</p>
+      {consent && <p className="mt-2 whitespace-pre-line text-xs text-neutral-700">{consent.policyNotice}</p>}
+      {error && <p role="alert" className="mt-2 text-xs text-danger-fg">{error}</p>}
+      {consent?.canManage && (consent.enabled ? (
+        <button type="button" disabled={busy} className="mt-2 min-h-11 rounded-md border px-3 disabled:opacity-50" onClick={() => save(false)}>Turn off AI for this company</button>
+      ) : consent.policyFingerprint ? (
+        <>
+          <label className="mt-2 flex min-h-11 items-start gap-2 text-xs"><input type="checkbox" className="mt-1" checked={agreed} disabled={busy} onChange={(e) => setAgreed(e.target.checked)} />I have read this policy and approve sending typed messages to these providers for my company.</label>
+          <button type="button" disabled={busy || !agreed} className="mt-2 min-h-11 rounded-md border px-3 disabled:opacity-50" onClick={() => save(true)}>Allow AI for this company</button>
+        </>
+      ) : null)}
+      {consent && !consent.canManage && <p className="mt-2 text-xs text-neutral-600">Only your company owner can change this choice.</p>}
+    </details>
+  )
+}
+
+/** Tenant-scoped lookups, optional owner-approved model routing, and human-confirmed forms. */
 export default function AssistantPanel ({ open, onClose }) {
   const [tab, setTab] = useState('find')
   const [chatOn, setChatOn] = useState(false)
@@ -479,10 +524,12 @@ export default function AssistantPanel ({ open, onClose }) {
     setTab(kind === 'new_customer' ? 'customer' : 'expense')
   }
   useEffect(() => {
+    if (!open) return undefined
     let alive = true
+    setChatOn(false)
     assistantApi.status().then((res) => { if (alive) setChatOn(!!res.data?.chat) })
     return () => { alive = false }
-  }, [])
+  }, [open])
   const [expanded, setExpanded] = useState(false)
   const closeRef = useRef(null)
 
@@ -522,6 +569,11 @@ export default function AssistantPanel ({ open, onClose }) {
       </div>
       <div className={`flex-1 overflow-y-auto p-4 ${expanded ? 'md:mx-auto md:w-full md:max-w-2xl' : ''}`}>
         <p className="mb-3 text-xs text-neutral-500">Lookups only read your records. Anything that creates data is shown to you first and needs your confirmation.</p>
+        <AiPrivacy onChanged={() => {
+          setChatOn(false)
+          setTab('find')
+          assistantApi.status().then((res) => setChatOn(!!res.data?.chat))
+        }} />
         {tab === 'find' ? <FindTab /> : tab === 'ask' && chatOn ? <AskTab onOpenForm={openSuggestedForm} /> : tab === 'customer' ? (
           <>
             {prefill?.kind === 'new_customer' && <p className="mb-3 rounded-md border border-info-border bg-info-bg p-2 text-xs text-info-fg" data-testid="prefill-note">Filled in by the assistant from what you wrote. Nothing is saved. Check every field.</p>}

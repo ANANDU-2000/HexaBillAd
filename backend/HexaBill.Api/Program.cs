@@ -306,6 +306,7 @@ builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBi
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantToolRegistry>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantDraftService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantChatService>();
+builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantConsentService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.TenantDocuments.TenantDocumentService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.TenantDocuments.TenantDocumentSearch>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.SearchDocumentsTool>();

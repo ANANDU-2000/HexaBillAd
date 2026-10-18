@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -29,6 +30,9 @@ public sealed class AiOptions
 
     /// <summary>Must be set by the owner after a provider's data-use, retention and region terms were approved. Default false.</summary>
     public bool AllowCustomerData { get; set; }
+    /// <summary>Operator-reviewed retention/region/data-use policy shown to each owner before consent. Empty keeps consent disabled.</summary>
+    public string DataPolicyVersion { get; set; } = string.Empty;
+    public string DataPolicyNotice { get; set; } = string.Empty;
 
     public int DailyCallLimitPerTenant { get; set; } = 200;
     public int DailyTokenLimitPerTenant { get; set; } = 200_000;
@@ -297,6 +301,29 @@ public sealed class AiGateway
     /// <summary>True when the primary provider is fully configured.</summary>
     public bool HasProvider => Resolve(_options.Provider) != null;
     public bool AllowsCustomerData => _options.AllowCustomerData;
+
+    public (string? Fingerprint, string Notice) ConsentPolicy()
+    {
+        if (string.IsNullOrWhiteSpace(_options.DataPolicyVersion) || string.IsNullOrWhiteSpace(_options.DataPolicyNotice))
+            return (null, "The provider privacy policy is not ready. Use the Look up tab.");
+        var providers = new List<object>();
+        foreach (var key in new[] { _options.Provider, _options.FallbackProvider }.Where(k => !string.IsNullOrWhiteSpace(k)))
+        {
+            if (_options.Providers.TryGetValue(key, out var p))
+            {
+                if (!p.IsConfigured) return (null, "The provider configuration is not ready. Use the Look up tab.");
+                providers.Add(new { key, p.Kind, p.BaseUrl, p.Model, p.Paid });
+            }
+            else if (key == "mock") providers.Add(new { key, Model = "synthetic-only" });
+            else return (null, "The provider configuration is not ready. Use the Look up tab.");
+        }
+        if (providers.Count == 0) return (null, "The provider configuration is not ready. Use the Look up tab.");
+        var policy = JsonSerializer.Serialize(new { _options.DataPolicyVersion, _options.DataPolicyNotice, _options.AllowPaidFallback, providers });
+        var names = string.Join("; ", new[] { _options.Provider, _options.FallbackProvider }.Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => _options.Providers.TryGetValue(k, out var p) ? $"{k}: {p.Model}" : k));
+        return (Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(policy))).ToLowerInvariant(),
+            $"{_options.DataPolicyNotice}\nProviders in order: {names}. Policy: {_options.DataPolicyVersion}.");
+    }
 
     private readonly ConcurrentDictionary<string, DateTime> _lastTest = new(StringComparer.OrdinalIgnoreCase);
 

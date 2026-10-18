@@ -14,6 +14,13 @@ async function ownerApi (path, init = {}) {
   return { status: r.status, json: await r.json().catch(() => ({})) }
 }
 
+async function approveSyntheticPolicy () {
+  const policy = (await ownerApi('/api/assistant/consent')).json.data
+  expect(policy?.policyFingerprint).toBeTruthy()
+  const saved = await ownerApi('/api/assistant/consent', { method: 'PUT', body: JSON.stringify({ enabled: true, policyFingerprint: policy.policyFingerprint }) })
+  expect(saved.status).toBe(200)
+}
+
 async function openPanel (page) {
   await signIn(page, SLUG)
   await page.addInitScript(() => { try { localStorage.setItem('hexabill.assistant', '1') } catch { /* storage blocked */ } })
@@ -25,11 +32,30 @@ async function openPanel (page) {
 }
 
 test('the Ask tab exists only when the assistant model is switched on', async ({ page }) => {
+  if (MOCK_ON) await approveSyntheticPolicy()
   const status = (await ownerApi('/api/assistant/status')).json.data
   expect(status.chat).toBe(MOCK_ON)
   const panel = await openPanel(page)
   await expect(panel.getByRole('tab', { name: 'Look up' })).toBeVisible()
   await expect(panel.getByRole('tab', { name: 'Ask' })).toHaveCount(MOCK_ON ? 1 : 0)
+})
+
+test('only explicit owner approval enables Ask; withdrawal removes it', async ({ page }) => {
+  test.skip(!MOCK_ON, 'requires the synthetic model and privacy policy')
+  await ownerApi('/api/assistant/consent', { method: 'PUT', body: JSON.stringify({ enabled: false }) })
+  try {
+    const panel = await openPanel(page)
+    await expect(panel.getByRole('tab', { name: 'Ask' })).toHaveCount(0)
+    await panel.getByText('AI privacy', { exact: false }).first().click()
+    const allow = panel.getByRole('button', { name: 'Allow AI for this company' })
+    await expect(allow).toBeDisabled()
+    await panel.getByRole('checkbox', { name: 'I have read this policy' }).check()
+    await allow.click()
+    await expect(panel.getByRole('tab', { name: 'Ask' })).toBeVisible()
+    await panel.getByRole('button', { name: 'Turn off AI for this company' }).click()
+    await expect(panel.getByRole('tab', { name: 'Ask' })).toHaveCount(0)
+    expect((await ownerApi('/api/assistant/status')).json.data.chat).toBe(false)
+  } finally { await approveSyntheticPolicy() }
 })
 
 test('Ask: a lookup shows real records; plain chatter shows fixed help', async ({ page }) => {
