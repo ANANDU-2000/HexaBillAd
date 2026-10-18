@@ -73,3 +73,36 @@ test('a lost server answer after an expense was saved is not shown as a failure'
   expect(posts).toBe(1)
   expect((await apiExpenses()).filter(e => e.note === note)).toHaveLength(1)
 })
+
+test('a committed expense with no response id reconciles without a client exception or duplicate post', async ({ page }) => {
+  if (API !== 'http://127.0.0.1:5078') throw new Error('Guarded synthetic browser host required')
+  const host = await (await fetch(`${API}/__synthetic-host`)).json()
+  expect(host.syntheticOnly).toBe(true)
+  const note = `QA missing-id expense ${Date.now()}`
+  const dialog = await openForm(page)
+  const saveErrors = []
+  page.on('console', message => {
+    if (message.type() === 'error' && message.text().includes('Error saving expense:')) saveErrors.push(message.text())
+  })
+  let posts = 0
+  await page.route(/\/api\/expenses$/, async route => {
+    if (route.request().method() !== 'POST') return route.continue()
+    posts++
+    const response = await route.fetch({
+      url: `${API}/api/expenses`,
+      headers: { ...route.request().headers(), 'x-hexabill-original-host': `${SLUG}.localhost`, 'x-hexabill-edge-secret': EDGE },
+    })
+    expect(response.status()).toBeLessThan(300)
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data: null }) })
+  })
+  await dialog.locator('select[name="category"]').selectOption({ index: 1 })
+  await dialog.locator('input[name="amount"]').fill('12.50')
+  await dialog.locator('[name="note"]').fill(note)
+  await dialog.getByRole('button', { name: 'Save expense' }).click()
+  await expect(dialog).toBeHidden()
+  expect(posts).toBe(1)
+  expect(saveErrors).toEqual([])
+  expect((await apiExpenses()).filter(e => e.note === note)).toHaveLength(1)
+  await page.reload({ waitUntil: 'networkidle' })
+  expect((await apiExpenses()).filter(e => e.note === note)).toHaveLength(1)
+})

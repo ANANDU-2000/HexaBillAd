@@ -735,7 +735,7 @@ const ExpensesPage = () => {
           return
         }
       } else {
-        const response = await expensesAPI.createExpense({
+        let response = await expensesAPI.createExpense({
           branchId: data.branchId ? parseInt(data.branchId, 10) : null,
           routeId: data.routeId ? parseInt(data.routeId, 10) : null,
           categoryId: catId,

@@ -1,7 +1,7 @@
 param(
     [string[]]$Projects = @('m360'),
     [string]$TestFilter = '',
-    [string]$Spec = 'e2e/customer-save-contract.spec.js',
+    [string[]]$Spec = @('e2e/customer-save-contract.spec.js'),
     [switch]$ResumeFixtures,
     [string]$Database = 'hexabill_codex_browser_20261012_1525',
     [int]$PostgresPort = 55472
@@ -60,7 +60,7 @@ try {
     if (-not $qaReady) { throw 'Synthetic servers did not become available.' }
     Push-Location $qaUiRoot
     try {
-        $qaArgs = @('playwright', 'test', $Spec, '--workers=1')
+        $qaArgs = @('playwright', 'test') + $Spec + @('--workers=1')
         foreach ($qaProject in $Projects) { $qaArgs += "--project=$qaProject" }
         if ($TestFilter) { $qaArgs += @('--grep', $TestFilter) }
         & npx.cmd @qaArgs

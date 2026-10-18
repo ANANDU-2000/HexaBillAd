@@ -1,0 +1,240 @@
+{
+  "audit_date": "2026-10-17",
+  "scope": "uploaded snapshot; no fixes deployed",
+  "tasks": [
+    {
+      "id": "SEC-01",
+      "priority": "P0",
+      "title": "Rotate exposed reference credential",
+      "state": "Open - audit recommendation",
+      "evidence": "Screenshot S006",
+      "acceptance": "Credential owner verifies revocation; no value shared.",
+      "implementation_verified": false
+    },
+    {
+      "id": "SAVE-01",
+      "priority": "P0 triage",
+      "title": "Customer/product mutation outcome and retry safety",
+      "state": "Open - audit recommendation",
+      "evidence": "S009-S010/S013; customer/product forms and services",
+      "acceptance": "Single persisted record; clear mutation vs refresh result; retry safe.",
+      "implementation_verified": false
+    },
+    {
+      "id": "REL-01",
+      "priority": "P1",
+      "title": "Purchase route error recovery",
+      "state": "Open - audit recommendation",
+      "evidence": "S037; RouteContent/ErrorBoundary/PurchasesPage",
+      "acceptance": "Reproduced exception fixed; no loss of recoverable draft.",
+      "implementation_verified": false
+    },
+    {
+      "id": "UX-01",
+      "priority": "P1",
+      "title": "Purchase picker positioning and stacking",
+      "state": "Open - audit recommendation",
+      "evidence": "S278-S279; PurchasesPage.jsx",
+      "acceptance": "Touch/keyboard picker never obscured or clipped across target widths.",
+      "implementation_verified": false
+    },
+    {
+      "id": "UX-02",
+      "priority": "P1",
+      "title": "Responsive tables and identity visibility",
+      "state": "Open - audit recommendation",
+      "evidence": "S183/S189/S200/S203/S210",
+      "acceptance": "Core phone tasks need no horizontal scroll; tablet identity remains visible.",
+      "implementation_verified": false
+    },
+    {
+      "id": "VAT-01",
+      "priority": "P1",
+      "title": "VAT refresh, scroll and period behaviour",
+      "state": "Open - audit recommendation",
+      "evidence": "VatReturnPage.jsx; user-reported loop",
+      "acceptance": "Scroll triggers zero fetch; refresh retains layout; tenant periods honoured.",
+      "implementation_verified": false
+    },
+    {
+      "id": "REL-02",
+      "priority": "P1",
+      "title": "Staff activity route and error state",
+      "state": "Open - audit recommendation",
+      "evidence": "services/index.js:1445; SuperAdminController.cs:894",
+      "acceptance": "Correct route, tenant/role tests, honest empty/error states.",
+      "implementation_verified": false
+    },
+    {
+      "id": "REL-03",
+      "priority": "P1",
+      "title": "Tenant/platform branding and logo errors",
+      "state": "Open - audit recommendation",
+      "evidence": "TenantBrandingContext.jsx; S282-S309",
+      "acceptance": "No tenant branding call in platform scope; tenant logo persists/reloads.",
+      "implementation_verified": false
+    },
+    {
+      "id": "DATA-01",
+      "priority": "P1",
+      "title": "Reconcile tenant count definitions",
+      "state": "Open - audit recommendation",
+      "evidence": "S288 seven versus S300 five",
+      "acceptance": "Same definition/source/time across admin surfaces; actual inventory confirmed.",
+      "implementation_verified": false
+    },
+    {
+      "id": "SEC-02",
+      "priority": "P1",
+      "title": "Private document storage policy",
+      "state": "Open - audit recommendation",
+      "evidence": "StorageController.cs",
+      "acceptance": "Private file access and caching tested across tenant IDs and sessions.",
+      "implementation_verified": false
+    },
+    {
+      "id": "OPS-01",
+      "priority": "P1",
+      "title": "Versioned schema ownership",
+      "state": "Open - audit recommendation",
+      "evidence": "Program.cs; TenantContextMiddleware.cs",
+      "acceptance": "Fresh/upgrade PG migrations pass; no opportunistic production DDL.",
+      "implementation_verified": false
+    },
+    {
+      "id": "OPS-02",
+      "priority": "P1",
+      "title": "True resource metrics and capacity",
+      "state": "Open - audit recommendation",
+      "evidence": "PlatformMetrics.cs; DiagnosticsController.cs",
+      "acceptance": "RSS/limit and DB pressure measured; load gate passes or upgrade justified.",
+      "implementation_verified": false
+    },
+    {
+      "id": "UX-03",
+      "priority": "P1",
+      "title": "Tablet shell and controls",
+      "state": "Open - audit recommendation",
+      "evidence": "S241-S280; Layout/BottomNav/index.css",
+      "acceptance": "Readable touch layout in both orientations and split view.",
+      "implementation_verified": false
+    },
+    {
+      "id": "UX-04",
+      "priority": "P1",
+      "title": "Focused purchase entry and footer",
+      "state": "Open - audit recommendation",
+      "evidence": "PurchasesPage.jsx",
+      "acceptance": "One scroll flow; Save remains reachable with keyboard and safe area.",
+      "implementation_verified": false
+    },
+    {
+      "id": "UX-05",
+      "priority": "P1",
+      "title": "Owner dashboard and Daily Close",
+      "state": "Open - audit recommendation",
+      "evidence": "DashboardTally; existing DailyClose modules",
+      "acceptance": "One-tap close access; cash reconciliation and states pass.",
+      "implementation_verified": false
+    },
+    {
+      "id": "UX-06",
+      "priority": "P1",
+      "title": "Shared UI patterns and navigation",
+      "state": "Open - audit recommendation",
+      "evidence": "All device module groups",
+      "acceptance": "Consistent labels/status/actions/back behaviour; accessible controls.",
+      "implementation_verified": false
+    },
+    {
+      "id": "SAFE-01",
+      "priority": "P1",
+      "title": "Restrict destructive controls",
+      "state": "Open - audit recommendation",
+      "evidence": "S230/S237 settings/profile",
+      "acceptance": "Permission, reason, recent auth and deliberate confirm; restore plan.",
+      "implementation_verified": false
+    },
+    {
+      "id": "INS-01",
+      "priority": "P2",
+      "title": "Correct deterministic insights",
+      "state": "Open - audit recommendation",
+      "evidence": "ReportService.GetAISuggestionsAsync",
+      "acceptance": "Rank sellers by explicit metric; rule-based label and source link.",
+      "implementation_verified": false
+    },
+    {
+      "id": "AI-01",
+      "priority": "P2",
+      "title": "Tenant documents and read-only assistant",
+      "state": "Open - audit recommendation",
+      "evidence": "02_AI_and_Tenant_Architecture.md",
+      "acceptance": "Approved scoped retrieval; citations; denial and outage tests.",
+      "implementation_verified": false
+    },
+    {
+      "id": "AI-02",
+      "priority": "P2",
+      "title": "Confirmed customer/expense drafts",
+      "state": "Open - audit recommendation",
+      "evidence": "Existing domain services",
+      "acceptance": "Draft revision/expiry/auth/idempotency; actual saved-record evidence.",
+      "implementation_verified": false
+    },
+    {
+      "id": "VOICE-01",
+      "priority": "P2",
+      "title": "Malayalam push-to-talk pilot",
+      "state": "Open - audit recommendation",
+      "evidence": "Assistant Voice adapters",
+      "acceptance": "Measured language/numbers/device tests; text fallback and budget.",
+      "implementation_verified": false
+    },
+    {
+      "id": "VOICE-02",
+      "priority": "P3",
+      "title": "Voice-to-voice pilot",
+      "state": "Open - audit recommendation",
+      "evidence": "Approved realtime transport/provider",
+      "acceptance": "Short-lived tenant session, interrupt/cancel, consent and cost limits.",
+      "implementation_verified": false
+    },
+    {
+      "id": "MAP-01",
+      "priority": "P2",
+      "title": "Delivery workflow using existing maps",
+      "state": "Open - audit recommendation",
+      "evidence": "StopLocationMap; routes modules",
+      "acceptance": "Assigned stops, status, navigation and reconciliation tested.",
+      "implementation_verified": false
+    },
+    {
+      "id": "MAP-02",
+      "priority": "P3",
+      "title": "Consent-based live location",
+      "state": "Open - audit recommendation",
+      "evidence": "Trip/location sessions",
+      "acceptance": "Start/end/stale states, access boundaries and retention tested.",
+      "implementation_verified": false
+    },
+    {
+      "id": "PRED-01",
+      "priority": "P3",
+      "title": "Forecasting after data quality gate",
+      "state": "Open - audit recommendation",
+      "evidence": "Tenant history/backtests",
+      "acceptance": "Beat naive baseline in held-out periods; uncertainty and insufficient-data states.",
+      "implementation_verified": false
+    },
+    {
+      "id": "CLEAN-01",
+      "priority": "P2",
+      "title": "Safe folder/doc consolidation",
+      "state": "Open - audit recommendation",
+      "evidence": "05_Folder_Cleanup.md",
+      "acceptance": "Reference proof, build/route checks, rollback and no customer-data removal.",
+      "implementation_verified": false
+    }
+  ]
+}

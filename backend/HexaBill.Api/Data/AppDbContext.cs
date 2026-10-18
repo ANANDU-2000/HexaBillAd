@@ -153,6 +153,8 @@ namespace HexaBill.Api.Data
         public DbSet<InventoryTransaction> InventoryTransactions { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<AssistantDraft> AssistantDrafts { get; set; }
+        public DbSet<TenantDocument> TenantDocuments { get; set; }
+        public DbSet<TenantDocumentVersion> TenantDocumentVersions { get; set; }
         public DbSet<Setting> Settings { get; set; }
         public DbSet<DamageCategory> DamageCategories { get; set; }
         public DbSet<DamageInventory> DamageInventories { get; set; }
@@ -709,6 +711,27 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.ResultJson).HasColumnType(Database.IsNpgsql() ? "text" : "TEXT");
                 entity.HasIndex(e => new { e.TenantId, e.UserId, e.Status });
                 entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique().HasFilter("\"IdempotencyKey\" IS NOT NULL");
+            });
+
+            modelBuilder.Entity<TenantDocument>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.DocType).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.Visibility).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+                entity.HasIndex(e => new { e.TenantId, e.Status });
+            });
+
+            modelBuilder.Entity<TenantDocumentVersion>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.OriginalFileName).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.ContentType).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Sha256).IsRequired().HasMaxLength(64);
+                entity.Property(e => e.StorageKey).IsRequired().HasMaxLength(300);
+                entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+                entity.HasIndex(e => new { e.TenantId, e.DocumentId, e.VersionNumber }).IsUnique();
             });
 
             modelBuilder.Entity<AuditLog>(entity =>
