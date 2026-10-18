@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace HexaBill.Tests;
 
@@ -67,6 +68,19 @@ public class HexaBillWebApplicationFactory : WebApplicationFactory<Program>
         {
             foreach (var descriptor in services.Where(d => d.ServiceType == typeof(IHostedService)).ToList())
                 services.Remove(descriptor);
+
+            // The AI gateway with scripted providers and the real (database) usage ledger: tests decide what the "model" answers.
+            foreach (var d in services.Where(d => d.ServiceType == typeof(HexaBill.Api.Modules.Assistant.Ai.AiGateway)).ToList()) services.Remove(d);
+            services.AddSingleton<TestAiControl>();
+            services.AddSingleton(sp =>
+            {
+                var control = sp.GetRequiredService<TestAiControl>();
+                return new HexaBill.Api.Modules.Assistant.Ai.AiGateway(
+                    Microsoft.Extensions.Options.Options.Create(control.Options),
+                    new HexaBill.Api.Modules.Assistant.Ai.IAiProvider[] { control.Good, control.Broken },
+                    sp.GetRequiredService<HexaBill.Api.Modules.Assistant.Ai.IAiUsageLedger>(),
+                    sp.GetRequiredService<ILogger<HexaBill.Api.Modules.Assistant.Ai.AiGateway>>());
+            });
 
             var pdfDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IPdfService));
             if (pdfDescriptor != null)
@@ -538,4 +552,44 @@ public class HexaBillWebApplicationFactory : WebApplicationFactory<Program>
 
         base.Dispose(disposing);
     }
+}
+
+/// <summary>A provider whose answers the test decides. Records what it was sent; never contacts a network.</summary>
+public sealed class ScriptedAiProvider : HexaBill.Api.Modules.Assistant.Ai.IAiProvider
+{
+    public ScriptedAiProvider(string key) => Key = key;
+    public string Key { get; }
+    public bool Paid => false;
+    public bool IsConfigured => true;
+    public string Reply { get; set; } = "{\"tool\":\"none\",\"reply\":\"ok\"}";
+    public Exception? Failure { get; set; }
+    public int Calls { get; private set; }
+    public string? LastSystem { get; private set; }
+    public string? LastPrompt { get; private set; }
+    public void Reset() { Calls = 0; LastSystem = null; LastPrompt = null; Failure = null; Reply = "{\"tool\":\"none\",\"reply\":\"ok\"}"; }
+
+    public Task<HexaBill.Api.Modules.Assistant.Ai.ProviderReply> CompleteAsync(string? system, string prompt, CancellationToken ct)
+    {
+        Calls++;
+        LastSystem = system;
+        LastPrompt = prompt;
+        if (Failure != null) throw Failure;
+        return Task.FromResult(new HexaBill.Api.Modules.Assistant.Ai.ProviderReply(Reply, 10, 5));
+    }
+}
+
+/// <summary>The settings object the test gateway reads; a test may change it and must put it back.</summary>
+public sealed class TestAiControl
+{
+    public HexaBill.Api.Modules.Assistant.Ai.AiOptions Options { get; } = new()
+    {
+        Enabled = true, Provider = "scripted", AllowCustomerData = true, DailyCallLimitPerTenant = 100000, DailyTokenLimitPerTenant = 100_000_000,
+        Providers =
+        {
+            ["scripted"] = new HexaBill.Api.Modules.Assistant.Ai.AiProviderOptions { Kind = "openai-compatible", BaseUrl = "http://scripted.invalid", Model = "scripted-model", ApiKey = "SECRET-KEY-VALUE" },
+            ["broken"] = new HexaBill.Api.Modules.Assistant.Ai.AiProviderOptions { Kind = "openai-compatible", BaseUrl = "http://broken.invalid", Model = "broken-model", ApiKey = "OTHER-SECRET-VALUE" },
+        },
+    };
+    public ScriptedAiProvider Good { get; } = new("scripted");
+    public ScriptedAiProvider Broken { get; } = new("broken");
 }

@@ -13,6 +13,8 @@ const wrap = async (call) => {
 }
 
 export const assistantApi = {
+  status: () => wrap(() => api.get('/assistant/status')),
+  chat: (message) => wrap(() => api.post('/assistant/chat', { message })),
   runTool: (name, args) => wrap(() => api.post(`/assistant/tools/${name}`, args)),
   createCustomerDraft: (body) => wrap(() => api.post('/assistant/drafts/customer', body)),
   createExpenseDraft: (body) => wrap(() => api.post('/assistant/drafts/expense', body)),

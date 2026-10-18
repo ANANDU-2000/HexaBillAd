@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { X, Maximize2, Minimize2, Search, UserPlus, Receipt } from 'lucide-react'
+import { X, Maximize2, Minimize2, Search, UserPlus, Receipt, MessageSquare } from 'lucide-react'
 import { assistantApi } from './assistantApi'
+import { describeChatReply, CHAT_MAX_CHARS, chatMessageProblem } from './assistantChat'
 import {
   canConfirm, describeConfirmFailure, emptyCustomerForm, emptyExpenseForm, fieldErrorMap, newIdempotencyKey, toDraftRequest, toExpenseDraftRequest,
 } from './assistantDraft'
@@ -15,6 +16,72 @@ function Field ({ id, label, error, children }) {
       {children}
       {error && <p role="alert" className="mt-1 text-xs text-error">{error}</p>}
     </div>
+  )
+}
+
+/** Customer or product rows read from the books (shared by the lookup and the chat). */
+function ResultRows ({ tool, rows, asOf }) {
+  return (
+    <>
+      <ul aria-label="Results" className="divide-y divide-neutral-200 rounded-md border border-neutral-200">
+        {rows.map((r) => (
+          <li key={r.id} className="px-3 py-2 text-sm">
+            <p className="font-medium text-neutral-900">{r.name}{r.sku ? ` · ${r.sku}` : ''}</p>
+            {tool === 'find_customers' ? (
+              <p className="text-xs text-neutral-600">{r.phone || 'No phone'}{r.balance != null ? ` · Balance ${Number(r.balance).toFixed(2)}` : ''}</p>
+            ) : (
+              <p className="text-xs text-neutral-600">
+                Stock {r.stockQty} {r.unit}{r.lowStock ? ' (low)' : ''} · Price {Number(r.sellPrice).toFixed(2)}{r.costPrice != null ? ` · Cost ${Number(r.costPrice).toFixed(2)}` : ''}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-neutral-500">Read from your records{asOf ? ` as of ${new Date(asOf).toLocaleTimeString()}` : ''}. Nothing was changed.</p>
+    </>
+  )
+}
+
+/** Ask in plain words. The assistant only chooses a lookup; the numbers shown always come from your records. */
+function AskTab () {
+  const [message, setMessage] = useState('')
+  const [state, setState] = useState({ status: 'idle', view: null, error: '' })
+  const sending = useRef(false)
+
+  const ask = async (e) => {
+    e.preventDefault()
+    if (sending.current) return
+    const problem = chatMessageProblem(message)
+    if (problem) { setState({ status: 'error', view: null, error: problem }); return }
+    sending.current = true
+    setState({ status: 'loading', view: null, error: '' })
+    const res = await assistantApi.chat(message.trim())
+    sending.current = false
+    if (!res.ok) { setState({ status: 'error', view: null, error: res.message || 'The assistant could not answer. Use the Look up tab.' }); return }
+    setState({ status: 'done', view: describeChatReply(res.data), error: '' })
+  }
+
+  const view = state.view
+  return (
+    <form onSubmit={ask} className="space-y-3">
+      <Field id="assistant-ask" label="Ask about a customer or a product">
+        <textarea id="assistant-ask" rows={3} className={inputClass} value={message} maxLength={CHAT_MAX_CHARS} onChange={(e) => setMessage(e.target.value)} placeholder="For example: how much stock of rice do we have?" />
+      </Field>
+      <p className="text-xs text-neutral-600">The assistant only picks a lookup. It never changes anything, and the figures come from your records.</p>
+      <button type="submit" disabled={state.status === 'loading'} className="btn btn-primary min-h-11 w-full">
+        <MessageSquare className="h-4 w-4" aria-hidden /> {state.status === 'loading' ? 'Thinking…' : 'Ask'}
+      </button>
+      {state.status === 'error' && <p role="alert" className="text-sm text-error">{state.error}</p>}
+      {state.status === 'done' && view && (
+        <div className="space-y-2" data-testid="assistant-answer">
+          {view.heading && <p className="text-sm font-medium text-neutral-900" data-testid="assistant-heading">{view.heading}</p>}
+          {view.kind === 'tool' && view.rows.length === 0 && <p className="text-sm text-neutral-600">Nothing found.</p>}
+          {view.kind === 'tool' && view.rows.length > 0 && <ResultRows tool={view.tool} rows={view.rows} asOf={view.asOf} />}
+          {view.kind !== 'tool' && view.text && <p className="text-sm text-neutral-800" data-testid="assistant-text">{view.text}</p>}
+          {view.note && <p className="text-xs text-neutral-500">{view.note}</p>}
+        </div>
+      )}
+    </form>
   )
 }
 
@@ -48,25 +115,7 @@ function FindTab () {
       </button>
       {state.status === 'error' && <p role="alert" className="text-sm text-error">{state.message}</p>}
       {state.status === 'done' && state.rows.length === 0 && <p className="text-sm text-neutral-600">Nothing found for “{query.trim()}”.</p>}
-      {state.status === 'done' && state.rows.length > 0 && (
-        <>
-          <ul aria-label="Results" className="divide-y divide-neutral-200 rounded-md border border-neutral-200">
-            {state.rows.map((r) => (
-              <li key={r.id} className="px-3 py-2 text-sm">
-                <p className="font-medium text-neutral-900">{r.name}{r.sku ? ` · ${r.sku}` : ''}</p>
-                {tool === 'find_customers' ? (
-                  <p className="text-xs text-neutral-600">{r.phone || 'No phone'}{r.balance != null ? ` · Balance ${Number(r.balance).toFixed(2)}` : ''}</p>
-                ) : (
-                  <p className="text-xs text-neutral-600">
-                    Stock {r.stockQty} {r.unit}{r.lowStock ? ' (low)' : ''} · Price {Number(r.sellPrice).toFixed(2)}{r.costPrice != null ? ` · Cost ${Number(r.costPrice).toFixed(2)}` : ''}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-          <p className="text-xs text-neutral-500">Read from your records{state.asOf ? ` as of ${new Date(state.asOf).toLocaleTimeString()}` : ''}. Nothing was changed.</p>
-        </>
-      )}
+      {state.status === 'done' && state.rows.length > 0 && <ResultRows tool={tool} rows={state.rows} asOf={state.asOf} />}
     </form>
   )
 }
@@ -307,6 +356,12 @@ function NewExpenseTab () {
  */
 export default function AssistantPanel ({ open, onClose }) {
   const [tab, setTab] = useState('find')
+  const [chatOn, setChatOn] = useState(false)
+  useEffect(() => {
+    let alive = true
+    assistantApi.status().then((res) => { if (alive) setChatOn(!!res.data?.chat) })
+    return () => { alive = false }
+  }, [])
   const [expanded, setExpanded] = useState(false)
   const closeRef = useRef(null)
 
@@ -340,12 +395,13 @@ export default function AssistantPanel ({ open, onClose }) {
       </header>
       <div role="tablist" className="flex border-b border-neutral-200">
         <button role="tab" aria-selected={tab === 'find'} type="button" className={tabClass('find')} onClick={() => setTab('find')}>Look up</button>
+        {chatOn && <button role="tab" aria-selected={tab === 'ask'} type="button" className={tabClass('ask')} onClick={() => setTab('ask')}>Ask</button>}
         <button role="tab" aria-selected={tab === 'customer'} type="button" className={tabClass('customer')} onClick={() => setTab('customer')}>New customer</button>
         <button role="tab" aria-selected={tab === 'expense'} type="button" className={tabClass('expense')} onClick={() => setTab('expense')}>New expense</button>
       </div>
       <div className={`flex-1 overflow-y-auto p-4 ${expanded ? 'md:mx-auto md:w-full md:max-w-2xl' : ''}`}>
         <p className="mb-3 text-xs text-neutral-500">Lookups only read your records. Anything that creates data is shown to you first and needs your confirmation.</p>
-        {tab === 'find' ? <FindTab /> : tab === 'customer' ? <NewCustomerTab /> : <NewExpenseTab />}
+        {tab === 'find' ? <FindTab /> : tab === 'ask' && chatOn ? <AskTab /> : tab === 'customer' ? <NewCustomerTab /> : <NewExpenseTab />}
       </div>
     </aside>
   )

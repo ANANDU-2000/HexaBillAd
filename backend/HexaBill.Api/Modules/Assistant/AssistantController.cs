@@ -17,13 +17,15 @@ public class AssistantController : TenantScopedController
 {
     private readonly AssistantToolRegistry _registry;
     private readonly AssistantDraftService _drafts;
+    private readonly AssistantChatService _chat;
     private readonly AppDbContext _context;
     private readonly ILogger<AssistantController> _logger;
 
-    public AssistantController(AssistantToolRegistry registry, AssistantDraftService drafts, AppDbContext context, ILogger<AssistantController> logger)
+    public AssistantController(AssistantToolRegistry registry, AssistantDraftService drafts, AssistantChatService chat, AppDbContext context, ILogger<AssistantController> logger)
     {
         _registry = registry;
         _drafts = drafts;
+        _chat = chat;
         _context = context;
         _logger = logger;
     }
@@ -77,6 +79,58 @@ public class AssistantController : TenantScopedController
         {
             _logger.LogError(ex, "Assistant tool {Tool} failed for tenant {TenantId}", name, caller.TenantId);
             return StatusCode(500, new ApiResponse<object> { Success = false, Message = "The tool could not run. Use the normal screens." });
+        }
+    }
+
+    /// <summary>Tells the screen whether to offer the Ask tab. Says nothing about providers, keys or settings.</summary>
+    [HttpGet("status")]
+    public IActionResult Status()
+    {
+        if (!TryCaller(out _)) return Forbid();
+        return Ok(new ApiResponse<object> { Success = true, Data = new { chat = _chat.IsAvailable } });
+    }
+
+    public sealed class ChatRequest
+    {
+        public string? Message { get; set; }
+    }
+
+    /// <summary>
+    /// Ask in plain words. The model only picks a read-only lookup; the server runs it with the caller's own scope and role.
+    /// Off by default: with the usual settings no message leaves the server. Never writes anything.
+    /// </summary>
+    [HttpPost("chat")]
+    public async Task<IActionResult> Chat([FromBody] ChatRequest request, CancellationToken ct)
+    {
+        if (!TryCaller(out var caller)) return Forbid();
+        var message = (request?.Message ?? string.Empty).Trim();
+        if (message.Length < 2 || message.Length > AssistantChatService.MaxMessageChars)
+            return BadRequest(new ApiResponse<object> { Success = false, Message = $"Write between 2 and {AssistantChatService.MaxMessageChars} characters." });
+        try
+        {
+            var reply = await _chat.AskAsync(caller, message, ct);
+            // The message itself is not stored: it can hold names and phone numbers.
+            _context.AuditLogs.Add(new AuditLog
+            {
+                TenantId = caller.TenantId,
+                OwnerId = caller.TenantId,
+                UserId = caller.UserId,
+                Action = "AssistantChat",
+                Details = $"mode={reply.Mode}; tool={reply.Tool ?? "none"}; provider={reply.Provider ?? "none"}",
+                CreatedAt = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync(ct);
+            Response.Headers["Cache-Control"] = "no-store";
+            return Ok(new ApiResponse<ChatReply> { Success = true, Message = "Reply", Data = reply });
+        }
+        catch (AssistantToolException ex)
+        {
+            return StatusCode(ex.StatusCode, new ApiResponse<object> { Success = false, Message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Assistant chat failed for tenant {TenantId}", caller.TenantId);
+            return StatusCode(500, new ApiResponse<object> { Success = false, Message = "The assistant could not answer. Use the lookups." });
         }
     }
 

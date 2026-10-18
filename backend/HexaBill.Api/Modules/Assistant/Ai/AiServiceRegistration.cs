@@ -12,8 +12,14 @@ public static class AiServiceRegistration
     {
         services.Configure<AiOptions>(configuration.GetSection(AiOptions.Section));
         services.AddHttpClient();
+        // The budget lives in the database so it survives restarts and is shared by every instance. The in-memory ledger remains
+        // for tests and for hosts with no database (Ai:UsageLedger=memory).
         services.AddSingleton<InMemoryAiUsageLedger>();
-        services.AddSingleton<IAiUsageLedger>(sp => sp.GetRequiredService<InMemoryAiUsageLedger>());
+        services.AddSingleton<PersistentAiUsageLedger>();
+        services.AddSingleton<IAiUsageLedger>(sp =>
+            string.Equals(configuration["Ai:UsageLedger"], "memory", StringComparison.OrdinalIgnoreCase)
+                ? sp.GetRequiredService<InMemoryAiUsageLedger>()
+                : sp.GetRequiredService<PersistentAiUsageLedger>());
         services.AddSingleton(sp =>
         {
             var options = sp.GetRequiredService<IOptions<AiOptions>>();

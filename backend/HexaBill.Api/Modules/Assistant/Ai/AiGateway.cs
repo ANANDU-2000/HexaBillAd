@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace HexaBill.Api.Modules.Assistant.Ai;
 
 /// <summary>
-/// Server-side AI provider layer. NOTHING in the application calls it yet, and it is OFF unless configured.
+/// Server-side AI provider layer. OFF unless configured; the assistant chat is the only feature that calls it.
 /// Keys are read only from server configuration (environment or secret store), never from a request, never logged,
 /// never returned. Exact model names, base URLs and prices come from configuration, not from this code.
 /// </summary>
@@ -65,6 +65,12 @@ public sealed record AiResult(AiOutcome Outcome, string? Text, string? Provider,
 }
 
 public sealed record ProviderReply(string Text, int? InputTokens, int? OutputTokens);
+
+/// <summary>What a platform administrator may see about a provider. Never the key, never a prompt.</summary>
+public sealed record AiProviderStatus(string Key, string Kind, string Model, bool Configured, bool Paid, bool IsPrimary, bool IsFallback);
+
+/// <summary>Outcome of a connectivity test with a fixed synthetic prompt. Failure is a short category, never a response body.</summary>
+public sealed record AiProviderTest(string Provider, bool Configured, bool Ok, long LatencyMs, string? Model, string? Failure);
 
 public interface IAiProvider
 {
@@ -236,7 +242,18 @@ public sealed class AiGateway
 
         var now = _clock();
         var estimate = EstimateTokens(call);
-        if (!_ledger.TryReserve(call.TenantId, estimate, _options.DailyCallLimitPerTenant, _options.DailyTokenLimitPerTenant, now))
+        bool reserved;
+        try
+        {
+            reserved = _ledger.TryReserve(call.TenantId, estimate, _options.DailyCallLimitPerTenant, _options.DailyTokenLimitPerTenant, now);
+        }
+        catch (Exception ex)
+        {
+            // No budget record means no call: the AI must never run unmetered. The ERP screens are unaffected.
+            _logger.LogWarning("AI usage ledger unavailable ({Error}); call not made. Tenant {TenantId}", ex.GetType().Name, call.TenantId);
+            return new AiResult(AiOutcome.Unavailable, null, primary.Key, "The AI service is not available. Use the normal screens.");
+        }
+        if (!reserved)
             return new AiResult(AiOutcome.Refused, null, primary.Key, "The daily AI limit for this company is used up.");
 
         var attempt = await TryProviderAsync(primary, call, ct);
@@ -249,15 +266,89 @@ public sealed class AiGateway
 
         if (attempt == null)
         {
-            _ledger.Settle(call.TenantId, estimate, 0, now);
+            SafeSettle(call.TenantId, estimate, 0, now);
             return new AiResult(AiOutcome.Unavailable, null, primary.Key, "The AI service is not available. Use the normal screens.");
         }
 
         var (provider, reply) = attempt.Value;
         var estimated = reply.InputTokens == null || reply.OutputTokens == null;
         var actual = estimated ? estimate : reply.InputTokens!.Value + reply.OutputTokens!.Value;
-        _ledger.Settle(call.TenantId, estimate, actual, now);
+        SafeSettle(call.TenantId, estimate, actual, now);
         return new AiResult(AiOutcome.Ok, reply.Text, provider.Key, null, reply.InputTokens ?? estimate, reply.OutputTokens ?? 0, estimated);
+    }
+
+    private void SafeSettle(int tenantId, int estimated, int actual, DateTime now)
+    {
+        try { _ledger.Settle(tenantId, estimated, actual, now); }
+        catch (Exception ex) { _logger.LogWarning("AI usage ledger could not settle ({Error}). Tenant {TenantId}", ex.GetType().Name, tenantId); }
+    }
+
+    /// <summary>Configured providers and their roles, for the platform status view. No keys.</summary>
+    public IReadOnlyList<AiProviderStatus> Status() =>
+        _providers.Values.OrderBy(p => p.Key, StringComparer.OrdinalIgnoreCase).Select(p =>
+        {
+            _options.Providers.TryGetValue(p.Key, out var o);
+            return new AiProviderStatus(p.Key, o?.Kind ?? "mock", o?.Model ?? "mock", p.IsConfigured, p.Paid,
+                p.Key.Equals(_options.Provider, StringComparison.OrdinalIgnoreCase), p.Key.Equals(_options.FallbackProvider, StringComparison.OrdinalIgnoreCase));
+        }).ToList();
+
+    public bool IsEnabled => _options.Enabled;
+    /// <summary>True when the primary provider is fully configured.</summary>
+    public bool HasProvider => Resolve(_options.Provider) != null;
+    public bool AllowsCustomerData => _options.AllowCustomerData;
+
+    private readonly ConcurrentDictionary<string, DateTime> _lastTest = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Connectivity check for one provider with a fixed synthetic prompt (no company data). Works while the master switch is off,
+    /// because that is how a provider is checked before it is turned on. Uses no company budget. At most one test per provider
+    /// every few seconds.
+    /// </summary>
+    public async Task<AiProviderTest> TestProviderAsync(string key, CancellationToken ct = default)
+    {
+        var provider = _providers.TryGetValue(key ?? string.Empty, out var p) ? p : null;
+        if (provider == null || !provider.IsConfigured)
+            return new AiProviderTest(key ?? string.Empty, false, false, 0, null, "Not configured: set kind, base URL, model and key on the server.");
+        _options.Providers.TryGetValue(provider.Key, out var o);
+        var model = o?.Model ?? "mock";
+
+        var now = _clock();
+        if (_lastTest.TryGetValue(provider.Key, out var last) && (now - last).TotalSeconds < 5)
+            return new AiProviderTest(provider.Key, true, false, 0, model, "Wait a few seconds before testing again.");
+        _lastTest[provider.Key] = now;
+
+        var limit = TimeSpan.FromSeconds(Math.Max(1, _options.TimeoutSeconds));
+        var clock = Stopwatch.StartNew();
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(limit);
+            var work = provider.CompleteAsync(null, "Reply with the single word OK.", timeout.Token);
+            if (await Task.WhenAny(work, Task.Delay(limit, ct)) != work)
+            {
+                timeout.Cancel();
+                _ = work.ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted);
+                return new AiProviderTest(provider.Key, true, false, clock.ElapsedMilliseconds, model, "Timed out.");
+            }
+            var reply = await work;
+            _logger.LogInformation("AI provider test ok. Provider {Provider}, {Ms} ms", provider.Key, clock.ElapsedMilliseconds);
+            return new AiProviderTest(provider.Key, true, !string.IsNullOrWhiteSpace(reply.Text), clock.ElapsedMilliseconds, model,
+                string.IsNullOrWhiteSpace(reply.Text) ? "The provider answered with nothing." : null);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning("AI provider test failed. Provider {Provider}, status {Status}", provider.Key, (int?)ex.StatusCode);
+            return new AiProviderTest(provider.Key, true, false, clock.ElapsedMilliseconds, model, ex.StatusCode.HasValue ? $"The provider refused the request (HTTP {(int)ex.StatusCode.Value})." : "The provider could not be reached.");
+        }
+        catch (Exception ex) when (ex is TaskCanceledException or OperationCanceledException or TimeoutException)
+        {
+            return new AiProviderTest(provider.Key, true, false, clock.ElapsedMilliseconds, model, "Timed out.");
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            _logger.LogWarning("AI provider test failed. Provider {Provider}, {Error}", provider.Key, ex.GetType().Name);
+            return new AiProviderTest(provider.Key, true, false, clock.ElapsedMilliseconds, model, "The provider answered in an unexpected format.");
+        }
     }
 
     private IAiProvider? Resolve(string key) =>
