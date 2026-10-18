@@ -607,7 +607,7 @@ const SuperAdminTenantsPage = () => {
         title="Suspend Company"
       >
         <div className="p-1">
-          <div className="flex items-center space-x-3 text-warning mb-4 p-3 bg-warning-bg rounded-lg border border-amber-100">
+          <div className="flex items-center space-x-3 text-neutral-800 mb-4 p-3 bg-white rounded-sm border border-neutral-200 border-l-4 border-l-warning">
             <Ban className="h-6 w-6" />
             <p className="font-medium">You are about to suspend this company's access.</p>
           </div>
@@ -869,7 +869,7 @@ const SuperAdminTenantsPage = () => {
         }} className="space-y-6 px-1">
 
           {createError && <p id="company-create-error" ref={createErrorRef} role="alert" tabIndex={-1}
-            className="rounded-lg border border-error-border bg-error-bg p-3 text-sm text-red-800 focus:outline-none focus:ring-2 focus:ring-red-500">{createError}</p>}
+            className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white p-3 text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-red-500">{createError}</p>}
 
           {sharedLegalSource && (
             <section className="rounded-lg border border-primary-200 bg-primary-50 p-4 text-sm">
@@ -1104,7 +1104,7 @@ const SuperAdminTenantsPage = () => {
         size="md"
       >
         <div className="p-1">
-          <div className="flex items-center space-x-3 text-error mb-4 bg-error-bg p-4 rounded-lg border border-red-100">
+          <div className="flex items-center space-x-3 text-neutral-800 mb-4 bg-white p-4 rounded-sm border border-neutral-200 border-l-4 border-l-error">
             <AlertTriangle className="h-6 w-6" />
             <span className="font-bold">Permanent Deletion</span>
           </div>
@@ -1144,7 +1144,7 @@ const SuperAdminTenantsPage = () => {
         showCloseButton={false}
       >
         <div className="space-y-6 p-2">
-          <p className="text-warning-fg bg-warning-bg border border-warning-border rounded-lg p-4 text-sm font-medium">
+          <p className="text-neutral-800 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4 text-sm font-medium">
             These credentials are shown only once. Save them before closing.
           </p>
           <div className="space-y-4">

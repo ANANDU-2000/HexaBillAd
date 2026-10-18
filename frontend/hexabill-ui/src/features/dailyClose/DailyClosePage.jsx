@@ -382,7 +382,7 @@ const DailyClosePage = () => {
       </div>
 
       {closedForDate && (
-        <div className="border border-amber-300 bg-warning-bg rounded-lg p-4 space-y-2">
+        <div className="border border-neutral-200 border-l-4 border-l-warning bg-white rounded-sm p-4 space-y-2">
           <p className="text-sm text-amber-900 font-medium">This business day is closed (v{closedForDate.version}). Reopen to record a corrected close.</p>
           {canManageClose ? (
             <>

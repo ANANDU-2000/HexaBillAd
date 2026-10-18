@@ -1,11 +1,11 @@
 // Security: disable console in production first (before any other code)
 import './security/disableConsoleInProduction.js'
-import React, { useEffect } from 'react'
+import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
 import { BrandingProvider } from './tenant/TenantBrandingContext'
-import toast, { Toaster, useToasterStore } from 'react-hot-toast'
+import AppToaster from './components/ui/AppToaster'
 import App from './app/App.jsx'
 import './index.css'
 
@@ -16,65 +16,6 @@ try {
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
 } catch {
   /* ignore private-mode / SSR */
-}
-
-const TOAST_LIMIT = 3
-
-const LimitedToaster = () => {
-  const { toasts } = useToasterStore()
-
-  useEffect(() => {
-    const visible = toasts.filter((t) => t.visible)
-    if (visible.length > TOAST_LIMIT) {
-      visible
-        .slice(0, visible.length - TOAST_LIMIT)
-        .forEach((t) => toast.dismiss(t.id))
-    }
-  }, [toasts])
-
-  return (
-    <Toaster
-      position="top-right"
-      toastOptions={{
-        duration: 3000,
-        style: {
-          background: '#fff',
-          color: '#1f2937',
-          borderRadius: '12px',
-          padding: '14px 18px',
-          boxShadow: '0 4px 14px rgba(0,0,0,0.12), 0 0 1px rgba(0,0,0,0.08)',
-          border: '1px solid #e5e7eb',
-          maxWidth: '360px',
-        },
-        success: {
-          duration: 3000,
-          style: {
-            background: '#fff',
-            color: '#1f2937',
-            borderLeft: '4px solid #10b981',
-          },
-          iconTheme: {
-            primary: '#10b981',
-            secondary: '#fff',
-          },
-        },
-        error: {
-          duration: 4000,
-          style: {
-            background: '#fff',
-            color: '#1f2937',
-            borderLeft: '4px solid #ef4444',
-          },
-          iconTheme: {
-            primary: '#ef4444',
-            secondary: '#fff',
-          },
-        },
-      }}
-      containerStyle={{ top: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}
-      gutter={8}
-    />
-  )
 }
 
 // Force favicon update on load (for cache-busting)
@@ -112,7 +53,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <App />
         </BrandingProvider>
       </AuthProvider>
-      <LimitedToaster />
+      <AppToaster />
     </BrowserRouter>
   </React.StrictMode>,
 )

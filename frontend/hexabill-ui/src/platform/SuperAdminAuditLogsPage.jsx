@@ -200,7 +200,7 @@ const SuperAdminAuditLogsPage = () => {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-error-bg border border-error-border rounded-lg">
+        <div className="mb-6 p-4 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm">
           <p className="font-medium text-red-800">{error}</p>
         </div>
       )}

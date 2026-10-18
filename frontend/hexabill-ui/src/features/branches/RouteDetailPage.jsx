@@ -1183,7 +1183,7 @@ const RouteDetailPage = () => {
             </div>
           )}
           {stopLocationEnabled && locationNeededStops(stopsMap).length > 0 && (
-            <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-sm" data-testid="planner-location-needed">
+            <div className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-3 text-sm" data-testid="planner-location-needed">
               <p className="font-medium text-warning-fg">Location needed</p>
               <p className="text-neutral-700">These stops have no shop location, so they are left off the map and the driver has no directions to them: {locationNeededStops(stopsMap).map((s) => s.customerName).join(', ')}.</p>
             </div>

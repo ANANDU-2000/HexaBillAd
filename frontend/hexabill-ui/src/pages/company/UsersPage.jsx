@@ -1171,7 +1171,7 @@ const UsersPage = () => {
                   </select>
                   {errorsAdd.role && <p className="text-red-500 text-xs mt-0.5">{errorsAdd.role.message}</p>}
                   {addFormRole === 'Owner' && (
-                    <div className="mt-2 p-3 rounded-lg bg-warning-bg border border-warning-border flex items-start gap-2">
+                    <div className="mt-2 p-3 rounded-sm bg-white border border-neutral-200 border-l-4 border-l-warning flex items-start gap-2">
                       <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
                       <div className="text-xs text-amber-800">
                         <strong>Co-owner:</strong> This user will have full access, including the ability to manage or delete other users and all company data. Only create another Owner if you intend a co-owner.

@@ -116,7 +116,7 @@ export default function CustomerPinField({ lat, lng, saved = null, updatedAt = n
       </div>
 
       {confirmRemove && (
-        <div className="rounded-md border border-warning-border bg-warning-bg p-3 text-sm" role="alertdialog" aria-label="Remove saved location" data-testid="pin-remove-confirm">
+        <div className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-3 text-sm" role="alertdialog" aria-label="Remove saved location" data-testid="pin-remove-confirm">
           <p className="text-neutral-800">Remove this customer's saved shop location? Drivers will no longer see this stop on the map.</p>
           <div className="flex gap-2 mt-2">
             <button type="button" className="min-h-[44px] px-3 py-2 border rounded-md bg-white" onClick={() => setConfirmRemove(false)}>Keep it</button>

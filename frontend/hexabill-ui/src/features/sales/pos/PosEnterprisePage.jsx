@@ -3903,7 +3903,7 @@ const PosEnterprisePage = () => {
               </button>
             </div>
             <div className="p-6">
-              <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="mb-4 p-4 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm">
                 <p className="text-yellow-800 font-medium mb-2">Warning: This invoice has payments</p>
                 <ul className="text-sm text-yellow-700 space-y-1">
                   <li>• Status: <span className="font-bold">{editingSale?.paymentStatus?.toUpperCase() || 'Unknown'}</span></li>

@@ -256,7 +256,7 @@ const SuperAdminSettingsPage = () => {
     if (activeTab === 'security') {
       return (
         <div className="space-y-4">
-          <div className="p-4 bg-warning-bg border border-warning-border rounded-lg">
+          <div className="p-4 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm">
             <label className="flex items-center justify-between cursor-pointer">
               <span className="flex items-center gap-2 font-medium text-amber-900">
                 <Construction className="h-5 w-5" />

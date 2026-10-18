@@ -199,7 +199,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
   const displayCurrency = detail?.currency || tenantCurrency || 'AED'
   const footer = !loading && !error && detail && (
     <div className="flex flex-wrap gap-3">
-      {outputError && <p role="alert" className="w-full rounded-md border border-error-border bg-error-bg p-3 text-sm text-error-fg">{outputError}</p>}
+      {outputError && <p role="alert" className="w-full rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white p-3 text-sm text-neutral-800">{outputError}</p>}
       {detail.isHistoricalSnapshot && (
         <button type="button" onClick={handleDownload} disabled={downloading}
           className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 disabled:opacity-50">
@@ -237,7 +237,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
         </div>
       )}
       {error && (
-        <div role="alert" className="rounded-lg bg-error-bg border border-error-border px-4 py-3 text-error-fg text-sm">
+        <div role="alert" className="rounded-sm bg-white border border-neutral-200 border-l-4 border-l-error px-4 py-3 text-neutral-800 text-sm">
           {error}
           <button type="button" onClick={() => setRetry(value => value + 1)} className="block mt-2 min-h-[44px] underline font-medium">Try again</button>
         </div>

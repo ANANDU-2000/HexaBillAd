@@ -303,7 +303,7 @@ export default function DriverRoutePage() {
       )}
 
       {needLocation.length > 0 && (
-        <div className="rounded-lg border border-warning-border bg-warning-bg p-3" data-testid="location-needed">
+        <div className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-3" data-testid="location-needed">
           <p className="flex items-center gap-1 text-sm font-medium text-warning-fg"><MapPin className="h-4 w-4" aria-hidden="true" /> Location needed</p>
           <p className="mt-1 text-sm text-neutral-700">These stops have no shop location, so they are not on the map and have no directions. Ask the office to add them.</p>
           <ul className="mt-1 list-disc pl-5 text-sm text-neutral-800">

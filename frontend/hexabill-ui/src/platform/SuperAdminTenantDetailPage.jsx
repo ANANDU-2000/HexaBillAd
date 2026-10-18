@@ -838,7 +838,7 @@ const SuperAdminTenantDetailPage = () => {
               const daysLeft = Math.ceil((endDate - new Date()) / (24 * 60 * 60 * 1000))
               if (daysLeft <= 14 && daysLeft >= 0) {
                 return (
-                  <div className="flex items-start gap-2 p-3 bg-warning-bg border border-warning-border rounded-lg">
+                  <div className="flex items-start gap-2 p-3 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm">
                     <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-medium text-amber-800">Trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</p>
@@ -849,7 +849,7 @@ const SuperAdminTenantDetailPage = () => {
               }
               if (daysLeft < 0) {
                 return (
-                  <div className="flex items-start gap-2 p-3 bg-error-bg border border-error-border rounded-lg">
+                  <div className="flex items-start gap-2 p-3 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm">
                     <AlertTriangle className="h-5 w-5 text-error flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-medium text-red-800">Trial ended</p>
@@ -1721,7 +1721,7 @@ const SuperAdminTenantDetailPage = () => {
         size="md"
       >
         <div className="space-y-4">
-          <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-lg flex items-start space-x-3">
+          <div className="bg-white border border-neutral-200 border-l-4 border-l-warning p-4 rounded-sm flex items-start space-x-3">
             <Ban className="h-6 w-6 text-yellow-600 mt-0.5" />
             <div>
               <h4 className="text-sm font-bold text-yellow-800">Review Required</h4>
@@ -1853,7 +1853,7 @@ const SuperAdminTenantDetailPage = () => {
             </ul>
           </div>
 
-          <div className="space-y-3 bg-error-bg border border-error-border rounded-lg p-3">
+          <div className="space-y-3 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm p-3">
             <label className="flex items-start gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -2347,7 +2347,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
   return (
     <div className="space-y-6">
       {/* Warning banner */}
-      <div className="bg-warning-bg border border-warning-border rounded-lg p-4 flex items-start gap-3">
+      <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4 flex items-start gap-3">
         <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
         <div className="text-sm text-amber-800">
           <strong>Super Admin Only:</strong> These toggles are Super Admin only. Company admin cannot override these settings.

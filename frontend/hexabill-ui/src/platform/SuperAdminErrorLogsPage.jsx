@@ -91,7 +91,7 @@ const SuperAdminErrorLogsPage = () => {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-error-bg border border-error-border rounded-lg flex items-start gap-3">
+        <div className="mb-6 p-4 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm flex items-start gap-3">
           <AlertCircle className="h-6 w-6 text-error flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-red-800">Error</p>

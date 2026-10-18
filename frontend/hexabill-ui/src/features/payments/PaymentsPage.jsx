@@ -46,6 +46,7 @@ import { getReturnLabel, showReturnToPrompt } from '../../utils/returnNavigation
 import { offerReceiptPreviewAfterPayment } from '../../utils/offerReceiptPreview'
 import { canReceivePaymentReceipt, currentReceiptSelection, receiptIneligibilityReason, paymentStatusLabel, receiptSelectionSummary, toggleVisibleReceiptSelection, mergeSelectedPaymentRecords } from '../../utils/receiptEligibility'
 import { useBranding } from '../../tenant/TenantBrandingContext'
+import Alert from '../../components/ui/Alert'
 import { createLedgerPaymentJournal, createPaymentBatchJournal, ledgerPaymentAccountPrefix, ledgerPaymentForm, ledgerPaymentScope, paymentBatchScope } from '../../utils/ledgerPaymentIntent'
 
 const PaymentsPage = () => {
@@ -605,17 +606,24 @@ const PaymentsPage = () => {
         </button>
       )}
       {/* Header */}
-      {recoveryError && <p role="alert" className="rounded-lg border border-red-300 bg-error-bg p-3 text-sm text-red-800">{recoveryError}</p>}
+      {recoveryError && <Alert tone="error">{recoveryError}</Alert>}
       {unconfirmedPayments.map(intent => (
-        <div key={intent.idempotencyKey} role="status" className="rounded-lg border border-amber-300 bg-warning-bg p-3 text-sm text-amber-950">
-          <p>Previous payment of {money(intent.request.amount)} for customer {intent.request.customerId ?? 'Cash Customer'} is unconfirmed. Confirm it before recording another payment for this customer.</p>
-          <button type="button" disabled={submitting} onClick={() => executePayment(intent)} className="mt-2 min-h-[44px] rounded border border-amber-400 px-3 font-medium">Retry previous payment</button>
-        </div>
+        <Alert
+          key={intent.idempotencyKey}
+          tone="warning"
+          action={<button type="button" disabled={submitting} onClick={() => executePayment(intent)} className="min-h-[36px] rounded-sm border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 disabled:opacity-50">Retry previous payment</button>}
+        >
+          Previous payment of {money(intent.request.amount)} for customer {intent.request.customerId ?? 'Cash Customer'} is unconfirmed. Confirm it before recording another payment for this customer.
+        </Alert>
       ))}
-      {savedBatch && <div role="status" className="rounded-lg border border-amber-300 bg-warning-bg p-3 text-sm text-amber-950">
-        <p>Saved bulk payments: {savedBatch.rows.filter(row => row.confirmed).length} of {savedBatch.rows.length} confirmed. Remaining payments retain their original amounts and keys.</p>
-        <button type="button" disabled={submitting} onClick={() => setShowBulkPaymentModal(true)} className="mt-2 min-h-[44px] rounded border border-amber-400 px-3 font-medium">Resume bulk payments</button>
-      </div>}
+      {savedBatch && (
+        <Alert
+          tone="warning"
+          action={<button type="button" disabled={submitting} onClick={() => setShowBulkPaymentModal(true)} className="min-h-[36px] rounded-sm border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 disabled:opacity-50">Resume bulk payments</button>}
+        >
+          Saved bulk payments: {savedBatch.rows.filter(row => row.confirmed).length} of {savedBatch.rows.length} confirmed. Remaining payments retain their original amounts and keys.
+        </Alert>
+      )}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between lg:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-neutral-900">Payments</h1>
@@ -722,10 +730,12 @@ const PaymentsPage = () => {
         {(fromDate || toDate) && <p className="mt-2 text-xs text-neutral-600">Payment date: {fromDate || 'Any date'} to {toDate || 'Any date'}</p>}
       </div>
       {(dateRangeError || listError) && (
-        <div role="alert" className="rounded-lg border border-error/30 bg-error-bg p-3 text-sm text-error">
-          <p>{dateRangeError || listError}</p>
-          {!dateRangeError && <button type="button" onClick={fetchData} className="mt-2 min-h-[44px] font-medium underline">Try again</button>}
-        </div>
+        <Alert
+          tone="error"
+          action={!dateRangeError && <button type="button" onClick={fetchData} className="min-h-[36px] rounded-sm border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 disabled:opacity-50">Try again</button>}
+        >
+          {dateRangeError || listError}
+        </Alert>
       )}
 
       <p className="text-xs text-neutral-600 px-1">Receipts are for cleared incoming payments only (cash, cheque, online, debit).</p>
@@ -1179,7 +1189,7 @@ const PaymentsPage = () => {
             {/* Outstanding Invoices List for Selected Customer */}
             {selectedCustomerId && outstandingInvoices.length > 0 && !selectedSaleId && (
               <div className="md:col-span-2">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4">
                   <p className="text-sm font-medium text-yellow-900 mb-3">
                     Outstanding Invoices for {selectedCustomerDetails?.name || 'Customer'}:
                   </p>

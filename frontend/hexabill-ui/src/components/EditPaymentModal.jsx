@@ -275,7 +275,7 @@ export default function EditPaymentModal ({
             </p>
           </div>
         ) : (
-          <div className="border border-warning-border bg-warning-bg rounded-lg p-3 text-sm text-amber-900">
+          <div className="border border-neutral-200 border-l-4 border-l-warning bg-white rounded-sm p-3 text-sm text-neutral-800">
             General payment — not linked to a specific invoice (same as Add Payment).
           </div>
         )}

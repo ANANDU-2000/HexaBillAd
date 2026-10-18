@@ -935,7 +935,7 @@ const ProductsPage = () => {
       ) : (
       <>
       {activeTab === 'missingBarcode' && canManageInventory && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-warning-border bg-warning-bg px-3 py-2.5">
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white px-3 py-2.5">
           <ScanBarcode className="h-4 w-4 text-amber-800 shrink-0" />
           <p className="text-sm text-amber-900 flex-1 min-w-[12rem]">
             Products without a barcode ({totalCount}). Auto-fill uses SKU when unique, otherwise HB(tenant)-id. Then print or share labels.
@@ -1445,7 +1445,7 @@ const ProductsPage = () => {
                     </div>
 
                     {importResult.errorMessages && importResult.errorMessages.length > 0 && (
-                      <div className="bg-error-bg border border-error-border rounded-lg p-4 max-h-40 overflow-y-auto">
+                      <div className="bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm p-4 max-h-40 overflow-y-auto">
                         <h4 className="font-semibold text-red-800 mb-2">Errors:</h4>
                         <ul className="text-sm text-error-fg space-y-1">
                           {importResult.errorMessages.slice(0, 10).map((msg, idx) => (

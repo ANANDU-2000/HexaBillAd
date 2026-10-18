@@ -426,7 +426,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
               </p>
             )}
             {settlementAdjustmentsEnabled && settlementShortfall > 0 && (
-              <div className="mt-3 p-3 border border-warning-border bg-warning-bg rounded-lg space-y-2">
+              <div className="mt-3 p-3 border border-neutral-200 border-l-4 border-l-warning bg-white rounded-sm space-y-2">
                 <p className="text-sm text-amber-900">
                   Cash is {money(settlementShortfall)} short of closing this invoice. You can record an authorized settlement adjustment (not counted as cash received).
                 </p>
@@ -531,7 +531,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
             ) : (
               // Confirmation step buttons
               <div className="w-full space-y-4">
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="p-4 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm">
                   <div className="flex items-center gap-2 text-yellow-800 mb-2">
                     <AlertTriangle className="w-5 h-5" />
                     <span className="font-semibold">Confirm Payment</span>

@@ -536,7 +536,7 @@ const BranchDetailPage = () => {
         )}
       </div>
       {summaryError && (
-        <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-warning-border bg-warning-bg px-3 py-2 text-sm text-amber-800">
+        <div className="mb-3 flex items-center justify-between gap-2 rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white px-3 py-2 text-sm text-neutral-800">
           <span>Failed to load summary. Check backend logs.</span>
           <button type="button" onClick={retrySummary} className="shrink-0 font-medium text-warning-fg hover:underline">Retry</button>
         </div>

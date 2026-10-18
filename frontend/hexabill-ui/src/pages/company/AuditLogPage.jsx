@@ -51,7 +51,7 @@ function ActivityDetail({ log, detail, loading, error, onRetry }) {
   return (
     <div className="space-y-4 text-sm">
       {error && (
-        <div className="rounded-md border border-error-border bg-error-bg px-3 py-2">
+        <div className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white px-3 py-2">
           <p className="text-sm text-error-fg">Unable to load this activity.</p>
           <button type="button" onClick={onRetry} className="mt-2 text-sm font-medium text-primary-700 hover:underline">
             Try again
@@ -87,7 +87,7 @@ function ActivityDetail({ log, detail, loading, error, onRetry }) {
         <p className="mt-1 text-neutral-800 leading-snug">{view.summary}</p>
       </div>
       {deleted && (
-        <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-sm text-amber-900">
+        <p className="flex items-start gap-2 rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white px-3 py-2 text-sm text-neutral-800">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
           Recovery unavailable.
         </p>

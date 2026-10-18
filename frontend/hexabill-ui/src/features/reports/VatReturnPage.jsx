@@ -576,11 +576,11 @@ const VatReturnPage = () => {
           </div>
         </div>
       </div>
-      <div role="note" className="rounded-md border border-amber-300 bg-warning-bg px-4 py-3 text-sm font-medium text-amber-950">
+      <div role="note" className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white px-4 py-3 text-sm font-medium text-neutral-800">
         Management report. Not an FTA filing.
       </div>
       {actionAcknowledgement && (
-        <div role="status" className="rounded-md border border-green-300 bg-success-bg px-4 py-3 text-sm text-green-950">
+        <div role="status" className="rounded-sm border border-neutral-200 border-l-4 border-l-success bg-white px-4 py-3 text-sm text-neutral-800">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold">{actionAcknowledgement.action} complete</p>
@@ -598,7 +598,7 @@ const VatReturnPage = () => {
         </div>
       )}
       {actionError && (
-        <div role="alert" className="rounded-md border border-red-300 bg-error-bg px-4 py-3 text-sm text-red-950">
+        <div role="alert" className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white px-4 py-3 text-sm text-neutral-800">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold">VAT action failed</p>
@@ -701,7 +701,7 @@ const VatReturnPage = () => {
       </div>
 
       {refreshNote && (
-        <p role="status" className="mb-3 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-sm text-warning-fg">{refreshNote}</p>
+        <p role="status" className="mb-3 rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white px-3 py-2 text-sm text-neutral-800">{refreshNote}</p>
       )}
       {loading && vatReturn && (
         <p role="status" className="mb-3 text-sm text-neutral-500">Updating VAT figures for {fromDate} to {toDate}…</p>
@@ -944,7 +944,7 @@ const VatReturnPage = () => {
 
           {/* SYS001 calculation error banner */}
           {hasSys001 && (
-            <div className="rounded-md border border-error-border bg-error-bg p-4 flex items-start gap-2">
+            <div className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white p-4 flex items-start gap-2">
               <AlertTriangle className="h-5 w-5 text-error flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-red-800">Calculation error — partial data shown.</p>
@@ -963,7 +963,7 @@ const VatReturnPage = () => {
             }, {})
             const groups = Object.values(grouped)
             return (
-            <div className="rounded-md border border-error-border bg-error-bg px-4 py-3">
+            <div className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-medium text-red-800">
                   {blocking.length} blocking issue{blocking.length !== 1 ? 's' : ''} — resolve before locking period.
@@ -998,7 +998,7 @@ const VatReturnPage = () => {
             )
           })()}
           {issues.length > 0 && blocking.length === 0 && !hasSys001 && (
-            <div className="rounded-md border border-warning-border bg-warning-bg p-4 text-sm text-amber-800">
+            <div className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-4 text-sm text-neutral-800">
               <span className="font-medium">Warnings:</span>
               <ul className="mt-1 list-disc list-inside space-y-0.5">
                 {issues.slice(0, 5).map((i, idx) => (
@@ -1011,7 +1011,7 @@ const VatReturnPage = () => {
             </div>
           )}
           {issues.length === 0 && v && (
-            <div className="rounded-md border border-success-border bg-success-bg px-4 py-2 flex items-center gap-2">
+            <div className="rounded-sm border border-neutral-200 border-l-4 border-l-success bg-white px-4 py-2 flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-success" />
               <p className="text-sm text-green-800 font-medium">All validation checks passed</p>
             </div>
@@ -1082,7 +1082,7 @@ const VatReturnPage = () => {
 
           {/* Hint when Total Sales is 0: suggest the year that contains the out-of-period invoice dates */}
           {v && standardOutputNet === 0 && standardOutputVat === 0 && (
-            <div className="rounded-md border border-warning-border bg-warning-bg p-4 text-sm text-amber-800">
+            <div className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-4 text-sm text-neutral-800">
               <p className="font-medium">Total Sales is 0.00 for this period ({fromDate} – {toDate}).</p>
               <p className="mt-1 text-warning-fg">VAT only includes invoices whose <strong>invoice date</strong> falls in this range. If your dashboard shows sales for other dates, pick a period that includes those dates.</p>
               {issues.some(i => (i.message || '').toLowerCase().includes('outside')) && (() => {
@@ -1271,7 +1271,7 @@ const VatReturnPage = () => {
               <h2 className="text-lg font-semibold text-neutral-900 mb-1">Management summary</h2>
               <p className="text-sm font-medium">{v?.companyName ?? v?.CompanyName ?? 'Company'} · TRN: {v?.vatTrn ?? v?.VatTrn ?? 'Not provided'} · {v?.trnStatus ?? v?.TrnStatus ?? 'Registration unverified'}</p>
               {(v?.warnings ?? v?.Warnings ?? []).map((warning, index) => (
-                <p key={index} className="mt-2 rounded border border-warning-border bg-warning-bg px-3 py-2 text-sm text-amber-900">{warning}</p>
+                <p key={index} className="mt-2 rounded border border-neutral-200 border-l-4 border-l-warning bg-white px-3 py-2 text-sm text-neutral-800">{warning}</p>
               ))}
               <p className="text-xs text-neutral-500 mb-4">Period: {periodLabel} ({fromDate} – {toDate})</p>
               <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">

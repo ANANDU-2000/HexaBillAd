@@ -122,7 +122,7 @@ export default function SalaryCertificatesPage() {
         />
       </div>
 
-      {error && <div className="shrink-0 text-sm text-error mb-2 bg-error-bg border border-error-border rounded px-3 py-1.5">{error}</div>}
+      {error && <div className="shrink-0 text-sm text-neutral-800 mb-2 bg-white border border-neutral-200 border-l-4 border-l-error rounded px-3 py-1.5">{error}</div>}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white border border-neutral-200 rounded-lg">
         {loading ? (
           <p className="text-sm text-text-secondary p-4">Loading…</p>

@@ -943,12 +943,12 @@ const SettingsPage = () => {
               </div>
 
               {!settings.companyTrn && (
-                <p role="status" className="mb-4 rounded border border-amber-300 bg-warning-bg p-3 text-sm text-amber-900">
+                <p role="status" className="mb-4 rounded border border-neutral-200 border-l-4 border-l-warning bg-white p-3 text-sm text-neutral-800">
                   VAT TRN missing: update in Settings &gt; Company. Documents print as Invoice (not Tax Invoice) until a real 15-digit VAT TRN is entered.
                 </p>
               )}
               {!!settings.companyTrn && ['900000000000001', '900000000000002', '900000000000003', '123456789012345', '543210987654321'].includes(String(settings.companyTrn).trim()) && (
-                <p role="status" className="mb-4 rounded border border-amber-400 bg-warning-bg p-3 text-sm text-amber-950">
+                <p role="status" className="mb-4 rounded border border-neutral-200 border-l-4 border-l-warning bg-white p-3 text-sm text-neutral-800">
                   Sample TRN in use: printed documents are labelled SAMPLE, not Tax Invoice. Update in Settings &gt; Company with the real VAT registration.
                 </p>
               )}
@@ -1246,7 +1246,7 @@ const SettingsPage = () => {
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm text-amber-800 bg-warning-bg border border-amber-100 rounded-md px-3 py-2">
+                  <p className="text-sm text-neutral-800 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm px-3 py-2">
                     Enable stamp &amp; signature above, then upload images and drag them into place. Save when done.
                   </p>
                 )}
@@ -1344,7 +1344,7 @@ const SettingsPage = () => {
                 <p className="text-xs text-neutral-500">
                   When set, products with reorder level 0 are treated as low stock when quantity is at or below this value. Leave empty to use only each product&apos;s reorder level.
                 </p>
-                <label className="flex items-center gap-3 mt-4 p-3 bg-warning-bg border border-warning-border rounded-lg cursor-pointer">
+                <label className="flex items-center gap-3 mt-4 p-3 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm cursor-pointer">
                   <input
                     type="checkbox"
                     {...register('allowNegativeStock')}
@@ -1452,7 +1452,7 @@ const SettingsPage = () => {
               <p className="text-sm text-neutral-600 mb-4">
                 Configure SMTP settings to enable email notifications and invoice delivery.
               </p>
-              <div className="bg-warning-bg border border-warning-border rounded-lg p-4">
+              <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4">
                 <p className="text-sm text-amber-800">
                   <strong>Note:</strong> Email functionality is not yet implemented. This feature will allow you to:
                 </p>
@@ -1518,7 +1518,7 @@ const SettingsPage = () => {
               <p className="text-sm text-neutral-600 mb-4">
                 Configure how and when you receive notifications for important events.
               </p>
-              <div className="bg-warning-bg border border-warning-border rounded-lg p-4">
+              <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4">
                 <p className="text-sm text-amber-800">
                   <strong>Note:</strong> Notification settings are not yet implemented. This feature will allow you to:
                 </p>
@@ -1924,7 +1924,7 @@ const SettingsPage = () => {
               <p className="text-sm font-bold text-white mt-2">This action cannot be undone.</p>
             </div>
           </div>
-          <div className="space-y-3 bg-error-bg border border-error-border rounded-lg p-3">
+          <div className="space-y-3 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm p-3">
             <label className="flex items-start gap-2 cursor-pointer">
               <input
                 type="checkbox"

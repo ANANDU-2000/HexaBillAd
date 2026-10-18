@@ -429,7 +429,7 @@ export default function SalaryCertificateEditorPage() {
           </button>
         </div>
       </div>
-      {error && <div className="text-sm text-error bg-error-bg border border-error-border rounded px-3 py-2">{error}</div>}
+      {error && <div className="text-sm text-neutral-800 bg-white border border-neutral-200 border-l-4 border-l-error rounded px-3 py-2">{error}</div>}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
         <div className="border rounded-lg bg-white p-2.5 space-y-2">

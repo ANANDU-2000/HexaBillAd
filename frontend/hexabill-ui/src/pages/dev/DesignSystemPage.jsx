@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 import { Plus, Download, Receipt, Wallet, AlertTriangle, Users, Package, Search, Filter } from 'lucide-react'
 import {
   PageHeader, Card, CardHeader, StatCard, Button, OverflowMenu, TabNavigation, ModernTable, Badge, Alert,
@@ -119,6 +120,12 @@ export default function DesignSystemPage() {
             <Alert tone="success">Payment of AED 1,250.50 recorded.</Alert>
             <Alert tone="warning" title="Low stock" action={<Button size="sm" variant="secondary">Review</Button>}>12 products are below their reorder level.</Alert>
             <Alert tone="error" onDismiss={() => {}}>The invoice could not be saved. Check your connection and try again.</Alert>
+            <div className="flex flex-wrap gap-2" data-testid="toast-triggers">
+              <Button size="sm" variant="secondary" onClick={() => toast.success('Payment of AED 1,250.50 recorded.')}>Success toast</Button>
+              <Button size="sm" variant="secondary" onClick={() => toast.error('Customer has no outstanding invoices. Payment cannot be processed without an invoice reference.')}>Error toast</Button>
+              <Button size="sm" variant="secondary" onClick={() => toast('Statement covers the last 30 days.')}>Info toast</Button>
+              <Button size="sm" variant="secondary" onClick={() => toast.loading('Generating PDF...')}>Loading toast</Button>
+            </div>
           </Card>
         </Section>
 

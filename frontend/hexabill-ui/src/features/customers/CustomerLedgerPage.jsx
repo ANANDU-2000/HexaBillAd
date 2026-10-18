@@ -2124,7 +2124,7 @@ const CustomerLedgerPage = () => {
   if (user && !isAdminOrOwner(user) && staffAssignmentsLoaded && staffHasNoAssignments) {
     return (
       <div className="min-h-screen flex flex-col bg-neutral-50 items-center justify-center p-6">
-        <div className="flex items-center gap-3 px-4 py-4 rounded-lg bg-warning-bg border border-warning-border text-amber-800 max-w-md">
+        <div className="flex items-center gap-3 px-4 py-4 rounded-sm bg-white border border-neutral-200 border-l-4 border-l-warning text-neutral-800 max-w-md">
           <AlertTriangle className="h-8 w-8 shrink-0" />
           <p className="text-sm font-medium">No branches or routes assigned. Contact your admin.</p>
         </div>
@@ -2450,7 +2450,7 @@ const CustomerLedgerPage = () => {
           {selectedCustomer && (
             <>
               {(paymentRecoveryError || unconfirmedPayment?.scope === paymentScope) && (
-                <div role="alert" className="m-3 p-3 rounded-md border border-amber-300 bg-warning-bg text-sm text-amber-950">
+                <div role="alert" className="m-3 p-3 rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white text-sm text-neutral-800">
                   {paymentRecoveryError || (paymentLoading
                     ? `Waiting for confirmation of ${formatCurrency(unconfirmedPayment.request.amount)}.`
                     : `A payment of ${formatCurrency(unconfirmedPayment.request.amount)} needs confirmation. Retry it before recording another payment.`)}
@@ -4953,7 +4953,7 @@ const PaymentEntryModal = ({
       size="lg"
     >
       {unconfirmedPayment && (
-        <div role="alert" className="mb-4 p-3 rounded border border-amber-300 bg-warning-bg text-sm text-amber-950">
+        <div role="alert" className="mb-4 p-3 rounded border border-neutral-200 border-l-4 border-l-warning bg-white text-sm text-neutral-800">
           {loading
             ? `Waiting for confirmation of ${formatCurrency(unconfirmedPayment.request.amount)}.`
             : `Payment confirmation was not received for ${formatCurrency(unconfirmedPayment.request.amount)}. Retry the previous payment to confirm its result.`}
@@ -4972,7 +4972,7 @@ const PaymentEntryModal = ({
         }
       })} className="space-y-4">
         {payAllOutstandingMode && (
-          <div className="col-span-2 p-4 bg-success-bg border border-success-border rounded-lg">
+          <div className="col-span-2 p-4 bg-white border border-neutral-200 border-l-4 border-l-success rounded-sm">
             <p className="text-sm font-medium text-emerald-800 flex items-center gap-2">
               <Wallet className="h-4 w-4" />
               Pay All Outstanding
@@ -5021,7 +5021,7 @@ const PaymentEntryModal = ({
           />
 
           {settlementShortfall > 0 && (
-            <div className="col-span-2 p-3 border border-warning-border bg-warning-bg rounded-lg space-y-2">
+            <div className="col-span-2 p-3 border border-neutral-200 border-l-4 border-l-warning bg-white rounded-sm space-y-2">
               <p className="text-sm text-amber-900">
                 Cash is {formatCurrency(settlementShortfall)} short of closing this invoice. An authorized adjustment can close the balance without inflating cash received.
               </p>
@@ -5135,7 +5135,7 @@ const PaymentEntryModal = ({
         )}
 
         {!payAllOutstandingMode && !selectedSaleId && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4">
             <p className="text-sm text-yellow-800 flex flex-col sm:flex-row sm:items-center gap-2">
               <span className="font-medium shrink-0">General Payment:</span>
               <span>This payment will not be allocated to any specific invoice. You can select an invoice above to allocate the payment.</span>

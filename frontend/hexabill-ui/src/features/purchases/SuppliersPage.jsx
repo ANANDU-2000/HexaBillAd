@@ -662,7 +662,7 @@ const SuppliersPage = () => {
             {editFormIsDeactivated && <p className="text-xs text-amber-800">This supplier is deactivated.</p>}
             {editLoading && <p className="text-xs text-neutral-500" role="status">Loading supplier details…</p>}
             {editFormLoadFailed && (
-              <p className="text-sm text-amber-800 bg-warning-bg border border-warning-border rounded-md px-3 py-2">
+              <p className="text-sm text-neutral-800 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm px-3 py-2">
                 Supplier details could not be loaded. You can view what is shown, but changes cannot be saved.
               </p>
             )}

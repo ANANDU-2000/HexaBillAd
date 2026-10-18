@@ -2148,22 +2148,22 @@ const ReportsPage = () => {
               {reportData.agingReport ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="bg-success-bg rounded-lg p-4 border border-success-border">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-success">
                       <p className="text-xs font-medium text-success-fg">0-30 Days</p>
                       <p className="text-lg font-bold text-green-900">{formatCurrency(reportData.agingReport.bucket0_30?.total || 0)}</p>
                       <p className="text-xs text-success">{reportData.agingReport.bucket0_30?.count || 0} invoices</p>
                     </div>
-                    <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-warning">
                       <p className="text-xs font-medium text-yellow-700">31-60 Days</p>
                       <p className="text-lg font-bold text-yellow-900">{formatCurrency(reportData.agingReport.bucket31_60?.total || 0)}</p>
                       <p className="text-xs text-yellow-600">{reportData.agingReport.bucket31_60?.count || 0} invoices</p>
                     </div>
-                    <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-warning">
                       <p className="text-xs font-medium text-orange-700">61-90 Days</p>
                       <p className="text-lg font-bold text-orange-900">{formatCurrency(reportData.agingReport.bucket61_90?.total || 0)}</p>
                       <p className="text-xs text-orange-600">{reportData.agingReport.bucket61_90?.count || 0} invoices</p>
                     </div>
-                    <div className="bg-error-bg rounded-lg p-4 border border-error-border">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-error">
                       <p className="text-xs font-medium text-error-fg">90+ Days</p>
                       <p className="text-lg font-bold text-red-900">{formatCurrency(reportData.agingReport.bucket90Plus?.total || 0)}</p>
                       <p className="text-xs text-error">{reportData.agingReport.bucket90Plus?.count || 0} invoices</p>
@@ -2248,22 +2248,22 @@ const ReportsPage = () => {
               {reportData.apAgingReport ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="bg-success-bg rounded-lg p-4 border border-success-border">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-success">
                       <p className="text-xs font-medium text-success-fg">0-30 Days</p>
                       <p className="text-lg font-bold text-green-900">{formatCurrency(reportData.apAgingReport.bucket0_30?.total || 0)}</p>
                       <p className="text-xs text-success">{reportData.apAgingReport.bucket0_30?.count || 0} suppliers</p>
                     </div>
-                    <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-warning">
                       <p className="text-xs font-medium text-yellow-700">31-60 Days</p>
                       <p className="text-lg font-bold text-yellow-900">{formatCurrency(reportData.apAgingReport.bucket31_60?.total || 0)}</p>
                       <p className="text-xs text-yellow-600">{reportData.apAgingReport.bucket31_60?.count || 0} suppliers</p>
                     </div>
-                    <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-warning">
                       <p className="text-xs font-medium text-orange-700">61-90 Days</p>
                       <p className="text-lg font-bold text-orange-900">{formatCurrency(reportData.apAgingReport.bucket61_90?.total || 0)}</p>
                       <p className="text-xs text-orange-600">{reportData.apAgingReport.bucket61_90?.count || 0} suppliers</p>
                     </div>
-                    <div className="bg-error-bg rounded-lg p-4 border border-error-border">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-error">
                       <p className="text-xs font-medium text-error-fg">90+ Days</p>
                       <p className="text-lg font-bold text-red-900">{formatCurrency(reportData.apAgingReport.bucket90Plus?.total || 0)}</p>
                       <p className="text-xs text-error">{reportData.apAgingReport.bucket90Plus?.count || 0} suppliers</p>
@@ -2346,7 +2346,7 @@ const ReportsPage = () => {
                     </button>
                   </div>
                   {reportData.profitLoss.estimatedCostLineCount > 0 && (
-                    <div role="status" className="rounded-lg border border-warning-border bg-warning-bg p-3 text-sm text-amber-900">
+                    <div role="status" className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-3 text-sm text-neutral-800">
                       Cost estimates are included for {reportData.profitLoss.estimatedCostLineCount} invoice lines without saved historical costs. Those estimates use current product costs and may change when products are updated.
                     </div>
                   )}
@@ -2806,7 +2806,7 @@ const ReportsPage = () => {
           {activeTab === 'returns' && (
             <div className="space-y-6">
               {!returnsFeatureFlags.returnsEnabled ? (
-                <div className="bg-warning-bg border border-warning-border rounded-lg p-4 text-amber-800">
+                <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4 text-neutral-800">
                   <p className="font-medium">Sales returns are disabled</p>
                   <p className="text-sm mt-1">Contact your administrator to enable returns.</p>
                 </div>
@@ -3239,11 +3239,11 @@ const ReportsPage = () => {
                 ) : reportData.netSalesReport ? (
                   <div className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                      <div className="bg-success-bg rounded-lg p-4 border border-green-100">
+                      <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-success">
                         <p className="text-sm font-medium text-success-fg">Total Sales</p>
                         <p className="text-2xl font-bold text-green-900 mt-1">{formatCurrency(reportData.netSalesReport.totalSales ?? 0)}</p>
                       </div>
-                      <div className="bg-warning-bg rounded-lg p-4 border border-amber-100">
+                      <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-warning">
                         <p className="text-sm font-medium text-warning-fg">Total Returns</p>
                         <p className="text-2xl font-bold text-amber-900 mt-1">{formatCurrency(reportData.netSalesReport.totalReturns ?? 0)}</p>
                       </div>
@@ -3251,7 +3251,7 @@ const ReportsPage = () => {
                         <p className="text-sm font-medium text-primary-700">Net Sales</p>
                         <p className="text-2xl font-bold text-primary-900 mt-1">{formatCurrency(reportData.netSalesReport.netSales ?? 0)}</p>
                       </div>
-                      <div className="bg-error-bg rounded-lg p-4 border border-red-100">
+                      <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-error">
                         <p className="text-sm font-medium text-error-fg">Refunds Paid</p>
                         <p className="text-2xl font-bold text-red-900 mt-1">{formatCurrency(reportData.netSalesReport.refundsPaid ?? 0)}</p>
                       </div>

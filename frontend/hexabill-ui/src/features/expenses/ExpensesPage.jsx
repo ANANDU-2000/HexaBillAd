@@ -2184,14 +2184,14 @@ const ExpensesPage = () => {
             })()}
 
             {selectedExpense && selectedExpense.vatAmount == null && !vatLockedByCategory && (
-              <div className="rounded-lg bg-warning-bg border border-warning-border px-3 py-2 mb-2 flex flex-wrap items-center gap-2">
+              <div className="rounded-sm bg-white border border-neutral-200 border-l-4 border-l-warning px-3 py-2 mb-2 flex flex-wrap items-center gap-2">
                 <span className="text-sm text-amber-800">No VAT data.</span>
                 <button type="button" onClick={() => { setValue('withVat', true); setValue('taxType', 'Standard'); setValue('isTaxClaimable', true); }} className="text-sm px-2 py-1 bg-warning text-white rounded hover:bg-amber-700">Add 5% VAT</button>
                 <button type="button" onClick={() => { setValue('withVat', false); }} className="text-sm px-2 py-1 border border-amber-300 rounded hover:bg-amber-100">Keep as No VAT</button>
               </div>
             )}
             {vatLockedByCategory ? (
-              <p className="text-sm text-warning-fg bg-warning-bg border border-warning-border rounded px-3 py-2">
+              <p className="text-sm text-neutral-800 bg-white border border-neutral-200 border-l-4 border-l-warning rounded px-3 py-2">
                 VAT auto-set from category default ({selectedCategory?.defaultVatRate ? `${(selectedCategory.defaultVatRate * 100).toFixed(0)}%` : '0%'}
                 {selectedCategory?.defaultIsTaxClaimable ? ', Claimable' : ', Non-claimable'}
                 {selectedCategory?.defaultIsEntertainment ? ', Entertainment (50% cap)' : ''}).

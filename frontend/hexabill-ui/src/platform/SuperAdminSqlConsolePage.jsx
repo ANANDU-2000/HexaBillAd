@@ -54,7 +54,7 @@ const SuperAdminSqlConsolePage = () => {
           <Database className="h-6 w-6 text-indigo-600" />
           <h1 className="text-xl font-semibold text-neutral-900">SQL Console</h1>
         </div>
-        <div className="rounded-lg border border-warning-border bg-warning-bg px-4 py-3 mb-4 text-sm text-amber-800">
+        <div className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white px-4 py-3 mb-4 text-sm text-neutral-800">
           <strong>Read-Only Mode:</strong> Only SELECT queries allowed. DROP, DELETE, UPDATE, INSERT and other write operations are blocked.
         </div>
         <p className="text-sm text-neutral-600 mb-4">
@@ -84,7 +84,7 @@ const SuperAdminSqlConsolePage = () => {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-error-bg border border-error-border rounded-lg flex items-start gap-2">
+          <div className="mb-6 p-4 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm flex items-start gap-2">
             <AlertCircle className="h-5 w-5 text-error shrink-0 mt-0.5" />
             <p className="text-sm text-red-800 font-mono break-all">{error}</p>
           </div>

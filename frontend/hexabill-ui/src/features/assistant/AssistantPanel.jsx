@@ -271,7 +271,7 @@ function NewCustomerTab ({ initial }) {
   return (
     <div className="space-y-4">
       {created && (
-        <div role="status" className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+        <div role="status" className="rounded-sm border border-neutral-200 border-l-4 border-l-success bg-white p-3 text-sm text-neutral-800">
           Customer created: <strong>{created.name}</strong>.{' '}
           {created.customerId ? <Link className="underline" to={`/customers/${created.customerId}`}>Open customer</Link> : null}
         </div>
@@ -334,7 +334,7 @@ function NewCustomerTab ({ initial }) {
       )}
 
       {failure && (
-        <div role="alert" className="rounded-md border border-error-border bg-error-bg p-3 text-sm text-error-fg">
+        <div role="alert" className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white p-3 text-sm text-neutral-800">
           <p>{failure.text}</p>
           {failure.uncertain && <Link to="/customers" className="mt-1 inline-block underline">Open Customers</Link>}
         </div>
@@ -405,7 +405,7 @@ function NewExpenseTab ({ initial, initialCategoryName }) {
   return (
     <div className="space-y-4">
       {created && (
-        <div role="status" className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+        <div role="status" className="rounded-sm border border-neutral-200 border-l-4 border-l-success bg-white p-3 text-sm text-neutral-800">
           Expense recorded: <strong>{Number(created.amount).toFixed(2)}</strong>{created.status === 'Pending' ? ' (waiting for approval)' : ''}.{' '}
           <Link className="underline" to="/expenses">Open Expenses</Link>
         </div>
@@ -457,7 +457,7 @@ function NewExpenseTab ({ initial, initialCategoryName }) {
       )}
 
       {failure && (
-        <div role="alert" className="rounded-md border border-error-border bg-error-bg p-3 text-sm text-error-fg">
+        <div role="alert" className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white p-3 text-sm text-neutral-800">
           <p>{failure.text}</p>
           {failure.uncertain && <Link to="/expenses" className="mt-1 inline-block underline">Open Expenses</Link>}
         </div>

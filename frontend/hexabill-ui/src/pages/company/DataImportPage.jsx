@@ -59,7 +59,7 @@ const DataImportPage = () => {
   if (!isAdmin) {
     return (
       <div className="p-4 w-full">
-        <div className="bg-warning-bg border border-warning-border rounded-lg p-4 flex items-start gap-3">
+        <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4 flex items-start gap-3">
           <HelpCircle className="h-6 w-6 text-warning flex-shrink-0 mt-0.5" />
           <div>
             <h2 className="font-semibold text-amber-900">Access required</h2>
