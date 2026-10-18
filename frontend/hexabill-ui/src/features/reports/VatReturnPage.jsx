@@ -270,6 +270,8 @@ const VatReturnPage = () => {
       }
     } catch (err) {
       if (requestId !== requestIdRef.current) return
+      // A failed load counts toward the throttle, otherwise every focus/visibility event refetches and re-toasts.
+      lastLoadRef.current = { key: vatPeriodKey(fromFinal, toFinal), at: Date.now() }
       if (background) {
         // Keep what the user is reading; tell them the refresh failed instead of blanking the report.
         setRefreshNote('Could not refresh VAT figures. Showing the last loaded data.')

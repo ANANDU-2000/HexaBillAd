@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { DatePresetChips } from '../../components/ui/DateRangeFilter'
+import React, { useState, useEffect, useRef } from 'react'
+
 import { statusTone } from '../../utils/statusTone'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import {
@@ -971,6 +973,7 @@ const SalesLedgerPage = () => {
             onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
             className={mobileFormFieldClass}
           />
+          <DatePresetChips from={dateRange.from} to={dateRange.to} onChange={(r) => setDateRange(r)} className="col-span-2" />
         </div>
         <MobileActionStrip className="md:flex-wrap md:overflow-visible">
             <div className="hidden md:flex gap-1.5 sm:gap-2 shrink-0">
@@ -986,6 +989,7 @@ const SalesLedgerPage = () => {
                 onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
                 className={`${mobileFormFieldClass} md:min-h-0 md:py-1.5 md:text-xs w-36`}
               />
+              <DatePresetChips from={dateRange.from} to={dateRange.to} onChange={(r) => setDateRange(r)} presets={['today', '7d', 'month', 'lastmonth', 'all']} className="items-center" />
             </div>
               <button
                 type="button"

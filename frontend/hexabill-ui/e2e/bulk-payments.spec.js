@@ -3,8 +3,10 @@
 // Synthetic local tenant only. Amounts are unique per run.
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin, apiLogin, API, EDGE } from './session.js'
+import { pickValue } from './pickers.js'
+import { ensureOwingCustomers } from './fixtures.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 
 async function api (path, init = {}) {
   const s = await apiLogin(SLUG)
@@ -22,11 +24,9 @@ async function api (path, init = {}) {
 
 const items = (json) => json.data?.items || json.data?.Items || json.data || []
 
-// Two customers who owe enough to take a payment of about 10-100 AED.
+// Two customers who owe enough to take a payment of about 10-100 AED (created through the API if missing).
 async function owingCustomers () {
-  const customers = items((await api('/api/customers?page=1&pageSize=50')).json)
-  const owing = customers.filter((c) => Number(c.balance) > 60).sort((a, b) => Number(b.balance) - Number(a.balance))
-  expect(owing.length, 'two customers with a balance above 60 must exist on the local tenant').toBeGreaterThanOrEqual(2)
+  const owing = await ensureOwingCustomers(SLUG, 2)
   return [owing[0], owing[1]]
 }
 
@@ -39,7 +39,8 @@ async function openBulk (page) {
 }
 
 // Customer selects are the ones with an empty "Select Customer" option; amounts are the number inputs in order.
-const customerSelect = (dialog, index) => dialog.locator('select:has(option[value=""])').nth(index)
+// The Customer field is a native <select> on short lists and a searchable combobox on long ones; pickValue handles both.
+const pickCustomer = (page, dialog, index, id) => pickValue(page, dialog.getByLabel('Customer', { exact: true }).nth(index), id)
 const amountInput = (dialog, index) => dialog.locator('input[type="number"]').nth(index)
 
 test('bulk payments: two customers saved together, confirmed through the API', async ({ page }) => {
@@ -50,10 +51,10 @@ test('bulk payments: two customers saved together, confirmed through the API', a
   const amountB = Number((amountA + 0.37).toFixed(2))
 
   const dialog = await openBulk(page)
-  await customerSelect(dialog, 0).selectOption({ value: String(a.id) })
+  await pickCustomer(page, dialog, 0, a.id)
   await amountInput(dialog, 0).fill(amountA.toFixed(2))
   await dialog.getByRole('button', { name: 'Add Another Payment' }).click()
-  await customerSelect(dialog, 1).selectOption({ value: String(b.id) })
+  await pickCustomer(page, dialog, 1, b.id)
   await amountInput(dialog, 1).fill(amountB.toFixed(2))
 
   const saved = page.waitForResponse((r) => r.request().method() === 'POST' && /\/api\/payments$/.test(r.url()))
@@ -110,10 +111,10 @@ test('bulk payments: a failed row pauses, then resumes without duplicating the r
   })
 
   const dialog = await openBulk(page)
-  await customerSelect(dialog, 0).selectOption({ value: String(a.id) })
+  await pickCustomer(page, dialog, 0, a.id)
   await amountInput(dialog, 0).fill(amountA.toFixed(2))
   await dialog.getByRole('button', { name: 'Add Another Payment' }).click()
-  await customerSelect(dialog, 1).selectOption({ value: String(b.id) })
+  await pickCustomer(page, dialog, 1, b.id)
   await amountInput(dialog, 1).fill(amountB.toFixed(2))
   await dialog.getByRole('button', { name: /Save All Payments \(2\)/ }).click()
 

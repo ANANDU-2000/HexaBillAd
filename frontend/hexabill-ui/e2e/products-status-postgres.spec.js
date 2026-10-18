@@ -5,7 +5,7 @@ import { API, EDGE, apiLogin, feOrigin, signIn } from './session.js'
 
 test.use({ trace: 'off' })
 test.setTimeout(120_000)
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 
 async function api (route, init = {}) {
   if (!['127.0.0.1', 'localhost'].includes(new URL(API).hostname)) throw new Error('Disposable loopback API required')

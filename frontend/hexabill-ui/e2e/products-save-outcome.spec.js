@@ -1,5 +1,8 @@
 // Focused browser failure contract with synthetic route fixtures. This is not API/DB persistence coverage.
 import { test, expect } from '@playwright/test'
+import { feOrigin } from './session.js'
+
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 
 test.use({ trace: 'off' })
 
@@ -27,7 +30,7 @@ for (const lookupFails of [false, true]) {
           : []
       return route.fulfill({ json: { success: true, data, maintenanceMode: false } })
     })
-    await page.goto('http://gulfharvest.localhost:5173/products')
+    await page.goto(`${feOrigin(SLUG)}/products`)
     await page.getByRole('button', { name: 'Add product', exact: true }).filter({ visible: true }).first().click()
     const form = page.locator('form').filter({ has: page.locator('input[name="nameEn"]') })
     await form.locator('[name="sku"]').fill(existing.sku)
@@ -63,7 +66,7 @@ test('page selection and typed bulk deactivation retain only failed selections',
       : url.pathname === '/api/products' ? { items: products.filter(p => p.isActive), totalPages: 1, totalCount: 2 } : []
     return route.fulfill({ json: { success: true, data, maintenanceMode: false } })
   })
-  await page.goto('http://gulfharvest.localhost:5173/products')
+  await page.goto(`${feOrigin(SLUG)}/products`)
   await page.getByRole('checkbox', { name: 'Select all products on this page', exact: true }).filter({ visible: true }).check()
   await expect(page.getByText('2 selected', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Deactivate', exact: true }).click()

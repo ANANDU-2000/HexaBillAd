@@ -4,6 +4,7 @@ using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using HexaBill.Api.Modules.Reports;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
@@ -317,9 +318,26 @@ namespace HexaBill.Api.Modules.Reports
                 // the GST-to-UTC converted timestamp (which can land on the previous UTC date).
                 var periodStartKey = request.From.Value.Date.ToUtcKind();
                 var periodEndKey = request.To.Value.Date.ToUtcKind();
-                await using var periodTransaction = _context.Database.IsRelational()
-                    ? await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
-                    : null;
+                return await InVatPeriodTransactionAsync(tx =>
+                    CalculateVatReturnCoreAsync(request, tenantId, from, to, periodStartKey, periodEndKey, tx));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "VAT return calculate failed: {Message}. TenantId={TenantId}, From={From}, To={To}", ex.Message, CurrentTenantId, request?.From, request?.To);
+                return StatusCode(500, new ApiResponse<VatReturn201Dto>
+                {
+                    Success = false,
+                    Message = "VAT management report calculation failed. Retry or contact support with correlation id " +
+                        (ex is VatCalculationException vatError ? vatError.CorrelationId : HttpContext.TraceIdentifier)
+                });
+            }
+        }
+
+        private async Task<ActionResult<ApiResponse<VatReturn201Dto>>> CalculateVatReturnCoreAsync(
+            VatReturnCalculateRequest request, int tenantId, DateTime from, DateTime to,
+            DateTime periodStartKey, DateTime periodEndKey, IDbContextTransaction? periodTransaction)
+        {
+            {
                 await VatReturnWriteGuard.AcquireTenantWriteLockAsync(_context, tenantId);
                 var period = await _context.VatReturnPeriods.FirstOrDefaultAsync(p =>
                     p.TenantId == tenantId && p.PeriodStart == periodStartKey && p.PeriodEnd == periodEndKey);
@@ -415,16 +433,6 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 return Ok(new ApiResponse<VatReturn201Dto> { Success = true, Data = dto });
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "VAT return calculate failed: {Message}. TenantId={TenantId}, From={From}, To={To}", ex.Message, CurrentTenantId, request?.From, request?.To);
-                return StatusCode(500, new ApiResponse<VatReturn201Dto>
-                {
-                    Success = false,
-                    Message = "VAT management report calculation failed. Retry or contact support with correlation id " +
-                        (ex is VatCalculationException vatError ? vatError.CorrelationId : HttpContext.TraceIdentifier)
-                });
-            }
         }
 
         /// <summary>
@@ -482,15 +490,33 @@ namespace HexaBill.Api.Modules.Reports
             return (_timeZoneService.ConvertToUtc(startLocal).ToUtcKind(), _timeZoneService.ConvertToUtc(endLocal).ToUtcKind());
         }
 
+        /// <summary>
+        /// Runs a VAT period write as one retriable unit. Production uses Npgsql's retrying execution strategy,
+        /// which refuses a transaction opened outside <c>CreateExecutionStrategy().ExecuteAsync</c>.
+        /// </summary>
+        private async Task<T> InVatPeriodTransactionAsync<T>(Func<IDbContextTransaction?, Task<T>> work)
+        {
+            if (!_context.Database.IsRelational()) return await work(null);
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                _context.ChangeTracker.Clear(); // a retry must not see entities from the failed attempt
+                await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                return await work(transaction);
+            });
+        }
+
         [HttpPost("vat-return/periods/{id:int}/review")]
         [Authorize(Roles = "Owner,Admin")]
         public async Task<ActionResult<ApiResponse<object>>> ReviewVatReturnPeriod(int id)
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0) return Forbid();
-            await using var periodTransaction = _context.Database.IsRelational()
-                ? await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
-                : null;
+            return await InVatPeriodTransactionAsync(tx => ReviewVatReturnPeriodCoreAsync(id, tenantId, tx));
+        }
+
+        private async Task<ActionResult<ApiResponse<object>>> ReviewVatReturnPeriodCoreAsync(int id, int tenantId, IDbContextTransaction? periodTransaction)
+        {
             await VatReturnWriteGuard.AcquireTenantWriteLockAsync(_context, tenantId);
             var period = await _context.VatReturnPeriods.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
             if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });
@@ -517,9 +543,11 @@ namespace HexaBill.Api.Modules.Reports
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0) return Forbid();
-            await using var periodTransaction = _context.Database.IsRelational()
-                ? await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
-                : null;
+            return await InVatPeriodTransactionAsync(tx => LockVatReturnPeriodCoreAsync(id, tenantId, tx));
+        }
+
+        private async Task<ActionResult<ApiResponse<object>>> LockVatReturnPeriodCoreAsync(int id, int tenantId, IDbContextTransaction? periodTransaction)
+        {
             await VatReturnWriteGuard.AcquireTenantWriteLockAsync(_context, tenantId);
             var period = await _context.VatReturnPeriods.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
             if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });
@@ -574,9 +602,11 @@ namespace HexaBill.Api.Modules.Reports
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0) return Forbid();
-            await using var periodTransaction = _context.Database.IsRelational()
-                ? await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
-                : null;
+            return await InVatPeriodTransactionAsync(tx => SubmitVatReturnPeriodCoreAsync(id, tenantId, tx));
+        }
+
+        private async Task<ActionResult<ApiResponse<object>>> SubmitVatReturnPeriodCoreAsync(int id, int tenantId, IDbContextTransaction? periodTransaction)
+        {
             await VatReturnWriteGuard.AcquireTenantWriteLockAsync(_context, tenantId);
             var period = await _context.VatReturnPeriods.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
             if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });
@@ -604,9 +634,11 @@ namespace HexaBill.Api.Modules.Reports
             if (request == null || string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Trim().Length < 5)
                 return BadRequest(new ApiResponse<object> { Success = false, Message = "An amendment reason of at least 5 characters is required." });
 
-            await using var periodTransaction = _context.Database.IsRelational()
-                ? await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
-                : null;
+            return await InVatPeriodTransactionAsync(tx => AmendVatReturnPeriodCoreAsync(id, tenantId, request, tx));
+        }
+
+        private async Task<ActionResult<ApiResponse<object>>> AmendVatReturnPeriodCoreAsync(int id, int tenantId, VatReturnAmendRequest request, IDbContextTransaction? periodTransaction)
+        {
             await VatReturnWriteGuard.AcquireTenantWriteLockAsync(_context, tenantId);
             var period = await _context.VatReturnPeriods.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
             if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });

@@ -310,6 +310,9 @@ const Layout = () => {
     isExpensesLedger ||
     isPosRoute ||
     location.pathname === '/billing-history' ||
+    location.pathname === '/payments' ||
+    location.pathname === '/audit' ||
+    location.pathname === '/stock-adjustments' ||
     location.pathname === '/products' ||
     location.pathname.startsWith('/products/') ||
     location.pathname === '/ledger' ||
@@ -330,6 +333,10 @@ const Layout = () => {
     location.pathname.startsWith('/agreements') ||
     location.pathname.startsWith('/salary-certificates') ||
     location.pathname.startsWith('/delivery-notes')
+
+  // List pages whose header/filters stay put while only the list scrolls: the shell is capped at the screen
+  // height (instead of growing with the content) so the page's own scroll area is the one that scrolls.
+  const isBoundedListRoute = ['/payments', '/audit', '/stock-adjustments', '/billing-history', '/sales-ledger', '/customers', '/products', '/purchases', '/ledger'].includes(location.pathname)
 
   const showNavTip = (event, label) => {
     if (labelsVisible) return
@@ -419,16 +426,16 @@ const Layout = () => {
               {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
           </div>
-          <nav className="sidebar-scroll min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-2 py-2" aria-label="Main">
+          <nav className="sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4" aria-label="Main">
             {navGroups.map((group, groupIndex) => {
               const open = groupIsOpen(group)
               return (
-                <div key={group.id} className="space-y-0.5">
+                <div key={group.id} className="space-y-1">
                   {labelsVisible ? (
                     <button
                       type="button"
                       onClick={() => toggleGroup(group)}
-                      className="flex min-h-8 w-full items-center justify-between rounded-md px-2 text-left text-micro font-semibold uppercase tracking-wide text-primary-300 hover:text-white"
+                      className="flex min-h-8 w-full items-center justify-between rounded-md px-2 text-left text-micro font-semibold uppercase tracking-wider text-primary-300/80 transition-colors hover:text-white"
                       aria-expanded={open}
                     >
                       <span className="truncate">{group.label}</span>
@@ -444,8 +451,8 @@ const Layout = () => {
                       <Link
                         key={item.id}
                         to={item.href}
-                        className={`group/nav relative flex items-center rounded-md text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'min-h-9 px-2' : 'min-h-11 justify-center px-2'} ${
-                          active ? 'bg-primary-600 text-white' : 'text-primary-200 hover:bg-primary-800 hover:text-white'
+                        className={`group/nav relative flex items-center rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'min-h-10 px-3' : 'min-h-11 justify-center px-2'} ${
+                          active ? 'bg-primary-600 text-white shadow-sm ring-1 ring-white/10' : 'text-primary-100/80 hover:bg-primary-800 hover:text-white'
                         }`}
                         aria-label={item.label}
                         aria-current={active ? 'page' : undefined}
@@ -454,7 +461,7 @@ const Layout = () => {
                         onFocus={(event) => showNavTip(event, item.label)}
                         onBlur={() => setNavTip(null)}
                       >
-                        <Icon className={`shrink-0 ${labelsVisible ? 'mr-2.5 h-[18px] w-[18px]' : 'h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
+                        <Icon className={`shrink-0 ${labelsVisible ? 'mr-3 h-[18px] w-[18px]' : 'h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
                         {labelsVisible && <span className="truncate">{item.label}</span>}
                       </Link>
                     )
@@ -464,8 +471,8 @@ const Layout = () => {
             })}
             <Link
               to="/more"
-              className={`group/nav relative flex items-center rounded-md text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'min-h-9 px-2' : 'min-h-11 justify-center px-2'} ${
-                location.pathname === '/more' ? 'bg-primary-600 text-white' : 'text-primary-200 hover:bg-primary-800 hover:text-white'
+              className={`group/nav relative flex items-center rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'min-h-10 px-3' : 'min-h-11 justify-center px-2'} ${
+                location.pathname === '/more' ? 'bg-primary-600 text-white shadow-sm ring-1 ring-white/10' : 'border border-dashed border-primary-700 text-primary-100/80 hover:border-primary-500 hover:bg-primary-800 hover:text-white'
               }`}
               aria-label="More"
               aria-current={location.pathname === '/more' ? 'page' : undefined}
@@ -474,15 +481,15 @@ const Layout = () => {
               onFocus={(event) => showNavTip(event, 'More')}
               onBlur={() => setNavTip(null)}
             >
-              <MoreHorizontal className={`shrink-0 ${labelsVisible ? 'mr-2.5 h-[18px] w-[18px]' : 'h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
-              {labelsVisible && <span className="truncate">More</span>}
+              <MoreHorizontal className={`shrink-0 ${labelsVisible ? 'mr-3 h-[18px] w-[18px]' : 'h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
+              {labelsVisible && <span className="truncate">More tools</span>}
             </Link>
           </nav>
         </div>
       </div>
 
       {/* Main content - Full viewport after sidebar; pt-10 when impersonation banner visible so content not covered */}
-      <div className={`flex min-h-screen w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none md:pl-20 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
+      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none md:pl-20 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
         {backendUnavailable && (
           <div className="px-4 py-2 bg-amber-100 border-b border-warning-border text-amber-900 text-sm">
             Service temporarily unavailable. Try again in a moment, or contact your company administrator.

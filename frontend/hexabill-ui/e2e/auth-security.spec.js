@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test'
 import { feOrigin, apiLogin, API, EDGE, ownerPassword } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 const OTHER = 'frozenhub1'
 const hostHeaders = (slug) => ({ 'Content-Type': 'application/json', 'X-HexaBill-Original-Host': `${slug}.localhost`, 'X-HexaBill-Edge-Secret': EDGE })
 const login = (slug, email, password) => fetch(`${API}/api/auth/login`, { method: 'POST', headers: hostHeaders(slug), body: JSON.stringify({ email, password }) })

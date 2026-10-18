@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin, apiLogin, API, EDGE } from './session.js'
+import { pickValue } from './pickers.js'
+import { createOwingCustomer } from './fixtures.js'
 
 const SLUG = 'gulfharvest-test'
 test.use({ trace: 'off' })
@@ -16,17 +18,10 @@ const items = (json) => json.data?.items || json.data || []
 const paymentCount = async (customerId, amount) =>
   items(await api('/api/payments?page=1&pageSize=100')).filter(p => Number(p.amount) === amount && p.customerId === customerId).length
 
-// A fresh customer with one credit invoice, so the payment has something to settle.
+// A fresh customer with its own stocked product and one credit invoice, so the payment has something to settle
+// and no other test's data (stock, balances) can affect it.
 async function owingCustomer () {
-  const headers = await authHeaders()
-  const stamp = `${Date.now()}`.slice(-7)
-  const created = await (await fetch(`${API}/api/customers`, { method: 'POST', headers, body: JSON.stringify({ name: `QA payer ${stamp}`, phone: `058${stamp}`, creditLimit: 0, customerType: 'Credit' }) })).json()
-  const customer = created.data
-  expect(customer?.id, 'customer created').toBeTruthy()
-  const product = items(await api('/api/products?page=1&pageSize=20'))[0]
-  const sale = await fetch(`${API}/api/sales`, { method: 'POST', headers, body: JSON.stringify({ customerId: customer.id, items: [{ productId: product.id, unitType: product.unitType || 'PIECE', qty: 1, unitPrice: 500 }] }) })
-  const saleText = await sale.text()
-  expect(sale.status, `credit sale: ${saleText.slice(0, 300)}`).toBeLessThan(300)
+  const customer = await createOwingCustomer(SLUG)
   const fresh = (await api(`/api/customers/${customer.id}`)).data
   expect(Number(fresh.balance), 'customer owes after the credit sale').toBeGreaterThan(50)
   return fresh
@@ -38,7 +33,7 @@ async function openForm (page, customer) {
   await page.getByRole('button', { name: 'Add Payment' }).first().click()
   const dialog = page.getByRole('dialog').first()
   await expect(dialog).toBeVisible()
-  await dialog.locator('select[name="customerId"]').selectOption({ value: String(customer.id) })
+  await pickValue(page, dialog.locator('[name="customerId"]'), customer.id)
   return dialog
 }
 

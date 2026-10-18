@@ -41,9 +41,35 @@ async function newProduct (slug, stamp, stockQty) {
 export async function ensureOwingCustomer (slug) {
   const existing = rows(await call(slug, '/api/customers?page=1&pageSize=100')).find((c) => Number(c.balance) > 1)
   if (existing) return existing
+  return createOwingCustomer(slug)
+}
+
+/** Makes sure the tenant has at least `count` customers (plain, no sales); returns how many exist. */
+export async function ensureCustomerCount (slug, count) {
+  let n = rows(await call(slug, '/api/customers?page=1&pageSize=200')).length
+  const scope = n < count ? await branchScope(slug) : {}
+  for (; n < count; n += 1) {
+    const stamp = `${Date.now()}${n}`
+    await call(slug, '/api/customers', 'POST', { name: `Fixture customer ${stamp}`, phone: `055${stamp.slice(-7)}`, creditLimit: 0, customerType: 'Credit', ...scope })
+  }
+  return n
+}
+
+/** Makes sure at least `count` customers owe more than `minBalance`; returns them, largest balance first. */
+export async function ensureOwingCustomers (slug, count, minBalance = 60) {
+  let list = (await call(slug, '/api/customers?page=1&pageSize=100').then(rows)).filter((c) => Number(c.balance) > minBalance)
+  while (list.length < count) {
+    await createOwingCustomer(slug)
+    list = (await call(slug, '/api/customers?page=1&pageSize=100').then(rows)).filter((c) => Number(c.balance) > minBalance)
+  }
+  return list.sort((a, b) => Number(b.balance) - Number(a.balance))
+}
+
+/** Creates a brand-new customer with its own stocked product and one unpaid credit invoice (isolated data). */
+export async function createOwingCustomer (slug, name) {
   const stamp = `${Date.now()}`
   const customer = await call(slug, '/api/customers', 'POST', {
-    name: `Fixture owing ${stamp}`, phone: `056${stamp.slice(-7)}`, creditLimit: 5000, customerType: 'Credit', ...(await branchScope(slug)),
+    name: name || `Fixture owing ${stamp}`, phone: `056${stamp.slice(-7)}`, creditLimit: 5000, customerType: 'Credit', ...(await branchScope(slug)),
   })
   const product = await newProduct(slug, stamp, 0)
   // Stock arrives through a real cash purchase, the same way the app receives goods.
@@ -68,4 +94,15 @@ export async function ensureUnpaidPurchase (slug) {
     supplierName: `Fixture supplier ${stamp}`, invoiceNo: `FX-${stamp}`, purchaseDate: new Date().toISOString().slice(0, 10),
     paymentType: 'Credit', items: [{ productId: product.id, unitType: 'PIECE', qty: 20, unitCost: 10 }],
   }, `fx-purchase-${stamp}`)
+}
+
+/** A fresh owing customer with a very long name and one cleared cash payment, for row-layout checks. */
+export async function createLongNamePayment (slug) {
+  const stamp = `${Date.now()}`
+  const name = `QA long name customer ${stamp} Trading Company Limited Liability Partnership`
+  const customer = await createOwingCustomer(slug, name)
+  await call(slug, '/api/payments', 'POST', {
+    customerId: customer.id, saleId: null, amount: 12.34, mode: 'CASH', reference: null, paymentDate: new Date().toISOString(),
+  }, `fx-longname-${stamp}`)
+  return { customer, name }
 }

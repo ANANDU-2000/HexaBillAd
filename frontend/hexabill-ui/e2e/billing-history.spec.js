@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 const isPhone = (info) => info.project.use.viewport.width < 768
 
 test('compact rows, row opens the invoice, Collect only while money is owed', async ({ page }, info) => {

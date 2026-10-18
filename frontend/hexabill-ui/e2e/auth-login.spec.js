@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test'
 import { feOrigin, ownerPassword } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 const EMAIL = `${SLUG}@hexabill.company`
 
 async function loginForm (page) {

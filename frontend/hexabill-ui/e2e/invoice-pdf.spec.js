@@ -7,7 +7,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { apiLogin, API, EDGE } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 
 async function get (url, token) {
   return fetch(`${API}${url}`, { headers: { Authorization: `Bearer ${token}`, 'X-HexaBill-Original-Host': `${SLUG}.localhost`, 'X-HexaBill-Edge-Secret': EDGE } })

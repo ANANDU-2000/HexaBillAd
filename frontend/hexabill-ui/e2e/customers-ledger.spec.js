@@ -1,8 +1,9 @@
 // M2 Customer Ledger regression (UX-L01/L02). Local dev tenants only; opens dialogs, does not post money.
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
+import { createOwingCustomer } from './fixtures.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 
 test('ledger picker: search first, filters behind a toggle', async ({ page }) => {
   await signIn(page, SLUG)
@@ -14,11 +15,13 @@ test('ledger picker: search first, filters behind a toggle', async ({ page }) =>
 })
 
 test('customer with an open balance: receive payment, pay all and the action menu', async ({ page }, info) => {
+  // Own data: a fresh customer with an unpaid invoice, so nothing depends on what the tenant already holds.
+  const name = `QA ledger owing ${`${Date.now()}`.slice(-9)}`
+  await createOwingCustomer(SLUG, name)
   await signIn(page, SLUG)
   await page.goto(`${feOrigin(SLUG)}/ledger`, { waitUntil: 'networkidle' })
-  // Local synthetic data: the walk-in cafe customer has two open invoices.
-  await page.getByRole('searchbox', { name: 'Search customer' }).fill('Walk-in')
-  const owing = page.locator('main button').filter({ hasText: /Walk-in/ }).first()
+  await page.getByRole('searchbox', { name: 'Search customer' }).fill(name)
+  const owing = page.locator('main button').filter({ hasText: name }).first()
   await expect(owing).toBeVisible()
   await owing.click()
   await page.waitForLoadState('networkidle')

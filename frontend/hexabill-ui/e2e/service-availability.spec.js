@@ -4,7 +4,7 @@
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 const GATE_BODY = { status: 'Unavailable', reason: 'SERVICE_UNAVAILABLE', message: 'HexaBill is starting or being updated. Please try again shortly.', schema: 'InitializationFailed' }
 const MAINT_BODY = { success: false, message: 'Planned upgrade until 6pm.', maintenanceMode: true, reason: 'MAINTENANCE_ENABLED', code: 503 }
 

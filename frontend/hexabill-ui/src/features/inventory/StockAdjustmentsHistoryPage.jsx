@@ -1,3 +1,4 @@
+import { DatePresetChips } from '../../components/ui/DateRangeFilter'
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, RefreshCw, Package } from 'lucide-react'
@@ -50,7 +51,7 @@ const StockAdjustmentsHistoryPage = () => {
   }, [load])
 
   return (
-    <div className="space-y-4">
+    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
       <div className="flex flex-wrap items-center gap-3">
         <Link
           to="/more"
@@ -68,7 +69,7 @@ const StockAdjustmentsHistoryPage = () => {
         </div>
       </div>
 
-      <div className="bg-white border border-neutral-200 rounded-lg p-4 flex flex-wrap items-end gap-3">
+      <div data-sticky-toolbar className="sticky top-0 z-20 bg-white border border-neutral-200 rounded-lg p-4 shadow-sm flex flex-wrap items-end gap-3">
         <div>
           <label className="block text-xs font-medium text-neutral-600 mb-1">From</label>
           <input
@@ -87,6 +88,7 @@ const StockAdjustmentsHistoryPage = () => {
             className="border border-neutral-300 rounded-md px-3 py-2 text-sm min-h-11"
           />
         </div>
+        <DatePresetChips from={fromDate} to={toDate} onChange={(r) => { setFromDate(r.from); setToDate(r.to) }} className="self-end" />
         <button
           type="button"
           onClick={() => load()}

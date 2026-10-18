@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Search } from 'lucide-react'
+import { ChevronRight, Search } from 'lucide-react'
 import MobileSheet from './MobileSheet'
 import { useAuth } from '../../hooks/useAuth'
 import { visibleMoreMenu, isItemActive } from '../../navigation/moreMenuConfig'
@@ -73,13 +73,13 @@ const MoreMenuSheet = ({ open, onClose }) => {
   const q = query.trim().toLowerCase()
   const visible = q
     ? groups
-        .map((g) => ({ ...g, items: g.items.filter((it) => it.label.toLowerCase().includes(q)) }))
+        .map((g) => ({ ...g, items: g.items.filter((it) => `${it.label} ${it.description || ''}`.toLowerCase().includes(q)) }))
         .filter((g) => g.items.length)
     : groups
 
   const box = (active) =>
-    `flex items-center gap-3 min-h-11 px-4 py-3 rounded-lg bg-white border transition-colors active:bg-neutral-50 ${
-      active ? 'border-primary-300 bg-primary-50/50' : 'border-neutral-200'
+    `flex items-center gap-3 min-h-14 px-3 py-2.5 rounded-xl border shadow-sm transition-colors active:bg-neutral-50 ${
+      active ? 'border-primary-300 bg-primary-50' : 'border-neutral-200 bg-white'
     }`
 
   return (
@@ -111,7 +111,7 @@ const MoreMenuSheet = ({ open, onClose }) => {
           <div className="px-4 py-3 space-y-5">
             {visible.map((group) => (
               <section key={group.id}>
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-2 px-1">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2 px-1">
                   {group.label}
                 </h2>
                 <ul className="flex flex-col gap-2">
@@ -126,15 +126,24 @@ const MoreMenuSheet = ({ open, onClose }) => {
                           onClick={() => (isSignOut ? signOut() : go(item.href))}
                           className={`${box(active)} w-full text-left`}
                         >
-                          <Icon
-                            className={`h-5 w-5 shrink-0 ${isSignOut ? 'text-error' : 'text-primary-600'}`}
-                            aria-hidden
-                          />
                           <span
-                            className={`text-sm ${isSignOut ? 'font-medium text-error' : active ? 'font-semibold text-primary-700' : 'font-medium text-text-primary'}`}
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                              isSignOut ? 'bg-red-50 text-error' : 'bg-primary-50 text-primary-600'
+                            }`}
                           >
-                            {item.label}
+                            <Icon className="h-5 w-5" aria-hidden />
                           </span>
+                          <span className="min-w-0 flex-1">
+                            <span
+                              className={`block text-sm ${isSignOut ? 'font-semibold text-error' : active ? 'font-semibold text-primary-700' : 'font-semibold text-text-primary'}`}
+                            >
+                              {item.label}
+                            </span>
+                            {item.description && (
+                              <span className="block text-xs leading-snug text-text-secondary">{item.description}</span>
+                            )}
+                          </span>
+                          {!isSignOut && <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" aria-hidden />}
                         </button>
                       </li>
                     )

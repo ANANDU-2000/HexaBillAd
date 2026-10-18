@@ -752,7 +752,7 @@ const ProductsPage = () => {
   }
 
   return (
-    <div className="w-full space-y-3 h-full min-h-0 flex flex-col">
+    <div className="w-full space-y-3 h-full min-h-0 flex flex-col overflow-y-auto">
       {/* Header: one primary action; maintenance actions live in the More menu. */}
       <div className="bg-white border border-surface-border rounded-lg px-3 sm:px-4 py-3 shrink-0">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -967,7 +967,7 @@ const ProductsPage = () => {
         </div>
       )}
       {/* Modern Search & Filters — desktop/tablet */}
-      <div className="hidden md:block">
+      <div data-sticky-toolbar className="hidden md:block sticky top-0 z-20 bg-[#F8FAFC] pt-1">
         <FilterPanel
           searchPlaceholder="Search products by name, SKU..."
           onSearchChange={(value) => {
@@ -1002,7 +1002,7 @@ const ProductsPage = () => {
       </div>
 
       {/* Mobile search + filter trigger (md:hidden) */}
-      <div className="md:hidden flex items-center gap-2 mb-3">
+      <div data-sticky-toolbar className="md:hidden flex items-center gap-2 mb-3 sticky top-0 z-20 bg-[#F8FAFC] py-1">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" aria-hidden />
           <input

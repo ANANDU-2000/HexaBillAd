@@ -4,6 +4,7 @@
 import { test, expect } from '@playwright/test'
 import { ensureOwingCustomer } from './fixtures.js'
 import { signIn, feOrigin, apiLogin, API, EDGE } from './session.js'
+import { pickValue } from './pickers.js'
 
 const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 
@@ -40,7 +41,7 @@ test('add customer payment -> persisted -> refresh -> void -> kept as a voided r
   await page.getByRole('button', { name: 'Add Payment' }).first().click()
   const dialog = page.getByRole('dialog').first()
   await expect(dialog).toBeVisible()
-  await dialog.locator('select[name="customerId"]').selectOption({ value: String(customer.id) })
+  await pickValue(page, dialog.locator('[name="customerId"]'), customer.id)
   await dialog.locator('input[name="amount"]').fill(amount.toFixed(2))
 
   const saved = page.waitForResponse((r) => r.request().method() === 'POST' && /\/api\/payments$/.test(r.url()))

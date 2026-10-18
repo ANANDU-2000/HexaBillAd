@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import Modal from './Modal'
+import { Select } from './Form'
 import { paymentsAPI, customersAPI } from '../services'
 import { formatCurrency } from '../utils/currency'
 import { useBranding } from '../tenant/TenantBrandingContext'
@@ -206,22 +207,22 @@ export default function EditPaymentModal ({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">Invoice Number (Optional)</label>
-            <select
-              value={form.saleId}
-              onChange={(e) => setForm((f) => ({ ...f, saleId: e.target.value }))}
-              className="w-full min-h-[44px] border border-neutral-300 rounded-lg px-3 py-2.5"
-              disabled={saving}
-            >
-              <option value="">-- No Invoice (General Payment) --</option>
-              {invoices.map((inv) => (
-                <option key={inv.id} value={String(inv.id)}>
-                  {inv.invoiceNo} - {money(inv.grandTotal)} - {inv.balanceAmount > 0.005 ? `Balance: ${money(inv.balanceAmount)}` : 'Paid'}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Invoice Number (Optional)"
+            value={form.saleId}
+            onChange={(e) => setForm((f) => ({ ...f, saleId: e.target.value }))}
+            disabled={saving}
+            options={[
+              { value: '', label: '-- No Invoice (General Payment) --' },
+              ...invoices.map((inv) => ({
+                value: String(inv.id),
+                label: inv.invoiceNo,
+                meta: money(inv.grandTotal),
+                hint: inv.balanceAmount > 0.005 ? `Balance: ${money(inv.balanceAmount)}` : 'Paid',
+                hintClassName: inv.balanceAmount > 0.005 ? 'text-red-600' : 'text-green-700',
+              })),
+            ]}
+          />
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">Amount *</label>

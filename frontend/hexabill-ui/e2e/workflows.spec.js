@@ -23,7 +23,7 @@ const apiGet = async (slug, path, token) => {
 test.describe('UX-1 create customer (UI) and verify via API', () => {
   test('customer saved from the form is returned by the API', async ({ page }, info) => {
     test.setTimeout(120_000)
-    const slug = 'gulfharvest'
+    const slug = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
     const { token } = await signIn(page, slug)
     const name = `UX Test ${info.project.name} ${Date.now()}`
     await page.goto(`${feOrigin(slug)}/customers`, { waitUntil: 'networkidle' })
@@ -62,7 +62,7 @@ test.describe('UX-4 keyboard', () => {
   test('palette, shortcut help and sidebar collapse', async ({ page }) => {
     const width = page.viewportSize().width
     test.skip(width < 1024, 'desktop keyboard shortcuts')
-    const slug = 'gulfharvest'
+    const slug = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
     await signIn(page, slug)
     await page.goto(`${feOrigin(slug)}/dashboard`, { waitUntil: 'networkidle' })
 

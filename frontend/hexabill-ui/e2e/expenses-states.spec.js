@@ -4,7 +4,7 @@
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 const isListRequest = (url) => url.pathname.endsWith('/api/expenses')
 const visible = (locator) => locator.filter({ visible: true })
 

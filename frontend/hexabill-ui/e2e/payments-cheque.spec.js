@@ -3,8 +3,9 @@
 // Runs on every width (table row from 768px, card on phones). Synthetic local tenant only; the cheque is voided at the end.
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin, apiLogin, API, EDGE } from './session.js'
+import { pickValue } from './pickers.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 
 async function api (path, init = {}) {
   const s = await apiLogin(SLUG)
@@ -31,7 +32,7 @@ test('cheque: pending keeps the balance, cleared reduces it by the amount, void 
   await page.goto(`${feOrigin(SLUG)}/payments`, { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: 'Add Payment' }).first().click()
   const dialog = page.getByRole('dialog').first()
-  await dialog.locator('select[name="customerId"]').selectOption({ value: String(customer.id) })
+  await pickValue(page, dialog.locator('[name="customerId"]'), customer.id)
   await dialog.locator('select[name="method"]').selectOption({ label: 'Cheque' })
   await dialog.locator('input[name="amount"]').fill(amount.toFixed(2))
   await dialog.locator('input[name="ref"], input[name="reference"]').first().fill(reference)

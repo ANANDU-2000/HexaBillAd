@@ -2,6 +2,7 @@
 // and a long customer name never pushes the amount onto the name. Synthetic local tenant only.
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
+import { createLongNamePayment } from './fixtures.js'
 
 const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 const PRIMARY_BLUE = 'rgb(37, 99, 235)' // primary-600 (#2563EB)
@@ -25,11 +26,13 @@ test('phones: Refresh, Bulk Payment and Add Payment share one row; Add Payment i
 
 test('a payment row keeps the amount beside a long customer name', async ({ page }, info) => {
   test.skip(info.project.use.viewport.width >= 768, 'Mobile rows only')
+  const { name: fullName } = await createLongNamePayment(SLUG)
   await signIn(page, SLUG)
   await page.goto(`${feOrigin(SLUG)}/payments`, { waitUntil: 'networkidle' })
-  const name = page.locator('p.truncate').filter({ hasText: /gulfharvest|Walk-in/i }).first()
+  await page.getByRole('searchbox', { name: 'Search payments' }).fill(fullName.slice(0, 40))
+  const name = page.locator('p.truncate').filter({ hasText: fullName.slice(0, 30) }).first()
   await expect(name).toBeVisible()
-  const amount = page.locator('p.whitespace-nowrap').filter({ hasText: 'AED' }).first()
+  const amount = page.locator('p.whitespace-nowrap').filter({ hasText: '12.34' }).first()
   await expect(amount).toBeVisible()
   const [n, m] = await Promise.all([name.boundingBox(), amount.boundingBox()])
   expect(n.x + n.width).toBeLessThanOrEqual(m.x + 1)

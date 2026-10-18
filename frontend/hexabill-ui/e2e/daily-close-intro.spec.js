@@ -4,8 +4,8 @@ import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
 test('daily close: short intro, settlement rule kept beside the cash rows', async ({ page }) => {
-  await signIn(page, 'gulfharvest')
-  await page.goto(`${feOrigin('gulfharvest')}/daily-close`, { waitUntil: 'networkidle' })
+  await signIn(page, process.env.HEXABILL_E2E_SLUG || 'gulfharvest')
+  await page.goto(`${feOrigin(process.env.HEXABILL_E2E_SLUG || 'gulfharvest')}/daily-close`, { waitUntil: 'networkidle' })
   const intro = page.getByText('Compare the expected cash to your physical count.', { exact: true })
   await expect(intro).toBeVisible()
   const box = await intro.boundingBox()

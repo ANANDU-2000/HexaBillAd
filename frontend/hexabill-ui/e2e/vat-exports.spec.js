@@ -9,7 +9,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { apiLogin, API, EDGE } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 const FROM = '2026-08-01'
 const TO = '2026-10-31'
 

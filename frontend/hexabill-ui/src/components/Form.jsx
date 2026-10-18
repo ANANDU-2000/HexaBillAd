@@ -1,5 +1,8 @@
 import { forwardRef, useId } from 'react'
 import { AlertCircle } from 'lucide-react'
+import SearchableSelect from './ui/SearchableSelect'
+
+const SEARCHABLE_MIN_OPTIONS = 8
 
 const Input = forwardRef(({
   label,
@@ -68,12 +71,23 @@ const Select = forwardRef(({
   children,
   id,
   icon,
+  searchable,
   ...props
 }, ref) => {
   const generatedId = useId()
   const selectId = id || generatedId
   const errorId = `${selectId}-error`
   const helperId = `${selectId}-helper`
+
+  // Long data-driven lists (customers, products...) get a searchable picker; short/static ones stay native.
+  if (!children && !icon && searchable !== false && (searchable === true || options.length > SEARCHABLE_MIN_OPTIONS)) {
+    return (
+      <SearchableSelect
+        ref={ref} id={selectId} label={label} error={error} helperText={helperText}
+        className={className} required={required} options={options} placeholder={placeholder} {...props}
+      />
+    )
+  }
 
   return (
     <div className="space-y-1 text-left">

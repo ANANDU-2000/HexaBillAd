@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useCallback, useRef } from 'react'
+import { DatePresetChips } from '../../components/ui/DateRangeFilter'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCreateIntent } from '../../hooks/useCreateIntent'
 import { useForm } from 'react-hook-form'
@@ -1200,6 +1201,7 @@ const ExpensesPage = () => {
               To
               <input type="date" value={pendingDateRange.to} aria-label="To" onChange={(e) => applyRange({ ...pendingDateRange, to: e.target.value })} className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 px-2 text-base md:text-sm" />
             </label>
+            <DatePresetChips from={pendingDateRange.from} to={pendingDateRange.to} onChange={applyRange} className="sm:col-span-2 lg:w-auto lg:self-end" />
             <label className="text-xs font-medium text-neutral-500">
               Branch
               <select

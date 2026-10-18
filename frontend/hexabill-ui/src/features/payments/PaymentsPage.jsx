@@ -23,11 +23,14 @@ import {
   Phone,
   Mail,
   MapPin,
-  Printer
+  Printer,
+  X
 } from 'lucide-react'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../utils/currency'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
+import DateRangeFilter from '../../components/ui/DateRangeFilter'
+import DateField from '../../components/ui/DateField'
 import Modal from '../../components/Modal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
 import EditPaymentModal from '../../components/EditPaymentModal'
@@ -50,6 +53,14 @@ const PaymentsPage = () => {
   const { currency: tenantCurrency = 'AED' } = useBranding()
   const money = (value) => formatCurrency(value, tenantCurrency)
   const balance = (value) => formatBalance(value, tenantCurrency)
+  // Name stays the label; phone and balance are secondary so the searchable list reads at a glance.
+  const customerOption = (customer) => ({
+    value: customer.id,
+    label: customer.name,
+    meta: customer.phone || '',
+    hint: balance(customer.balance || 0),
+    hintClassName: Number(customer.balance) > 0 ? 'text-red-600' : 'text-neutral-500'
+  })
   const canEditPayments = canManagePayments(user)
   const location = useLocation()
   const navigate = useNavigate()
@@ -582,7 +593,7 @@ const PaymentsPage = () => {
   }
 
   return (
-    <div className={`space-y-6 ${receiptSelectedIds.length ? 'pb-48 lg:pb-20' : ''}`}>
+    <div className={`min-h-0 flex-1 space-y-6 overflow-y-auto ${receiptSelectedIds.length ? 'pb-48 lg:pb-20' : ''}`}>
       {returnTo && (
         <button
           type="button"
@@ -640,7 +651,7 @@ const PaymentsPage = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="rounded-lg border border-neutral-200 bg-white p-3 sm:p-4">
+      <div data-sticky-toolbar className="sticky top-0 z-20 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-0 flex-[1_1_10rem] sm:max-w-[26rem]">
             <div className="relative">
@@ -701,35 +712,11 @@ const PaymentsPage = () => {
           </div>
         </div>
         {showDateFilters && (
-          <div role="group" aria-label="Payment date range" className="mt-3 border-t border-neutral-200 pt-3">
-            <div className="grid grid-cols-2 gap-3 sm:max-w-md">
-              <label className="min-w-0 text-xs font-medium text-neutral-700">
-                From date
-                <input type="date" value={fromDate} aria-invalid={Boolean(dateRangeError)}
-                  onChange={(e) => { setFromDate(e.target.value); setPage(1) }}
-                  className="mt-1 min-h-[44px] w-full min-w-0 rounded-md border border-neutral-300 px-2 text-sm" />
-              </label>
-              <label className="min-w-0 text-xs font-medium text-neutral-700">
-                To date
-                <input type="date" value={toDate} aria-invalid={Boolean(dateRangeError)}
-                  onChange={(e) => { setToDate(e.target.value); setPage(1) }}
-                  className="mt-1 min-h-[44px] w-full min-w-0 rounded-md border border-neutral-300 px-2 text-sm" />
-              </label>
-            </div>
-            <div className="mt-2 grid grid-cols-3 gap-2 sm:flex">
-              <button type="button" onClick={() => {
-                const today = localDateString(); setFromDate(today); setToDate(today); setPage(1)
-              }} className="min-h-[44px] rounded-md border border-neutral-300 px-2 text-xs font-medium hover:bg-neutral-50">Today</button>
-              <button type="button" onClick={() => {
-                const now = new Date()
-                setFromDate(localDateString(new Date(now.getFullYear(), now.getMonth(), 1)))
-                setToDate(localDateString(new Date(now.getFullYear(), now.getMonth() + 1, 0)))
-                setPage(1)
-              }} className="min-h-[44px] rounded-md border border-neutral-300 px-2 text-xs font-medium hover:bg-neutral-50">This month</button>
-              <button type="button" onClick={() => {
-                setFromDate(''); setToDate(''); setPage(1)
-              }} className="min-h-[44px] rounded-md border border-neutral-300 px-2 text-xs font-medium hover:bg-neutral-50">All dates</button>
-            </div>
+          <div className="mt-3 border-t border-neutral-200 pt-3">
+            <DateRangeFilter
+              label="Payment date range" from={fromDate} to={toDate} error={dateRangeError}
+              onChange={({ from, to }) => { setFromDate(from); setToDate(to); setPage(1) }}
+            />
           </div>
         )}
         {(fromDate || toDate) && <p className="mt-2 text-xs text-neutral-600">Payment date: {fromDate || 'Any date'} to {toDate || 'Any date'}</p>}
@@ -1081,10 +1068,7 @@ const PaymentsPage = () => {
               label="Customer (Optional - if not selecting invoice)"
               options={[
                 { value: '', label: 'Select Customer' },
-                ...customers.map(customer => ({
-                  value: customer.id,
-                  label: `${customer.name} ${customer.phone ? `(${customer.phone})` : ''} - Balance: ${balance(customer.balance || 0)}`
-                }))
+                ...customers.map(customerOption)
               ]}
               error={errors.customerId?.message}
               {...register('customerId', { 
@@ -1388,93 +1372,73 @@ const PaymentsPage = () => {
           if (!savedBatch) setBulkPayments([{ customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
         }}
         title="Bulk Payment Entry"
-        size="lg"
+        size="xl"
       >
         <div className="space-y-4">
           <p className="text-sm text-neutral-600 mb-4">
             Add multiple payments at once. Each row represents one payment.
           </p>
-          {bulkRows.map((payment, index) => (
-            <div key={index} className="border border-neutral-200 rounded-lg p-4 space-y-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-neutral-700">Payment #{index + 1}{savedBatch ? (payment.confirmed ? ' · Confirmed' : ' · Awaiting confirmation') : ''}</span>
-                {!savedBatch && bulkPayments.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBulkPayments(bulkPayments.filter((_, i) => i !== index))
-                    }}
-                    className="text-error hover:text-red-800 text-sm"
-                  >
-                    Remove
-                  </button>
-                )}
+          <div className="hidden gap-2 px-1 text-xs font-medium text-neutral-500 md:grid md:grid-cols-[1.5rem_minmax(0,2fr)_7rem_8rem_9rem_minmax(0,1.2fr)_2rem]">
+            <span aria-hidden>#</span><span>Customer</span><span>Amount</span><span>Method</span><span>Date</span><span>Reference</span><span />
+          </div>
+          {bulkRows.map((payment, index) => {
+            const locked = submitting || Boolean(savedBatch)
+            const patch = (fields) => { const updated = [...bulkPayments]; updated[index] = { ...updated[index], ...fields }; setBulkPayments(updated) }
+            const refRequired = ['CHEQUE', 'ONLINE'].includes(String(payment.method).toUpperCase())
+            const cell = 'min-w-0'
+            const mini = (text) => <span className="mb-0.5 block text-[11px] font-medium text-neutral-500 md:hidden">{text}</span>
+            return (
+              <div key={index} className="grid grid-cols-2 items-end gap-2 rounded-lg border border-neutral-200 p-2 md:grid-cols-[1.5rem_minmax(0,2fr)_7rem_8rem_9rem_minmax(0,1.2fr)_2rem] md:items-center md:border-0 md:border-b md:rounded-none md:p-1">
+                <span className="col-span-2 flex items-center justify-between text-xs font-medium text-neutral-600 md:col-span-1 md:block">
+                  <span>{index + 1}</span>
+                  {savedBatch && <span className="md:hidden">{payment.confirmed ? 'Confirmed' : 'Awaiting confirmation'}</span>}
+                </span>
+                <div className={`col-span-2 md:col-span-1 ${cell}`}>{mini('Customer')}
+                  <Select
+                    aria-label="Customer" className="md:!min-h-9 md:!py-1 text-sm" disabled={locked}
+                    options={[{ value: '', label: 'Select Customer' }, ...customers.map(customerOption)]}
+                    value={payment.customerId}
+                    onChange={(e) => patch({ customerId: e.target.value })}
+                  />
+                </div>
+                <div className={cell}>{mini('Amount')}
+                  <input aria-label="Amount" disabled={locked} type="number" step="0.01" placeholder="0.00" value={payment.amount}
+                    onChange={(e) => patch({ amount: e.target.value })}
+                    className="block w-full min-h-[44px] rounded-md border border-neutral-300 bg-white px-2 text-sm md:min-h-0 md:h-9 disabled:bg-neutral-50 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30" />
+                </div>
+                <div className={cell}>{mini('Method')}
+                  <Select
+                    aria-label="Payment Method" className="md:!min-h-9 md:!py-1 text-sm" disabled={locked}
+                    options={[{ value: 'CASH', label: 'Cash' }, { value: 'CHEQUE', label: 'Cheque' }, { value: 'ONLINE', label: 'Online Transfer' }]}
+                    value={String(payment.method).toUpperCase()}
+                    onChange={(e) => patch({ method: e.target.value })}
+                  />
+                </div>
+                <div className={cell}>{mini('Date')}
+                  <DateField aria-label="Payment Date" shortcuts={false} disabled={locked} value={payment.paymentDate}
+                    onChange={(e) => patch({ paymentDate: e.target.value })} />
+                </div>
+                <div className={`col-span-2 md:col-span-1 ${cell}`}>{mini(refRequired ? 'Reference *' : 'Reference')}
+                  <input aria-label="Reference" disabled={locked} required={refRequired} placeholder={refRequired ? 'Required' : 'Optional'} value={payment.reference || ''}
+                    onChange={(e) => patch({ reference: e.target.value })}
+                    className="block w-full min-h-[44px] rounded-md border border-neutral-300 bg-white px-2 text-sm md:min-h-0 md:h-9 disabled:bg-neutral-50 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30" />
+                </div>
+                <div className="col-span-2 flex items-center justify-end md:col-span-1">
+                  {!savedBatch && bulkPayments.length > 1 ? (
+                    <button type="button" aria-label={`Remove payment ${index + 1}`} title="Remove"
+                      onClick={() => setBulkPayments(bulkPayments.filter((_, i) => i !== index))}
+                      className="rounded p-1 text-neutral-400 hover:bg-red-50 hover:text-error"><X className="h-4 w-4" /></button>
+                  ) : savedBatch ? (
+                    <span className="hidden text-[11px] text-neutral-500 md:inline" title={payment.confirmed ? 'Confirmed' : 'Awaiting confirmation'}>{payment.confirmed ? '✓' : '…'}</span>
+                  ) : null}
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Select
-                  label="Customer"
-                  disabled={submitting || Boolean(savedBatch)}
-                  options={[
-                    { value: '', label: 'Select Customer' },
-                    ...customers.map(customer => ({
-                      value: customer.id,
-                      label: `${customer.name} ${customer.phone ? `(${customer.phone})` : ''} - Balance: ${balance(customer.balance || 0)}`
-                    }))
-                  ]}
-                  value={payment.customerId}
-                  onChange={(e) => {
-                    const updated = [...bulkPayments]
-                    updated[index].customerId = e.target.value
-                    setBulkPayments(updated)
-                  }}
-                />
-                <Input
-                  label="Amount"
-                  disabled={submitting || Boolean(savedBatch)}
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={payment.amount}
-                  onChange={(e) => {
-                    const updated = [...bulkPayments]
-                    updated[index].amount = e.target.value
-                    setBulkPayments(updated)
-                  }}
-                />
-                <Select
-                  label="Payment Method"
-                  disabled={submitting || Boolean(savedBatch)}
-                  options={[
-                    { value: 'CASH', label: 'Cash' },
-                    { value: 'CHEQUE', label: 'Cheque' },
-                    { value: 'ONLINE', label: 'Online Transfer' }
-                  ]}
-                  value={String(payment.method).toUpperCase()}
-                  onChange={(e) => {
-                    const updated = [...bulkPayments]
-                    updated[index].method = e.target.value
-                    setBulkPayments(updated)
-                  }}
-                />
-                <Input
-                  label="Payment Date"
-                  disabled={submitting || Boolean(savedBatch)}
-                  type="date"
-                  value={payment.paymentDate}
-                  onChange={(e) => {
-                    const updated = [...bulkPayments]
-                    updated[index].paymentDate = e.target.value
-                    setBulkPayments(updated)
-                  }}
-                />
-                <Input label="Reference" value={payment.reference || ''}
-                  disabled={submitting || Boolean(savedBatch)}
-                  required={['CHEQUE','ONLINE'].includes(String(payment.method).toUpperCase())}
-                  onChange={e => { const updated=[...bulkPayments]; updated[index]={...updated[index],reference:e.target.value}; setBulkPayments(updated) }}
-                />
-              </div>
-            </div>
-          ))}
+            )
+          })}
+          <p className="text-right text-sm text-neutral-600" aria-live="polite">
+            {bulkPayments.length} payment{bulkPayments.length === 1 ? '' : 's'} · Total{' '}
+            <span className="font-semibold text-neutral-900 tabular-nums">{balance(bulkPayments.reduce((sum, row) => sum + (Number(row.amount) || 0), 0))}</span>
+          </p>
           <div className="flex justify-between">
             <button
               type="button"

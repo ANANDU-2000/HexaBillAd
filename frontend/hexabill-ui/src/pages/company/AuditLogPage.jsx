@@ -273,7 +273,7 @@ const AuditLogPage = () => {
   const end = Math.min(page * PAGE_SIZE, totalCount)
 
   return (
-    <div className="min-h-0 flex-1 bg-neutral-50 w-full max-w-full overflow-x-hidden">
+    <div className="min-h-0 flex-1 bg-neutral-50 w-full max-w-full overflow-x-hidden overflow-y-auto">
       <div className="p-3 sm:p-6 w-full max-w-full space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -294,7 +294,7 @@ const AuditLogPage = () => {
           </button>
         </div>
 
-        <div className="bg-white rounded-lg border border-neutral-200 p-3">
+        <div data-sticky-toolbar className="sticky top-0 z-20 bg-white rounded-lg border border-neutral-200 p-3 shadow-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <label className="relative block sm:col-span-2 lg:col-span-1">
               <span className="sr-only">Search activity</span>

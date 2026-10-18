@@ -1,3 +1,4 @@
+import { DatePresetChips } from '../../components/ui/DateRangeFilter'
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { loadAllCustomerPages } from '../../utils/loadAllPages'
 import { statusTone } from '../../utils/statusTone'
@@ -2635,6 +2636,7 @@ const CustomerLedgerPage = () => {
                       className="input min-w-0 text-sm md:min-h-9 md:w-auto"
                     />
                   </label>
+                  <DatePresetChips from={filterDraft.from} to={filterDraft.to} onChange={(r) => setFilterDraft(prev => ({ ...prev, from: r.from, to: r.to }))} className="col-span-2" />
                   <select
                     value={filterDraft.branchId}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
