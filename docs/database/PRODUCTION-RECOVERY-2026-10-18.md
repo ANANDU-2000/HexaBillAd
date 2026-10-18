@@ -29,6 +29,8 @@ The owner's requested production connection settings are stored in an access-res
 
 `%LOCALAPPDATA%\HexaBill\production-recovery-20261018\.env.production.local`
 
+The separate protected `.env.production.urls.local` in that directory contains the requested external and internal database URLs; neither environment file is inside the repository.
+
 The directory inherits no broad filesystem permissions and grants access to the current Windows account. It is outside Git and OneDrive. It also contains the full backup, schema dump, pre-change customer ID/owner mapping, restore evidence, migration evidence and private test results. Passwords, connection URLs with passwords, actual customer records and raw error messages are excluded from Markdown/Git. Rotate the password exposed in chat through a coordinated Render connection update; no uncoordinated password reset was attempted.
 
 Rollback: retain the additive tables/indexes/history when rolling back application code. If customer metadata must be reverted, use the exact protected pre-state mapping with guards against subsequent changes; never set all owners to zero. Do not restore an old full backup over newer production writes. A full restore was tested into an isolated database only.
@@ -55,7 +57,7 @@ Rollback: retain the additive tables/indexes/history when rolling back applicati
 | Browser product create/refetch/reload/edit/deactivate at the same five widths | PASS; 5 passed, 0 failed, 0 skipped |
 | Production authenticated create/edit/save/refetch | NOT TESTED; database permission is not an application login |
 | Backend deployment | BLOCKED on an authenticated Render connection; Render was not installed and computer-use inventory had no available browsers. Database credentials cannot deploy a web service. Installation/authentication requested while independent verification continued. |
-| Push to `main` | IN_PROGRESS; remote SHA will be verified after publication |
+| Push to `main` | PASS; `80f1dfdcaa63fe10b7e979455fb65c2e591a46c2` published and verified with `git ls-remote`; includes all 47 previously unpublished commits and the recovery checkpoint. This report's publication note is a subsequent documentation-only commit. |
 
 No paid provider requests, AI data sharing, microphone/location tracking or tenant-permission changes were performed. AI enablement remains unchanged.
 
@@ -65,6 +67,19 @@ Exact browser commands (with runtime-only synthetic credentials, loopback Postgr
 ./scripts/run-customer-save-qa.ps1 -Database hexabill_codex_browser_20261018 -PostgresPort 55497 -ResumeFixtures -Spec @('e2e/customer-save-contract.spec.js','e2e/expense-autofix.spec.js') -Projects m360,m390,t768,d1024,d1440
 ./scripts/run-customer-save-qa.ps1 -Database hexabill_codex_browser_20261018 -PostgresPort 55497 -ResumeFixtures -Spec e2e/products-crud.spec.js -Projects m360,m390,t768,d1024,d1440
 ```
+
+Other exact final verification commands (run from the repository root unless noted):
+
+```powershell
+dotnet test tests/HexaBill.Tests/HexaBill.Tests.csproj --configuration Release --no-build --no-restore --nologo --verbosity quiet --logger 'trx;LogFileName=full.trx' --results-directory <private-recovery-directory>/test-results
+dotnet test tests/HexaBill.Tests/HexaBill.Tests.csproj --configuration Release --no-restore --nologo --verbosity quiet -p:WarningLevel=0 --filter 'FullyQualifiedName~CustomerOwnerBackfillPostgreSqlTests'
+# From frontend/hexabill-ui:
+npm test
+npm run build
+npm run lint -- --quiet
+```
+
+All commands above exited 0. The full-suite skip is explicitly described in the table; it is not counted as a pass. `HEXABILL_TEST_POSTGRES` targeted only the password-protected `synthetic_tests` database on loopback, never production or the restored customer database.
 
 The new missing-ID browser case failed on the old code with `TypeError: Assignment to constant variable`, then passed on the fix. The guarded runner now accepts separate spec arguments, avoiding shell-pipe interpretation of a combined regex. Initial local recovery-controller setup required correcting child-process log handling, loopback SSL settings and autocommit use; restoration verification required consistent UTC fingerprints. Those setup failures touched only disposable local infrastructure. No production change was attempted before the restore and rehearsal gates passed.
 
@@ -80,4 +95,4 @@ The reference records every public table and column, type, nullability, default,
 
 ## Resume
 
-Current task: P0 production save/schema recovery. Source at entry: `41394f7`; final checkpoint is the commit containing this report. Synthetic verification is complete; publish reviewed code, then deploy it once Render is authenticated. Recheck live version and authenticated product/customer save/refetch; inspect the unresolved logo object/storage error separately. Do not infer deployment from a successful Git push. The password-protected local cluster is stopped after verification and its files are retained privately for resumption.
+Current task: P0 production save/schema recovery. Source at entry: `41394f7`; verified runtime-code checkpoint: `80f1dfd`, published to `origin/main`. Synthetic verification and source publication are complete. The initial push waited for Git Credential Manager's multi-account selector; that owned attempt was canceled, the remote was verified unchanged, and a noninteractive push using the existing `ANANDU-2000` credential succeeded. No credential was printed or copied into Git configuration. Only the untracked reference screenshot directory remains local. Next 1 task: deploy the verified backend once Render is authenticated; then recheck live version and authenticated product/customer save/refetch. Inspect the unresolved logo object/storage error separately. Do not infer deployment from a successful Git push. The password-protected local cluster is stopped after verification and its files are retained privately for resumption.
