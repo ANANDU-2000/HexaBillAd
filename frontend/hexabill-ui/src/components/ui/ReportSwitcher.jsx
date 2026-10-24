@@ -24,7 +24,7 @@ export default function ReportSwitcher({ groups, activeId, onChange, right = nul
   const pick = (id) => { setOpenGroup(null); onChange(id) }
 
   return (
-    <div ref={rootRef} className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-2">
+    <div ref={rootRef} className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-2">
       {/* Phones: one grouped select */}
       <select
         aria-label="Report"
@@ -76,9 +76,9 @@ export default function ReportSwitcher({ groups, activeId, onChange, right = nul
         })}
       </div>
 
-      <span className="hidden h-5 w-px bg-neutral-300 md:block" aria-hidden />
+      <span className="hidden h-5 w-px bg-neutral-300 xl:block" aria-hidden />
 
-      <div role="tablist" aria-label={`${activeGroup?.label} reports`} className="hidden min-w-0 flex-1 items-center overflow-x-auto md:flex">
+      <div role="tablist" aria-label={`${activeGroup?.label} reports`} className="order-2 hidden w-full min-w-0 items-center overflow-x-auto lg:flex xl:order-none xl:w-auto xl:flex-1">
         {activeGroup?.tabs.map((t) => {
           const active = t.id === activeId
           return (
