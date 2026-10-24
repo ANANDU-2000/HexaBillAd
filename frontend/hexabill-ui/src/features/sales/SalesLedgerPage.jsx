@@ -976,7 +976,7 @@ const SalesLedgerPage = () => {
           <DatePresetChips from={dateRange.from} to={dateRange.to} onChange={(r) => setDateRange(r)} className="col-span-2" />
         </div>
         <MobileActionStrip className="md:flex-wrap md:overflow-visible">
-            <div className="hidden md:flex gap-1.5 sm:gap-2 shrink-0">
+            <div className="hidden md:flex md:flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
               <input
                 type="date"
                 value={dateRange.from}
