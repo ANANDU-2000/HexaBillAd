@@ -82,6 +82,34 @@ public class ProductionShapedInvoicePdfTests
         }
     }
 
+    [Fact]
+    public async Task SavedSalePdf_PrintsStoredDiscountAndLineUnit()
+    {
+        // The endpoint path builds its own DTO from the saved sale; it used to drop Discount and print the
+        // product's current unit instead of the unit saved on the invoice line.
+        await using var db = await SeedProductionShapeAsync(approvedHeader: true);
+        var now = new DateTime(2026, 10, 24, 12, 0, 0, DateTimeKind.Utc);
+        db.Products.Add(new Product { Id = 77, TenantId = TenantId, OwnerId = TenantId, NameEn = "BEEF SLICE KAMIL 18KG", Sku = "PS-77", UnitType = "CRTN", ConversionToBase = 1, SellPrice = 50, CreatedAt = now, UpdatedAt = now });
+        db.Sales.Add(new Sale { Id = 9001, TenantId = TenantId, OwnerId = TenantId, CustomerId = CustomerId, CreatedBy = 1, InvoiceNo = "7000", InvoiceDate = now, CreatedAt = now,
+            Subtotal = 100m, VatTotal = 5m, Discount = 7.50m, RoundOff = 0m, GrandTotal = 97.50m, TotalAmount = 97.50m, PaymentStatus = SalePaymentStatus.Pending, IsFinalized = true });
+        db.SaleItems.Add(new SaleItem { SaleId = 9001, ProductId = 77, UnitType = "KG", Qty = 2, UnitPrice = 50, VatRate = 5, VatAmount = 5, LineTotal = 105 });
+        await db.SaveChangesAsync();
+        var fonts = new FontService(NullLogger<FontService>.Instance);
+        fonts.RegisterFonts();
+        var pdf = new PdfService(db, null!, fonts, new SettingsService(db), null!, NullLogger<PdfService>.Instance, null!);
+        var sales = new SaleService(db, pdf, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, NullLogger<SaleService>.Instance);
+
+        var bytes = await sales.GenerateInvoicePdfAsync(9001, TenantId, "A4", "full");
+
+        using var document = PdfDocument.Open(bytes);
+        var text = string.Concat(document.GetPages().Select(p => p.Text));
+        Assert.Contains("Discount", text);
+        Assert.Contains("7.50", text);
+        Assert.Contains("97.50", text);
+        Assert.Contains("KG", text);
+        Assert.DoesNotContain("CRTN", text);
+    }
+
     private static SaleDto Sale1632Shape(int itemCount)
     {
         // Sale 1632 lines: GIZZARD TURKEY 9KG 1 x 80 (VAT 4, line 84) and BEEF SLICE KAMIL 18KG 0.5 x 375 (VAT 9.38, line 196.88).

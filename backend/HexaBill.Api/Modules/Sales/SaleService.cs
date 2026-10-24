@@ -2621,6 +2621,8 @@ namespace HexaBill.Api.Modules.Sales
                     CustomerName = sale.Customer?.Name ?? "Cash Customer",
                     Subtotal = sale.Subtotal,
                     VatTotal = sale.VatTotal,
+                    // Subtotal is pre-discount; without this the printed rows do not add up to GrandTotal.
+                    Discount = sale.Discount,
                     RoundOff = sale.RoundOff,
                     GrandTotal = sale.GrandTotal,
                     PaymentStatus = sale.PaymentStatus.ToString(),
@@ -2633,7 +2635,8 @@ namespace HexaBill.Api.Modules.Sales
                         ProductName = i.Product?.NameEn ?? $"Product {i.ProductId}",
                         Qty = i.Qty,
                         UnitPrice = i.UnitPrice,
-                        UnitType = i.Product?.UnitType ?? "CRTN",
+                        // Reprints show the unit saved on the invoice line, not the product's current unit.
+                        UnitType = !string.IsNullOrWhiteSpace(i.UnitType) ? i.UnitType : i.Product?.UnitType ?? "CRTN",
                         LineTotal = i.LineTotal,
                         VatAmount = i.VatAmount
                     }).ToList() ?? new List<SaleItemDto>()
