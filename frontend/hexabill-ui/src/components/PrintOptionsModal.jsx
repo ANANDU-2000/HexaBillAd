@@ -163,9 +163,10 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+      {/* Capped to the viewport: the options scroll and the actions stay reachable on phones. */}
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[calc(100dvh-2rem)] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between pl-6 pr-2 py-4 border-b border-neutral-200">
+        <div className="flex shrink-0 items-center justify-between pl-6 pr-2 py-4 border-b border-neutral-200">
           <h2 className="text-xl font-bold text-neutral-900">Print Options</h2>
           <button
             onClick={onClose}
@@ -177,7 +178,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-6">
           {/* Format Selection - A4, A5, 80mm, 58mm (Gulf VAT compliant) */}
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -309,12 +310,12 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
         </div>
 
         {/* Actions */}
-        <div className="flex flex-wrap items-center justify-end p-6 border-t border-neutral-200 gap-2 sm:gap-3">
+        <div className="flex shrink-0 flex-wrap items-center justify-end p-4 sm:p-6 border-t border-neutral-200 gap-2 sm:gap-3">
           <button
             type="button"
             onClick={handleDeliveryNote}
             disabled={printing || loadingLayoutPolicy}
-            className="inline-flex items-center px-4 min-h-[44px] bg-warning text-white rounded-md hover:bg-amber-700 disabled:opacity-50 mr-auto"
+            className="order-2 sm:order-none inline-flex items-center px-4 min-h-[44px] bg-warning text-white rounded-md hover:bg-amber-700 disabled:opacity-50 mr-auto"
           >
             <FileText className="h-4 w-4 mr-2" />
             Delivery Note
@@ -322,14 +323,15 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
           <button
             onClick={onClose}
             disabled={printing || loadingLayoutPolicy}
-            className="px-4 min-h-[44px] text-neutral-700 bg-neutral-100 rounded-md hover:bg-neutral-200 disabled:opacity-50"
+            className="order-3 sm:order-none px-4 min-h-[44px] text-neutral-700 bg-neutral-100 rounded-md hover:bg-neutral-200 disabled:opacity-50"
           >
             Cancel
           </button>
+          {/* Primary action first and full width on phones. */}
           <button
             onClick={handlePrint}
             disabled={printing}
-            className="inline-flex items-center px-4 min-h-[44px] bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+            className="order-1 sm:order-none w-full sm:w-auto inline-flex items-center justify-center px-4 min-h-[44px] bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
           >
             {printing ? (
               <>

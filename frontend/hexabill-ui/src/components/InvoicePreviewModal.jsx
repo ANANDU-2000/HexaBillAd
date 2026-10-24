@@ -352,10 +352,22 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
                     <span>Subtotal:</span>
                     <span>{formatCurrency(invoice.subtotal)}</span>
                   </div>
+                  {Number(invoice.discount) !== 0 && (
+                    <div className="flex justify-between">
+                      <span>Discount:</span>
+                      <span>-{formatCurrency(invoice.discount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span>VAT (5%):</span>
                     <span>{formatCurrency(invoice.vatTotal)}</span>
                   </div>
+                  {Number(invoice.roundOff) !== 0 && (
+                    <div className="flex justify-between">
+                      <span>Round off:</span>
+                      <span>{Number(invoice.roundOff) > 0 ? '+' : ''}{formatCurrency(invoice.roundOff)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
                     <span>Grand Total:</span>
                     <span>{formatCurrency(invoice.grandTotal)}</span>
