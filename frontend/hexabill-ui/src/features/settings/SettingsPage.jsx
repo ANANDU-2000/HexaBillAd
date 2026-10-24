@@ -38,7 +38,7 @@ import { isAdminOrOwner } from '../../utils/roles'  // CRITICAL: Multi-tenant ro
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import StampSignaturePlacementPreview from '../../components/StampSignaturePlacementPreview'
-import { addInvoiceHeaderStyleForUpdate } from './settingsUpdatePayload'
+import { addInvoiceHeaderStyleForUpdate, addInvoiceSeriesStartForUpdate } from './settingsUpdatePayload'
 
 const SettingsPage = () => {
   const { user } = useAuth()
@@ -87,6 +87,7 @@ const SettingsPage = () => {
     companyEmail: '',
     defaultCurrency: 'AED',
     vatPercentage: 5,
+    invoiceSeriesStart: '',
     invoiceTemplate: '',
     logoUrl: '',
     cloudBackupEnabled: false,
@@ -442,6 +443,7 @@ const SettingsPage = () => {
           companyEmail: getSetting(d, 'COMPANY_EMAIL') || getSetting(d, 'companyEmail') || '',
           defaultCurrency: getSetting(d, 'CURRENCY') || getSetting(d, 'defaultCurrency') || 'AED',
           vatPercentage: parseFloat(getSetting(d, 'VAT_PERCENT') || getSetting(d, 'vatPercentage') || '5'),
+          invoiceSeriesStart: getSetting(d, 'INVOICE_SERIES_START') ?? '',
           invoiceTemplate: getSetting(d, 'INVOICE_TEMPLATE') || getSetting(d, 'invoiceTemplate') || '',
           logoUrl: logoUrl,
           cloudBackupEnabled: getSettingBool(d, 'CLOUD_BACKUP_ENABLED') || getSettingBool(d, 'cloudBackupEnabled'),
@@ -535,6 +537,7 @@ const SettingsPage = () => {
       // FrozenHub's header policy is server-managed. Sending its locked value
       // with unrelated company edits makes the server reject the entire save.
       addInvoiceHeaderStyleForUpdate(backendSettings, data)
+      addInvoiceSeriesStartForUpdate(backendSettings, data, initialSettings)
 
       // Only include logoUrl if it's set
       if (data.logoUrl) {
@@ -1349,6 +1352,22 @@ const SettingsPage = () => {
                     max: { value: 100, message: 'VAT must be 100 or less' }
                   })}
                 />
+                <div>
+                  <Input
+                    label="New invoice numbers start at"
+                    type="number"
+                    step="1"
+                    min="1"
+                    placeholder="e.g. 7000"
+                    error={errors.invoiceSeriesStart?.message}
+                    {...register('invoiceSeriesStart', {
+                      validate: (v) => String(v ?? '').trim() === '' || /^\d+$/.test(String(v).trim()) || 'Enter a whole number such as 7000'
+                    })}
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    New invoices continue from the highest number at or above this. Numbers below it stay with earlier invoices, and issued numbers never change.
+                  </p>
+                </div>
                 <Input
                   label="Low stock global threshold (optional)"
                   type="number"
