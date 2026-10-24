@@ -140,6 +140,8 @@ public class LetterheadLogoSizeTests
         using var document = PdfDocument.Open(bytes);
 
         Assert.True(document.NumberOfPages >= 1);
+        if (format == "A5" && itemCount == 20)
+            Assert.Equal(1, document.NumberOfPages);
         Assert.Contains("FROZENHUB", document.GetPage(1).Text);
         Assert.Contains("0.40", string.Concat(document.GetPages().Select(page => page.Text)));
         Assert.Contains((invoice.GrandTotal).ToString("0.00"), string.Concat(document.GetPages().Select(page => page.Text)));

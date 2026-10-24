@@ -936,7 +936,7 @@ namespace HexaBill.Api.Modules.Sales
                             });
                             if (useOrangeLetterhead)
                                 RenderStampNearSignatory(inner, settings);
-                            else if (!letterheadOnly)
+                            else if (!letterheadOnly && !settings.FrozenHubHeaderPolicy)
                                 inner.Item().PaddingTop(2).AlignCenter().Text("Thank you").FontSize(6);
                             else if (HasStampOrSignature(settings))
                                 inner.Item().Height(28);
