@@ -31,3 +31,4 @@
 
 Blockers: local PG connection string; FrozenHub BW logo; Vercel re-auth; prod backup/approval; accountant Form 201 review.
 Next: P2 VAT UI (T-020).
+| FH-P0-08 | P0 | FrozenHub A5 invoice pagination | A5 invoices with 20 lines left an orphaned “Thank you” page | Footer thank-you rendered even when the compact FrozenHub A5 layout had no remaining content | PdfService.cs, LetterheadLogoSizeTests.cs | Omit the decorative thank-you footer only for FrozenHub compact A5 documents; retain other layouts | Focused LetterheadLogoSizeTests + SalesLedgerReceiptStateTests 16/16; full backend 1123 passed, 109 skipped, 0 failed; generated A5/20 PDF visually inspected at one page | Local release candidate 56f01ff1 based on production main f70a6325; live preview/download/print verified for prior release; new pagination fix not yet live | PASS (local); deployment pending |
