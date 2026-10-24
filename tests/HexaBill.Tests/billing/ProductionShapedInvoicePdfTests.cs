@@ -83,6 +83,29 @@ public class ProductionShapedInvoicePdfTests
     }
 
     [Fact]
+    public async Task FrozenHubSubdomain_WithStoredLegacyRow_StillPrintsApprovedHeaderAndSettings()
+    {
+        // Production FrozenHub 1 has subdomain "frozenhub" and INVOICE_HEADER_STYLE = "Legacy" with no lock row.
+        // The server forces the approved bilingual header for that subdomain on read; the PDF must follow.
+        await using var db = await SeedProductionShapeAsync(approvedHeader: false, subdomain: "frozenhub");
+        var settings = await new SettingsService(db).GetOwnerSettingsAsync(TenantId);
+        Assert.Equal("BilingualMonochrome", settings["INVOICE_HEADER_STYLE"]);
+        Assert.Equal("true", settings["INVOICE_HEADER_STYLE_LOCKED"]);
+
+        var fonts = new FontService(NullLogger<FontService>.Instance);
+        fonts.RegisterFonts();
+        var pdf = new PdfService(db, null!, fonts, new SettingsService(db), null!, NullLogger<PdfService>.Instance, null!);
+        var bytes = await pdf.GenerateInvoicePdfAsync(Sale1632Shape(2), "A4", "full");
+
+        using var document = PdfDocument.Open(bytes);
+        var first = document.GetPage(1).Text;
+        Assert.Contains("Abu Dhabi, Musaffah 17", first);
+        Assert.DoesNotContain("971555298878", first);
+        Assert.DoesNotContain("frozenhubfoods@gmail.com", first, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("International Transport", first, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task SavedSalePdf_PrintsStoredDiscountAndLineUnit()
     {
         // The endpoint path builds its own DTO from the saved sale; it used to drop Discount and print the
@@ -133,13 +156,13 @@ public class ProductionShapedInvoicePdfTests
         };
     }
 
-    private static async Task<AppDbContext> SeedProductionShapeAsync(bool approvedHeader)
+    private static async Task<AppDbContext> SeedProductionShapeAsync(bool approvedHeader, string subdomain = "frozenhub-prodshape")
     {
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase("ProdShapePdf_" + Guid.NewGuid()).Options);
         db.SetRequestTenantScope(null, true);
         var now = DateTime.UtcNow;
-        db.Tenants.Add(new Tenant { Id = TenantId, Name = "FrozenHub Foodstuff Trading L.L.C - S.P.C", Subdomain = "frozenhub-prodshape" });
+        db.Tenants.Add(new Tenant { Id = TenantId, Name = "FrozenHub Foodstuff Trading L.L.C - S.P.C", Subdomain = subdomain });
         db.Customers.Add(new Customer { Id = CustomerId, TenantId = TenantId, OwnerId = TenantId, Name = "Synthetic customer with TRN 29", Trn = "100000000000003", Balance = 720m, PendingBalance = 720m, CreatedAt = now, UpdatedAt = now });
         db.Sales.Add(new Sale { Id = 1631, TenantId = TenantId, OwnerId = TenantId, CustomerId = CustomerId, CreatedBy = 1, InvoiceNo = "1791254852", InvoiceDate = now, CreatedAt = now, GrandTotal = 720m, TotalAmount = 720m, PaymentStatus = SalePaymentStatus.Pending });
         var root = new DirectoryInfo(AppContext.BaseDirectory);
