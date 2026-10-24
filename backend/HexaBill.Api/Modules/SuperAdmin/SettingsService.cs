@@ -85,6 +85,27 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 || string.Equals(subdomain, "frozenhub2", StringComparison.OrdinalIgnoreCase);
         }
 
+        // Same key InvoiceNumberService reads: new invoices start at this number (FrozenHub 1: 7000).
+        private const string InvoiceSeriesStartKey = "INVOICE_SERIES_START";
+
+        /// <summary>
+        /// Clearing the series after invoices were issued inside it would send numbering back to the old sequence,
+        /// so it is refused. Changing the start keeps working: numbering continues after the highest issued number.
+        /// </summary>
+        private async Task EnsureInvoiceSeriesCanChangeAsync(int tenantId, string newValue)
+        {
+            if (newValue.Length != 0) return;
+            var current = await _context.Settings.AsNoTracking()
+                .Where(s => s.Key == InvoiceSeriesStartKey && (s.TenantId == tenantId || (s.TenantId == null && s.OwnerId == tenantId)))
+                .Select(s => s.Value).FirstOrDefaultAsync();
+            if (!int.TryParse(current?.Trim(), out var start) || start < 1) return;
+            var numbers = await _context.Sales.IgnoreQueryFilters().AsNoTracking()
+                .Where(s => s.TenantId == tenantId && s.InvoiceNo != null)
+                .Select(s => s.InvoiceNo).ToListAsync();
+            if (numbers.Any(n => n.All(char.IsAsciiDigit) && long.TryParse(n, out var v) && v >= start && v < start + 1_000_000L))
+                throw new ArgumentException($"Invoices have already been issued from {start}. The invoice numbering start cannot be removed.");
+        }
+
         private static string NormalizeKey(string key) => key.Trim() switch
         {
             "vat_trn" => "COMPANY_TRN",
@@ -111,6 +132,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 }
                 if (key == "INVOICE_HEADER_STYLE" && value != "Legacy" && value != "BilingualMonochrome")
                     throw new ArgumentException("Select a supported document header style.");
+                if (key == InvoiceSeriesStartKey)
+                {
+                    value = value.Trim();
+                    if (value.Length != 0 && (!int.TryParse(value, out var start) || start < 1 || start > 998_999_999))
+                        throw new ArgumentException("New invoice numbers must start at a whole number such as 7000.");
+                }
                 if (result.TryGetValue(key, out var existing) && existing != value)
                     throw new ArgumentException("Conflicting values supplied for the same setting.");
                 result[key] = value;
@@ -169,6 +196,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
             settings = ValidateSettings(settings);
             if (settings.ContainsKey("INVOICE_HEADER_STYLE") && await RequiresFrozenHubMonochromeHeaderAsync(tenantId))
                 throw new ArgumentException("FrozenHub invoice headers use the required bilingual monochrome layout.");
+            if (settings.TryGetValue(InvoiceSeriesStartKey, out var seriesValue))
+                await EnsureInvoiceSeriesCanChangeAsync(tenantId, seriesValue);
 
             // Logo keys: do not overwrite with empty when user saves other company settings (e.g. name only) so logo persists after refresh
             var logoKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

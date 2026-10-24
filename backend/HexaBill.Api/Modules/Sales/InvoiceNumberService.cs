@@ -18,6 +18,8 @@ namespace HexaBill.Api.Modules.Sales
         /// <summary>Call only when caller holds pg_advisory_xact_lock(1000000 + tenantId) in the current transaction. No lock is taken here.</summary>
         Task<string> GenerateNextInvoiceNumberInTransactionAsync(int tenantId);
         Task<bool> ValidateInvoiceNumberAsync(string invoiceNumber, int tenantId, int? excludeSaleId = null);
+        /// <summary>Why a typed invoice number cannot be used, or null when it can.</summary>
+        Task<string?> GetManualInvoiceNumberProblemAsync(string invoiceNumber, int tenantId, int? excludeSaleId = null);
         Task<string> FormatInvoiceNumberAsync(int number);
         Task<bool> IsInvoiceNumberDuplicateAsync(string invoiceNumber, int tenantId, int? excludeSaleId = null);
     }
@@ -224,27 +226,39 @@ namespace HexaBill.Api.Modules.Sales
             return Task.FromResult($"{number:D4}");
         }
 
-        public async Task<bool> ValidateInvoiceNumberAsync(string invoiceNumber, int tenantId, int? excludeSaleId = null)
+        public async Task<bool> ValidateInvoiceNumberAsync(string invoiceNumber, int tenantId, int? excludeSaleId = null) =>
+            await GetManualInvoiceNumberProblemAsync(invoiceNumber, tenantId, excludeSaleId) == null;
+
+        public async Task<string?> GetManualInvoiceNumberProblemAsync(string invoiceNumber, int tenantId, int? excludeSaleId = null)
         {
             if (string.IsNullOrWhiteSpace(invoiceNumber))
-                return false;
+                return "Enter an invoice number.";
 
             // Check format: #### (4 or more digits, no prefix required)
-            var isValidFormat = Regex.IsMatch(invoiceNumber.Trim(), @"^\d{4,}$", RegexOptions.IgnoreCase);
-            if (!isValidFormat)
-                return false;
+            var trimmed = invoiceNumber.Trim();
+            if (!Regex.IsMatch(trimmed, @"^\d{4,}$"))
+                return "Invoice numbers use digits only, at least 4 (for example 7000).";
+            if (!long.TryParse(trimmed, out var invoiceNum) || invoiceNum < 1)
+                return "Invoice number must be 1 or higher.";
 
-            // Extract numeric value to check minimum (allow 1+ for all tenants)
-            var numericPart = new string(invoiceNumber.Trim().Where(char.IsDigit).ToArray());
-            if (int.TryParse(numericPart, out int invoiceNum))
+            var seriesStart = await GetSeriesStartAsync(tenantId);
+            if (seriesStart.HasValue)
             {
-                if (invoiceNum < 1)
-                    return false;
+                // Numbers below the series belong to earlier (e.g. migrated Starplus) invoices and stay theirs.
+                if (invoiceNum < seriesStart.Value)
+                    return $"Numbers below {seriesStart.Value} are kept for earlier invoices. Use {seriesStart.Value} or higher.";
+                // An issued number is never handed out again, even after the invoice was deleted or voided.
+                var issued = _context.Sales.IgnoreQueryFilters().Where(s => s.TenantId == tenantId && s.InvoiceNo == trimmed);
+                if (excludeSaleId.HasValue) issued = issued.Where(s => s.Id != excludeSaleId.Value);
+                if (await issued.AnyAsync())
+                    return $"Invoice number {trimmed} was already issued (including deleted or voided invoices) and cannot be used again.";
+                return null;
             }
 
             // CRITICAL: Check for duplicates within owner's scope
-            var isDuplicate = await IsInvoiceNumberDuplicateAsync(invoiceNumber, tenantId, excludeSaleId);
-            return !isDuplicate;
+            return await IsInvoiceNumberDuplicateAsync(trimmed, tenantId, excludeSaleId)
+                ? $"Invoice number {trimmed} is already used by another invoice."
+                : null;
         }
 
         public async Task<bool> IsInvoiceNumberDuplicateAsync(string invoiceNumber, int tenantId, int? excludeSaleId = null)

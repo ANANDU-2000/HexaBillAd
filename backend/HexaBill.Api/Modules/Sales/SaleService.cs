@@ -698,7 +698,8 @@ namespace HexaBill.Api.Modules.Sales
                     var isValid = await _invoiceNumberService.ValidateInvoiceNumberAsync(invoiceNo, tenantId);
                     if (!isValid)
                     {
-                        throw new InvalidOperationException($"Invoice number '{invoiceNo}' is invalid. Please use a different number.");
+                        var problem = await _invoiceNumberService.GetManualInvoiceNumberProblemAsync(invoiceNo, tenantId);
+                        throw new InvalidOperationException(problem ?? $"Invoice number '{invoiceNo}' is invalid. Please use a different number.");
                     }
                 }
                 _logger.LogDebug("Using invoice number: {InvoiceNo}", invoiceNo);

@@ -836,12 +836,12 @@ namespace HexaBill.Api.Modules.Sales
             {
                 var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
                 var invoiceNumberService = HttpContext.RequestServices.GetRequiredService<IInvoiceNumberService>();
-                var isValid = await invoiceNumberService.ValidateInvoiceNumberAsync(request.InvoiceNumber, tenantId, request.ExcludeSaleId);
+                var problem = await invoiceNumberService.GetManualInvoiceNumberProblemAsync(request.InvoiceNumber, tenantId, request.ExcludeSaleId);
                 return Ok(new ApiResponse<bool>
                 {
                     Success = true,
-                    Message = isValid ? "Invoice number is valid" : "Invoice number is invalid or duplicate",
-                    Data = isValid
+                    Message = problem ?? "Invoice number is valid",
+                    Data = problem == null
                 });
             }
             catch (Exception ex)

@@ -1,6 +1,7 @@
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Sales;
+using HexaBill.Api.Modules.SuperAdmin;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -132,5 +133,62 @@ public class InvoiceSeriesStartTests
         await db.SaveChangesAsync();
 
         Assert.Equal("1791254860", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(TenantId));
+    }
+
+    [Fact]
+    public async Task ManualNumber_InSeriesTenant_RefusesStarplusRangeAndReusedNumbersWithReasons()
+    {
+        await using var db = NewDb();
+        SeedProductionShape(db);
+        SetSeriesStart(db, TenantId, "7000");
+        AddSale(db, TenantId, "7000");
+        AddSale(db, TenantId, "7001", deleted: true);
+        await db.SaveChangesAsync();
+        var service = Service(db);
+
+        Assert.Contains("below 7000", await service.GetManualInvoiceNumberProblemAsync("6500", TenantId));
+        Assert.Contains("already issued", await service.GetManualInvoiceNumberProblemAsync("7000", TenantId));
+        // A deleted/voided invoice's number is never handed out again.
+        Assert.Contains("already issued", await service.GetManualInvoiceNumberProblemAsync("7001", TenantId));
+        Assert.Contains("digits only", await service.GetManualInvoiceNumberProblemAsync("FH-7002", TenantId));
+        Assert.Null(await service.GetManualInvoiceNumberProblemAsync("7002", TenantId));
+        Assert.Null(await service.GetManualInvoiceNumberProblemAsync("7050", TenantId));
+        Assert.True(await service.ValidateInvoiceNumberAsync("7002", TenantId));
+        Assert.False(await service.ValidateInvoiceNumberAsync("6500", TenantId));
+    }
+
+    [Fact]
+    public async Task ManualNumber_WithoutSeries_KeepsLegacyRules()
+    {
+        await using var db = NewDb();
+        AddSale(db, OtherTenantId, "1000");
+        AddSale(db, OtherTenantId, "1001", deleted: true);
+        await db.SaveChangesAsync();
+        var service = Service(db);
+
+        Assert.Contains("already used", await service.GetManualInvoiceNumberProblemAsync("1000", OtherTenantId));
+        Assert.Null(await service.GetManualInvoiceNumberProblemAsync("1001", OtherTenantId));
+        Assert.Null(await service.GetManualInvoiceNumberProblemAsync("0500", OtherTenantId));
+    }
+
+    [Fact]
+    public async Task OwnerSetsSeriesStartInSettings_ValidatedAndCannotBeRemovedOnceUsed()
+    {
+        await using var db = NewDb();
+        SeedProductionShape(db);
+        await db.SaveChangesAsync();
+        var settings = new SettingsService(db);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => settings.UpdateOwnerSettingsBulkAsync(TenantId, new() { [InvoiceNumberService.SeriesStartSettingKey] = "abc" }));
+        await Assert.ThrowsAsync<ArgumentException>(() => settings.UpdateOwnerSettingsBulkAsync(TenantId, new() { [InvoiceNumberService.SeriesStartSettingKey] = "0" }));
+        await settings.UpdateOwnerSettingsBulkAsync(TenantId, new() { [InvoiceNumberService.SeriesStartSettingKey] = " 7000 " });
+        Assert.Equal("7000", await settings.GetSettingValueAsync(TenantId, InvoiceNumberService.SeriesStartSettingKey));
+        Assert.Equal("7000", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(TenantId));
+
+        AddSale(db, TenantId, "7000");
+        await db.SaveChangesAsync();
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => settings.UpdateOwnerSettingsBulkAsync(TenantId, new() { [InvoiceNumberService.SeriesStartSettingKey] = "" }));
+        Assert.Contains("cannot be removed", error.Message);
+        Assert.Equal("7001", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(TenantId));
     }
 }
