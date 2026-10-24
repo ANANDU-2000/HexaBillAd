@@ -72,6 +72,30 @@ public class PaymentSettlementAdjustmentTests
             tenantId: 10));
     }
 
+    [Fact]
+    public async Task DateOnlyPayment_IsRecordedNow_AndDuplicateSubmissionWithinTwoMinutesIsRefused()
+    {
+        // The UI sends a date only, which is stored at UTC midnight. The duplicate guard reads CreatedAt, so a date-only
+        // entry must still record when it was entered, or a double submit goes through unchecked.
+        await using var db = await DatabaseAsync(enableAdjustments: false);
+        var service = new PaymentService(db, NullLogger<PaymentService>.Instance, new ValidationService(db), null!, null!);
+        var request = new CreatePaymentRequest
+        {
+            SaleId = 1,
+            CustomerId = 1,
+            Amount = 100m,
+            Mode = "CASH",
+            PaymentDate = new DateTime(2026, 10, 24, 0, 0, 0, DateTimeKind.Utc),
+        };
+
+        var first = await service.CreatePaymentAsync(request, userId: 1, tenantId: 10);
+        Assert.Equal(new DateTime(2026, 10, 24, 0, 0, 0, DateTimeKind.Utc), first.Payment.PaymentDate);
+        Assert.True(DateTime.UtcNow - first.Payment.CreatedAt < TimeSpan.FromMinutes(2));
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => service.CreatePaymentAsync(request, userId: 1, tenantId: 10));
+        Assert.Contains("already recorded", error.Message);
+    }
+
     private static async Task<AppDbContext> DatabaseAsync(bool enableAdjustments)
     {
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite("Data Source=:memory:").Options);

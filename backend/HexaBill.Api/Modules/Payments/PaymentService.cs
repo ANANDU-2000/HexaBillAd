@@ -281,7 +281,10 @@ namespace HexaBill.Api.Modules.Payments
 
             var totalCount = await query.CountAsync();
             var payments = await query
-                .OrderByDescending(p => p.PaymentDate)
+                // Newest first by the stored UTC calendar date, then by when it was recorded. Date-only entries are
+                // stored at midnight, so ordering by the full timestamp would list them below same-day entries.
+                .OrderByDescending(p => p.PaymentDate.Date)
+                .ThenByDescending(p => p.CreatedAt)
                 .ThenByDescending(p => p.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -453,6 +456,9 @@ namespace HexaBill.Api.Modules.Payments
                     var paymentMode = Enum.Parse<PaymentMode>(request.Mode);
                     var paymentDate = (request.PaymentDate ?? DateTime.UtcNow).ToUtcKind();
                     await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, paymentDate, invoiceSale?.BranchId);
+                    // PaymentDate is the business date (date-only entries are stored at UTC midnight). CreatedAt records
+                    // when the payment was entered, so the duplicate-submission window and same-day ordering work for every entry.
+                    var recordedAt = DateTime.UtcNow;
 
                     var payment = new Payment
                     {
@@ -466,8 +472,8 @@ namespace HexaBill.Api.Modules.Payments
                         Status = paymentStatus,
                         PaymentDate = paymentDate,
                         CreatedBy = userId,
-                        CreatedAt = paymentDate,
-                        UpdatedAt = paymentDate
+                        CreatedAt = recordedAt,
+                        UpdatedAt = recordedAt
                     };
                     _context.Payments.Add(payment);
                     Payment? adjustmentPayment = null;
@@ -488,8 +494,8 @@ namespace HexaBill.Api.Modules.Payments
                             ParentPaymentId = payment.Id,
                             PaymentDate = paymentDate,
                             CreatedBy = userId,
-                            CreatedAt = paymentDate,
-                            UpdatedAt = paymentDate
+                            CreatedAt = recordedAt,
+                            UpdatedAt = recordedAt
                         };
                         _context.Payments.Add(adjustmentPayment);
                     }

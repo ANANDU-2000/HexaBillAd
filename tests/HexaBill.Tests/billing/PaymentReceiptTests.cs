@@ -492,6 +492,25 @@ public class PaymentReceiptTests
     }
 
     [Fact]
+    public async Task PaymentList_NewestRecordedFirstWithinTheSameDay()
+    {
+        // Date-only entries (bulk payments) are stored at UTC midnight. A payment recorded later the same
+        // day must still list first, otherwise a just-saved payment falls off page one.
+        await using var db = await CreateDbAsync();
+        var day = new DateTime(2026, 10, 24, 0, 0, 0, DateTimeKind.Utc);
+        var earlierTimed = Payment(41); earlierTimed.PaymentDate = day.AddHours(9); earlierTimed.CreatedAt = day.AddHours(9);
+        var laterDateOnly = Payment(42); laterDateOnly.PaymentDate = day; laterDateOnly.CreatedAt = day.AddHours(10);
+        var yesterday = Payment(43); yesterday.PaymentDate = day.AddDays(-1).AddHours(20); yesterday.CreatedAt = day.AddDays(-1).AddHours(20);
+        db.Payments.AddRange(earlierTimed, laterDateOnly, yesterday);
+        await db.SaveChangesAsync();
+        var service = new PaymentService(db, NullLogger<PaymentService>.Instance, null!, null!, null!);
+
+        var list = await service.GetPaymentsAsync(10, page: 1, pageSize: 10);
+
+        Assert.Equal(new[] { 42, 41, 43 }, list.Items.Select(i => i.Id).Where(i => i >= 41 && i <= 43).ToArray());
+    }
+
+    [Fact]
     public async Task CashInvoice_CanCombineItsOwnPaymentsButNotDifferentUnknownCustomers()
     {
         await using var db = await CreateDbAsync();
