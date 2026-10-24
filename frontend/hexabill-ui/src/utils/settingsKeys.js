@@ -1,17 +1,20 @@
 /**
- * Case-insensitive settings lookup.
+ * Case- and underscore-insensitive settings lookup.
  * ASP.NET CamelCase JSON policy lowercases only the first letter of dictionary keys
- * (e.g. Feature_DocumentStampSignature → feature_DocumentStampSignature),
- * so exact-key reads miss flags and print margins.
+ * (e.g. Feature_DocumentStampSignature → feature_DocumentStampSignature), and the API client then
+ * camel-cases every key (PRINT_MARGIN_TOP_MM → printMarginTopMm), so exact-key reads miss flags and
+ * print margins and the Settings page would save defaults back over the stored values.
  */
+const looseKey = (k) => String(k).replace(/_/g, '').toLowerCase()
+
 export function getSetting(data, key, fallback = undefined) {
   if (!data || key == null) return fallback
   if (Object.prototype.hasOwnProperty.call(data, key) && data[key] != null && data[key] !== '') {
     return data[key]
   }
-  const lower = String(key).toLowerCase()
+  const lower = looseKey(key)
   for (const k of Object.keys(data)) {
-    if (k.toLowerCase() === lower) {
+    if (looseKey(k) === lower) {
       const v = data[k]
       if (v != null && v !== '') return v
     }
