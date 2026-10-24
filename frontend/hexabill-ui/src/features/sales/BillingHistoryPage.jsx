@@ -740,7 +740,7 @@ const BillingHistoryPage = () => {
         onClose={() => setSaleToDelete(null)}
         onConfirm={handleConfirmDeleteSale}
         title="Delete invoice"
-        message="WARNING: This will restore stock and cannot be undone. Are you sure you want to delete this invoice?"
+        message="This removes the invoice from active billing and balances, restores its stock and voids its payments. The invoice number is never reused and the record stays in the audit log. This cannot be undone from here."
         confirmLabel="Delete"
         requireTypedText="DELETE"
       />
