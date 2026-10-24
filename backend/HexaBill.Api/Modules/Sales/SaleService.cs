@@ -2471,41 +2471,20 @@ namespace HexaBill.Api.Modules.Sales
                     }
                 }
 
-                // CRITICAL: Delete or void all related payments
-                foreach (var payment in relatedPayments)
+                // Void (never remove) related payments. Removing them also cascaded their receipts and
+                // erased the money trail; a VOID row keeps the history while dropping out of every balance.
+                var voidedPaymentIds = new List<int>();
+                foreach (var payment in relatedPayments.Where(p => p.Status != PaymentStatus.VOID))
                 {
-                    // If payment was cleared, reverse its effects before deletion
-                    if (payment.Status == PaymentStatus.CLEARED)
-                    {
-                        // Reverse customer balance adjustment
-                        if (payment.CustomerId.HasValue)
-                        {
-                            // PROD-4: Filter by TenantId for tenant isolation
-                            var customer = await _context.Customers
-                                .FirstOrDefaultAsync(c => c.Id == payment.CustomerId.Value && c.TenantId == tenantId);
-                            if (customer != null)
-                            {
-                                customer.Balance += payment.Amount; // Reverse: customer owes more
-                                customer.UpdatedAt = DateTime.UtcNow;
-                            }
-                        }
-                    }
-                    
-                    // Delete payment record
-                    _context.Payments.Remove(payment);
+                    payment.Status = PaymentStatus.VOID;
+                    payment.UpdatedAt = DateTime.UtcNow;
+                    voidedPaymentIds.Add(payment.Id);
                 }
 
                 // CRITICAL: Reset sale payment status and amounts
                 sale.PaidAmount = 0;
                 sale.PaymentStatus = SalePaymentStatus.Pending;
                 sale.LastPaymentDate = null;
-
-                // Recalculate customer balance (after payment deletion)
-                if (sale.CustomerId.HasValue)
-                {
-                    var customerService = new CustomerService(_context);
-                    await customerService.RecalculateCustomerBalanceAsync(sale.CustomerId.Value, tenantId);
-                }
 
                 // Soft delete
                 sale.IsDeleted = true;
@@ -2522,7 +2501,10 @@ namespace HexaBill.Api.Modules.Sales
                     TenantId = tenantId, // CRITICAL: Set new TenantId
                     UserId = userId,
                     Action = "Sale Deleted",
-                    Details = $"Invoice: {sale.InvoiceNo}, Total: {sale.GrandTotal:C}, Customer: {sale.Customer?.Name ?? "Cash"}, Deleted by: {user?.Name ?? "Unknown"}",
+                    EntityType = "Sale",
+                    EntityId = sale.Id,
+                    Details = $"Invoice: {sale.InvoiceNo}, Total: {sale.GrandTotal:C}, CustomerId: {sale.CustomerId?.ToString() ?? "Cash"}, " +
+                        $"Voided payments: {(voidedPaymentIds.Count == 0 ? "none" : string.Join(",", voidedPaymentIds))}, Deleted by: {user?.Name ?? "Unknown"}",
                     CreatedAt = DateTime.UtcNow
                 };
                 _context.AuditLogs.Add(auditLog);
@@ -2544,6 +2526,13 @@ namespace HexaBill.Api.Modules.Sales
                 );
 
                 await _context.SaveChangesAsync();
+
+                // Recalculate from the saved state (sale deleted, payments void), inside the same transaction.
+                if (sale.CustomerId.HasValue)
+                {
+                    await new CustomerService(_context).RecalculateCustomerBalanceAsync(sale.CustomerId.Value, tenantId);
+                    await _context.SaveChangesAsync();
+                }
                 await transaction.CommitAsync();
 
                 // âœ… REAL-TIME BALANCE UPDATE: Update customer balance after invoice deletion
