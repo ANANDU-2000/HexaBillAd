@@ -2473,7 +2473,7 @@ namespace HexaBill.Api.Modules.Reports
 
             // Cleared payment amounts only (same rule as POS / SalePaymentHelpers — pending cheques are not "paid" yet)
             var salePayments = await _context.Payments
-                .Where(p => p.TenantId == tenantId && p.SaleId.HasValue && p.SaleReturnId == null && p.Status == PaymentStatus.CLEARED)
+                .Where(p => p.TenantId == tenantId && p.SaleId.HasValue && p.SaleReturnId == null && (p.Status == PaymentStatus.CLEARED || p.Status == PaymentStatus.Completed))
                 .GroupBy(p => p.SaleId!.Value)
                 .Select(g => new { SaleId = g.Key, TotalPaid = g.Sum(p => p.Amount) })
                 .ToDictionaryAsync(x => x.SaleId, x => x.TotalPaid);
@@ -2497,7 +2497,7 @@ namespace HexaBill.Api.Modules.Reports
             if (reportSaleIds.Count > 0)
             {
                 var clearedRows = await _context.Payments.AsNoTracking()
-                    .Where(p => p.TenantId == tenantId && p.SaleId.HasValue && reportSaleIds.Contains(p.SaleId.Value) && p.SaleReturnId == null && p.Status == PaymentStatus.CLEARED)
+                    .Where(p => p.TenantId == tenantId && p.SaleId.HasValue && reportSaleIds.Contains(p.SaleId.Value) && p.SaleReturnId == null && (p.Status == PaymentStatus.CLEARED || p.Status == PaymentStatus.Completed))
                     .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id)
                     .Select(p => new { p.SaleId, p.Mode })
                     .ToListAsync();
@@ -2607,6 +2607,7 @@ namespace HexaBill.Api.Modules.Reports
                 {
                     PaymentStatus.PENDING => "Pending",
                     PaymentStatus.CLEARED => "Paid",
+                    PaymentStatus.Completed => "Paid",
                     PaymentStatus.RETURNED => "Returned",
                     PaymentStatus.VOID => "Void",
                     _ => "Paid"
@@ -2635,7 +2636,7 @@ namespace HexaBill.Api.Modules.Reports
                     RealPending = 0, // Payments don't have pending
                     RealGotPayment = payment.Amount, // Real payment received
                     Status = status,
-                    PaymentLineStatus = payment.Status.ToString(),
+                    PaymentLineStatus = payment.Status == PaymentStatus.Completed ? "CLEARED" : payment.Status.ToString(),
                     IsSettlementAdjustment = payment.IsSettlementAdjustment,
                     CustomerBalance = customerBalances[paymentCustomerKey],
                     PlanDate = null, // Payments don't have plan dates

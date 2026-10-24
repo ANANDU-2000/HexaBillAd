@@ -58,6 +58,9 @@ namespace HexaBill.Api.Models
     {
         PENDING,
         CLEARED,
+        // Legacy rows use "Completed" for a settled payment. Keep the stored value readable;
+        // never require a production data rewrite to hydrate historical payments.
+        Completed,
         RETURNED,
         VOID
     }

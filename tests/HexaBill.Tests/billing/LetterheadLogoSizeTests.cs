@@ -94,6 +94,10 @@ public class LetterheadLogoSizeTests
             {
                 Assert.Contains("FROZENHUB", page.Text);
                 Assert.Contains("FOODSTUFF TRADING - L.L.C - S.P.C", page.Text);
+                Assert.Contains("Abu Dhabi, Musaffah 17", page.Text);
+                Assert.DoesNotContain("frozenhubfoods@gmail.com", page.Text, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("+971 55 552 8878", page.Text, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("International Transport", page.Text, StringComparison.OrdinalIgnoreCase);
                 var logo = Assert.Single(page.GetImages());
                 Assert.InRange(logo.Bounds.Height, sample.Format == "A4" ? 40f : 25f, sample.Format == "A4" ? 62f : 52f);
                 Assert.InRange(logo.Bounds.Centroid.X, page.Width / 2 - 22, page.Width / 2 + 22);
@@ -230,6 +234,7 @@ public class LetterheadLogoSizeTests
             ["COMPANY_ADDRESS"] = "Musaffah, Bldg 17, Al Nubalaa International Transport & General Contracting - Sole Proprietorship LLC, Abu Dhabi",
             ["COMPANY_TRN"] = "105607243000003",
             ["INVOICE_HEADER_STYLE"] = "BilingualMonochrome",
+            ["INVOICE_HEADER_STYLE_LOCKED"] = "true",
             ["CURRENCY"] = "AED",
             ["LOGO_BASE64_DATA_URI"] = "data:image/png;base64," + Convert.ToBase64String(logoBytes)
         })

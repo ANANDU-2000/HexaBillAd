@@ -2032,16 +2032,15 @@ namespace HexaBill.Api.Modules.Reports
             }
             catch (Exception ex)
             {
-                // Return 500 with real error so we can fix the cause (was hiding with empty data and data never showed).
-                var msg = ex.Message + (ex.InnerException != null ? " | " + ex.InnerException.Message : "");
-                _logger.LogWarning($"[GetComprehensiveSalesLedger] ERROR: {msg}");
-                _logger.LogWarning($"[GetComprehensiveSalesLedger] Stack: {ex.StackTrace}");
+                // Keep database values and stack details out of production responses/logs.
+                _logger.LogError("Sales ledger failed for tenant {TenantId} ({ErrorType})", CurrentTenantId, ex.GetType().Name);
+                const string safeMessage = "Sales ledger could not be loaded. Please try again.";
                 return StatusCode(500, new ApiResponse<SalesLedgerReportDto>
                 {
                     Success = false,
-                    Message = "Sales ledger failed: " + msg,
+                    Message = safeMessage,
                     Data = new SalesLedgerReportDto { Entries = new List<SalesLedgerEntryDto>(), Summary = new SalesLedgerSummary() },
-                    Errors = new List<string> { ex.Message }
+                    Errors = new List<string> { safeMessage }
                 });
             }
         }

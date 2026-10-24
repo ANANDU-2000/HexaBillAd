@@ -468,7 +468,7 @@ const SalesLedgerPage = () => {
         const normalizeStatus = (status) => {
           if (!status || status === '-') return 'Unpaid'
           const statusUpper = status.toUpperCase()
-          if (statusUpper === 'PAID' || statusUpper === 'CLEARED') return 'Paid'
+          if (statusUpper === 'PAID' || statusUpper === 'CLEARED' || statusUpper === 'COMPLETED') return 'Paid'
           if (statusUpper === 'PARTIAL') return 'Partial'
           if (entry.type === 'Payment' && statusUpper === 'PENDING') return 'Pending'
           if (statusUpper === 'UNPAID' || statusUpper === 'PENDING' || statusUpper === 'DUE') return 'Unpaid'
@@ -1375,7 +1375,7 @@ const SalesLedgerPage = () => {
                         if (!status || status === '-') return 'Unpaid'
                         const statusUpper = (status || '').toUpperCase()
                         if (entry.type === 'Payment' && statusUpper === 'PENDING') return 'Pending'
-                        if (statusUpper === 'PAID' || statusUpper === 'CLEARED') return 'Paid'
+                        if (statusUpper === 'PAID' || statusUpper === 'CLEARED' || statusUpper === 'COMPLETED') return 'Paid'
                         if (statusUpper === 'PARTIAL') return 'Partial'
                         if (statusUpper === 'UNPAID' || statusUpper === 'PENDING' || statusUpper === 'DUE') return 'Unpaid'
                         return status
@@ -1683,7 +1683,7 @@ const SalesLedgerPage = () => {
                   if (!status || status === '-') return 'Unpaid'
                   const statusUpper = (status || '').toUpperCase()
                   if (entry.type === 'Payment' && statusUpper === 'PENDING') return 'Pending'
-                  if (statusUpper === 'PAID' || statusUpper === 'CLEARED') return 'Paid'
+                  if (statusUpper === 'PAID' || statusUpper === 'CLEARED' || statusUpper === 'COMPLETED') return 'Paid'
                   if (statusUpper === 'PARTIAL') return 'Partial'
                   if (statusUpper === 'UNPAID' || statusUpper === 'PENDING' || statusUpper === 'DUE') return 'Unpaid'
                   return status

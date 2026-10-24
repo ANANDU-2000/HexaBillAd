@@ -1238,6 +1238,10 @@ namespace HexaBill.Api.Modules.Sales
                 var (title, subtitle) = SplitBilingualCompanyNameLines(settings.CompanyNameEn);
                 if (string.IsNullOrWhiteSpace(title))
                     title = settings.CompanyNameEn ?? "";
+                // FrozenHub's approved printed address is intentionally minimal. Keep phone,
+                // email, and stored contact settings out of this invoice header only.
+                const string frozenHubPrintedAddress = "Abu Dhabi, Musaffah 17";
+                var printedAddress = settings.FrozenHubHeaderPolicy ? frozenHubPrintedAddress : settings.CompanyAddress;
 
                 Action<IContainer> composeEnglish = cell => cell.Column(en =>
                 {
@@ -1245,12 +1249,12 @@ namespace HexaBill.Api.Modules.Sales
                     en.Item().Text(title.ToUpperInvariant()).FontFamily(_englishFont).FontSize(nameSize).Bold();
                     if (!string.IsNullOrWhiteSpace(subtitle))
                         en.Item().Text(subtitle.ToUpperInvariant()).FontFamily(_englishFont).FontSize(a4Letterhead ? 8.5f : detailSize).SemiBold();
-                    if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                    if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(settings.CompanyPhone))
                         en.Item().PaddingTop(1).Text($"Mob: {settings.CompanyPhone}").FontFamily(_englishFont).FontSize(detailSize);
-                    if (!string.IsNullOrWhiteSpace(settings.CompanyEmail))
+                    if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(settings.CompanyEmail))
                         en.Item().Text(settings.CompanyEmail).FontFamily(_englishFont).FontSize(detailSize);
-                    if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
-                        en.Item().Text(settings.CompanyAddress).FontFamily(_englishFont).FontSize(detailSize);
+                    if (!string.IsNullOrWhiteSpace(printedAddress))
+                        en.Item().Text(printedAddress).FontFamily(_englishFont).FontSize(detailSize);
                     if (!string.IsNullOrWhiteSpace(settings.CorporateTaxTrn))
                         en.Item().PaddingTop(2).Text($"CT Reg. No.: {settings.CorporateTaxTrn.Trim()}")
                             .FontFamily(_englishFont).FontSize(taxSize);
@@ -1280,7 +1284,7 @@ namespace HexaBill.Api.Modules.Sales
                     if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
                         ar.Item().AlignRight().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
                             .FontSize(a4Letterhead ? 14f : nameSize).Bold().DirectionFromRightToLeft();
-                    if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                    if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(settings.CompanyPhone))
                         ar.Item().PaddingTop(1).AlignRight().Text(text =>
                         {
                             text.Span("الهاتف: ").FontFamily(_arabicFont).FontSize(detailSize).DirectionFromRightToLeft();
@@ -1288,11 +1292,11 @@ namespace HexaBill.Api.Modules.Sales
                             // does not reverse the digits or move the plus sign to the wrong edge.
                             text.Span($"\u2066{settings.CompanyPhone}\u2069").FontFamily(_englishFont).FontSize(detailSize).DirectionFromLeftToRight();
                         });
-                    if (!string.IsNullOrWhiteSpace(settings.CompanyEmail) && (a4Letterhead || a5Letterhead))
+                    if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(settings.CompanyEmail) && (a4Letterhead || a5Letterhead))
                         ar.Item().AlignRight().Text($"البريد الإلكتروني: {settings.CompanyEmail}").FontFamily(_arabicFont)
                             .FontSize(detailSize).DirectionFromRightToLeft();
-                    if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
-                        ar.Item().AlignRight().Text($"العنوان: {settings.CompanyAddress}").FontFamily(_arabicFont)
+                    if (!string.IsNullOrWhiteSpace(printedAddress))
+                        ar.Item().AlignRight().Text($"العنوان: {printedAddress}").FontFamily(_arabicFont)
                             .FontSize(detailSize).DirectionFromRightToLeft();
                     var vatTrn = HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn);
                     if (!string.IsNullOrWhiteSpace(vatTrn) && (a4Letterhead || a5Letterhead))

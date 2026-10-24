@@ -21,6 +21,7 @@ public class SalesLedgerReceiptStateTests
             new Payment { Id = 2, TenantId = 10, Amount = 20, Mode = PaymentMode.CHEQUE, Status = PaymentStatus.PENDING, PaymentDate = day },
             new Payment { Id = 3, TenantId = 10, Amount = 30, Mode = PaymentMode.CHEQUE, Status = PaymentStatus.RETURNED, PaymentDate = day },
             new Payment { Id = 4, TenantId = 10, Amount = 1, Mode = PaymentMode.CASH, Status = PaymentStatus.CLEARED, IsSettlementAdjustment = true, PaymentDate = day },
+            new Payment { Id = 6, TenantId = 10, Amount = 10.50m, Mode = PaymentMode.CASH, Status = PaymentStatus.Completed, PaymentDate = day },
             new Payment { Id = 5, TenantId = 20, Amount = 99, Mode = PaymentMode.CASH, Status = PaymentStatus.CLEARED, PaymentDate = day });
         await db.SaveChangesAsync();
         db.SetRequestTenantScope(10, false);
@@ -28,17 +29,19 @@ public class SalesLedgerReceiptStateTests
         var service = new ReportService(db, null!, null!, null!, null!, cache,
             NullLogger<ReportService>.Instance, new TimeZoneService(), null!);
         var report = await service.GetComprehensiveSalesLedgerAsync(10, day, day);
-        Assert.Equal(4, report.Entries.Count);
+        Assert.Equal(5, report.Entries.Count);
         var rawState = typeof(SalesLedgerEntryDto).GetProperty("PaymentLineStatus");
         var adjustment = typeof(SalesLedgerEntryDto).GetProperty("IsSettlementAdjustment");
         Assert.NotNull(rawState);
         Assert.NotNull(adjustment);
-        foreach (var (id, state) in new[] { (1,"CLEARED"), (2,"PENDING"), (3,"RETURNED"), (4,"CLEARED") })
+        foreach (var (id, state) in new[] { (1,"CLEARED"), (2,"PENDING"), (3,"RETURNED"), (4,"CLEARED"), (6,"CLEARED") })
         {
             var row = Assert.Single(report.Entries, r => r.PaymentId == id);
             Assert.Equal(state, rawState.GetValue(row));
             Assert.Equal(id == 4, adjustment.GetValue(row));
         }
         Assert.Equal("Paid", Assert.Single(report.Entries, r => r.PaymentId == 1).Status);
+        Assert.Equal("Paid", Assert.Single(report.Entries, r => r.PaymentId == 6).Status);
+        Assert.Equal(10.50m, Assert.Single(report.Entries, r => r.PaymentId == 6).RealGotPayment);
     }
 }

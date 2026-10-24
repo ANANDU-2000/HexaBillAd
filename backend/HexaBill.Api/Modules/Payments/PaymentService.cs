@@ -273,7 +273,9 @@ namespace HexaBill.Api.Modules.Payments
                     if (state == "COMPLETED") state = "CLEARED";
                     if (!Enum.TryParse<PaymentStatus>(state, true, out var paymentStatus) || !Enum.IsDefined(paymentStatus))
                         throw new ArgumentException("Choose a valid payment status.");
-                    query = query.Where(p => p.Status == paymentStatus);
+                    query = paymentStatus == PaymentStatus.CLEARED
+                        ? query.Where(p => p.Status == PaymentStatus.CLEARED || p.Status == PaymentStatus.Completed)
+                        : query.Where(p => p.Status == paymentStatus);
                 }
             }
 
