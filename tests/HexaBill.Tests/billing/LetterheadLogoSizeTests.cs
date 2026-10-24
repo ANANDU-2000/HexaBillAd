@@ -106,12 +106,13 @@ public class LetterheadLogoSizeTests
     }
 
     [Theory]
-    [InlineData(1)]
-    [InlineData(6)]
-    [InlineData(7)]
-    [InlineData(20)]
-    [InlineData(40)]
-    public async Task FrozenHubA4FullPrint_GeneratesInvoicesAcrossItemTableAndPaginationSizes(int itemCount)
+    [InlineData("A4", 1)]
+    [InlineData("A4", 5)]
+    [InlineData("A4", 20)]
+    [InlineData("A5", 1)]
+    [InlineData("A5", 5)]
+    [InlineData("A5", 20)]
+    public async Task FrozenHubFullPrint_GeneratesInvoicesAcrossItemTableAndPaginationSizes(string format, int itemCount)
     {
         await using var db = await SeedSquareLogoTenantAsync();
         var fonts = new FontService(NullLogger<FontService>.Instance);
@@ -119,12 +120,14 @@ public class LetterheadLogoSizeTests
         var pdf = new PdfService(db, null!, fonts, new SettingsService(db), null!, NullLogger<PdfService>.Instance, null!);
         var invoice = CreateSampleInvoice();
         invoice.Subtotal = itemCount * 35m;
+        invoice.Discount = 0.40m;
         invoice.VatTotal = itemCount * 1.75m;
-        invoice.GrandTotal = itemCount * 36.75m;
+        invoice.RoundOff = 0.02m;
+        invoice.GrandTotal = invoice.Subtotal - invoice.Discount + invoice.VatTotal + invoice.RoundOff;
         invoice.Items = Enumerable.Range(1, itemCount).Select(index => new SaleItemDto
         {
             ProductId = index,
-            ProductName = $"Synthetic frozen product {index:00} - extended description for invoice layout testing",
+            ProductName = $"Synthetic frozen product {index:00} - extended description for invoice layout testing - منتج مجمد",
             Qty = 1,
             UnitType = "CTN",
             UnitPrice = 35m,
@@ -132,11 +135,14 @@ public class LetterheadLogoSizeTests
             VatAmount = 1.75m
         }).ToList();
 
-        var bytes = await pdf.GenerateInvoicePdfAsync(invoice, "A4", "full");
+        var bytes = await pdf.GenerateInvoicePdfAsync(invoice, format, "full");
+        await File.WriteAllBytesAsync(Path.Combine(AppContext.BaseDirectory, $"FrozenHub-{format}-{itemCount}-items-layout.pdf"), bytes);
         using var document = PdfDocument.Open(bytes);
 
         Assert.True(document.NumberOfPages >= 1);
         Assert.Contains("FROZENHUB", document.GetPage(1).Text);
+        Assert.Contains("0.40", string.Concat(document.GetPages().Select(page => page.Text)));
+        Assert.Contains((invoice.GrandTotal).ToString("0.00"), string.Concat(document.GetPages().Select(page => page.Text)));
     }
 
     [Fact]

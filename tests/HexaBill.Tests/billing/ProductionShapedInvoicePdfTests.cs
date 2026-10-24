@@ -57,6 +57,29 @@ public class ProductionShapedInvoicePdfTests
             Assert.DoesNotContain("frozenhubfoods@gmail.com", first, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("International Transport", first, StringComparison.OrdinalIgnoreCase);
         }
+
+        // Subtotal is pre-discount (GrandTotal = Subtotal + VAT - Discount + RoundOff), so a discounted invoice must print it.
+        if (invoice.Discount != 0)
+        {
+            Assert.Contains("Discount", text);
+            Assert.Contains(invoice.Discount.ToString("0.00"), text);
+        }
+
+        if (format == "A4")
+        {
+            // VOICE-01: separate Name and Sign writing lines with real handwriting room, lifted off the page edge.
+            // The whole footer (labels, writing lines, Pending) must be on one page — the last one.
+            var last = document.GetPage(document.NumberOfPages);
+            var words = last.GetWords().ToList();
+            var name = words.Single(w => w.Text == "Name" && words.Any(r => r.Text == "Receiver's" && Math.Abs(r.BoundingBox.Bottom - w.BoundingBox.Bottom) < 1));
+            var sign = words.Single(w => w.Text == "Sign" && words.Any(r => r.Text == "Receiver's" && Math.Abs(r.BoundingBox.Bottom - w.BoundingBox.Bottom) < 1));
+            Assert.InRange(name.BoundingBox.Bottom - sign.BoundingBox.Bottom, 30, 60);
+            var writingLines = words.Where(w => w.Text.Length >= 20 && w.Text.All(c => c == '.')).ToList();
+            Assert.True(writingLines.Count(l => l.BoundingBox.Bottom < name.BoundingBox.Bottom) >= 2, "Name and Sign need their own writing lines below each label.");
+            Assert.Contains(words, w => w.Text == "Pending:");
+            Assert.True(words.Min(w => w.BoundingBox.Bottom) >= 30, "Footer must sit above the page bottom margin.");
+            Assert.True(sign.BoundingBox.Bottom > writingLines.Min(l => l.BoundingBox.Bottom), "Sign writing line must be below the Sign label.");
+        }
     }
 
     private static SaleDto Sale1632Shape(int itemCount)
@@ -72,11 +95,13 @@ public class ProductionShapedInvoicePdfTests
         lines = itemCount == 1 ? [lines[1]] : lines.Take(itemCount).ToList();
         var subtotal = lines.Sum(l => l.LineTotal - l.VatAmount);
         var vat = lines.Sum(l => l.VatAmount);
+        // Real sale 1632 (1–2 lines) has no discount; larger synthetic invoices carry one to exercise the Discount row.
+        var discount = itemCount >= 5 ? 5.00m : 0m;
         return new SaleDto
         {
             Id = 1632, OwnerId = TenantId, CustomerId = CustomerId, InvoiceNo = "1791254853", InvoiceDate = new DateTime(2026, 10, 21, 12, 0, 0, DateTimeKind.Utc),
-            CustomerName = "Synthetic customer with TRN 29", Subtotal = subtotal, VatTotal = vat, RoundOff = 0.12m,
-            GrandTotal = subtotal + vat + 0.12m, Items = lines
+            CustomerName = "Synthetic customer with TRN 29", Subtotal = subtotal, VatTotal = vat, Discount = discount, RoundOff = 0.12m,
+            GrandTotal = subtotal + vat - discount + 0.12m, Items = lines
         };
     }
 

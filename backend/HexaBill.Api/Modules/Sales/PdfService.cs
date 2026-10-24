@@ -457,6 +457,16 @@ namespace HexaBill.Api.Modules.Sales
                                         row.AutoItem().Text("مبلغ الفاتورة").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
                                     });
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.Subtotal.ToString("0.00")).FontSize(10);
+
+                                    if (sale.Discount != 0)
+                                    {
+                                        table.Cell().ColumnSpan(7).Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).Row(row => {
+                                            row.AutoItem().Text("Discount").FontSize(10);
+                                            row.RelativeItem();
+                                            row.AutoItem().Text("الخصم").FontSize(9).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                        });
+                                        table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.Discount.ToString("0.00")).FontSize(10);
+                                    }
                                     
                                     // Row 2: VAT 5%
                                     table.Cell().ColumnSpan(7).Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).Row(row => {
@@ -496,28 +506,32 @@ namespace HexaBill.Api.Modules.Sales
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(10);
                                 });
 
-                                // Pin signature / Pending near A4 page bottom after short tables
-                                innerColumn.Item().ExtendVertical().AlignBottom().PaddingTop(1).Column(footerCol =>
+                                // Pin signature / Pending near A4 page bottom after short tables, lifted slightly off the
+                                // margin (client request). ShowEntire keeps the block on one page instead of splitting it.
+                                innerColumn.Item().ExtendVertical().AlignBottom().PaddingTop(1).PaddingBottom(20).ShowEntire().Column(footerCol =>
                                 {
                                     // Acknowledgement text
                                     footerCol.Item().AlignLeft().Text("Received the above goods in good order")
                                         .FontSize(8);
 
-                                    // Signature section - two columns - more compact
-                                    footerCol.Item().PaddingTop(2).Row(sigRow =>
+                                    // Signature section: each label on its own line with a separate writing line below it,
+                                    // spaced like the client's original invoice so a name and a signature fit by hand.
+                                    footerCol.Item().PaddingTop(6).Row(sigRow =>
                                     {
                                         // Left column: Receiver's info
                                         sigRow.RelativeItem().Column(leftCol => {
-                                            leftCol.Item().Text("Receiver's Name: " + new string('.', 30)).FontSize(8);
-                                            leftCol.Item().PaddingTop(1).Text("Receiver's Sign: " + new string('.', 30)).FontSize(8);
+                                            leftCol.Item().Text("Receiver's Name").FontSize(8);
+                                            leftCol.Item().PaddingTop(9).Text(new string('.', 40)).FontSize(8);
+                                            leftCol.Item().PaddingTop(10).Text("Receiver's Sign").FontSize(8);
+                                            leftCol.Item().PaddingTop(9).Text(new string('.', 40)).FontSize(8);
                                         });
-                                        
+
                                         // Right column: Company name (skipped when letterhead-only — stamp/sig fills this zone)
                                         sigRow.RelativeItem().Column(rightCol => {
                                             if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                             {
                                                 rightCol.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(8);
-                                                rightCol.Item().AlignRight().Text(new string('.', 35)).FontSize(8);
+                                                rightCol.Item().PaddingTop(9).AlignRight().Text(new string('.', 40)).FontSize(8);
                                             }
                                             else if (useOrangeLetterhead)
                                             {
@@ -905,6 +919,11 @@ namespace HexaBill.Api.Modules.Sales
                                 }
                                 table.Cell().ColumnSpan(4).Border(0.5f).Padding(2).AlignRight().Text("Subtotal").FontSize(6);
                                 table.Cell().Border(0.5f).Padding(2).AlignRight().Text(sale.Subtotal.ToString("0.00")).FontSize(6);
+                                if (sale.Discount != 0)
+                                {
+                                    table.Cell().ColumnSpan(4).Border(0.5f).Padding(2).AlignRight().Text("Discount").FontSize(6);
+                                    table.Cell().Border(0.5f).Padding(2).AlignRight().Text(sale.Discount.ToString("0.00")).FontSize(6);
+                                }
                                 table.Cell().ColumnSpan(4).Border(0.5f).Padding(2).AlignRight().Text("VAT 5%").FontSize(6);
                                 table.Cell().Border(0.5f).Padding(2).AlignRight().Text(sale.VatTotal.ToString("0.00")).FontSize(6);
                                 if (sale.RoundOff != 0)
