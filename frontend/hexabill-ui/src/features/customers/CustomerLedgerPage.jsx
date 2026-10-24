@@ -3013,7 +3013,7 @@ const CustomerLedgerPage = () => {
           }}
           onPrint={async () => {
             try {
-              const pdfBlob = await salesAPI.getInvoicePdf(selectedInvoiceForView, { layout: 'body' })
+              const pdfBlob = await salesAPI.getInvoicePdf(selectedInvoiceForView, { layout: 'auto' })
               const url = window.URL.createObjectURL(pdfBlob)
               const printWindow = window.open(url, '_blank')
               if (printWindow) {

@@ -78,6 +78,40 @@ public class TenantCompanySettingsTests
         Assert.Equal("", new CompanySettings().VatNumber);
     }
 
+    [Theory]
+    [InlineData("frozenhub", true)]
+    [InlineData("frozenhub2", true)]
+    [InlineData("gulfharvest", false)]
+    [InlineData("zayogya", false)]
+    public async Task FrozenHubGetsLockedBilingualHeaderWithoutChangingOtherTenants(string subdomain, bool required)
+    {
+        await using var db = Database();
+        const int tenantId = 50;
+        db.Tenants.Add(new Tenant { Id = tenantId, Name = subdomain, Subdomain = subdomain });
+        db.Settings.Add(new Setting
+        {
+            TenantId = tenantId,
+            OwnerId = tenantId,
+            Key = "INVOICE_HEADER_STYLE",
+            Value = "Legacy"
+        });
+        await db.SaveChangesAsync();
+
+        var service = Service(db);
+        var settings = await service.GetOwnerSettingsAsync(tenantId);
+        var company = await service.GetCompanySettingsAsync(tenantId);
+
+        Assert.Equal(required ? "BilingualMonochrome" : "Legacy", settings["INVOICE_HEADER_STYLE"]);
+        Assert.Equal(required, settings.TryGetValue("INVOICE_HEADER_STYLE_LOCKED", out var locked) && locked == "true");
+        Assert.Equal(required, company.BilingualMonochromeHeader);
+        Assert.Equal("Legacy", (await db.Settings.SingleAsync(s => s.TenantId == tenantId)).Value);
+        if (required)
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateOwnerSettingAsync(tenantId, "INVOICE_HEADER_STYLE", "Legacy"));
+            await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateOwnerSettingAsync(tenantId, "INVOICE_HEADER_STYLE_LOCKED", "false"));
+        }
+    }
+
     [Fact]
     public async Task ConflictingLegacyOwnerCannotExposeForeignSetting_EvenWhenTracked()
     {

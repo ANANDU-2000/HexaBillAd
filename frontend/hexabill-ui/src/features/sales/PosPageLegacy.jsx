@@ -1008,7 +1008,7 @@ const PosPage = () => {
     const toastId = `print-${format}-toast`
     try {
       toast.loading(`Preparing ${format}...`, { id: toastId })
-      const blob = await salesAPI.getInvoicePdf(lastCreatedInvoice.id, { format, layout: 'body' })
+      const blob = await salesAPI.getInvoicePdf(lastCreatedInvoice.id, { format, layout: 'auto' })
       const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
       const printWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer')
       if (printWindow) {
@@ -1069,7 +1069,7 @@ const PosPage = () => {
       // Get the PDF blob - ensure it's a proper PDF file, not a link
       let pdfBlob
       try {
-        pdfBlob = await salesAPI.getInvoicePdf(saleId, { layout: 'body' })
+        pdfBlob = await salesAPI.getInvoicePdf(saleId, { layout: 'auto' })
       } catch (apiError) {
         console.error('PDF API Error:', apiError)
         toast.dismiss('print-toast')

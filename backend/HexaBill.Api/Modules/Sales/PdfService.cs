@@ -276,7 +276,7 @@ namespace HexaBill.Api.Modules.Sales
 
                                 if (settings.BilingualMonochromeHeader)
                                 {
-                                    RenderCompanyHeader(innerColumn.Item(), settings, 14, a4Letterhead: true, dateLine: $"DATE: {invoiceDateStr}");
+                                    RenderCompanyHeader(innerColumn.Item(), settings, 14, a4Letterhead: true, dateLine: $"DATE: {invoiceDateStr}", drawBottomRule: false);
                                 }
                                 else if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                 {
@@ -323,16 +323,22 @@ namespace HexaBill.Api.Modules.Sales
                                     innerColumn.Item().AlignRight().Text($"DATE: {invoiceDateStr}").FontSize(10).Bold();
                                 }
 
-                                // TAX INVOICE title - compact with borders
-                                innerColumn.Item().PaddingTop(2).PaddingBottom(2).BorderTop(1f).BorderBottom(1f).PaddingVertical(2)
+                                var invoiceTitle = innerColumn.Item()
+                                    .PaddingTop(settings.BilingualMonochromeHeader ? 8 : 2)
+                                    .PaddingBottom(2);
+                                invoiceTitle = settings.BilingualMonochromeHeader
+                                    ? invoiceTitle.BorderBottom(1f)
+                                    : invoiceTitle.BorderTop(1f).BorderBottom(1f);
+                                invoiceTitle.PaddingVertical(2)
                                     .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn))
                                     .FontSize(12)
                                     .Bold()
                                     .AlignCenter();
 
                                 // Customer Info - Invoice No and Customer Name on separate lines (left), TRN inline (right)
-                                innerColumn.Item().PaddingTop(1).PaddingBottom(1).Row(custRow => {
+                                innerColumn.Item().PaddingTop(settings.BilingualMonochromeHeader ? 12 : 1).PaddingBottom(1).Row(custRow => {
                                     custRow.RelativeItem(65).Column(col => {
+                                        col.Spacing(settings.BilingualMonochromeHeader ? 8 : 0);
                                         col.Item().Text(text => {
                                             text.Span("INVOICE : NO : ").FontSize(10).Bold();
                                             text.Span(sale.InvoiceNo ?? "").FontSize(10).Bold();
@@ -839,7 +845,7 @@ namespace HexaBill.Api.Modules.Sales
                         {
                             inner.Spacing(0);
                             if (settings.BilingualMonochromeHeader)
-                                RenderCompanyHeader(inner.Item(), settings, 10);
+                                RenderCompanyHeader(inner.Item(), settings, 10, a5Letterhead: true);
                             else if (!letterheadOnly && !useOrangeLetterhead)
                             {
                                 inner.Item().AlignCenter().Column(c =>
@@ -1192,7 +1198,7 @@ namespace HexaBill.Api.Modules.Sales
         /// <summary>Logo box (width, height, column width) in points for the bilingual letterhead.</summary>
         internal static (float Width, float Height, float Column) LetterheadLogoBox(bool a4Letterhead, float fontSize)
         {
-            if (a4Letterhead) return (230f, 168f, 238f);
+            if (a4Letterhead) return (172f, 62f, 180f);
             return fontSize <= 9 ? (40f, 22f, 52f) : (90f, 52f, 106f);
         }
 
@@ -1207,7 +1213,9 @@ namespace HexaBill.Api.Modules.Sales
             InvoiceTemplateService.CompanySettings settings,
             float fontSize,
             bool a4Letterhead = false,
-            string? dateLine = null)
+            string? dateLine = null,
+            bool drawBottomRule = true,
+            bool a5Letterhead = false)
         {
             container.DefaultTextStyle(x => x.FontColor(Colors.Black)).Column(column =>
             {
@@ -1217,62 +1225,102 @@ namespace HexaBill.Api.Modules.Sales
                 var detailSize = a4Letterhead ? 8f : Math.Max(5f, fontSize - 3f);
                 var taxSize = a4Letterhead ? 7.5f : Math.Max(5f, detailSize - 0.5f);
                 var (logoW, logoH, logoColW) = LetterheadLogoBox(a4Letterhead, fontSize);
-                var (title, subtitle) = SplitCompanyNameLines(settings.CompanyNameEn);
+                if (a5Letterhead)
+                    (logoW, logoH, logoColW) = LetterheadLogoBox(false, fontSize);
+                var logoDisplayWidth = logoW;
+                if (logo != null)
+                {
+                    using var logoDimensions = SixLabors.ImageSharp.Image.Load(logo);
+                    logoDisplayWidth = Math.Min(logoW, logoH * logoDimensions.Width / (float)logoDimensions.Height);
+                }
+                var (title, subtitle) = SplitBilingualCompanyNameLines(settings.CompanyNameEn);
                 if (string.IsNullOrWhiteSpace(title))
                     title = settings.CompanyNameEn ?? "";
 
-                column.Item().Row(row =>
+                Action<IContainer> composeEnglish = cell => cell.Column(en =>
                 {
-                    row.RelativeItem(35).AlignLeft().Column(en =>
-                    {
-                        en.Spacing(1);
-                        en.Item().Text(title.ToUpperInvariant()).FontFamily(_englishFont).FontSize(nameSize).Bold();
-                        if (!string.IsNullOrWhiteSpace(subtitle))
-                            en.Item().Text(subtitle.ToUpperInvariant()).FontFamily(_englishFont).FontSize(a4Letterhead ? 8.5f : detailSize).SemiBold();
-                        if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
-                            en.Item().PaddingTop(1).Text($"Mob: {settings.CompanyPhone}").FontFamily(_englishFont).FontSize(detailSize);
-                        if (!string.IsNullOrWhiteSpace(settings.CompanyEmail))
-                            en.Item().Text(settings.CompanyEmail).FontFamily(_englishFont).FontSize(detailSize);
-                        if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
-                            en.Item().Text(settings.CompanyAddress).FontFamily(_englishFont).FontSize(detailSize);
-                        // CT and VAT on separate lines — never "CT | VAT" on one wrapping row.
-                        if (!string.IsNullOrWhiteSpace(settings.CorporateTaxTrn))
-                            en.Item().PaddingTop(2).Text($"CT Reg. No.: {settings.CorporateTaxTrn.Trim()}")
-                                .FontFamily(_englishFont).FontSize(taxSize);
-                        en.Item().PaddingTop(2).Text(VatTrnLineForHeader(settings.CompanyTrn))
+                    en.Spacing(1);
+                    en.Item().Text(title.ToUpperInvariant()).FontFamily(_englishFont).FontSize(nameSize).Bold();
+                    if (!string.IsNullOrWhiteSpace(subtitle))
+                        en.Item().Text(subtitle.ToUpperInvariant()).FontFamily(_englishFont).FontSize(a4Letterhead ? 8.5f : detailSize).SemiBold();
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                        en.Item().PaddingTop(1).Text($"Mob: {settings.CompanyPhone}").FontFamily(_englishFont).FontSize(detailSize);
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyEmail))
+                        en.Item().Text(settings.CompanyEmail).FontFamily(_englishFont).FontSize(detailSize);
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
+                        en.Item().Text(settings.CompanyAddress).FontFamily(_englishFont).FontSize(detailSize);
+                    if (!string.IsNullOrWhiteSpace(settings.CorporateTaxTrn))
+                        en.Item().PaddingTop(2).Text($"CT Reg. No.: {settings.CorporateTaxTrn.Trim()}")
                             .FontFamily(_englishFont).FontSize(taxSize);
-                    });
-
-                    row.ConstantItem(logoColW).AlignCenter().AlignMiddle().Column(c =>
+                    en.Item().PaddingTop(2).Text(VatTrnLineForHeader(settings.CompanyTrn))
+                        .FontFamily(_englishFont).FontSize(taxSize);
+                });
+                Action<IContainer> composeLogo = cell => cell.AlignMiddle().Row(row =>
+                {
+                    if (logo != null)
                     {
-                        if (logo != null)
-                            c.Item().AlignCenter().Width(logoW).Height(logoH).Image(logo).FitArea();
-                        else
-                            c.Item().Height(4);
-                    });
-
-                    row.RelativeItem(35).AlignRight().Column(ar =>
+                        // Give the image only its aspect-ratio-correct width, then center that
+                        // box in the logo column. A wide FitArea box left-aligns square logos.
+                        row.RelativeItem();
+                        row.ConstantItem(logoDisplayWidth).Height(logoH).Image(logo).FitArea();
+                        row.RelativeItem();
+                    }
+                    else
                     {
-                        ar.Spacing(1);
-                        if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
-                            ar.Item().AlignRight().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
-                                .FontSize(a4Letterhead ? 14f : nameSize).Bold().DirectionFromRightToLeft();
-                        if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
-                            ar.Item().PaddingTop(1).AlignRight().Text(settings.CompanyPhone).FontFamily(_arabicFont)
-                                .FontSize(detailSize).DirectionFromRightToLeft();
-                        if (!string.IsNullOrWhiteSpace(settings.CompanyEmail) && a4Letterhead)
-                            ar.Item().AlignRight().Text(settings.CompanyEmail).FontFamily(_arabicFont)
-                                .FontSize(detailSize).DirectionFromRightToLeft();
-                        if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
-                            ar.Item().AlignRight().Text(settings.CompanyAddress).FontFamily(_arabicFont)
-                                .FontSize(detailSize).DirectionFromRightToLeft();
-                    });
+                        row.RelativeItem();
+                        row.ConstantItem(4).Height(4);
+                        row.RelativeItem();
+                    }
+                });
+                Action<IContainer> composeArabic = cell => cell.AlignRight().Column(ar =>
+                {
+                    ar.Spacing(1);
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
+                        ar.Item().AlignRight().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
+                            .FontSize(a4Letterhead ? 14f : nameSize).Bold().DirectionFromRightToLeft();
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                        ar.Item().PaddingTop(1).AlignRight().Text(settings.CompanyPhone).FontFamily(_arabicFont)
+                            .FontSize(detailSize).DirectionFromRightToLeft();
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyEmail) && (a4Letterhead || a5Letterhead))
+                        ar.Item().AlignRight().Text(settings.CompanyEmail).FontFamily(_arabicFont)
+                            .FontSize(detailSize).DirectionFromRightToLeft();
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
+                        ar.Item().AlignRight().Text(settings.CompanyAddress).FontFamily(_arabicFont)
+                            .FontSize(detailSize).DirectionFromRightToLeft();
                 });
 
-                if (!string.IsNullOrWhiteSpace(dateLine))
-                    column.Item().PaddingTop(2).AlignRight().Text(dateLine).FontFamily(_englishFont).FontSize(a4Letterhead ? 8f : 7f);
+                var letterhead = a4Letterhead || a5Letterhead;
+                var headerHeight = a4Letterhead ? 95f : a5Letterhead ? 65f : 0f;
+                if (letterhead)
+                {
+                    // Keep the logo centered against the page itself. Placing it between two
+                    // fixed-width Row cells can shift its PDF bounds when the available width
+                    // differs from the assumed page width (notably A4 with margins).
+                    column.Item().MinHeight(headerHeight).ExtendHorizontal().Layers(layers =>
+                    {
+                        layers.PrimaryLayer().Row(row =>
+                        {
+                            row.RelativeItem().PaddingRight(logoColW / 2).Element(composeEnglish);
+                            row.RelativeItem().PaddingLeft(logoColW / 2).Element(composeArabic);
+                        });
+                        layers.Layer().AlignCenter().AlignMiddle().Width(logoColW).Element(composeLogo);
+                    });
+                }
+                else
+                {
+                    column.Item().Row(row =>
+                    {
+                        row.RelativeItem().Element(composeEnglish);
+                        row.ConstantItem(logoColW).Element(composeLogo);
+                        row.RelativeItem().Element(composeArabic);
+                    });
+                }
 
-                column.Item().PaddingTop(2).LineHorizontal(0.8f).LineColor(Colors.Black);
+                if (!string.IsNullOrWhiteSpace(dateLine))
+                    column.Item().PaddingTop(a4Letterhead ? 12 : 2).AlignRight().Text(dateLine).FontFamily(_englishFont).FontSize(a4Letterhead ? 8f : 7f);
+
+                if (drawBottomRule)
+                    column.Item().PaddingTop(2).LineHorizontal(0.8f).LineColor(Colors.Black);
             });
         }
 
@@ -1299,7 +1347,8 @@ namespace HexaBill.Api.Modules.Sales
                         settings,
                         14,
                         a4Letterhead: true,
-                        dateLine: $"DATE: {FormatInvoiceDate(sale.InvoiceDate, settings)}");
+                        dateLine: $"DATE: {FormatInvoiceDate(sale.InvoiceDate, settings)}",
+                        drawBottomRule: false);
                 }
                 else
                 {
@@ -1344,7 +1393,13 @@ if (hasLogo)
 
                 }
 
-                innerColumn.Item().PaddingTop(4).BorderTop(1).BorderBottom(1).PaddingVertical(3)
+                var titleContainer = innerColumn.Item()
+                    .PaddingTop(settings.BilingualMonochromeHeader ? 8 : 4)
+                    .PaddingVertical(3);
+                titleContainer = settings.BilingualMonochromeHeader
+                    ? titleContainer.BorderBottom(1)
+                    : titleContainer.BorderTop(1).BorderBottom(1);
+                titleContainer
                     .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn))
                     .FontSize(settings.BilingualMonochromeHeader ? 11.5f : 14)
                     .Bold()
@@ -1353,7 +1408,7 @@ if (hasLogo)
                 // Meta: invoice + customer TRN on one baseline; DATE already in letterhead for bilingual.
                 if (settings.BilingualMonochromeHeader)
                 {
-                    innerColumn.Item().PaddingTop(4).Row(meta =>
+                    innerColumn.Item().PaddingTop(12).Row(meta =>
                     {
                         meta.RelativeItem().AlignLeft().Text($"INVOICE : NO : {sale.InvoiceNo}").FontSize(8.5f).Bold();
                         // Omit the customer TRN label for unregistered customers instead of printing an empty value.
@@ -1363,7 +1418,7 @@ if (hasLogo)
                             meta.RelativeItem();
                     });
                     var customerDisplayName = string.IsNullOrWhiteSpace(sale.CustomerName) ? "Cash Customer" : sale.CustomerName;
-                    innerColumn.Item().PaddingTop(2).AlignLeft().Text($"Customer Name : {customerDisplayName}").FontSize(8.5f).Bold();
+                    innerColumn.Item().PaddingTop(10).AlignLeft().Text($"Customer Name : {customerDisplayName}").FontSize(8.5f).Bold();
                 }
                 else
                 {
@@ -1548,6 +1603,7 @@ if (hasLogo)
                 CompanyEmail = companySettings.Email,
                 CompanyWebsite = companySettings.Website,
                 BilingualMonochromeHeader = companySettings.BilingualMonochromeHeader,
+                FrozenHubHeaderPolicy = companySettings.FrozenHubHeaderPolicy,
                 Currency = companySettings.Currency ?? "AED",
                 VatPercent = companySettings.VatPercent,
                 InvoicePrefix = companySettings.InvoicePrefix ?? "INV",
@@ -1690,6 +1746,10 @@ if (hasLogo)
         private static void ApplyPrintLayout(InvoiceTemplateService.CompanySettings settings, string? layout)
         {
             var layoutNorm = (layout ?? "full").Trim().ToLowerInvariant();
+            // Legacy one-click print actions request auto: only FrozenHub's confirmed policy
+            // selects the full bilingual header; other tenants retain their prior body-only output.
+            if (layoutNorm == "auto")
+                layoutNorm = settings.FrozenHubHeaderPolicy ? "full" : "body";
             if (layoutNorm != "body" && layoutNorm != "full")
                 layoutNorm = "full";
 
@@ -1764,6 +1824,15 @@ if (hasLogo)
                 return (n[..end].Trim(), n[end..].Trim());
             }
             return (n, "");
+        }
+
+        internal static (string Title, string Subtitle) SplitBilingualCompanyNameLines(string? name)
+        {
+            var n = (name ?? "").Trim();
+            var foodstuffIdx = n.IndexOf("FOODSTUFF TRADING", StringComparison.OrdinalIgnoreCase);
+            if (foodstuffIdx > 0)
+                return (n[..foodstuffIdx].Trim(), n[foodstuffIdx..].Trim());
+            return SplitCompanyNameLines(n);
         }
 
         /// <summary>Zayoga orange bilingual letterhead header (full PDF only). Matches client stationery spirit.</summary>

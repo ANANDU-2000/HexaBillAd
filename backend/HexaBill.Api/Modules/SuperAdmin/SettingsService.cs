@@ -66,8 +66,23 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     .ThenByDescending(s => s.OwnerId == tenantId).First().Value ?? "";
             settings["vat_trn"] = settings["COMPANY_TRN"];
             settings["corporate_tax_trn"] = settings.GetValueOrDefault("CORPORATE_TAX_TRN", "");
+            if (await RequiresFrozenHubMonochromeHeaderAsync(tenantId))
+            {
+                settings["INVOICE_HEADER_STYLE"] = "BilingualMonochrome";
+                settings["INVOICE_HEADER_STYLE_LOCKED"] = "true";
+            }
             EnsureCompanyLogoFromLogoUrl(settings);
             return settings;
+        }
+
+        private async Task<bool> RequiresFrozenHubMonochromeHeaderAsync(int tenantId)
+        {
+            var subdomain = await _context.Tenants.AsNoTracking()
+                .Where(t => t.Id == tenantId)
+                .Select(t => t.Subdomain)
+                .FirstOrDefaultAsync();
+            return string.Equals(subdomain, "frozenhub", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(subdomain, "frozenhub2", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string NormalizeKey(string key) => key.Trim() switch
@@ -85,6 +100,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 if (string.IsNullOrWhiteSpace(pair.Key) || pair.Key.Trim().Length > 100)
                     throw new ArgumentException("Setting name is invalid.");
                 var key = NormalizeKey(pair.Key);
+                if (key.Equals("INVOICE_HEADER_STYLE_LOCKED", StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException("Invoice header policy is managed by the workspace.");
                 var value = pair.Value ?? "";
                 if (key == "COMPANY_TRN")
                 {
@@ -150,6 +167,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
             EnsureTenant(tenantId);
             if (settings == null || settings.Count == 0) return true;
             settings = ValidateSettings(settings);
+            if (settings.ContainsKey("INVOICE_HEADER_STYLE") && await RequiresFrozenHubMonochromeHeaderAsync(tenantId))
+                throw new ArgumentException("FrozenHub invoice headers use the required bilingual monochrome layout.");
 
             // Logo keys: do not overwrite with empty when user saves other company settings (e.g. name only) so logo persists after refresh
             var logoKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -231,6 +250,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 Website = settingsDict.GetValueOrDefault("COMPANY_WEBSITE", ""),
                 LogoDataUri = NullIfEmpty(settingsDict.GetValueOrDefault("LOGO_BASE64_DATA_URI", "")),
                 BilingualMonochromeHeader = settingsDict.GetValueOrDefault("INVOICE_HEADER_STYLE", "") == "BilingualMonochrome",
+                FrozenHubHeaderPolicy = settingsDict.GetValueOrDefault("INVOICE_HEADER_STYLE_LOCKED", "") == "true",
                 SettingsVersion = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(settingsDict.Where(p => p.Key.StartsWith("COMPANY_") || p.Key.StartsWith("LOGO_") || p.Key == "INVOICE_HEADER_STYLE").OrderBy(p => p.Key))))),
                 Address = settingsDict.GetValueOrDefault("COMPANY_ADDRESS", ""),
                 Mobile = settingsDict.GetValueOrDefault("COMPANY_PHONE", ""),

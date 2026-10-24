@@ -41,6 +41,7 @@ namespace HexaBill.Api.Models
         public string Website { get; set; } = "";
         public string? LogoDataUri { get; set; }
         public bool BilingualMonochromeHeader { get; set; }
+        public bool FrozenHubHeaderPolicy { get; set; }
 
         public static void RequireTaxInvoiceVatTrn(string? vatTrn, string? environmentName = null) =>
             HexaBill.Api.Core.Tenancy.SampleVatTrn.RequireTaxInvoiceVatTrn(vatTrn, environmentName);

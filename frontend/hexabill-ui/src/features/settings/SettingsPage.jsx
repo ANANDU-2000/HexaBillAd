@@ -80,6 +80,7 @@ const SettingsPage = () => {
     companyTrn: '',
     corporateTaxTrn: '',
     invoiceHeaderStyle: 'Legacy',
+    invoiceHeaderStyleLocked: false,
     companyAddress: '',
     companyPhone: '',
     companyEmail: '',
@@ -431,7 +432,8 @@ const SettingsPage = () => {
         const mappedSettings = {
           companyNameEn: getSetting(d, 'COMPANY_NAME_EN') || getSetting(d, 'companyNameEn') || '',
           companyNameAr: getSetting(d, 'COMPANY_NAME_AR') || getSetting(d, 'companyNameAr') || '',
-          invoiceHeaderStyle: getSetting(d, 'INVOICE_HEADER_STYLE') || 'Legacy',
+          invoiceHeaderStyle: getSetting(d, 'invoiceHeaderStyle') || getSetting(d, 'INVOICE_HEADER_STYLE') || 'Legacy',
+          invoiceHeaderStyleLocked: getSettingBool(d, 'invoiceHeaderStyleLocked') || getSettingBool(d, 'INVOICE_HEADER_STYLE_LOCKED'),
           corporateTaxTrn: getSetting(d, 'corporate_tax_trn') || getSetting(d, 'CORPORATE_TAX_TRN') || '',
           companyTrn: getSetting(d, 'vat_trn') || getSetting(d, 'COMPANY_TRN') || getSetting(d, 'companyTrn') || '',
           companyAddress: getSetting(d, 'COMPANY_ADDRESS') || getSetting(d, 'companyAddress') || '',
@@ -977,14 +979,26 @@ const SettingsPage = () => {
                   {...register('companyTrn', { validate: value => !value || /^[0-9]{15}$/.test(value) || 'VAT TRN must contain exactly 15 digits' })}
                 />
 
-                <Select
-                  label="Document header"
-                  {...register('invoiceHeaderStyle')}
-                  options={[
-                    { value: 'Legacy', label: 'Existing layout' },
-                    { value: 'BilingualMonochrome', label: 'Bilingual letterhead (EN left / logo / AR right)' }
-                  ]}
-                />
+                <div data-testid="invoice-header-policy" data-locked={String(settings.invoiceHeaderStyleLocked)}>
+                  {settings.invoiceHeaderStyleLocked
+                    ? (
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-700">Document header</label>
+                        <input type="hidden" {...register('invoiceHeaderStyle')} />
+                        <p className="mt-1 text-sm text-neutral-600">Bilingual letterhead (English left, logo centered, Arabic right) is required for this workspace.</p>
+                      </div>
+                    )
+                    : (
+                      <Select
+                        label="Document header"
+                        {...register('invoiceHeaderStyle')}
+                        options={[
+                          { value: 'Legacy', label: 'Existing layout' },
+                          { value: 'BilingualMonochrome', label: 'Bilingual letterhead (EN left / logo / AR right)' }
+                        ]}
+                      />
+                    )}
+                </div>
 
                 <Input
                   label="Corporate tax TRN (optional)"

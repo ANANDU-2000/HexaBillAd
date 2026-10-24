@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, Printer, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { salesAPI } from '../services'
+import { salesAPI, settingsAPI } from '../services'
 
 const DEFAULT_PRINT_FORMAT_KEY = 'hexabill_default_print_format'
 const VALID_FORMATS = ['A4', 'A5', '80mm', '58mm']
@@ -16,11 +16,30 @@ const getDefaultPrintFormat = () => {
 
 const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
   const [format, setFormat] = useState(getDefaultPrintFormat)
+  const [layout, setLayout] = useState('body')
+  const [layoutPolicyLocked, setLayoutPolicyLocked] = useState(false)
+  const [loadingLayoutPolicy, setLoadingLayoutPolicy] = useState(true)
   const [copies, setCopies] = useState(1)
   const [printer, setPrinter] = useState('default')
   const [orientation, setOrientation] = useState('portrait')
   const [printing, setPrinting] = useState(false)
   const printHandledRef = useRef(false)
+
+  useEffect(() => {
+    let active = true
+    settingsAPI.getSettings()
+      .then(response => {
+        const data = response?.data ?? response
+        const locked = String(data?.INVOICE_HEADER_STYLE_LOCKED ?? data?.invoiceHeaderStyleLocked ?? '').toLowerCase() === 'true'
+        if (active && locked) {
+          setLayoutPolicyLocked(true)
+          setLayout('full')
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (active) setLoadingLayoutPolicy(false) })
+    return () => { active = false }
+  }, [])
 
   const downloadPdfBlob = (blob, filename, message = 'PDF downloaded. Open it to print.') => {
     const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
@@ -98,7 +117,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
     printHandledRef.current = false
     setPrinting(true)
     try {
-      const pdfOptions = { format, layout: 'body' }
+      const pdfOptions = { format, layout }
       const blob = await salesAPI.getInvoicePdf(saleId, pdfOptions)
       if (!blob || (blob instanceof Blob && blob.size === 0)) {
         toast.error('PDF could not be generated')
@@ -126,7 +145,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
     }
     setPrinting(true)
     try {
-      const blob = await salesAPI.getDeliveryNotePdf(saleId, { format: format === 'A5' ? 'A5' : 'A4', layout: 'body' })
+      const blob = await salesAPI.getDeliveryNotePdf(saleId, { format: format === 'A5' ? 'A5' : 'A4', layout })
       if (!blob || (blob instanceof Blob && blob.size === 0)) {
         toast.error('Delivery note could not be generated')
         setPrinting(false)
@@ -216,6 +235,40 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
             </div>
           </div>
 
+          {layoutPolicyLocked && (format === 'A4' || format === 'A5') && (
+            <fieldset className="space-y-2">
+              <legend className="block text-sm font-medium text-neutral-700 mb-2">Paper type</legend>
+              <label className="flex items-start gap-3 rounded-md border border-neutral-200 p-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="invoice-paper-layout"
+                  value="full"
+                  checked={layout === 'full'}
+                  onChange={() => setLayout('full')}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-neutral-900">Plain paper with company header</span>
+                  <span className="block text-xs text-neutral-600">Prints the company name, contact details and logo.</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3 rounded-md border border-neutral-200 p-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="invoice-paper-layout"
+                  value="body"
+                  checked={layout === 'body'}
+                  onChange={() => setLayout('body')}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-neutral-900">Pre-printed letterhead</span>
+                  <span className="block text-xs text-neutral-600">Prints invoice details only, with space for the existing paper header.</span>
+                </span>
+              </label>
+            </fieldset>
+          )}
+
           {/* Copies - A4/A5 only */}
           {(format === 'A4' || format === 'A5') && (
             <div>
@@ -260,7 +313,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
           <button
             type="button"
             onClick={handleDeliveryNote}
-            disabled={printing}
+            disabled={printing || loadingLayoutPolicy}
             className="inline-flex items-center px-4 min-h-[44px] bg-warning text-white rounded-md hover:bg-amber-700 disabled:opacity-50 mr-auto"
           >
             <FileText className="h-4 w-4 mr-2" />
@@ -268,7 +321,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
           </button>
           <button
             onClick={onClose}
-            disabled={printing}
+            disabled={printing || loadingLayoutPolicy}
             className="px-4 min-h-[44px] text-neutral-700 bg-neutral-100 rounded-md hover:bg-neutral-200 disabled:opacity-50"
           >
             Cancel

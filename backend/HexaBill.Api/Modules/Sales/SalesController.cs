@@ -361,7 +361,7 @@ namespace HexaBill.Api.Modules.Sales
                 // layout=body → print on pre-printed letterhead (when Feature_LetterheadOnlyPrint ON)
                 // layout=full → digital download/share with header+footer
                 var layoutNormalized = string.IsNullOrWhiteSpace(layout) ? null : layout.Trim().ToLowerInvariant();
-                if (layoutNormalized != null && layoutNormalized != "body" && layoutNormalized != "full")
+                if (layoutNormalized != null && layoutNormalized != "body" && layoutNormalized != "full" && layoutNormalized != "auto")
                     layoutNormalized = null;
 
                 _logger.LogWarning($"\n📄 PDF Request: Getting invoice {id}, format={formatNormalized}, layout={layoutNormalized ?? "(default)"}");
@@ -458,7 +458,7 @@ namespace HexaBill.Api.Modules.Sales
                     formatNormalized = "A4";
 
                 var layoutNormalized = string.IsNullOrWhiteSpace(layout) ? "full" : layout.Trim().ToLowerInvariant();
-                if (layoutNormalized != "body" && layoutNormalized != "full")
+                if (layoutNormalized != "body" && layoutNormalized != "full" && layoutNormalized != "auto")
                     layoutNormalized = "full";
 
                 var tenantId = CurrentTenantId;

@@ -11,8 +11,15 @@ let PrintOptions, renderer, toasts, originalSetTimeout, frameWindow, frameLoads
 before(async () => {
   const require = createRequire(import.meta.url)
   globalThis.__printTestAPI = {
-    getInvoicePdf: async () => new Blob(['%PDF-invoice'], { type: 'application/pdf' }),
-    getDeliveryNotePdf: async () => new Blob(['%PDF-dn'], { type: 'application/pdf' }),
+    getSettings: async () => globalThis.__printSettings,
+    getInvoicePdf: async (...args) => {
+      globalThis.__printCalls.push(['invoice', ...args])
+      return new Blob(['%PDF-invoice'], { type: 'application/pdf' })
+    },
+    getDeliveryNotePdf: async (...args) => {
+      globalThis.__printCalls.push(['delivery-note', ...args])
+      return new Blob(['%PDF-dn'], { type: 'application/pdf' })
+    },
   }
   const result = await build({
     entryPoints: [fileURLToPath(new URL('../src/components/PrintOptionsModal.jsx', import.meta.url))],
@@ -35,7 +42,7 @@ before(async () => {
         builder.onLoad({ filter: /.*/, namespace: 'fixture' }, (args) => ({
           loader: 'js',
           contents:
-            args.path === '../services' ? 'export const salesAPI = globalThis.__printTestAPI' :
+            args.path === '../services' ? 'export const salesAPI = globalThis.__printTestAPI, settingsAPI = globalThis.__printTestAPI' :
               args.path === 'react-hot-toast'
                 ? 'const toast = Object.assign((m)=>globalThis.__printToasts.push(["default", m]), { success:(m)=>globalThis.__printToasts.push(["success", m]), error:(m)=>globalThis.__printToasts.push(["error", m]) }); export default toast'
                 : 'export const X=()=>null, Printer=()=>null, FileText=()=>null',
@@ -49,6 +56,8 @@ before(async () => {
 beforeEach(() => {
   toasts = []
   globalThis.__printToasts = toasts
+  globalThis.__printCalls = []
+  globalThis.__printSettings = { data: { INVOICE_HEADER_STYLE_LOCKED: 'false' } }
   globalThis.window = { open: () => { throw new Error('Iframe printing must not open a popup') } }
   frameWindow = null
   frameLoads = true
@@ -100,9 +109,32 @@ test('invoice print downloads PDF when iframe printing is unavailable', async ()
   await act(async () => { await button('Print').props.onClick() })
   assert.deepEqual(globalThis.__printClicks, ['invoice-INV-17.pdf'])
   assert.ok(toasts.some((t) => t[0] === 'success' && /PDF downloaded/i.test(t[1])))
+  assert.deepEqual(globalThis.__printCalls[0], ['invoice', 17, { format: 'A4', layout: 'body' }])
+})
+
+test('invoice print can select pre-printed letterhead body layout', async () => {
+  globalThis.__printSettings = { data: { INVOICE_HEADER_STYLE_LOCKED: 'true' } }
+  await act(async () => {
+    renderer = create(React.createElement(PrintOptions, { saleId: 17, onClose () {} }))
+  })
+  const bodyPaper = renderer.root.findAllByType('input').find((item) => item.props.value === 'body')
+  await act(async () => { bodyPaper.props.onChange() })
+  await act(async () => { await button('Print').props.onClick() })
+  assert.deepEqual(globalThis.__printCalls[0], ['invoice', 17, { format: 'A4', layout: 'body' }])
+})
+
+test('A5 invoice print includes the company header by default', async () => {
+  globalThis.__printSettings = { data: { INVOICE_HEADER_STYLE_LOCKED: 'true' } }
+  await act(async () => {
+    renderer = create(React.createElement(PrintOptions, { saleId: 17, onClose () {} }))
+  })
+  await act(async () => { button('A5 Invoice').props.onClick() })
+  await act(async () => { await button('Print').props.onClick() })
+  assert.deepEqual(globalThis.__printCalls[0], ['invoice', 17, { format: 'A5', layout: 'full' }])
 })
 
 test('delivery note downloads PDF when iframe printing is unavailable', async () => {
+  globalThis.__printSettings = { data: { INVOICE_HEADER_STYLE_LOCKED: 'true' } }
   await act(async () => {
     renderer = create(React.createElement(PrintOptions, {
       saleId: 17,
@@ -112,6 +144,7 @@ test('delivery note downloads PDF when iframe printing is unavailable', async ()
   })
   await act(async () => { await button('Delivery Note').props.onClick() })
   assert.deepEqual(globalThis.__printClicks, ['delivery-note-INV-17.pdf'])
+  assert.deepEqual(globalThis.__printCalls[0], ['delivery-note', 17, { format: 'A4', layout: 'full' }])
   assert.ok(toasts.some((t) => t[0] === 'success' && /PDF downloaded/i.test(t[1])))
 })
 

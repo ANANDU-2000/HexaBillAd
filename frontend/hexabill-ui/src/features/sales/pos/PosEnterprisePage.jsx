@@ -1144,7 +1144,7 @@ const PosEnterprisePage = () => {
     const toastId = `print-${format}-toast`
     try {
       toast.loading(`Preparing ${format}...`, { id: toastId })
-      const blob = await salesAPI.getInvoicePdf(saleId, { format, layout: 'body' })
+      const blob = await salesAPI.getInvoicePdf(saleId, { format, layout: 'auto' })
       if (!blob || (blob instanceof Blob && blob.size === 0)) {
         toast.dismiss(toastId)
         toast.error('PDF could not be generated')
@@ -1168,7 +1168,7 @@ const PosEnterprisePage = () => {
     const toastId = 'delivery-note-print'
     try {
       toast.loading('Preparing delivery note...', { id: toastId })
-      const blob = await salesAPI.getDeliveryNotePdf(saleId, { format, layout: 'body' })
+      const blob = await salesAPI.getDeliveryNotePdf(saleId, { format, layout: 'auto' })
       if (!blob || (blob instanceof Blob && blob.size === 0)) {
         toast.dismiss(toastId)
         toast.error('Delivery note could not be generated')
@@ -1209,7 +1209,7 @@ const PosEnterprisePage = () => {
       // Get the PDF blob - ensure it's a proper PDF file, not a link
       let pdfBlob
       try {
-        pdfBlob = await salesAPI.getInvoicePdf(saleId, { layout: 'body' })
+        pdfBlob = await salesAPI.getInvoicePdf(saleId, { layout: 'auto' })
       } catch (apiError) {
         console.error('PDF API Error:', apiError)
         toast.dismiss('print-toast')
