@@ -28,6 +28,8 @@ namespace HexaBill.Api.Modules.Sales
         private readonly IConfiguration _configuration;
         private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
         private static readonly Random _random = new Random();
+        public const string SeriesStartSettingKey = "INVOICE_SERIES_START";
+        private const int SeriesWidth = 1_000_000;
 
         public InvoiceNumberService(AppDbContext context, IConfiguration configuration)
         {
@@ -63,6 +65,9 @@ namespace HexaBill.Api.Modules.Sales
                 string.Equals(tenant.Email?.Trim(), ZAYOGA_EMAIL, StringComparison.OrdinalIgnoreCase) ||
                 (tenant.Name != null && tenant.Name.Trim().Contains("Zayoga", StringComparison.OrdinalIgnoreCase)) ||
                 (tenant.Name != null && tenant.Name.Trim().Contains("Zayorga", StringComparison.OrdinalIgnoreCase)));
+            var seriesStart = await GetSeriesStartAsync(tenantId);
+            if (seriesStart.HasValue)
+                return await FormatInvoiceNumberAsync(await GetNextSeriesNumberAsync(tenantId, seriesStart.Value));
             var maxInvoiceNumeric = await _context.Sales
                 .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.IsFinalized && !string.IsNullOrEmpty(s.InvoiceNo))
                 .Select(s => s.InvoiceNo)
@@ -84,9 +89,49 @@ namespace HexaBill.Api.Modules.Sales
 
         private bool IsPostgres()
         {
+            if (!_context.Database.IsRelational())
+                return false;
             var conn = _context.Database.GetConnectionString() ?? "";
             return conn.TrimStart().StartsWith("Host=", StringComparison.OrdinalIgnoreCase) ||
                    conn.TrimStart().StartsWith("Server=", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Tenant setting that starts a fresh numbering series (FrozenHub: 7000). Absent or invalid keeps the legacy max+1 rule.
+        /// </summary>
+        private async Task<int?> GetSeriesStartAsync(int tenantId)
+        {
+            var value = await _context.Settings.AsNoTracking()
+                .Where(s => s.Key == SeriesStartSettingKey && (s.TenantId == tenantId || (s.TenantId == null && s.OwnerId == tenantId)))
+                .OrderByDescending(s => s.TenantId == tenantId)
+                .Select(s => s.Value)
+                .FirstOrDefaultAsync();
+            return int.TryParse(value?.Trim(), out var start) && start > 0 && start <= int.MaxValue - SeriesWidth ? start : null;
+        }
+
+        /// <summary>
+        /// Next number inside [start, start + SeriesWidth). Only purely numeric invoice numbers count, so digits embedded in
+        /// test/legacy references (e.g. "FH-SMK-1791254849") or older out-of-range sequences cannot move the series.
+        /// Deleted and draft sales are included so an issued number is never handed out again.
+        /// </summary>
+        private async Task<int> GetNextSeriesNumberAsync(int tenantId, int start)
+        {
+            var invoiceNumbers = await _context.Sales.IgnoreQueryFilters().AsNoTracking()
+                .Where(s => s.TenantId == tenantId && s.InvoiceNo != null && s.InvoiceNo != "")
+                .Select(s => s.InvoiceNo)
+                .ToListAsync();
+            long max = start - 1L;
+            foreach (var invoice in invoiceNumbers)
+            {
+                var trimmed = invoice.Trim();
+                if (trimmed.Length == 0 || !trimmed.All(char.IsAsciiDigit) || !long.TryParse(trimmed, out var number))
+                    continue;
+                if (number >= start && number < (long)start + SeriesWidth)
+                    max = Math.Max(max, number);
+            }
+            if (max + 1 >= (long)start + SeriesWidth)
+                throw new InvalidOperationException($"Invoice series starting at {start} is exhausted for tenant {tenantId}.");
+            return (int)(max + 1);
         }
 
         private async Task<string> GenerateNextInvoiceNumberFallbackAsync(int tenantId)
@@ -120,6 +165,10 @@ namespace HexaBill.Api.Modules.Sales
 
                     try
                     {
+                        var seriesStart = await GetSeriesStartAsync(tenantId);
+                        if (seriesStart.HasValue)
+                            return await FormatInvoiceNumberAsync(await GetNextSeriesNumberAsync(tenantId, seriesStart.Value));
+
                         var maxInvoiceNumeric = await _context.Sales
                             .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.IsFinalized && !string.IsNullOrEmpty(s.InvoiceNo))
                             .Select(s => s.InvoiceNo)
