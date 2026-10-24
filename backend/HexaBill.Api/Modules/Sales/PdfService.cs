@@ -274,7 +274,7 @@ namespace HexaBill.Api.Modules.Sales
                                 var hasLogo = !settings.LetterheadOnlyPrint && !useOrangeLetterhead && settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                                 var invoiceDateStr = FormatInvoiceDate(sale.InvoiceDate, settings);
 
-                                if (settings.BilingualMonochromeHeader)
+                                if (settings.BilingualMonochromeHeader && !settings.LetterheadOnlyPrint)
                                 {
                                     RenderCompanyHeader(innerColumn.Item(), settings, 14, a4Letterhead: true, dateLine: $"DATE: {invoiceDateStr}", drawBottomRule: false);
                                 }
@@ -441,7 +441,9 @@ namespace HexaBill.Api.Modules.Sales
                                             {
                                                 for (int col = 0; col < 8; col++)
                                                 {
-                                                    table.Cell().BorderLeft(0.5f).BorderRight(0.5f).Height(spacerHeight).Text("");
+                                                    // The filler row is cosmetic. Keep its empty text below one point so
+                                                    // its line box cannot exceed the explicitly constrained row height.
+                                                    table.Cell().BorderLeft(0.5f).BorderRight(0.5f).Height(spacerHeight).Text("").FontSize(1);
                                                 }
                                             }
                                         }
@@ -844,8 +846,8 @@ namespace HexaBill.Api.Modules.Sales
                         column.Item().PaddingVertical(2).Column(inner =>
                         {
                             inner.Spacing(0);
-                            if (settings.BilingualMonochromeHeader)
-                                RenderCompanyHeader(inner.Item(), settings, 10, a5Letterhead: true);
+                            if (settings.BilingualMonochromeHeader && !letterheadOnly)
+                                RenderCompanyHeader(inner.Item(), settings, 10, drawBottomRule: false, a5Letterhead: true);
                             else if (!letterheadOnly && !useOrangeLetterhead)
                             {
                                 inner.Item().AlignCenter().Column(c =>
@@ -1279,14 +1281,23 @@ namespace HexaBill.Api.Modules.Sales
                         ar.Item().AlignRight().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
                             .FontSize(a4Letterhead ? 14f : nameSize).Bold().DirectionFromRightToLeft();
                     if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
-                        ar.Item().PaddingTop(1).AlignRight().Text(settings.CompanyPhone).FontFamily(_arabicFont)
-                            .FontSize(detailSize).DirectionFromRightToLeft();
+                        ar.Item().PaddingTop(1).AlignRight().Text(text =>
+                        {
+                            text.Span("الهاتف: ").FontFamily(_arabicFont).FontSize(detailSize).DirectionFromRightToLeft();
+                            // Isolate the Latin phone string inside the Arabic paragraph so bidi layout
+                            // does not reverse the digits or move the plus sign to the wrong edge.
+                            text.Span($"\u2066{settings.CompanyPhone}\u2069").FontFamily(_englishFont).FontSize(detailSize).DirectionFromLeftToRight();
+                        });
                     if (!string.IsNullOrWhiteSpace(settings.CompanyEmail) && (a4Letterhead || a5Letterhead))
-                        ar.Item().AlignRight().Text(settings.CompanyEmail).FontFamily(_arabicFont)
+                        ar.Item().AlignRight().Text($"البريد الإلكتروني: {settings.CompanyEmail}").FontFamily(_arabicFont)
                             .FontSize(detailSize).DirectionFromRightToLeft();
                     if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
-                        ar.Item().AlignRight().Text(settings.CompanyAddress).FontFamily(_arabicFont)
+                        ar.Item().AlignRight().Text($"العنوان: {settings.CompanyAddress}").FontFamily(_arabicFont)
                             .FontSize(detailSize).DirectionFromRightToLeft();
+                    var vatTrn = HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn);
+                    if (!string.IsNullOrWhiteSpace(vatTrn) && (a4Letterhead || a5Letterhead))
+                        ar.Item().AlignRight().Text($"الرقم الضريبي: {vatTrn}").FontFamily(_arabicFont)
+                            .FontSize(taxSize).DirectionFromRightToLeft();
                 });
 
                 var letterhead = a4Letterhead || a5Letterhead;

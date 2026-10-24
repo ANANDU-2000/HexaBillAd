@@ -38,6 +38,7 @@ import { isAdminOrOwner } from '../../utils/roles'  // CRITICAL: Multi-tenant ro
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import StampSignaturePlacementPreview from '../../components/StampSignaturePlacementPreview'
+import { addInvoiceHeaderStyleForUpdate } from './settingsUpdatePayload'
 
 const SettingsPage = () => {
   const { user } = useAuth()
@@ -501,7 +502,6 @@ const SettingsPage = () => {
         COMPANY_NAME_AR: data.companyNameAr || '',
         vat_trn: data.companyTrn || '',
         corporate_tax_trn: data.corporateTaxTrn || '',
-        INVOICE_HEADER_STYLE: data.invoiceHeaderStyle || 'Legacy',
         COMPANY_ADDRESS: data.companyAddress || '',
         COMPANY_PHONE: data.companyPhone || '',
         COMPANY_EMAIL: data.companyEmail || '',
@@ -531,6 +531,10 @@ const SettingsPage = () => {
         SIGNATURE_OFFSET_RIGHT_MM: String(data.signatureOffsetRightMm ?? '22'),
         SIGNATURE_OFFSET_BOTTOM_MM: String(data.signatureOffsetBottomMm ?? '22'),
       }
+
+      // FrozenHub's header policy is server-managed. Sending its locked value
+      // with unrelated company edits makes the server reject the entire save.
+      addInvoiceHeaderStyleForUpdate(backendSettings, data)
 
       // Only include logoUrl if it's set
       if (data.logoUrl) {
