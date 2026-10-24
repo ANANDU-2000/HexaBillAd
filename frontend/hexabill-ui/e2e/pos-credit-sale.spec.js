@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test'
 import { signIn, feOrigin, apiLogin, API, EDGE } from './session.js'
 
 const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
-const PRODUCT = 'gulfharvest Sample Chicken 1kg'
+const PRODUCT = process.env.HEXABILL_E2E_PRODUCT || 'gulfharvest Sample Chicken 1kg'
 
 async function api (path) {
   const s = await apiLogin(SLUG)

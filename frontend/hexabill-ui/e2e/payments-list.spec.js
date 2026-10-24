@@ -30,9 +30,10 @@ test('a payment row keeps the amount beside a long customer name', async ({ page
   await signIn(page, SLUG)
   await page.goto(`${feOrigin(SLUG)}/payments`, { waitUntil: 'networkidle' })
   await page.getByRole('searchbox', { name: 'Search payments' }).fill(fullName.slice(0, 40))
-  const name = page.locator('p.truncate').filter({ hasText: fullName.slice(0, 30) }).first()
+  // The desktop table and the phone card both render; measure the visible one only.
+  const name = page.locator('p.truncate').filter({ hasText: fullName.slice(0, 30) }).filter({ visible: true }).first()
   await expect(name).toBeVisible()
-  const amount = page.locator('p.whitespace-nowrap').filter({ hasText: '12.34' }).first()
+  const amount = page.locator('p.whitespace-nowrap').filter({ hasText: '12.34' }).filter({ visible: true }).first()
   await expect(amount).toBeVisible()
   const [n, m] = await Promise.all([name.boundingBox(), amount.boundingBox()])
   expect(n.x + n.width).toBeLessThanOrEqual(m.x + 1)
