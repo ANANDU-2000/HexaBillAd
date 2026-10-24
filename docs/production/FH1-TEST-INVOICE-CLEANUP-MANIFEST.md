@@ -49,7 +49,7 @@ No returns, credit notes or VAT return periods exist for tenant 20.
 
 1. **Release** `ecdfa514`+ to production (contains the void-safe delete). Verify Render live commit and health.
 2. **Backup**: fresh Render backup/export; confirm restorable.
-3. **Settings** (independent): `FH1-APPROVED-CORRECTIONS-2026-10-24.sql` (approved header + 7000 series).
+3. **Numbering start** (independent, no SQL): owner sets *New invoice numbers start at* = 7000 in Settings > Billing. The bilingual header is already enforced by the app for this tenant (see the superseded SQL note).
 4. **Owner deletes in app** (Vahid, or platform admin impersonating): Billing History → each allowlisted invoice → Delete → type `DELETE`. Five invoices, nothing else.
 5. **Read-only verification by Claude** (section 5) and browser check of Sales Ledger, Billing History, Customer Ledger, invoice preview/PDF of 1791254852/53/58/59.
 
