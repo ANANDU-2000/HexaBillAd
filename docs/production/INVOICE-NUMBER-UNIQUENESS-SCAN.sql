@@ -3,12 +3,13 @@
 -- The index would cover ALL rows (deleted, voided, drafts) because an issued number is never reused.
 BEGIN TRANSACTION READ ONLY;
 
--- 1. Exact duplicates per tenant, any state.
+-- 1. Exact duplicates per tenant, any state, excluding deleted Starplus imports (exempt from the index).
 SELECT "TenantId", "InvoiceNo", COUNT(*) AS copies,
        array_agg("Id" ORDER BY "Id") AS sale_ids,
        array_agg("IsDeleted" ORDER BY "Id") AS deleted_flags
 FROM "Sales"
 WHERE "InvoiceNo" IS NOT NULL AND "InvoiceNo" <> ''
+  AND NOT ("IsDeleted" AND coalesce("ExternalReference", '') LIKE 'starplus:%')
 GROUP BY "TenantId", "InvoiceNo"
 HAVING COUNT(*) > 1
 ORDER BY "TenantId", "InvoiceNo";
