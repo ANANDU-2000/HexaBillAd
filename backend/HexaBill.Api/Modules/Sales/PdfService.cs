@@ -330,7 +330,7 @@ namespace HexaBill.Api.Modules.Sales
                                     ? invoiceTitle.BorderBottom(1f)
                                     : invoiceTitle.BorderTop(1f).BorderBottom(1f);
                                 invoiceTitle.PaddingVertical(2)
-                                    .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn))
+                                    .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn, sale.InvoiceDate, settings.VatEffectiveDate))
                                     .FontSize(12)
                                     .Bold()
                                     .AlignCenter();
@@ -878,7 +878,7 @@ namespace HexaBill.Api.Modules.Sales
                                 inner.Item().AlignRight().Text($"Date: {invoiceDateStr}").FontSize(7);
                             }
                             inner.Item().PaddingVertical(1).BorderTop(0.5f).BorderBottom(0.5f)
-                                .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn)).FontSize(9).Bold().AlignCenter();
+                                .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn, sale.InvoiceDate, settings.VatEffectiveDate)).FontSize(9).Bold().AlignCenter();
                             inner.Item().PaddingTop(1).Row(r =>
                             {
                                 r.RelativeItem().Text($"Inv: {sale.InvoiceNo} | Date: {invoiceDateStr}").FontSize(7);
@@ -971,7 +971,7 @@ namespace HexaBill.Api.Modules.Sales
                             column.Item().AlignCenter().Text(string.IsNullOrEmpty(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)) ? "" : $"TRN: {HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)}").FontSize(6);
                             column.Item().AlignCenter().Text(settings.CompanyAddress ?? "").FontSize(5);
                         }
-                        column.Item().AlignCenter().Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn)).FontSize(8).Bold();
+                        column.Item().AlignCenter().Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn, sale.InvoiceDate, settings.VatEffectiveDate)).FontSize(8).Bold();
                         column.Item().AlignCenter().Text($"#{sale.InvoiceNo} | {invoiceDateStr}").FontSize(6);
                         column.Item().Text($"Customer: {sale.CustomerName ?? "Cash"}").FontSize(6);
                         if (!string.IsNullOrEmpty(trnDisplay))
@@ -1434,7 +1434,7 @@ if (hasLogo)
                     ? titleContainer.BorderBottom(1)
                     : titleContainer.BorderTop(1).BorderBottom(1);
                 titleContainer
-                    .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn))
+                    .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn, sale.InvoiceDate, settings.VatEffectiveDate))
                     .FontSize(settings.BilingualMonochromeHeader ? 11.5f : 14)
                     .Bold()
                     .AlignCenter();

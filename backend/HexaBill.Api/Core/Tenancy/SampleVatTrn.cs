@@ -58,6 +58,27 @@ public static class SampleVatTrn
         return "INVOICE";
     }
 
+    /// <summary>
+    /// Document title for an invoice on a given date. "TAX INVOICE" needs a real TRN AND an invoice dated on or after the
+    /// VAT effective date. An unset or unreadable effective date keeps the TRN-only rule (never an assumed 1 January).
+    /// </summary>
+    public static string DocumentTitle(string? vatTrn, DateTime invoiceDate, string? vatEffectiveDate)
+    {
+        var title = DocumentTitle(vatTrn);
+        if (title != "TAX INVOICE") return title;
+        var effective = ParseVatEffectiveDate(vatEffectiveDate);
+        return effective.HasValue && invoiceDate.Date < effective.Value ? "INVOICE" : title;
+    }
+
+    /// <summary>Accepts yyyy-MM-dd (contract form) and dd-MM-yyyy / dd/MM/yyyy (stored settings form). Null when unset or invalid.</summary>
+    public static DateTime? ParseVatEffectiveDate(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        return DateTime.TryParseExact(value.Trim(), new[] { "yyyy-MM-dd", "dd-MM-yyyy", "dd/MM/yyyy" },
+            System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d)
+            ? d.Date : null;
+    }
+
     /// <summary>TRN line for documents. Empty when missing; SAMPLE-prefixed when sample.</summary>
     public static string? DocumentTrnDisplay(string? vatTrn)
     {

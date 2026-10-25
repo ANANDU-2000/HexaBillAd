@@ -62,7 +62,7 @@ namespace HexaBill.Api.Modules.Sales
 
                             // TITLE — never claim TAX INVOICE for empty/sample VAT TRN
                             column.Item().PaddingVertical(5)
-                                .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn))
+                                .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn, sale.InvoiceDate, settings.VatEffectiveDate))
                                 .FontSize(14)
                                 .Bold()
                                 .AlignCenter();
