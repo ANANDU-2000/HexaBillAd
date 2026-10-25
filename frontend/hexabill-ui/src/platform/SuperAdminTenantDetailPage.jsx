@@ -967,7 +967,7 @@ const SuperAdminTenantDetailPage = () => {
                 onClick={() => setShowClearDataModal(true)}
                 className="bg-white text-error border border-error-border px-6 py-2.5 rounded-lg font-bold hover:bg-error hover:text-white transition-all shadow-sm flex items-center gap-2"
               >
-                <History className="h-5 w-5" />
+                <Trash2 className="h-5 w-5" />
                 Clear All Data
               </button>
               <button

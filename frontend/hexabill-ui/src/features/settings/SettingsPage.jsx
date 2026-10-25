@@ -17,7 +17,6 @@ import {
   HardDrive,
   FolderDown,
   Shield,
-  History,
   RotateCcw,
   Printer
 } from 'lucide-react'
@@ -1805,7 +1804,7 @@ const SettingsPage = () => {
                   }}
                   className="bg-white text-error border-2 border-red-300 px-6 py-2.5 rounded-lg font-bold hover:bg-error hover:text-white transition-all shadow-sm flex items-center gap-2 flex-shrink-0"
                 >
-                  <History className="h-5 w-5" />
+                  <Trash2 className="h-5 w-5" />
                   Clear all data
                 </button>
               </div>

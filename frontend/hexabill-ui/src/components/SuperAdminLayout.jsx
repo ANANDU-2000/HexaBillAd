@@ -41,6 +41,23 @@ const SuperAdminLayout = () => {
     return () => { if (unsub) unsub() }
   }, [])
 
+  // UIX-006: while maintenance mode is on, every super admin page shows a banner.
+  const [maintenanceOn, setMaintenanceOn] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    const loadMaintenance = async () => {
+      try {
+        const { superAdminAPI } = await import('../services')
+        const res = await superAdminAPI.getPlatformSettings()
+        if (!cancelled) setMaintenanceOn(res?.data?.maintenanceMode === true)
+      } catch {
+        if (!cancelled) setMaintenanceOn(false)
+      }
+    }
+    loadMaintenance()
+    return () => { cancelled = true }
+  }, [location.pathname])
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -385,6 +402,11 @@ const SuperAdminLayout = () => {
         <main className="flex-1 pb-6 pt-14 lg:pt-24 min-w-0">
           <div className="py-1 sm:py-2 lg:py-6">
             <div className="w-full px-4 sm:px-6 lg:px-8">
+          {maintenanceOn && (
+            <p role="status" className="mb-4 p-3 text-sm font-medium text-amber-900 bg-amber-100 border border-amber-300 rounded-lg">
+              Maintenance mode is on. Tenant users see the maintenance screen. Turn it off in Platform Settings, Security.
+            </p>
+          )}
           <RouteContent />
             </div>
           </div>

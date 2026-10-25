@@ -85,6 +85,11 @@ export const BrandingProvider = ({ children }) => {
       setBranding(prev => ({ ...prev, companyName: 'HexaBill', companyLogo: null, loading: false }))
       return
     }
+    // UIX-004: the platform host has no tenant to brand. Skip the logo and settings calls unless impersonating.
+    if (getTenantHost().mode === 'platform' && impersonatedTenantId == null) {
+      setBranding(prev => ({ ...prev, companyName: 'HexaBill', companyLogo: null, loading: false }))
+      return
+    }
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
     if (!token) {
       setBranding(prev => ({ ...prev, companyName: 'HexaBill', loading: false }))
@@ -136,7 +141,7 @@ export const BrandingProvider = ({ children }) => {
     } catch (error) {
       setBranding(prev => ({ ...prev, companyName: 'HexaBill', loading: false }))
     }
-  }, [updateFavicon])
+  }, [updateFavicon, impersonatedTenantId])
 
   const loadBranding = useCallback(async (options) => {
     const hostMode = getTenantHost().mode
