@@ -280,7 +280,7 @@ export default function EditPaymentModal ({
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2 justify-end pt-1">
+        <div className="sticky bottom-0 -mx-4 -mb-4 px-4 py-3 bg-white border-t border-neutral-100 flex flex-wrap gap-2 justify-end">
           <button
             type="button"
             onClick={() => { if (!saving) onClose?.() }}

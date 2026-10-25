@@ -1268,7 +1268,8 @@ const SalesLedgerPage = () => {
                     Customer
                   </th>
                   <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
-                    Payment Mode
+                    <span className="xl:hidden" title="Payment Mode">Mode</span>
+                    <span className="hidden xl:inline">Payment Mode</span>
                   </th>
                   <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Bill Amount
