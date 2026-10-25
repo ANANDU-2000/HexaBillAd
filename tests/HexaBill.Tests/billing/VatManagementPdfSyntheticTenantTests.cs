@@ -168,7 +168,7 @@ public sealed class VatManagementPdfSyntheticTenantTests
         Assert.Contains("FIX-A-PURCHASE-RETURN", extracted);
         Assert.Contains("TRN not verified", extracted);
         Assert.Contains("Period:", extracted);
-        Assert.Contains("01-Sept-2026 to 30-Sept-2026", extracted);
+        Assert.Contains("01-Sep-2026 to 30-Sep-2026", extracted);
         Assert.Contains("Status: Draft", extracted);
         Assert.Contains("Page 1 of", extracted);
         Assert.Matches(@"Page 1 of \d+", extracted);

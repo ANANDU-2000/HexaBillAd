@@ -2863,7 +2863,8 @@ if (hasLogo)
             var currency = settings.Currency ?? "AED";
             var frozen = string.Equals(report.Status, "Locked", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(report.Status, "Submitted", StringComparison.OrdinalIgnoreCase);
-            var periodText = $"Period: {report.PeriodStart:dd-MMM-yyyy} to {report.PeriodEnd:dd-MMM-yyyy} | Status: {report.Status}";
+            // Culture-pinned: host culture (en-GB ICU gives "Sept", invariant gives "Sep") must not change printed dates.
+            var periodText = string.Format(System.Globalization.CultureInfo.InvariantCulture, "Period: {0:dd-MMM-yyyy} to {1:dd-MMM-yyyy} | Status: {2}", report.PeriodStart, report.PeriodEnd, report.Status);
             var gstZone = GetGulfStandardTimeZone();
             var generatedAtGst = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, gstZone);
             var trnDisplay = HexaBill.Api.Core.Tenancy.SampleVatTrn.IsRealVatTrn(report.VatTrn)
@@ -2876,7 +2877,7 @@ if (hasLogo)
                 page.Size(PageSizes.A4);
                 page.Margin(15, Unit.Millimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(style => style.FontFamily(_englishFont).FontSize(9));
+                page.DefaultTextStyle(style => style.FontFamily(_englishFont).FontSize(9).DisableFontFeature(FontFeatures.StandardLigatures));
                 page.Header().Column(header =>
                 {
                     header.Item().Column(column => RenderCompanyHeader(column, settings, "VAT MANAGEMENT REPORT", string.Empty));
@@ -2939,7 +2940,7 @@ if (hasLogo)
                 });
                 page.Footer().AlignCenter().DefaultTextStyle(style => style.FontSize(8)).Text(text =>
                 {
-                    text.Span($"{(frozen ? "Snapshot" : "Draft")} • {report.PeriodLabel} • Generated {generatedAtGst:dd-MMM-yyyy HH:mm} GST • Page ");
+                    text.Span($"{(frozen ? "Snapshot" : "Draft")} • {report.PeriodLabel} • Generated {generatedAtGst.ToString("dd-MMM-yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture)} GST • Page ");
                     text.CurrentPageNumber();
                     text.Span(" of ");
                     text.TotalPages();

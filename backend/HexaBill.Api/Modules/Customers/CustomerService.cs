@@ -1688,7 +1688,7 @@ namespace HexaBill.Api.Modules.Customers
                     page.Size(PageSizes.A4);
                         page.Margin(15, Unit.Millimetre); // Reduced margin for more space
                     page.PageColor(Colors.White);
-                        page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial")); // QuestPDF fallback when Arial missing on Linux
+                        page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial").DisableFontFeature(FontFeatures.StandardLigatures)); // QuestPDF fallback when Arial missing on Linux
 
                         // Header - Professional Design
                     page.Header()
