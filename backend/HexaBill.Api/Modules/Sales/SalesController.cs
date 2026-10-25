@@ -804,6 +804,36 @@ namespace HexaBill.Api.Modules.Sales
             }
         }
 
+        /// <summary>P0-NUM-004: Owner/Admin correction of an issued invoice number. Tenant from JWT only; ?dryRun=true validates without writing.</summary>
+        [HttpPut("{id}/invoice-number")]
+        [Authorize(Roles = "Admin,Owner")]
+        public async Task<ActionResult<ApiResponse<InvoiceNumberChangeResult>>> ChangeInvoiceNumber(
+            int id, [FromBody] ChangeInvoiceNumberRequest request, [FromServices] IInvoiceRenumberService renumber, [FromQuery] bool dryRun = false)
+        {
+            var tenantId = CurrentTenantId;
+            var userId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : 0;
+            try
+            {
+                var (outcome, problem, result) = await renumber.ChangeAsync(id, tenantId, userId, request, dryRun);
+                return outcome switch
+                {
+                    InvoiceNumberChangeOutcome.NotFound => NotFound(new ApiResponse<InvoiceNumberChangeResult> { Success = false, Message = problem ?? "Invoice not found." }),
+                    InvoiceNumberChangeOutcome.Invalid => BadRequest(new ApiResponse<InvoiceNumberChangeResult> { Success = false, Message = problem ?? "Invalid invoice number.", Errors = new List<string> { problem ?? "" } }),
+                    _ => Ok(new ApiResponse<InvoiceNumberChangeResult>
+                    {
+                        Success = true,
+                        Message = dryRun ? "Dry run: nothing was changed." : (result!.Changed ? "Invoice number changed." : "Invoice already has this number."),
+                        Data = result
+                    })
+                };
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogWarning(ex, "ChangeInvoiceNumber conflict for sale {SaleId}", id);
+                return Conflict(new ApiResponse<InvoiceNumberChangeResult> { Success = false, Message = "That invoice number was just taken or the invoice changed. Refresh and try again." });
+            }
+        }
+
         [HttpGet("next-invoice-number")]
         public async Task<ActionResult<ApiResponse<string>>> GetNextInvoiceNumber()
         {

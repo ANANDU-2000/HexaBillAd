@@ -155,10 +155,14 @@ namespace HexaBill.Api.Modules.Sales
                     var lockId = 1000000 + tenantId;
                     if (IsPostgres())
                     {
+                        // pg_advisory_lock is session-scoped: keep one physical connection open until the unlock, otherwise the
+                        // unlock can run on a different pooled connection and the lock leaks (blocking that tenant's numbering).
+                        await _context.Database.OpenConnectionAsync();
                         // Without the lock two requests could compute the same number, so fail instead of carrying on.
                         try { await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_lock({lockId})"); }
                         catch (Exception lockEx)
                         {
+                            await _context.Database.CloseConnectionAsync();
                             throw new InvoiceNumberLockException(
                                 $"Could not lock invoice numbering for tenant {tenantId}. The invoice was not numbered; please try again.", lockEx);
                         }
@@ -197,6 +201,7 @@ namespace HexaBill.Api.Modules.Sales
                         {
                             try { await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_unlock({lockId})"); }
                             catch { /* ignore */ }
+                            await _context.Database.CloseConnectionAsync();
                         }
                     }
                 }
