@@ -21,6 +21,7 @@ namespace HexaBill.Api.Modules.Sales
         /// <summary>Why a typed invoice number cannot be used, or null when it can.</summary>
         Task<string?> GetManualInvoiceNumberProblemAsync(string invoiceNumber, int tenantId, int? excludeSaleId = null);
         Task<string> FormatInvoiceNumberAsync(int number);
+        Task<string> FormatInvoiceNumberForTenantAsync(int number, int tenantId);
         Task<bool> IsInvoiceNumberDuplicateAsync(string invoiceNumber, int tenantId, int? excludeSaleId = null);
     }
 
@@ -32,6 +33,8 @@ namespace HexaBill.Api.Modules.Sales
         private static readonly Random _random = new Random();
         public const string SeriesStartSettingKey = "INVOICE_SERIES_START";
         private const int SeriesWidth = 1_000_000;
+        public const string NumberWidthSettingKey = "INVOICE_NUMBER_WIDTH";
+        private const int DefaultWidth = 4;
 
         public InvoiceNumberService(AppDbContext context, IConfiguration configuration)
         {
@@ -69,24 +72,15 @@ namespace HexaBill.Api.Modules.Sales
                 (tenant.Name != null && tenant.Name.Trim().Contains("Zayorga", StringComparison.OrdinalIgnoreCase)));
             var seriesStart = await GetSeriesStartAsync(tenantId);
             if (seriesStart.HasValue)
-                return await FormatInvoiceNumberAsync(await GetNextSeriesNumberAsync(tenantId, seriesStart.Value));
-            var maxInvoiceNumeric = await _context.Sales
-                .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.IsFinalized && !string.IsNullOrEmpty(s.InvoiceNo))
+                return await FormatInvoiceNumberForTenantAsync(await GetNextSeriesNumberAsync(tenantId, seriesStart.Value), tenantId);
+            // Every issued number counts (deleted, voided and draft included) so none is ever handed out twice.
+            var maxInvoiceNumeric = await _context.Sales.IgnoreQueryFilters()
+                .Where(s => s.TenantId == tenantId && !string.IsNullOrEmpty(s.InvoiceNo))
                 .Select(s => s.InvoiceNo)
                 .ToListAsync();
-            int nextNumber = DEFAULT_STARTING_NUMBER;
-            if (maxInvoiceNumeric.Any())
-            {
-                int maxNumber = DEFAULT_STARTING_NUMBER - 1;
-                foreach (var invoice in maxInvoiceNumeric)
-                {
-                    var numericPart = new string(invoice.Trim().Where(char.IsDigit).ToArray());
-                    if (!string.IsNullOrEmpty(numericPart) && int.TryParse(numericPart, out int invoiceNum))
-                        maxNumber = Math.Max(maxNumber, invoiceNum);
-                }
-                nextNumber = isZayoga ? (maxNumber + 1) : Math.Max(maxNumber + 1, DEFAULT_STARTING_NUMBER);
-            }
-            return await FormatInvoiceNumberAsync(nextNumber);
+            var maxNumber = MaxPurelyNumericInvoice(maxInvoiceNumeric, DEFAULT_STARTING_NUMBER - 1);
+            int nextNumber = isZayoga ? (maxNumber + 1) : Math.Max(maxNumber + 1, DEFAULT_STARTING_NUMBER);
+            return await FormatInvoiceNumberForTenantAsync(nextNumber, tenantId);
         }
 
         private bool IsPostgres()
@@ -161,38 +155,35 @@ namespace HexaBill.Api.Modules.Sales
                     var lockId = 1000000 + tenantId;
                     if (IsPostgres())
                     {
+                        // Without the lock two requests could compute the same number, so fail instead of carrying on.
                         try { await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_lock({lockId})"); }
-                        catch { /* ignore */ }
+                        catch (Exception lockEx)
+                        {
+                            throw new InvoiceNumberLockException(
+                                $"Could not lock invoice numbering for tenant {tenantId}. The invoice was not numbered; please try again.", lockEx);
+                        }
                     }
 
                     try
                     {
                         var seriesStart = await GetSeriesStartAsync(tenantId);
                         if (seriesStart.HasValue)
-                            return await FormatInvoiceNumberAsync(await GetNextSeriesNumberAsync(tenantId, seriesStart.Value));
+                            return await FormatInvoiceNumberForTenantAsync(await GetNextSeriesNumberAsync(tenantId, seriesStart.Value), tenantId);
 
-                        var maxInvoiceNumeric = await _context.Sales
-                            .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.IsFinalized && !string.IsNullOrEmpty(s.InvoiceNo))
+                        // Every issued number counts (deleted, voided and draft included) so none is ever handed out twice.
+                        var maxInvoiceNumeric = await _context.Sales.IgnoreQueryFilters()
+                            .Where(s => s.TenantId == tenantId && !string.IsNullOrEmpty(s.InvoiceNo))
                             .Select(s => s.InvoiceNo)
                             .ToListAsync();
 
-                        int nextNumber = startingNumber;
-                        if (maxInvoiceNumeric.Any())
-                        {
-                            int maxNumber = startingNumber - 1;
-                            foreach (var invoice in maxInvoiceNumeric)
-                            {
-                                var numericPart = new string(invoice.Trim().Where(char.IsDigit).ToArray());
-                                if (!string.IsNullOrEmpty(numericPart) && int.TryParse(numericPart, out int invoiceNum))
-                                    maxNumber = Math.Max(maxNumber, invoiceNum);
-                            }
-                            // Zayoga: use existing sequence only (max+1). Others: at least startingNumber (0001).
-                            nextNumber = isZayoga ? (maxNumber + 1) : Math.Max(maxNumber + 1, startingNumber);
-                        }
+                        // Zayoga: use existing sequence only (max+1). Others: at least startingNumber (0001).
+                        var maxNumber = MaxPurelyNumericInvoice(maxInvoiceNumeric, startingNumber - 1);
+                        int nextNumber = isZayoga ? (maxNumber + 1) : Math.Max(maxNumber + 1, startingNumber);
 
-                        var generatedInvoice = await FormatInvoiceNumberAsync(nextNumber);
-                        var exists = await _context.Sales
-                            .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.IsFinalized && s.InvoiceNo == generatedInvoice)
+                        var generatedInvoice = await FormatInvoiceNumberForTenantAsync(nextNumber, tenantId);
+                        // Any issued number (deleted, voided or draft included) is never handed out again.
+                        var exists = await _context.Sales.IgnoreQueryFilters()
+                            .Where(s => s.TenantId == tenantId && s.InvoiceNo == generatedInvoice)
                             .AnyAsync();
 
                         if (!exists)
@@ -209,7 +200,7 @@ namespace HexaBill.Api.Modules.Sales
                         }
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not InvoiceNumberLockException)
                 {
                     if (attempt == MAX_RETRIES - 1) throw;
                     _ = ex; // avoid CS0168 unused variable
@@ -223,7 +214,35 @@ namespace HexaBill.Api.Modules.Sales
         public Task<string> FormatInvoiceNumberAsync(int number)
         {
             // Format as 0001, 0002, etc. (no INV prefix)
-            return Task.FromResult($"{number:D4}");
+            return Task.FromResult(number.ToString("D" + DefaultWidth));
+        }
+
+        /// <summary>Pads to the tenant's INVOICE_NUMBER_WIDTH (4-9 digits, default 4). Longer numbers are never truncated.</summary>
+        public async Task<string> FormatInvoiceNumberForTenantAsync(int number, int tenantId)
+        {
+            var value = await _context.Settings.AsNoTracking()
+                .Where(s => s.Key == NumberWidthSettingKey && (s.TenantId == tenantId || (s.TenantId == null && s.OwnerId == tenantId)))
+                .OrderByDescending(s => s.TenantId == tenantId)
+                .Select(s => s.Value)
+                .FirstOrDefaultAsync();
+            var width = int.TryParse(value?.Trim(), out var w) && w >= DefaultWidth && w <= 9 ? w : DefaultWidth;
+            return number.ToString("D" + width);
+        }
+
+        /// <summary>
+        /// Highest invoice number that is digits only. References with embedded digits (e.g. smoke "FH-SMK-1791254849")
+        /// or prefixes never move the sequence.
+        /// </summary>
+        internal static int MaxPurelyNumericInvoice(IEnumerable<string> invoiceNumbers, int floor)
+        {
+            var max = floor;
+            foreach (var invoice in invoiceNumbers)
+            {
+                var trimmed = invoice?.Trim() ?? "";
+                if (trimmed.Length > 0 && trimmed.All(char.IsAsciiDigit) && int.TryParse(trimmed, out var n))
+                    max = Math.Max(max, n);
+            }
+            return max;
         }
 
         public async Task<bool> ValidateInvoiceNumberAsync(string invoiceNumber, int tenantId, int? excludeSaleId = null) =>
@@ -269,8 +288,9 @@ namespace HexaBill.Api.Modules.Sales
             var normalizedInvoice = invoiceNumber.Trim();
 
             // CRITICAL: Check duplicates only within owner's scope
-            var query = _context.Sales
-                .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.InvoiceNo == normalizedInvoice);
+            // Deleted and voided invoices keep their numbers: a number is issued once per tenant, forever.
+            var query = _context.Sales.IgnoreQueryFilters()
+                .Where(s => s.TenantId == tenantId && s.InvoiceNo == normalizedInvoice);
 
             if (excludeSaleId.HasValue)
             {
@@ -280,5 +300,10 @@ namespace HexaBill.Api.Modules.Sales
             return await query.AnyAsync();
         }
     }
-}
 
+    /// <summary>Raised when the per-tenant numbering lock cannot be taken; numbering must not proceed unlocked.</summary>
+    public class InvoiceNumberLockException : InvalidOperationException
+    {
+        public InvoiceNumberLockException(string message, Exception inner) : base(message, inner) { }
+    }
+}
