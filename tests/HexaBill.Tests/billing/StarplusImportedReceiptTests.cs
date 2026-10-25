@@ -5,6 +5,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Text.Json;
+using System.Security.Claims;
+using HexaBill.Api.Modules.Sales;
+using HexaBill.Api.Modules.SuperAdmin;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using UglyToad.PdfPig;
 
 namespace HexaBill.Tests;
 
@@ -114,6 +120,56 @@ public class StarplusImportedReceiptTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => Service(db).GenerateReceiptAsync(10, 1, 1));
         await Assert.ThrowsAsync<InvalidOperationException>(() => Service(db).GetReceiptDetailByIdAsync(10, 1, 1));
         Assert.Single(db.PaymentReceipts);
+    }
+
+    private static PaymentsController PdfController(AppDbContext db, int tenantId)
+    {
+        var fonts = new FontService(NullLogger<FontService>.Instance);
+        fonts.RegisterFonts();
+        var pdf = new PdfService(db, null!, fonts, new SettingsService(db), null!, NullLogger<PdfService>.Instance, null!);
+        var controller = new PaymentsController(null!, Service(db), NullLogger<PaymentsController>.Instance, pdf, db);
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(
+            new ClaimsIdentity(new[] { new Claim("tid", tenantId.ToString()), new Claim(ClaimTypes.Role, "Owner"),
+                new Claim(ClaimTypes.NameIdentifier, "1") }, "Test")) } };
+        return controller;
+    }
+
+    [Fact]
+    public async Task EachImportedReceiptPdf_ById_ShowsOnlyItsOwnNumber_AndNoImportWording()
+    {
+        await using var db = await SevenImportedReceiptsOnOnePaymentAsync();
+        var before = db.PaymentReceipts.ToDictionary(r => r.Id, r => r.SnapshotJson);
+        for (var i = 1; i <= 7; i++)
+        {
+            var result = await PdfController(db, 10).GetReceiptPdfById(100 + i);
+            var file = Assert.IsType<FileContentResult>(result);
+            Assert.Equal("application/pdf", file.ContentType);
+            using var document = PdfDocument.Open(file.FileContents);
+            var text = string.Concat(document.GetPages().Select(p => p.Text));
+            Assert.Contains($"REC-2026-000{i}", text);
+            for (var j = 1; j <= 7; j++) if (j != i) Assert.DoesNotContain($"REC-2026-000{j}", text);
+            foreach (var word in new[] { "Starplus", "imported", "rebuilt", "reconstructed", "Legacy" })
+                Assert.DoesNotContain(word, text, StringComparison.OrdinalIgnoreCase);
+        }
+        Assert.Equal(7, db.PaymentReceipts.Count());
+        Assert.All(db.PaymentReceipts, r => Assert.Equal(before[r.Id], r.SnapshotJson));
+    }
+
+    [Fact]
+    public async Task ReceiptPdf_ById_OtherTenant_Returns404()
+    {
+        await using var db = await SevenImportedReceiptsOnOnePaymentAsync();
+        var result = await PdfController(db, 11).GetReceiptPdfById(101);
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task ImportedDetail_IsNotFlaggedAsLegacyReconstruction()
+    {
+        await using var db = await SevenImportedReceiptsOnOnePaymentAsync();
+        var detail = await Service(db).GetReceiptDetailByIdAsync(10, 101, 1);
+        Assert.False(detail!.LegacyReconstruction);
+        Assert.False(detail.PaymentChangedSinceSnapshot);
     }
 
     private static PaymentReceiptService Service(AppDbContext db) => new(db, NullLogger<PaymentReceiptService>.Instance);
