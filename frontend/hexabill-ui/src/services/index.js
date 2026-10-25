@@ -1364,7 +1364,7 @@ export const adminAPI = {
   },
 
   getLogoDataUri: async () => {
-    const response = await api.get('/settings/logo-data-uri')
+    const response = await api.get('/settings/logo-data-uri', { silent: true })
     return response.data
   },
 

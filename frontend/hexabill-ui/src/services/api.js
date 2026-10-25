@@ -753,8 +753,10 @@ api.interceptors.response.use(
 
     // Sign-in and invite render their own alert. Do not also toast raw server text.
     const silentAuthEntry = requestUrl.includes('auth/login') || requestUrl.includes('auth/invite/accept')
+    // UIX-004: background calls (branding, logo) pass { silent: true } and never raise an error toast.
+    const silentRequest = error.config?.silent === true
     const reportError = (...args) => {
-      if (silentAuthEntry) return
+      if (silentAuthEntry || silentRequest) return
       showThrottledError(...args)
     }
 
