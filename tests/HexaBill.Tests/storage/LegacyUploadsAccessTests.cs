@@ -7,14 +7,20 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace HexaBill.Tests;
 
-public class LegacyUploadsAccessTests
+// QA-HARNESS-001: JWT_SECRET_KEY outranks JwtSettings:SecretKey everywhere in the API, so this class must not overlap
+// other collections and must put the prior value back.
+[Collection("ProcessEnvironment")]
+public class LegacyUploadsAccessTests : IDisposable
 {
     private const string Secret = "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
+    private readonly Dictionary<string, string?> _priorEnvironment = TestProcessEnvironment.Snapshot("JWT_SECRET_KEY");
 
     public LegacyUploadsAccessTests()
     {
         Environment.SetEnvironmentVariable("JWT_SECRET_KEY", Secret);
     }
+
+    public void Dispose() => TestProcessEnvironment.Restore(_priorEnvironment);
 
     [Theory]
     [InlineData("/uploads/1/logo.png", 1)]

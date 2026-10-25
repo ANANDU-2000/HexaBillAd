@@ -18,8 +18,6 @@ namespace HexaBill.Tests;
 /// </summary>
 public class HexaBillWebApplicationFactory : WebApplicationFactory<Program>
 {
-    private static readonly object IntegrationEnvironmentLock = new();
-
     public const string BackupAgentTokenTenantA = "hbba_test_http_isolation_token_a";
     public const string BackupAgentTokenTenantB = "hbba_test_http_isolation_token_b";
     public const int BackupRunTenantAId = 1;
@@ -28,23 +26,12 @@ public class HexaBillWebApplicationFactory : WebApplicationFactory<Program>
     private readonly string _sqlitePath;
     private readonly string _storageDataPath;
     private bool _seeded;
+    private bool _environmentLeased;
 
     public HexaBillWebApplicationFactory()
     {
         _sqlitePath = Path.Combine(Path.GetTempPath(), $"hexa-http-{Guid.NewGuid():N}.db");
         _storageDataPath = Path.Combine(Path.GetTempPath(), $"hexa-storage-{Guid.NewGuid():N}");
-    }
-
-    private void ApplyIntegrationEnvironment()
-    {
-        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", $"Data Source={_sqlitePath}");
-        Environment.SetEnvironmentVariable("DATABASE_URL", string.Empty);
-        Environment.SetEnvironmentVariable("ConnectionStrings__PostgreSQL", string.Empty);
-        Environment.SetEnvironmentVariable("HEXABILL_HTTP_INTEGRATION_TEST", "1");
-        Environment.SetEnvironmentVariable("DATA_PATH", _storageDataPath);
-        Environment.SetEnvironmentVariable("R2_ENDPOINT", string.Empty);
-        Environment.SetEnvironmentVariable("R2_ACCESS_KEY", string.Empty);
-        Environment.SetEnvironmentVariable("R2_SECRET_KEY", string.Empty);
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -55,6 +42,9 @@ public class HexaBillWebApplicationFactory : WebApplicationFactory<Program>
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = $"Data Source={_sqlitePath}",
+                // Per-factory upload root. DATA_PATH (which LocalStorageService reads on every request) is cleared
+                // under the shared environment lease, so this config value is what each host uses.
+                ["Storage:BasePath"] = _storageDataPath,
                 ["Hosting:EnforcementMode"] = "LogOnly",
                 ["Hosting:BaseDomain"] = "hexabill.company",
                 ["Hosting:PlatformHost"] = "admin.hexabill.company",
@@ -92,10 +82,21 @@ public class HexaBillWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override IHost CreateHost(IHostBuilder builder)
     {
-        lock (IntegrationEnvironmentLock)
+        // QA-HARNESS-001: no more process-wide env writes that outlive the factory. Take a ref-counted lease on the
+        // shared integration env (snapshot on first lease, restored on last Dispose) and set the connection string
+        // only for the duration of host construction (Program reads it at startup).
+        lock (TestProcessEnvironment.Lock)
         {
-            ApplyIntegrationEnvironment();
-            var host = base.CreateHost(builder);
+            if (!_environmentLeased)
+            {
+                TestProcessEnvironment.Acquire();
+                _environmentLeased = true;
+            }
+            var priorConnection = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+            Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", $"Data Source={_sqlitePath}");
+            IHost host;
+            try { host = base.CreateHost(builder); }
+            finally { Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", priorConnection); }
             if (!_seeded)
             {
                 SeedDatabase(host.Services);
@@ -556,6 +557,12 @@ public class HexaBillWebApplicationFactory : WebApplicationFactory<Program>
         }
 
         base.Dispose(disposing);
+
+        if (disposing && _environmentLeased)
+        {
+            _environmentLeased = false;
+            TestProcessEnvironment.Release();
+        }
     }
 }
 

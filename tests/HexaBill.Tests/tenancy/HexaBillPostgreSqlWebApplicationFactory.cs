@@ -58,14 +58,6 @@ public sealed class HexaBillPostgreSqlWebApplicationFactory : WebApplicationFact
         SlugA = $"pgh-{TenantAId}";
         SlugB = $"pgh-{TenantBId}";
         _storageDataPath = Path.Combine(Path.GetTempPath(), $"hexa-pg-storage-{Guid.NewGuid():N}");
-        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", connectionString);
-        Environment.SetEnvironmentVariable("DATABASE_URL", string.Empty);
-        Environment.SetEnvironmentVariable("ConnectionStrings__PostgreSQL", string.Empty);
-        Environment.SetEnvironmentVariable("HEXABILL_HTTP_INTEGRATION_TEST", "1");
-        Environment.SetEnvironmentVariable("DATA_PATH", _storageDataPath);
-        Environment.SetEnvironmentVariable("R2_ENDPOINT", string.Empty);
-        Environment.SetEnvironmentVariable("R2_ACCESS_KEY", string.Empty);
-        Environment.SetEnvironmentVariable("R2_SECRET_KEY", string.Empty);
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -76,6 +68,7 @@ public sealed class HexaBillPostgreSqlWebApplicationFactory : WebApplicationFact
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = _connectionString,
+                ["Storage:BasePath"] = _storageDataPath,
                 ["Hosting:EnforcementMode"] = "LogOnly",
                 ["Hosting:BaseDomain"] = "hexabill.company",
                 ["Hosting:PlatformHost"] = "admin.hexabill.company",
@@ -96,9 +89,23 @@ public sealed class HexaBillPostgreSqlWebApplicationFactory : WebApplicationFact
         });
     }
 
+    private bool _environmentLeased;
+
     protected override IHost CreateHost(IHostBuilder builder)
     {
-        var host = base.CreateHost(builder);
+        IHost host;
+        lock (TestProcessEnvironment.Lock)
+        {
+            if (!_environmentLeased)
+            {
+                TestProcessEnvironment.Acquire();
+                _environmentLeased = true;
+            }
+            var priorConnection = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+            Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", _connectionString);
+            try { host = base.CreateHost(builder); }
+            finally { Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", priorConnection); }
+        }
         if (!_seeded)
         {
             SeedDatabase(host.Services);
@@ -404,5 +411,13 @@ public sealed class HexaBillPostgreSqlWebApplicationFactory : WebApplicationFact
         Dispose();
     }
 
-    protected override void Dispose(bool disposing) => base.Dispose(disposing);
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing && _environmentLeased)
+        {
+            _environmentLeased = false;
+            TestProcessEnvironment.Release();
+        }
+    }
 }
