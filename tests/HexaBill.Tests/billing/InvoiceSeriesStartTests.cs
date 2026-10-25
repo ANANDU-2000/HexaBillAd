@@ -123,7 +123,6 @@ public class InvoiceSeriesStartTests
     [Theory]
     [InlineData("")]
     [InlineData("abc")]
-    [InlineData("0")]
     [InlineData("-7000")]
     public async Task InvalidSeriesSetting_FallsBackToLegacyRule(string value)
     {
@@ -181,7 +180,7 @@ public class InvoiceSeriesStartTests
         var settings = new SettingsService(db);
 
         await Assert.ThrowsAsync<ArgumentException>(() => settings.UpdateOwnerSettingsBulkAsync(TenantId, new() { [InvoiceNumberService.SeriesStartSettingKey] = "abc" }));
-        await Assert.ThrowsAsync<ArgumentException>(() => settings.UpdateOwnerSettingsBulkAsync(TenantId, new() { [InvoiceNumberService.SeriesStartSettingKey] = "0" }));
+        await Assert.ThrowsAsync<ArgumentException>(() => settings.UpdateOwnerSettingsBulkAsync(TenantId, new() { [InvoiceNumberService.SeriesStartSettingKey] = "-1" }));
         await settings.UpdateOwnerSettingsBulkAsync(TenantId, new() { [InvoiceNumberService.SeriesStartSettingKey] = " 7000 " });
         Assert.Equal("7000", await settings.GetSettingValueAsync(TenantId, InvoiceNumberService.SeriesStartSettingKey));
         Assert.Equal("7000", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(TenantId));
@@ -241,5 +240,77 @@ public class InvoiceSeriesStartTests
         await db.SaveChangesAsync();
 
         Assert.Equal("0001", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(OtherTenantId));
+    }
+
+    // P0-NUM-001: FrozenHub 2 / Gulf Harvest want a literal first invoice 00000 (width 5, start 0).
+    private static void SetWidth(AppDbContext db, int tenantId, string value) =>
+        db.Settings.Add(new Setting { TenantId = tenantId, OwnerId = tenantId, Key = InvoiceNumberService.NumberWidthSettingKey, Value = value });
+
+    [Fact]
+    public async Task SeriesStartZero_FirstNumberIsLiteral00000_ThenSecondIs00001()
+    {
+        await using var db = NewDb();
+        SetWidth(db, OtherTenantId, "5");
+        SetSeriesStart(db, OtherTenantId, "0");
+        await db.SaveChangesAsync();
+
+        Assert.Equal("00000", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(OtherTenantId));
+        Assert.Equal("00000", await Service(db).GenerateNextInvoiceNumberAsync(OtherTenantId));
+        AddSale(db, OtherTenantId, "00000");
+        await db.SaveChangesAsync();
+        Assert.Equal("00001", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(OtherTenantId));
+        Assert.Equal("00001", await Service(db).GenerateNextInvoiceNumberAsync(OtherTenantId));
+    }
+
+    [Fact]
+    public async Task SeriesStartZero_DeletedLiteral00000_IsNeverReissued()
+    {
+        await using var db = NewDb();
+        SetWidth(db, OtherTenantId, "5");
+        SetSeriesStart(db, OtherTenantId, "0");
+        AddSale(db, OtherTenantId, "00000", deleted: true);
+        await db.SaveChangesAsync();
+
+        Assert.Equal("00001", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(OtherTenantId));
+    }
+
+    [Fact]
+    public async Task SeriesStartZero_ExistingTenantWith0001_Continues()
+    {
+        await using var db = NewDb();
+        SetSeriesStart(db, OtherTenantId, "0");
+        AddSale(db, OtherTenantId, "0001");
+        await db.SaveChangesAsync();
+
+        Assert.Equal("0002", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(OtherTenantId));
+    }
+
+    [Fact]
+    public async Task SeriesStartZero_IsAcceptedBySettings_AndStart7000StillWorks()
+    {
+        await using var db = NewDb();
+        SetWidth(db, OtherTenantId, "5");
+        await db.SaveChangesAsync();
+        var settings = new SettingsService(db);
+
+        await settings.UpdateOwnerSettingsBulkAsync(OtherTenantId, new() { [InvoiceNumberService.SeriesStartSettingKey] = "0" });
+        Assert.Equal("0", await settings.GetSettingValueAsync(OtherTenantId, InvoiceNumberService.SeriesStartSettingKey));
+        Assert.Equal("00000", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(OtherTenantId));
+
+        await settings.UpdateOwnerSettingsBulkAsync(TenantId, new() { [InvoiceNumberService.SeriesStartSettingKey] = "7000" });
+        Assert.Equal("7000", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(TenantId));
+    }
+
+    [Fact]
+    public async Task SeriesStartZero_CannotBeRemovedOnceUsed()
+    {
+        await using var db = NewDb();
+        SetSeriesStart(db, OtherTenantId, "0");
+        AddSale(db, OtherTenantId, "00000");
+        await db.SaveChangesAsync();
+        var settings = new SettingsService(db);
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => settings.UpdateOwnerSettingsBulkAsync(OtherTenantId, new() { [InvoiceNumberService.SeriesStartSettingKey] = "" }));
+        Assert.Contains("cannot be removed", error.Message);
     }
 }
