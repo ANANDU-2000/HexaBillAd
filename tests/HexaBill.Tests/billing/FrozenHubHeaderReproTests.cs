@@ -96,10 +96,11 @@ public class FrozenHubHeaderReproTests
             Assert.Equal(1, document.NumberOfPages);
     }
 
-    [Fact]
-    public async Task Thermal58mm_ArabicCompanyNameTakesAtMostTwoLines_AndAddressStaysWhole()
+    [Theory]
+    [InlineData("58mm")]
+    [InlineData("80mm")]
+    public async Task Thermal_ArabicCompanyNameTakesAtMostTwoLines_AndAddressStaysWhole(string format)
     {
-        const string format = "58mm";
         await using var db = await SeedAsync(CreateLogo(720, 279));
         var bytes = await CreatePdfService(db).GenerateInvoicePdfAsync(CreateSale(3), format, "full");
         await SaveAsync(bytes, $"header-{format}.pdf");
@@ -120,6 +121,32 @@ public class FrozenHubHeaderReproTests
         Assert.NotEmpty(address);
         Assert.Contains(address, g => string.Concat(g.OrderBy(l => l.StartBaseLine.X).Select(l => l.Value)).Contains("AbuDhabiMusaffah17"));
         Assert.DoesNotContain("+971500000000", page.Text);
+    }
+
+    [Theory]
+    [InlineData("58mm", 100, 400)]
+    [InlineData("80mm", 100, 400)]
+    [InlineData("58mm", 200, 200)]
+    [InlineData("80mm", 200, 200)]
+    [InlineData("58mm", 720, 279)]
+    [InlineData("80mm", 720, 279)]
+    [InlineData("58mm", 1000, 100)]
+    [InlineData("80mm", 1000, 100)]
+    public async Task Thermal_LogoRendersAtReadableSizeInsideContentWidth(string format, int w, int h)
+    {
+        await using var db = await SeedAsync(CreateLogo(w, h));
+        var bytes = await CreatePdfService(db).GenerateInvoicePdfAsync(CreateSale(1), format, "full");
+        await SaveAsync(bytes, $"logo-{format}-{w}x{h}.pdf");
+        using var document = PdfDocument.Open(bytes);
+        var page = document.GetPage(1);
+        var image = Assert.Single(page.GetImages());
+        var b = image.Bounds;
+        Assert.InRange(b.Width, 1, 141);
+        Assert.InRange(b.Height, 1, 40.5);
+        Assert.InRange(b.Left, 0, page.Width);
+        Assert.InRange(b.Right, 0, page.Width);
+        Assert.Equal(w / (double)h, b.Width / b.Height, 1);
+        if (h >= w) Assert.True(b.Height >= 39, $"tall/square logo height {b.Height}pt");
     }
 
     /// <summary>

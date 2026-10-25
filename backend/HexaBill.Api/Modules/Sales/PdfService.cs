@@ -1013,7 +1013,7 @@ namespace HexaBill.Api.Modules.Sales
                     {
                         column.Spacing(0);
                         if (settings.BilingualMonochromeHeader)
-                            RenderCompanyHeader(column.Item(), settings, 9);
+                            RenderCompanyHeader(column.Item(), settings, 9, stacked: true);
                         else
                         {
                             column.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(9).Bold();
@@ -1305,6 +1305,10 @@ namespace HexaBill.Api.Modules.Sales
                 var (logoW, logoH, logoColW) = LetterheadLogoBox(a4Letterhead, fontSize);
                 if (a5Letterhead)
                     (logoW, logoH, logoColW) = LetterheadLogoBox(false, fontSize);
+                if (stacked)
+                    // Thermal stacked header: the logo has its own full-width row, so fit it into a
+                    // 140x40pt box (tall logos readable, wide logos still inside the paper).
+                    (logoW, logoH, logoColW) = (140f, 40f, 140f);
                 var logoDisplayWidth = logoW;
                 if (logo != null)
                 {
@@ -1318,7 +1322,7 @@ namespace HexaBill.Api.Modules.Sales
                 // email, and stored contact settings out of this invoice header only.
                 const string frozenHubPrintedAddress = "Abu Dhabi, Musaffah 17";
                 var printedAddress = settings.FrozenHubHeaderPolicy ? frozenHubPrintedAddress : settings.CompanyAddress;
-                // Stacked (58mm) header: no-break spaces keep a short address such as "Abu Dhabi, Musaffah 17"
+                // Stacked (58mm/80mm) header: no-break spaces keep a short address such as "Abu Dhabi, Musaffah 17"
                 // on one line next to its Arabic label instead of breaking after "Abu Dhabi,".
                 var arabicAddress = stacked && printedAddress != null && printedAddress.Length <= 40
                     ? printedAddress.Replace(' ', '\u00A0') : printedAddress;
@@ -1395,7 +1399,7 @@ namespace HexaBill.Api.Modules.Sales
                 var headerHeight = a4Letterhead ? 95f : a5Letterhead ? 65f : 0f;
                 if (stacked)
                 {
-                    // 58mm: the three header blocks are stacked full-width (English, logo, Arabic) so the
+                    // 58mm/80mm: the three header blocks are stacked full-width (English, logo, Arabic) so the
                     // long Arabic legal name gets the whole paper width and wraps to at most two lines.
                     column.Item().Element(composeEnglish);
                     if (logo != null)
