@@ -445,10 +445,14 @@ namespace HexaBill.Api.Models
         public string ReceiptNumber { get; set; } = string.Empty;
         public int PaymentId { get; set; }
         public DateTime GeneratedAt { get; set; }
+        /// <summary>True for receipts imported from Starplus (preserved history, original number).</summary>
+        public bool IsImported { get; set; }
     }
 
     public class PaymentReceiptDetailDto
     {
+        /// <summary>True when this receipt was imported from Starplus and is shown as preserved history.</summary>
+        public bool IsImportedHistory { get; set; }
         public string Currency { get; set; } = "AED";
         public string DocumentFingerprint { get; set; } = string.Empty;
         public bool IsHistoricalSnapshot { get; set; }

@@ -652,6 +652,40 @@ namespace HexaBill.Api.Modules.Payments
             catch { return StatusCode(500, new ApiResponse<PaymentReceiptDto> { Success = false, Message = "Error" }); }
         }
 
+        [HttpGet("receipt/by-payment/{paymentId}/all")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<ActionResult<ApiResponse<List<PaymentReceiptDto>>>> GetReceiptsByPayment(int paymentId)
+        {
+            try
+            {
+                var list = await _receiptService.GetReceiptsByPaymentIdAsync(paymentId, CurrentTenantId);
+                return Ok(new ApiResponse<List<PaymentReceiptDto>> { Success = true, Data = list });
+            }
+            catch { return StatusCode(500, new ApiResponse<List<PaymentReceiptDto>> { Success = false, Message = "Error" }); }
+        }
+
+        [HttpGet("receipt/{receiptId:int}")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<ActionResult<ApiResponse<object>>> GetReceiptById(int receiptId)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("UserId");
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId)) return Unauthorized(new ApiResponse<object> { Success = false, Message = "Invalid user" });
+                var detail = await _receiptService.GetReceiptDetailByIdAsync(tenantId, receiptId, userId);
+                if (detail == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Receipt not found" });
+                return Ok(new ApiResponse<object> { Success = true, Data = new { detail, receiptNumber = detail.ReceiptNumber, receiptId } });
+            }
+            catch (InvalidOperationException ex) { return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message }); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Receipt load failed for receipt {ReceiptId}", receiptId);
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Receipt could not be loaded. Please try again or contact support." });
+            }
+        }
+
         [HttpGet("customers/{customerId}/receipts")]
         [Authorize(Roles = "Admin,Owner,Manager")]
         public async Task<ActionResult<ApiResponse<List<PaymentReceiptDto>>>> GetCustomerReceipts(int customerId)
