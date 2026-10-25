@@ -167,7 +167,8 @@ public class InvoiceSeriesStartTests
         var service = Service(db);
 
         Assert.Contains("already used", await service.GetManualInvoiceNumberProblemAsync("1000", OtherTenantId));
-        Assert.Null(await service.GetManualInvoiceNumberProblemAsync("1001", OtherTenantId));
+        // A deleted invoice's number is not reusable either (no renumbering, no duplicate on paper).
+        Assert.Contains("already used", await service.GetManualInvoiceNumberProblemAsync("1001", OtherTenantId));
         Assert.Null(await service.GetManualInvoiceNumberProblemAsync("0500", OtherTenantId));
     }
 
@@ -190,5 +191,55 @@ public class InvoiceSeriesStartTests
         var error = await Assert.ThrowsAsync<ArgumentException>(() => settings.UpdateOwnerSettingsBulkAsync(TenantId, new() { [InvoiceNumberService.SeriesStartSettingKey] = "" }));
         Assert.Contains("cannot be removed", error.Message);
         Assert.Equal("7001", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(TenantId));
+    }
+
+    [Fact]
+    public async Task Legacy_IgnoresDigitsEmbeddedInNonNumericReferences()
+    {
+        await using var db = NewDb();
+        AddSale(db, OtherTenantId, "0041");
+        AddSale(db, OtherTenantId, "FH-SMK-1791254849");
+        AddSale(db, OtherTenantId, "INV-2026-0005");
+        await db.SaveChangesAsync();
+
+        Assert.Equal("0042", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(OtherTenantId));
+        Assert.Equal("0042", await Service(db).GenerateNextInvoiceNumberAsync(OtherTenantId));
+    }
+
+    [Fact]
+    public async Task Legacy_DoesNotHandOutADeletedInvoicesNumber()
+    {
+        await using var db = NewDb();
+        AddSale(db, OtherTenantId, "0041");
+        AddSale(db, OtherTenantId, "0042", deleted: true);
+        await db.SaveChangesAsync();
+
+        Assert.Equal("0043", await Service(db).GenerateNextInvoiceNumberAsync(OtherTenantId));
+    }
+
+    [Fact]
+    public async Task NumberWidth_FiveDigitsPerTenant_OtherTenantsUnchanged()
+    {
+        await using var db = NewDb();
+        db.Settings.Add(new Setting { TenantId = OtherTenantId, OwnerId = OtherTenantId, Key = InvoiceNumberService.NumberWidthSettingKey, Value = "5" });
+        AddSale(db, TenantId, "0007");
+        await db.SaveChangesAsync();
+
+        Assert.Equal("00001", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(OtherTenantId));
+        Assert.Equal("00001", await Service(db).GenerateNextInvoiceNumberAsync(OtherTenantId));
+        Assert.Equal("0008", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(TenantId));
+    }
+
+    [Theory]
+    [InlineData("3")]
+    [InlineData("10")]
+    [InlineData("abc")]
+    public async Task NumberWidth_InvalidValueKeepsFourDigits(string value)
+    {
+        await using var db = NewDb();
+        db.Settings.Add(new Setting { TenantId = OtherTenantId, OwnerId = OtherTenantId, Key = InvoiceNumberService.NumberWidthSettingKey, Value = value });
+        await db.SaveChangesAsync();
+
+        Assert.Equal("0001", await Service(db).GenerateNextInvoiceNumberInTransactionAsync(OtherTenantId));
     }
 }
