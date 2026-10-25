@@ -2,6 +2,15 @@
  * Vercel Edge Middleware — trusted /api proxy (when project root is frontend/hexabill-ui).
  * See repo-root middleware.js for the canonical copy.
  */
+// Statuses that must not carry a body. Building a Response with a body for
+// these throws ("Response with null body status cannot have body"), which
+// surfaced as 502 EDGE_PROXY_UPSTREAM_FAILED on CORS OPTIONS preflights (204).
+export const NULL_BODY_STATUSES = new Set([101, 204, 205, 304])
+
+export function isNullBodyStatus(status) {
+  return NULL_BODY_STATUSES.has(status)
+}
+
 export default async function middleware(request) {
   const url = new URL(request.url)
   if (!url.pathname.startsWith('/api')) {
@@ -48,7 +57,8 @@ export default async function middleware(request) {
     // Buffer the body. Streaming upstream.body through Node middleware can
     // drop JSON on 201 Created (Content-Length/chunk mismatch → empty body),
     // which makes expense create look like a soft failure in the UI.
-    const body = await upstream.arrayBuffer()
+    const nullBody = isNullBodyStatus(upstream.status)
+    const body = nullBody ? null : await upstream.arrayBuffer()
     const outHeaders = new Headers()
     upstream.headers.forEach((value, key) => {
       const lower = key.toLowerCase()
@@ -75,7 +85,7 @@ export default async function middleware(request) {
         /* keep upstream Location */
       }
     }
-    outHeaders.set('content-length', String(body.byteLength))
+    if (!nullBody) outHeaders.set('content-length', String(body.byteLength))
     return new Response(body, {
       status: upstream.status,
       statusText: upstream.statusText,
