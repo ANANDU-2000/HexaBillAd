@@ -225,13 +225,14 @@ namespace HexaBill.Api.Modules.Documents
 
         public static string Whereas(string secondPartyDisplayName, string? firstPartyName = null)
         {
-            var party = string.IsNullOrWhiteSpace(firstPartyName) ? FirstPartyName : firstPartyName.Trim();
+            // P0-PRINT-010: a blank first party prints the neutral role, never the ZAYOGA name (Zayoga passes its name explicitly).
+            var party = string.IsNullOrWhiteSpace(firstPartyName) ? "the First Party" : firstPartyName.Trim();
             return $"Whereas, {party} is a licensed Ice popsicles and Sip up Distributors based in UAE an {secondPartyDisplayName} is Licensed trader selling products directly to the customers, both parties agreed on the following points:";
         }
 
         public static IReadOnlyList<string> BuildClauses(string? firstPartyName = null)
         {
-            var party = string.IsNullOrWhiteSpace(firstPartyName) ? FirstPartyName : firstPartyName.Trim();
+            var party = string.IsNullOrWhiteSpace(firstPartyName) ? "The First Party" : firstPartyName.Trim();
             return new[]
             {
                 $"{party} will provide frozen items that meets all applicable food safety and quality standards.",
