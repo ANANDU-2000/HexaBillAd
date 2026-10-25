@@ -37,7 +37,7 @@ import { isAdminOrOwner } from '../../utils/roles'  // CRITICAL: Multi-tenant ro
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import StampSignaturePlacementPreview from '../../components/StampSignaturePlacementPreview'
-import { addInvoiceHeaderStyleForUpdate, addInvoiceSeriesStartForUpdate, validateInvoiceSeriesStart } from './settingsUpdatePayload'
+import { addInvoiceHeaderStyleForUpdate, addInvoiceSeriesStartForUpdate, validateInvoiceSeriesStart, addInvoiceNumberWidthForUpdate, validateInvoiceNumberWidth, autoWidthForStart, previewFirstInvoice } from './settingsUpdatePayload'
 
 const SettingsPage = () => {
   const { user } = useAuth()
@@ -133,10 +133,13 @@ const SettingsPage = () => {
     handleSubmit,
     watch,
     setValue,
+    getValues,
     formState: { errors, isDirty }
   } = useForm({
     defaultValues: settings
   })
+  const watchedSeriesStart = watch('invoiceSeriesStart')
+  const watchedNumberWidth = watch('invoiceNumberWidth')
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [initialSettings, setInitialSettings] = useState(null)
@@ -443,6 +446,7 @@ const SettingsPage = () => {
           defaultCurrency: getSetting(d, 'CURRENCY') || getSetting(d, 'defaultCurrency') || 'AED',
           vatPercentage: parseFloat(getSetting(d, 'VAT_PERCENT') || getSetting(d, 'vatPercentage') || '5'),
           invoiceSeriesStart: getSetting(d, 'INVOICE_SERIES_START') ?? '',
+          invoiceNumberWidth: String(getSetting(d, 'INVOICE_NUMBER_WIDTH') || '4'),
           invoiceTemplate: getSetting(d, 'INVOICE_TEMPLATE') || getSetting(d, 'invoiceTemplate') || '',
           logoUrl: logoUrl,
           cloudBackupEnabled: getSettingBool(d, 'CLOUD_BACKUP_ENABLED') || getSettingBool(d, 'cloudBackupEnabled'),
@@ -537,6 +541,8 @@ const SettingsPage = () => {
       // with unrelated company edits makes the server reject the entire save.
       addInvoiceHeaderStyleForUpdate(backendSettings, data)
       addInvoiceSeriesStartForUpdate(backendSettings, data, initialSettings)
+      // Width goes before the start so a 00000 start is never stored at 4 digits.
+      addInvoiceNumberWidthForUpdate(backendSettings, data, initialSettings)
 
       // Only include logoUrl if it's set
       if (data.logoUrl) {
@@ -1352,19 +1358,44 @@ const SettingsPage = () => {
                   })}
                 />
                 <div>
-                  <Input
-                    label="New invoice numbers start at"
-                    type="number"
-                    step="1"
-                    min="1"
-                    placeholder="e.g. 7000"
-                    error={errors.invoiceSeriesStart?.message}
-                    {...register('invoiceSeriesStart', {
-                      validate: validateInvoiceSeriesStart
-                    })}
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Input
+                      label="New invoice numbers start at"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="0"
+                      className="min-h-[44px] text-base sm:text-sm"
+                      placeholder="e.g. 7000"
+                      error={errors.invoiceSeriesStart?.message}
+                      {...register('invoiceSeriesStart', {
+                        validate: validateInvoiceSeriesStart,
+                        onChange: (e) => {
+                          const w = autoWidthForStart(e.target.value, getValues('invoiceNumberWidth'))
+                          if (w) setValue('invoiceNumberWidth', w, { shouldDirty: true, shouldValidate: true })
+                        }
+                      })}
+                    />
+                    <Input
+                      label="Number of digits"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      className="min-h-[44px] text-base sm:text-sm"
+                      placeholder="4"
+                      error={errors.invoiceNumberWidth?.message}
+                      {...register('invoiceNumberWidth', {
+                        validate: validateInvoiceNumberWidth
+                      })}
+                    />
+                  </div>
+                  {previewFirstInvoice(watchedSeriesStart, watchedNumberWidth) !== null && (
+                    <p className="text-sm text-neutral-700 mt-1" aria-live="polite">
+                      First invoice: <span className="font-mono">{previewFirstInvoice(watchedSeriesStart, watchedNumberWidth)}</span>
+                    </p>
+                  )}
                   <p className="text-xs text-neutral-500 mt-1">
-                    New invoices continue from the highest number at or above this. Numbers below it stay with earlier invoices, and issued numbers never change.
+                    New invoices continue from the highest number at or above this. Numbers below it stay with earlier invoices, and issued numbers never change. Numbers are padded with zeros to the number of digits (4 to 10).
                   </p>
                 </div>
                 <Input

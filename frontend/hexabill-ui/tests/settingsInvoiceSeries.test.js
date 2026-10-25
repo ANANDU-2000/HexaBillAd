@@ -36,3 +36,55 @@ test('UX-005: the Settings field allows 0 and uses the shared validator', async 
   assert.match(field, /min="0"/)
   assert.match(field, /validate: validateInvoiceSeriesStart/)
 })
+
+// UX-005B: number of digits (INVOICE_NUMBER_WIDTH), auto-width and preview.
+test('UX-005B: validateInvoiceNumberWidth accepts 4-10 and rejects -0, +5, decimals, out of range', async () => {
+  const { validateInvoiceNumberWidth } = await import('../src/features/settings/settingsUpdatePayload.js')
+  for (const v of ['4', '5', ' 10 ', 7, '']) assert.equal(validateInvoiceNumberWidth(v), true, `value ${JSON.stringify(v)}`)
+  for (const v of ['-0', '+5', '5.0', '1.5', '3', '11', '0', 'abc', '-5']) assert.equal(typeof validateInvoiceNumberWidth(v), 'string', `value ${v}`)
+})
+
+test('UX-005B: typing a start with leading zeros raises the digits to its length', async () => {
+  const { autoWidthForStart } = await import('../src/features/settings/settingsUpdatePayload.js')
+  assert.equal(autoWidthForStart('00000', '4'), '5')
+  assert.equal(autoWidthForStart('000000', '5'), '6')
+  assert.equal(autoWidthForStart('00000', '6'), null)
+  assert.equal(autoWidthForStart('0000', '4'), null)
+  assert.equal(autoWidthForStart('7000', '4'), null)
+  assert.equal(autoWidthForStart('0', '4'), null)
+  assert.equal(autoWidthForStart('000000000000', '4'), '10')
+  assert.equal(autoWidthForStart('00000', ''), '5')
+})
+
+test('UX-005B: preview is the start zero-padded to the width', async () => {
+  const { previewFirstInvoice } = await import('../src/features/settings/settingsUpdatePayload.js')
+  assert.equal(previewFirstInvoice('00000', '5'), '00000')
+  assert.equal(previewFirstInvoice('0', '5'), '00000')
+  assert.equal(previewFirstInvoice('7000', '4'), '7000')
+  assert.equal(previewFirstInvoice('12', '4'), '0012')
+  assert.equal(previewFirstInvoice('00000', ''), '0000')
+  assert.equal(previewFirstInvoice('', '5'), null)
+  assert.equal(previewFirstInvoice('-1', '5'), null)
+})
+
+test('UX-005B: width is saved before the start, and only when changed', async () => {
+  const { addInvoiceSeriesStartForUpdate, addInvoiceNumberWidthForUpdate } = await import('../src/features/settings/settingsUpdatePayload.js')
+  const data = { invoiceSeriesStart: '00000', invoiceNumberWidth: '5' }
+  const init = { invoiceSeriesStart: '', invoiceNumberWidth: '4' }
+  const p = addInvoiceNumberWidthForUpdate(addInvoiceSeriesStartForUpdate({ A: '1' }, data, init), data, init)
+  assert.deepEqual(Object.keys(p), ['A', 'INVOICE_NUMBER_WIDTH', 'INVOICE_SERIES_START'])
+  assert.equal(p.INVOICE_SERIES_START, '00000')
+  assert.equal(p.INVOICE_NUMBER_WIDTH, '5')
+  const same = addInvoiceNumberWidthForUpdate({}, { invoiceNumberWidth: '4' }, { invoiceNumberWidth: '4' })
+  assert.equal(Object.hasOwn(same, 'INVOICE_NUMBER_WIDTH'), false)
+})
+
+test('UX-005B: Settings page has the digits field next to the start, with preview and 44px targets', async () => {
+  const { readFileSync } = await import('node:fs')
+  const page = readFileSync(new URL('../src/features/settings/SettingsPage.jsx', import.meta.url), 'utf8')
+  assert.match(page, /label="Number of digits"/)
+  assert.match(page, /validate: validateInvoiceNumberWidth/)
+  assert.match(page, /First invoice:/)
+  assert.match(page, /min-h-\[44px\] text-base/)
+  assert.match(page, /addInvoiceNumberWidthForUpdate\(backendSettings/)
+})
