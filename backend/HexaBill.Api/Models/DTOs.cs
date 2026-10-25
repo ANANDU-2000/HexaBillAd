@@ -359,6 +359,8 @@ namespace HexaBill.Api.Models
     public class SaleDto
     {
         public int Id { get; set; }
+        /// <summary>Source/idempotency reference; imported Starplus sales start with "starplus:" (P0-PRINT-007 reprint label).</summary>
+        public string? ExternalReference { get; set; }
         public int OwnerId { get; set; } // MULTI-TENANT: Owner identification
         public string InvoiceNo { get; set; } = string.Empty;
         public DateTime InvoiceDate { get; set; }

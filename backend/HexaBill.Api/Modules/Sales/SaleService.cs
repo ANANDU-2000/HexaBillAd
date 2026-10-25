@@ -254,6 +254,7 @@ namespace HexaBill.Api.Modules.Sales
                     return new SaleDto
                     {
                         Id = s.Id,
+                        ExternalReference = s.ExternalReference,
                         OwnerId = s.TenantId ?? 0, // CRITICAL: Must include tenantId for PDF generation (mapped to OwnerId for compatibility)
                         InvoiceNo = s.InvoiceNo,
                         InvoiceDate = s.InvoiceDate,
@@ -442,6 +443,7 @@ namespace HexaBill.Api.Modules.Sales
                 .Select(s => new
                 {
                     s.Id,
+                    s.ExternalReference,
                     s.TenantId,
                     s.InvoiceNo,
                     s.InvoiceDate,
@@ -482,6 +484,7 @@ namespace HexaBill.Api.Modules.Sales
             var dto = new SaleDto
             {
                 Id = header.Id,
+                ExternalReference = header.ExternalReference,
                 OwnerId = header.TenantId ?? 0,
                 InvoiceNo = header.InvoiceNo,
                 InvoiceDate = header.InvoiceDate,
@@ -528,6 +531,7 @@ namespace HexaBill.Api.Modules.Sales
             return new SaleDto
             {
                 Id = sale.Id,
+                ExternalReference = sale.ExternalReference,
                 OwnerId = sale.TenantId ?? 0,
                 InvoiceNo = sale.InvoiceNo,
                 InvoiceDate = sale.InvoiceDate,
@@ -1242,6 +1246,7 @@ namespace HexaBill.Api.Modules.Sales
                 saleDto ??= new SaleDto
                 {
                     Id = sale.Id,
+                    ExternalReference = sale.ExternalReference,
                     InvoiceNo = invoiceNo,
                     InvoiceDate = sale.InvoiceDate,
                     CustomerId = sale.CustomerId,
@@ -1537,6 +1542,7 @@ namespace HexaBill.Api.Modules.Sales
                 return await GetSaleByIdAsync(sale.Id, tenantId) ?? new SaleDto
                 {
                     Id = sale.Id,
+                    ExternalReference = sale.ExternalReference,
                     InvoiceNo = sale.InvoiceNo,
                     GrandTotal = sale.GrandTotal,
                     InvoiceDate = sale.InvoiceDate,
@@ -2631,6 +2637,7 @@ namespace HexaBill.Api.Modules.Sales
                 var saleDto = new SaleDto
                 {
                     Id = sale.Id,
+                    ExternalReference = sale.ExternalReference,
                     OwnerId = sale.TenantId ?? 0, // CRITICAL: Must pass tenantId to PDF service for correct settings (mapped to OwnerId)
                     InvoiceNo = sale.InvoiceNo ?? $"INV-{saleId}",
                     InvoiceDate = sale.InvoiceDate,
@@ -2699,6 +2706,7 @@ namespace HexaBill.Api.Modules.Sales
                 var saleDto = new SaleDto
                 {
                     Id = sale.Id,
+                    ExternalReference = sale.ExternalReference,
                     OwnerId = sale.TenantId ?? 0,
                     InvoiceNo = sale.InvoiceNo ?? $"INV-{saleId}",
                     InvoiceDate = sale.InvoiceDate,
@@ -2830,6 +2838,7 @@ namespace HexaBill.Api.Modules.Sales
             return deletedSales.Select(s => new SaleDto
             {
                 Id = s.Id,
+                ExternalReference = s.ExternalReference,
                 OwnerId = s.TenantId ?? 0, // CRITICAL: Must include tenantId for audit trail (mapped to OwnerId)
                 InvoiceNo = s.InvoiceNo,
                 InvoiceDate = s.InvoiceDate,
