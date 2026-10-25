@@ -16,7 +16,7 @@ import {
 import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { mobileFormFieldClass, mobilePageShellClass, mobileFilterGridClass } from '../../components/tallyFormClasses'
-import { mobilePageTitleClass, MobileActionStrip, mobileActionBtnClass } from '../../components/mobilePageUi'
+import { mobilePageTitleClass, MobileActionStrip } from '../../components/mobilePageUi'
 import { Input, Select } from '../../components/Form'
 import PaymentModal from '../../components/PaymentModal'
 import EditPaymentModal from '../../components/EditPaymentModal'
@@ -956,7 +956,7 @@ const SalesLedgerPage = () => {
   }
 
   return (
-    <div className={`flex flex-col flex-1 min-h-0 ${mobilePageShellClass} overflow-hidden bg-neutral-50`}>
+    <div className={`flex flex-col flex-1 min-h-0 ${mobilePageShellClass} overflow-y-auto overscroll-contain md:overflow-hidden bg-neutral-50`} data-testid="sales-ledger-scroll">
       {/* Header — full width, filters horizontal, export right */}
       <div className="flex-shrink-0 bg-white border-b border-neutral-200 px-2 sm:px-4 lg:px-6 py-2 md:py-3">
         <h1 className={`${mobilePageTitleClass} mb-2`}>Sales Ledger</h1>
@@ -965,13 +965,15 @@ const SalesLedgerPage = () => {
             type="date"
             value={dateRange.from}
             onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
-            className={mobileFormFieldClass}
+            aria-label="From date"
+            className={`${mobileFormFieldClass} min-h-10 py-2 text-sm`}
           />
           <input
             type="date"
             value={dateRange.to}
             onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
-            className={mobileFormFieldClass}
+            aria-label="To date"
+            className={`${mobileFormFieldClass} min-h-10 py-2 text-sm`}
           />
           <DatePresetChips from={dateRange.from} to={dateRange.to} onChange={(r) => setDateRange(r)} className="col-span-2" />
         </div>
@@ -981,36 +983,36 @@ const SalesLedgerPage = () => {
                 type="date"
                 value={dateRange.from}
                 onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
-                className={`${mobileFormFieldClass} md:min-h-0 md:py-1.5 md:text-xs w-36`}
+                className={`${mobileFormFieldClass} md:min-h-0 md:py-1.5 md:text-xs md:w-36`}
               />
               <input
                 type="date"
                 value={dateRange.to}
                 onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
-                className={`${mobileFormFieldClass} md:min-h-0 md:py-1.5 md:text-xs w-36`}
+                className={`${mobileFormFieldClass} md:min-h-0 md:py-1.5 md:text-xs md:w-36`}
               />
               <DatePresetChips from={dateRange.from} to={dateRange.to} onChange={(r) => setDateRange(r)} presets={['today', '7d', 'month', 'lastmonth', 'all']} className="items-center" />
             </div>
               <button
                 type="button"
                 onClick={() => setOverdueOnly((v) => !v)}
-                className={`px-2 md:px-2.5 py-1.5 border border-neutral-300 rounded text-xs font-medium ${overdueOnly ? 'bg-warning text-white border-warning' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
+                className={`inline-flex items-center justify-center gap-1 shrink-0 min-h-10 md:min-h-8 px-2.5 border rounded-lg text-xs font-medium whitespace-nowrap ${overdueOnly ? 'bg-warning text-white border-warning' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
                 title="Show only overdue invoices (unpaid balance, invoice date before today)"
               >
                 Overdue
               </button>
-            <div className="flex rounded-md border border-neutral-300 overflow-hidden text-xs font-medium" role="group" aria-label="Sort order">
+            <div className="flex shrink-0 rounded-lg border border-neutral-300 overflow-hidden text-xs font-medium" role="group" aria-label="Sort order">
               <button
                 type="button"
                 onClick={() => setSortOrderPersist('newest')}
-                className={`px-2 md:px-2.5 py-1.5 ${sortOrder === 'newest' ? 'bg-primary-600 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
+                className={`min-h-10 md:min-h-8 px-2.5 ${sortOrder === 'newest' ? 'bg-primary-600 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
               >
                 Newest
               </button>
               <button
                 type="button"
                 onClick={() => setSortOrderPersist('oldest')}
-                className={`px-2 md:px-2.5 py-1.5 border-l border-neutral-300 ${sortOrder === 'oldest' ? 'bg-primary-600 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
+                className={`min-h-10 md:min-h-8 px-2.5 border-l border-neutral-300 ${sortOrder === 'oldest' ? 'bg-primary-600 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
               >
                 Oldest
               </button>
@@ -1021,22 +1023,25 @@ const SalesLedgerPage = () => {
                 setShowFilters(next)
                 try { localStorage.setItem(SHOW_FILTERS_KEY, String(next)) } catch (_) { }
               }}
-              className="px-2 md:px-3 py-1.5 border border-neutral-300 rounded text-xs font-medium text-neutral-700 bg-white hover:bg-neutral-50 flex items-center gap-1"
+              aria-label={showFilters ? 'Hide filters' : 'Show filters'}
+              aria-expanded={showFilters}
+              className={`inline-flex items-center justify-center gap-1 shrink-0 min-h-10 md:min-h-8 px-2.5 border rounded-lg text-xs font-medium whitespace-nowrap ${hasActiveFilters ? 'border-primary-500 text-primary-700 bg-primary-50' : 'border-neutral-300 text-neutral-700 bg-white hover:bg-neutral-50'}`}
             >
               <Filter className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Show'}</span>
+              <span className="hidden sm:inline">Filters</span>
             </button>
             <button
               aria-label="Export Excel"
               onClick={handleExportExcel}
-              className="px-3 py-2 border border-success text-success-fg rounded-lg text-sm font-medium hover:bg-success-bg flex items-center gap-1.5"
+              className="inline-flex items-center justify-center gap-1 shrink-0 min-h-10 md:min-h-8 px-2.5 border rounded-lg text-xs font-medium whitespace-nowrap border-success text-success-fg hover:bg-success-bg"
             >
               <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">Export Excel</span>
+              <span className="hidden sm:inline">Excel</span>
             </button>
             <button
               onClick={handleExport}
-              className={`${mobileActionBtnClass} bg-primary-600 text-white hover:bg-primary-700`}
+              aria-label="Export PDF"
+              className={`inline-flex items-center justify-center gap-1 shrink-0 min-h-10 md:min-h-8 px-2.5 border rounded-lg text-xs font-medium whitespace-nowrap border-primary-600 bg-primary-600 text-white hover:bg-primary-700`}
             >
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">PDF</span>
@@ -1050,14 +1055,15 @@ const SalesLedgerPage = () => {
         </div>
       )}
       {sortOrder === 'newest' && filters.type !== 'Sale' && (
-        <div className="flex-shrink-0 px-2 md:px-4 py-1.5 text-xs text-neutral-600 bg-warning-bg/90 border-b border-amber-100">
+        <details className="flex-shrink-0 px-2 md:px-4 py-1.5 text-xs text-neutral-600 bg-warning-bg/90 border-b border-amber-100">
+          <summary className="cursor-pointer select-none font-medium text-amber-900">Sorted newest-first per customer</summary>
           Newest-first within each customer (latest activity at top). Customer blocks are ordered by latest date, then by highest transaction id when dates tie. Balance column is per transaction, not a running total down the list.
-        </div>
+        </details>
       )}
 
       {/* Filters - Collapsible */}
       {showFilters && (
-        <div className="flex-shrink-0 bg-gradient-to-r from-primary-50 to-indigo-50 border-b border-primary-200 px-3 py-2 overflow-y-auto max-h-52 md:max-h-56">
+        <div className="flex-shrink-0 bg-gradient-to-r from-primary-50 to-indigo-50 border-b border-primary-200 px-3 py-2 md:overflow-y-auto md:max-h-56">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center">
               <Filter className="h-4 w-4 text-primary-600 mr-2" />
@@ -1213,7 +1219,7 @@ const SalesLedgerPage = () => {
         </div>
       )}
 
-      <div className="flex-shrink-0 px-2 md:px-4 py-1.5 bg-white border-b border-neutral-200 text-xs text-neutral-700">
+      <div className="flex-shrink-0 px-2 md:px-4 py-1.5 bg-white border-b border-neutral-200 text-xs text-neutral-700 whitespace-nowrap overflow-x-auto scrollbar-hide md:whitespace-normal">
         <span className="font-medium text-neutral-500 mr-2">Totals:</span>
         Sales {formatCurrency(filteredSummary.totalSales)}
         <span className="mx-1.5 text-neutral-300">|</span>
@@ -1240,7 +1246,7 @@ const SalesLedgerPage = () => {
         <p className="px-4 py-8 text-center text-sm text-neutral-500">Loading sales ledger…</p>
         </div>
       ) : (
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-white w-full rounded-lg border border-neutral-200">
+        <div className="flex flex-col md:flex-1 md:min-h-0 md:overflow-hidden bg-white w-full rounded-lg border border-neutral-200">
           {/* Desktop Table — sticky header; Actions column sticky right */}
           <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0 w-full">
             <div className="flex-1 min-h-0 overflow-auto w-full">
@@ -1320,8 +1326,8 @@ const SalesLedgerPage = () => {
                           // Use full customer totals from customerGroups, not just displayed entries
                           rows.push(
                             <tr key={`subtotal-${prevCustomer}-${idx}`} className="bg-indigo-50 border-t-2 border-indigo-300">
-                              <td colSpan="5" className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-900 border-r border-neutral-300">
-                                Subtotal for {prevCustomer}:
+                              <td colSpan="5" className="px-2 lg:px-3 py-2 text-left text-xs lg:text-sm font-bold text-indigo-900 border-r border-neutral-300">
+                                <span className="sticky left-2">Subtotal for {prevCustomer}:</span>
                               </td>
                               <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalSales)}
@@ -1561,8 +1567,8 @@ const SalesLedgerPage = () => {
                         // Use full customer totals from customerGroups, not just displayed entries
                         rows.push(
                           <tr key={`subtotal-${prevCustomer}-final`} className="bg-indigo-50 border-t-2 border-indigo-300">
-                            <td colSpan="5" className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-900 border-r border-neutral-300">
-                              Subtotal for {prevCustomer}:
+                            <td colSpan="5" className="px-2 lg:px-3 py-2 text-left text-xs lg:text-sm font-bold text-indigo-900 border-r border-neutral-300">
+                              <span className="sticky left-2">Subtotal for {prevCustomer}:</span>
                             </td>
                             <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalSales)}
@@ -1613,13 +1619,13 @@ const SalesLedgerPage = () => {
                   </tr>
                 )}
               </tbody>
-              <tfoot className="bg-neutral-200 sticky bottom-0 border-t-2 border-neutral-400">
+              <tfoot className="bg-neutral-200 sticky bottom-0 z-40 border-t-2 border-neutral-400">
                 <tr className="bg-primary-50">
                   <td
                     colSpan="5"
-                    className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-900 border-r border-neutral-300"
+                    className="px-2 lg:px-3 py-2 text-left text-xs lg:text-sm font-bold text-neutral-900 border-r border-neutral-300"
                   >
-                    TOTALS (filtered)
+                    <span className="sticky left-2">TOTALS (filtered)</span>
                   </td>
                   <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalSales)}
@@ -1655,7 +1661,7 @@ const SalesLedgerPage = () => {
           </div>
 
           {/* Mobile Card View - Shown only on mobile */}
-          <div className="md:hidden flex-1 min-h-0 overflow-auto px-2 py-2 space-y-2">
+          <div className="md:hidden px-2 py-2 space-y-2">
             {displayedLedger.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
                 {ledgerLoadFailed ? ledgerLoadFailedNotice : (
@@ -1762,7 +1768,7 @@ const SalesLedgerPage = () => {
                           <button
                             type="button"
                             onClick={() => navigate(`/pos?editId=${entry.saleId}`, { state: { returnTo: location.pathname + location.search } })}
-                            className="p-2 rounded-md text-primary-600 hover:bg-primary-50"
+                            className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-md text-primary-600 hover:bg-primary-50"
                             title="Edit invoice"
                           >
                             <Pencil className="w-4 h-4" />
@@ -1771,7 +1777,7 @@ const SalesLedgerPage = () => {
                             type="button"
                             onClick={() => handleShareInvoiceWhatsApp(entry)}
                             disabled={sharingSaleId === entry.saleId}
-                            className="p-2 rounded-md text-success hover:bg-success-bg disabled:opacity-50"
+                            className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-md text-success hover:bg-success-bg disabled:opacity-50"
                             title="WhatsApp"
                           >
                             <MessageCircle className="w-4 h-4" />
@@ -1786,7 +1792,7 @@ const SalesLedgerPage = () => {
                             type="button"
                             onClick={() => openPaymentReceipt(entry.paymentId)}
                             disabled={!receiptUi.eligible}
-                            className="p-2 min-h-[44px] min-w-[44px] rounded-md text-primary-600 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="inline-flex items-center justify-center p-2 min-h-[44px] min-w-[44px] rounded-md text-primary-600 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed"
                             title={receiptUi.title}
                           >
                             <Printer className="w-4 h-4" />
@@ -1797,7 +1803,7 @@ const SalesLedgerPage = () => {
                             <button
                               type="button"
                               onClick={() => handleEditLedgerPayment(entry)}
-                              className="p-2 rounded-md text-indigo-600 hover:bg-indigo-50"
+                              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-md text-indigo-600 hover:bg-indigo-50"
                               title="Edit payment"
                             >
                               <Pencil className="w-4 h-4" />
@@ -1807,7 +1813,7 @@ const SalesLedgerPage = () => {
                             <button
                               type="button"
                               onClick={() => handleDeleteLedgerPayment(entry)}
-                              className="p-2 rounded-md text-error hover:bg-error-bg"
+                              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-md text-error hover:bg-error-bg"
                               title="Delete payment"
                             >
                               <Trash2 className="w-4 h-4" />
