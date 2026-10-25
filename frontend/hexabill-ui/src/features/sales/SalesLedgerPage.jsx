@@ -1219,25 +1219,27 @@ const SalesLedgerPage = () => {
         </div>
       )}
 
-      <div className="flex-shrink-0 px-2 md:px-4 py-1.5 bg-white border-b border-neutral-200 text-xs text-neutral-700 whitespace-nowrap overflow-x-auto scrollbar-hide md:whitespace-normal">
-        <span className="font-medium text-neutral-500 mr-2">Totals:</span>
-        Sales {formatCurrency(filteredSummary.totalSales)}
-        <span className="mx-1.5 text-neutral-300">|</span>
-        Returns {formatCurrency(filteredSummary.totalReturns ?? 0)}
-        <span className="mx-1.5 text-neutral-300">|</span>
-        Net {formatCurrency(filteredSummary.netSales ?? filteredSummary.totalSales)}
-        <span className="mx-1.5 text-neutral-300">|</span>
-        Received {formatCurrency(filteredSummary.totalPayments)}
-        <span className="mx-1.5 text-neutral-300">|</span>
-        Unpaid {formatCurrency(filteredSummary.totalRealPending)}
-        <span className="mx-1.5 text-neutral-300">|</span>
-        Balance {formatBalance(filteredSummary.pendingBalance)}
-        <span className="mx-1.5 text-neutral-300">|</span>
-        VAT {formatCurrency(filteredSummary.totalVat ?? 0)}
-        <span className="mx-1.5 text-neutral-300">|</span>
-        {filteredSummary.totalInvoices || 0} invoices
-        <span className="mx-1.5 text-neutral-300">|</span>
-        {filteredLedger.length} rows
+      <div className="flex-shrink-0 px-2 md:px-4 py-1.5 bg-white border-b border-neutral-200 text-xs text-neutral-700" aria-label="Ledger totals">
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 md:flex md:flex-wrap md:items-center md:gap-x-0">
+          <dt className="col-span-2 font-medium text-neutral-500 md:mr-2">Totals:</dt>
+          {[
+            ['Sales', formatCurrency(filteredSummary.totalSales)],
+            ['Returns', formatCurrency(filteredSummary.totalReturns ?? 0)],
+            ['Net', formatCurrency(filteredSummary.netSales ?? filteredSummary.totalSales)],
+            ['Received', formatCurrency(filteredSummary.totalPayments)],
+            ['Unpaid', formatCurrency(filteredSummary.totalRealPending)],
+            ['Balance', formatBalance(filteredSummary.pendingBalance)],
+            ['VAT', formatCurrency(filteredSummary.totalVat ?? 0)],
+            [null, `${filteredSummary.totalInvoices || 0} invoices`],
+            [null, `${filteredLedger.length} rows`]
+          ].map(([label, value], i) => (
+            <dd key={label || value} className="flex justify-between gap-1 min-w-0 md:block">
+              {i > 0 && <span className="hidden md:inline mx-1.5 text-neutral-300">|</span>}
+              {label && <span className="text-neutral-500 md:text-inherit">{label} </span>}
+              <span className="font-medium md:font-normal">{value}</span>
+            </dd>
+          ))}
+        </dl>
       </div>
 
       {/* Table - Scrollable (fills remaining viewport height) */}
