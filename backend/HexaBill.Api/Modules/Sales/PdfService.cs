@@ -322,7 +322,7 @@ namespace HexaBill.Api.Modules.Sales
                                             .FontFamily(_arabicFont)
                                             .DirectionFromRightToLeft()
                                             .AlignCenter();
-                                        nameCol.Item().PaddingTop(2).Text($"Mob: {settings.CompanyPhone}, {settings.CompanyAddress}")
+                                        nameCol.Item().PaddingTop(2).Text(ContactLine(settings, ", "))
                                             .FontSize(12)
                                             .Bold()
                                             .AlignCenter();
@@ -742,7 +742,7 @@ namespace HexaBill.Api.Modules.Sales
                                         nameCol.Item().Text(settings.CompanyNameEn.ToUpper()).FontSize(isA5 ? 12 : 18).Bold().AlignCenter();
                                         nameCol.Item().PaddingTop(1).Text(settings.CompanyNameAr).FontSize(isA5 ? 10 : 16).Bold()
                                             .FontFamily(_arabicFont).DirectionFromRightToLeft().AlignCenter();
-                                        nameCol.Item().PaddingTop(2).Text($"Mob: {settings.CompanyPhone}, {settings.CompanyAddress}")
+                                        nameCol.Item().PaddingTop(2).Text(ContactLine(settings, ", "))
                                             .FontSize(isA5 ? 8 : 12).Bold().AlignCenter();
                                     });
                                     headerRow.ConstantItem(isA5 ? 60 : 80).AlignRight().AlignMiddle()
@@ -896,7 +896,7 @@ namespace HexaBill.Api.Modules.Sales
                                     if (!string.IsNullOrEmpty(settings.CompanyNameAr))
                                         c.Item().Text(settings.CompanyNameAr).FontSize(9).Bold().FontFamily(_arabicFont).DirectionFromRightToLeft().AlignCenter();
                                     c.Item().Text(string.IsNullOrEmpty(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)) ? "" : $"TRN: {HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)}").FontSize(7);
-                                    c.Item().Text($"Mob: {settings.CompanyPhone} | {settings.CompanyAddress}").FontSize(6);
+                                    c.Item().Text(ContactLine(settings, " | ")).FontSize(6);
                                 });
                             }
                             else
@@ -1018,6 +1018,8 @@ namespace HexaBill.Api.Modules.Sales
                         {
                             column.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(9).Bold();
                             column.Item().AlignCenter().Text(string.IsNullOrEmpty(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)) ? "" : $"TRN: {HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)}").FontSize(6);
+                            if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                                column.Item().AlignCenter().Text($"Mob: {settings.CompanyPhone.Trim()}").FontSize(5);
                             column.Item().AlignCenter().Text(settings.CompanyAddress ?? "").FontSize(5);
                         }
                         column.Item().AlignCenter().Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn, sale.InvoiceDate, settings.VatEffectiveDate)).FontSize(8).Bold();
@@ -1057,6 +1059,8 @@ namespace HexaBill.Api.Modules.Sales
                         {
                             column.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(7).Bold();
                             column.Item().AlignCenter().Text(string.IsNullOrEmpty(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)) ? "" : $"TRN:{HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)}").FontSize(5);
+                            if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                                column.Item().AlignCenter().Text($"Mob: {settings.CompanyPhone.Trim()}").FontSize(4.5f);
                         }
                         column.Item().AlignCenter().Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn, sale.InvoiceDate, settings.VatEffectiveDate)).FontSize(6).Bold();
                         column.Item().AlignCenter().Text($"{sale.InvoiceNo} {invoiceDateStr}").FontSize(5);
@@ -1271,6 +1275,15 @@ namespace HexaBill.Api.Modules.Sales
         }
 
         /// <summary>Logo box (width, height, column width) in points for the bilingual letterhead.</summary>
+        /// <summary>P0-PRINT-005: "Mob: phone, address" from the tenant's saved settings; omits the phone part (and its label) when unset.</summary>
+        private static string ContactLine(InvoiceTemplateService.CompanySettings settings, string separator, string label = "Mob: ")
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(settings.CompanyPhone)) parts.Add(label + settings.CompanyPhone.Trim());
+            if (!string.IsNullOrWhiteSpace(settings.CompanyAddress)) parts.Add(settings.CompanyAddress.Trim());
+            return string.Join(separator, parts);
+        }
+
         internal static (float Width, float Height, float Column) LetterheadLogoBox(bool a4Letterhead, float fontSize)
         {
             if (a4Letterhead) return (172f, 62f, 180f);
@@ -1333,8 +1346,9 @@ namespace HexaBill.Api.Modules.Sales
                     en.Item().Text(title.ToUpperInvariant()).FontFamily(_englishFont).FontSize(nameSize).Bold();
                     if (!string.IsNullOrWhiteSpace(subtitle))
                         en.Item().Text(subtitle.ToUpperInvariant()).FontFamily(_englishFont).FontSize(a4Letterhead ? 8.5f : detailSize).SemiBold();
-                    if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(settings.CompanyPhone))
-                        en.Item().PaddingTop(1).Text($"Mob: {settings.CompanyPhone}").FontFamily(_englishFont).FontSize(detailSize);
+                    // P0-PRINT-005: every tenant prints its own saved phone (FrozenHub included); no line when unset.
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                        en.Item().PaddingTop(1).Text($"Mob: {settings.CompanyPhone.Trim()}").FontFamily(_englishFont).FontSize(detailSize);
                     if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(settings.CompanyEmail))
                         en.Item().Text(settings.CompanyEmail).FontFamily(_englishFont).FontSize(detailSize);
                     if (!string.IsNullOrWhiteSpace(printedAddress))
@@ -1481,7 +1495,7 @@ if (hasLogo)
                         {
                             col.Item().Text(settings.CompanyNameEn.ToUpper()).FontSize(16).Bold().AlignCenter();
                             col.Item().PaddingTop(1).Text(settings.CompanyNameAr).FontSize(10).AlignCenter();
-                            var contactInfo = $"Mob : {settings.CompanyPhone}, {settings.CompanyAddress}";
+                            var contactInfo = ContactLine(settings, ", ", "Mob : ");
                             col.Item().PaddingTop(1).Text(contactInfo).FontSize(9).AlignCenter();
                         });
                         headerRow.ConstantItem(140).AlignRight().AlignMiddle().Column(col =>
@@ -1497,7 +1511,7 @@ if (hasLogo)
                         .FontSize(18).Bold().AlignCenter();
                     innerColumn.Item().PaddingTop(2).Text(settings.CompanyNameAr)
                         .FontSize(10).AlignCenter();
-                    var contactInfo = $"Mob : {settings.CompanyPhone}, {settings.CompanyAddress}";
+                    var contactInfo = ContactLine(settings, ", ", "Mob : ");
                     innerColumn.Item().PaddingTop(2).Text(contactInfo).FontSize(9).AlignCenter();
                     innerColumn.Item().PaddingTop(2).Row(trnDateRow =>
                     {

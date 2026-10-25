@@ -54,7 +54,7 @@ public class FrozenHubHeaderReproTests
         var all = Normalized(document);
         Assert.Contains("FROZENHUB", all);
         Assert.Contains(CreateSale(items).GrandTotal.ToString("0.00"), all);
-        Assert.DoesNotContain("+971500000000", all);
+        Assert.Contains("+971500000000", all); // P0-PRINT-005: tenant's saved phone prints
     }
 
     [Theory]
@@ -120,7 +120,7 @@ public class FrozenHubHeaderReproTests
             .Where(g => string.Concat(g.OrderBy(l => l.StartBaseLine.X).Select(l => l.Value)).Contains("Musaffah17")).ToList();
         Assert.NotEmpty(address);
         Assert.Contains(address, g => string.Concat(g.OrderBy(l => l.StartBaseLine.X).Select(l => l.Value)).Contains("AbuDhabiMusaffah17"));
-        Assert.DoesNotContain("+971500000000", page.Text);
+        Assert.Contains("+971500000000", page.Text); // P0-PRINT-005
     }
 
     [Theory]
