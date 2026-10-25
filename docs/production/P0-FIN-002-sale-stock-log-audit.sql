@@ -19,20 +19,28 @@ lines AS (   -- expected deduction per sale/product, in base units (0 for delete
     WHERE params.tenant_id IS NULL OR s."TenantId" = params.tenant_id
     GROUP BY s."Id", s."TenantId", s."InvoiceNo", s."IsDeleted", s."IsFinalized", si."ProductId"
 ),
-moves AS (   -- every movement linked to the sale: create/edit (Sale), edit reversal (Sale, +), delete reversal
-    SELECT it."RefId" AS sale_id, it."ProductId",
+moves AS (   -- movements linked to the sale, scoped to the SAME tenant and to sale-related types only:
+             -- create/edit (Sale), edit reversal (Sale, +), linked delete reversal (Adjustment, same invoice).
+             -- (RefId alone is not unique: Purchase/Return/other-tenant rows can share the id -> false positives.)
+    SELECT s."Id" AS sale_id, it."ProductId",
            SUM(it."ChangeQty") AS net_change,
            SUM(CASE WHEN it."ChangeQty" < 0 THEN -it."ChangeQty" ELSE 0 END) AS gross_deducted,
            COUNT(*) FILTER (WHERE it."Reason" LIKE 'Sale Updated:%') AS edit_rows,
            COUNT(*) AS movement_rows
     FROM "InventoryTransactions" it
+    JOIN "Sales" s ON s."Id" = it."RefId"
+                  AND s."TenantId" = COALESCE(it."TenantId", it."OwnerId")
     WHERE it."RefId" IS NOT NULL
-    GROUP BY it."RefId", it."ProductId"
+      AND (it."TransactionType" = 'Sale'
+           OR (it."TransactionType" = 'Adjustment'
+               AND it."Reason" = 'Sale Deleted/Canceled: ' || s."InvoiceNo"))
+    GROUP BY s."Id", it."ProductId"
 ),
 unlinked_delete_reversals AS (  -- pre-d17c362 delete reversals had RefId NULL; match them by reason text
     SELECT s."Id" AS sale_id, it."ProductId", SUM(it."ChangeQty") AS qty
     FROM "InventoryTransactions" it
-    JOIN "Sales" s ON s."TenantId" = it."TenantId"
+    JOIN "Sales" s ON s."TenantId" = COALESCE(it."TenantId", it."OwnerId")
+                  AND it."TransactionType" = 'Adjustment'
                   AND it."Reason" = 'Sale Deleted/Canceled: ' || s."InvoiceNo"
     WHERE it."RefId" IS NULL
     GROUP BY s."Id", it."ProductId"
