@@ -3509,11 +3509,11 @@ if (hasLogo)
                 var secondAddress = string.IsNullOrWhiteSpace(agreement.SecondPartyAddress) ? blank : agreement.SecondPartyAddress!.Trim();
                 var secondMobile = string.IsNullOrWhiteSpace(agreement.SecondPartyMobile) ? blank : agreement.SecondPartyMobile!.Trim();
                 var whereas = string.IsNullOrWhiteSpace(agreement.WhereasText)
-                    ? HexaBill.Api.Modules.Documents.AgreementTemplate.Whereas(secondName)
+                    ? HexaBill.Api.Modules.Documents.AgreementTemplate.Whereas(secondName, agreement.FirstPartyName)
                     : agreement.WhereasText;
                 var clauses = (agreement.Clauses != null && agreement.Clauses.Count > 0)
                     ? agreement.Clauses
-                    : HexaBill.Api.Modules.Documents.AgreementTemplate.BuildClauses().ToList();
+                    : HexaBill.Api.Modules.Documents.AgreementTemplate.BuildClauses(agreement.FirstPartyName).ToList();
                 var hasLogo = settings?.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                 var letterheadOnly = settings?.LetterheadOnlyPrint == true;
                 var useOrangeLetterhead = settings != null && !letterheadOnly && IsZayogaBrand(settings);
@@ -3667,14 +3667,15 @@ if (hasLogo)
                     "issued upon the request of the above-mentioned employee and does not in no way and under no " +
                     "circumstances constitute any financial responsibility guarantee and/or liability towards the " +
                     "payment of any loan amount(S) to you from our part.";
-                var companyName = string.IsNullOrWhiteSpace(certificate.CompanyName)
-                    ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.CompanyName
-                    : certificate.CompanyName;
+                // P0-PRINT-010: blank company name prints nothing (never the ZAYOGA identity). Zayoga's own signatory
+                // and footer defaults apply only when the certificate already carries the Zayoga company name.
+                var companyName = (certificate.CompanyName ?? "").Trim();
+                var isZayogaCertificate = string.Equals(companyName, HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.CompanyName, StringComparison.OrdinalIgnoreCase);
                 var signatoryName = string.IsNullOrWhiteSpace(certificate.SignatoryName)
-                    ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.DefaultSignatoryName
+                    ? (isZayogaCertificate ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.DefaultSignatoryName : "")
                     : certificate.SignatoryName;
                 var signatoryTitle = string.IsNullOrWhiteSpace(certificate.SignatoryTitle)
-                    ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.DefaultSignatoryTitle
+                    ? (isZayogaCertificate ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.DefaultSignatoryTitle : "")
                     : certificate.SignatoryTitle;
                 var hasLogo = settings?.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                 var letterheadOnly = settings?.LetterheadOnlyPrint == true;
@@ -3763,7 +3764,7 @@ if (hasLogo)
                                 col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
                                 col.Item().PaddingTop(6).AlignCenter().Text(companyName).Bold().FontSize(7);
                                 var footerAddr = string.IsNullOrWhiteSpace(certificate.FooterAddress)
-                                    ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.FooterAddress
+                                    ? (isZayogaCertificate ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.FooterAddress : "")
                                     : certificate.FooterAddress;
                                 col.Item().PaddingTop(2).AlignCenter().Text(footerAddr).FontSize(7);
                             });
