@@ -1822,6 +1822,21 @@ namespace HexaBill.Api.Modules.Sales
                                 {
                                     await _context.Entry(product).ReloadAsync();
                                 }
+
+                                // P0-FIN-002: log the restore. Without this row the movement log kept the old
+                                // deduction and gained a new "Sale Updated" one on every edit, so it no longer
+                                // summed to StockQty (invoice 1791254857: -4 at create, -4 per edit).
+                                _context.InventoryTransactions.Add(new InventoryTransaction
+                                {
+                                    OwnerId = tenantId,
+                                    TenantId = tenantId,
+                                    ProductId = product.Id,
+                                    ChangeQty = oldBaseQty,
+                                    TransactionType = TransactionType.Sale,
+                                    RefId = saleId,
+                                    Reason = $"Sale Edit Reversal: {existingSale.InvoiceNo}",
+                                    CreatedAt = DateTime.UtcNow
+                                });
                             }
                         }
                     }
