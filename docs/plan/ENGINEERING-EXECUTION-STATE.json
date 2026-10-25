@@ -1,0 +1,17 @@
+{
+  "updated": "2026-10-25T19:25+05:30",
+  "integration_branch": "integration/2026-10-25",
+  "integration_tip_before_this_commit": "cc4468ed",
+  "pushed": false,
+  "production_live": "a0af6ae7",
+  "tasks": {
+    "P0-PRINT-004": {"owner": "Print", "status": "FIXED_LOCAL", "evidence": "root cause: empty 18pt spacer row on 3-item A4 (b7e45a9); repro tests in 4786fda; 203/203 print tests reported by Print", "qa": "pending"},
+    "P0-PRINT-005/006": {"owner": "Print", "status": "FIXED_LOCAL", "commits": ["4786fda", "f6126d6"], "qa": "pending"},
+    "VAT-001": {"owner": "Billing", "status": "FIXED_LOCAL", "blocker": "VAT_EFFECTIVE_DATE for tenants 20/23 needs owner approval (BLOCKED_EXTERNAL)"},
+    "P0-NUM-001": {"owner": "Billing", "status": "REPRODUCED", "note": "literal 00000 start for tenants 22/23 in progress; 3fcf026 unique index held for backup+approval"},
+    "P0-FIN-002": {"owner": "Billing", "status": "REPRODUCED", "note": "edit path re-logs stock movements; stock levels correct; d17c362 not merged"},
+    "UX-003": {"owner": "UI/UX", "status": "FIXED_LOCAL", "commits": ["4e560d1b", "4e5d3366"], "qa": "pending"},
+    "MIG-STARPLUS": {"owner": "Migration", "status": "UNTESTED", "note": "batch 2 staging result lost in box restart; rebuild in progress; 4 owner decisions open"},
+    "OPS-BACKUP": {"owner": "Lead", "status": "BLOCKED_EXTERNAL", "note": "production Postgres PITR/backup unconfirmed; Vercel team access 403"}
+  }
+}
