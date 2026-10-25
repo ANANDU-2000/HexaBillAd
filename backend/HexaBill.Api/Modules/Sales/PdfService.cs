@@ -532,7 +532,9 @@ namespace HexaBill.Api.Modules.Sales
 
                                 // Pin signature / Pending near A4 page bottom after short tables, lifted slightly off the
                                 // margin (client request). ShowEntire keeps the block on one page instead of splitting it.
-                                innerColumn.Item().ExtendVertical().AlignBottom().PaddingTop(1).PaddingBottom(20).ShowEntire().Column(footerCol =>
+                                // P0-PRINT-003: receiver block follows the totals (old-bill style) instead of being pushed to the page bottom,
+                                // leaving the writable space below the signature lines.
+                                innerColumn.Item().PaddingTop(28).PaddingBottom(20).ShowEntire().Column(footerCol =>
                                 {
                                     // Acknowledgement text
                                     footerCol.Item().AlignLeft().Text("Received the above goods in good order")
@@ -1328,7 +1330,7 @@ namespace HexaBill.Api.Modules.Sales
                     ar.Spacing(1);
                     if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
                         ar.Item().AlignRight().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
-                            .FontSize(a4Letterhead ? 14f : nameSize).Bold().DirectionFromRightToLeft();
+                            .FontSize(a4Letterhead ? (settings.CompanyNameAr.Length > 28 ? 12f : 14f) : nameSize).Bold().DirectionFromRightToLeft();
                     if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(settings.CompanyPhone))
                         ar.Item().PaddingTop(1).AlignRight().Text(text =>
                         {
@@ -1341,12 +1343,19 @@ namespace HexaBill.Api.Modules.Sales
                         ar.Item().AlignRight().Text($"البريد الإلكتروني: {settings.CompanyEmail}").FontFamily(_arabicFont)
                             .FontSize(detailSize).DirectionFromRightToLeft();
                     if (!string.IsNullOrWhiteSpace(printedAddress))
-                        ar.Item().AlignRight().Text($"العنوان: {printedAddress}").FontFamily(_arabicFont)
-                            .FontSize(detailSize).DirectionFromRightToLeft();
+                        ar.Item().AlignRight().ContentFromRightToLeft().Text(text =>
+                        {
+                            // Isolate the Latin address so bidi keeps "العنوان:" before it (right side) in RTL order.
+                            text.Span("العنوان: ").FontFamily(_arabicFont).FontSize(detailSize);
+                            text.Span($"\u2066{printedAddress}\u2069").FontFamily(_englishFont).FontSize(detailSize);
+                        });
                     var vatTrn = HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn);
                     if (!string.IsNullOrWhiteSpace(vatTrn) && (a4Letterhead || a5Letterhead))
-                        ar.Item().AlignRight().Text($"الرقم الضريبي: {vatTrn}").FontFamily(_arabicFont)
-                            .FontSize(taxSize).DirectionFromRightToLeft();
+                        ar.Item().AlignRight().ContentFromRightToLeft().Text(text =>
+                        {
+                            text.Span("الرقم الضريبي: ").FontFamily(_arabicFont).FontSize(taxSize);
+                            text.Span($"\u2066{vatTrn}\u2069").FontFamily(_englishFont).FontSize(taxSize);
+                        });
                 });
 
                 var letterhead = a4Letterhead || a5Letterhead;
