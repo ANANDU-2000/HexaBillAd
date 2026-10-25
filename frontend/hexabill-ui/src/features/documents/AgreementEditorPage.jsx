@@ -3,7 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Save, Download, Printer } from 'lucide-react'
 import { agreementsAPI } from '../../services/documentsApi'
 import { getSetting } from '../../utils/settingsKeys'
-import BackLink from '../../components/ui/BackLink'
+import { localDateString } from '../../utils/dateFormat'
+import { useAuthedImageSrc } from '../../utils/useAuthedImageSrc'
+import BackLink from '../../components/ui/BackLink'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 
 function downloadBlob(blob, filename) {
@@ -32,7 +34,7 @@ export default function AgreementEditorPage() {
   const isEdit = Boolean(id)
   const navigate = useNavigate()
   const [agreementNo, setAgreementNo] = useState('')
-  const [agreementDate, setAgreementDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [agreementDate, setAgreementDate] = useState(() => localDateString())
   const [status, setStatus] = useState('Draft')
   const [secondPartyName, setSecondPartyName] = useState('')
   const [secondPartyLicense, setSecondPartyLicense] = useState('')
@@ -55,6 +57,8 @@ export default function AgreementEditorPage() {
   const [error, setError] = useState('')
   const [baseline, setBaseline] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
+  // UIX-003: tenant storage logos need the auth header, so load them through the API client.
+  const logoSrc = useAuthedImageSrc(logoUrl)
   const [autoSaveStatus, setAutoSaveStatus] = useState('')
   const autoSaveTimer = useRef(null)
   const persistRef = useRef(null)
@@ -134,7 +138,7 @@ export default function AgreementEditorPage() {
 
   const applyDto = (a, { setClean = false } = {}) => {
     const next = {
-      agreementDate: String(a.agreementDate || '').slice(0, 10) || new Date().toISOString().slice(0, 10),
+      agreementDate: String(a.agreementDate || '').slice(0, 10) || localDateString(),
       status: a.status || 'Draft',
       secondPartyName: a.secondPartyName || '',
       secondPartyLicense: a.secondPartyLicense || '',
@@ -379,8 +383,8 @@ export default function AgreementEditorPage() {
 
         <div className="border rounded-lg bg-white p-5 md:p-6 max-w-[210mm] mx-auto xl:mx-0 shadow-sm">
           <div className="flex items-start gap-2 mb-4 pb-3">
-            {logoUrl ? (
-              <img src={logoUrl} alt="" className="h-10 w-10 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+            {logoSrc ? (
+              <img src={logoSrc} alt="" className="h-10 w-10 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
             ) : null}
             <div className="flex-1 text-center text-[#E67E22] font-bold text-sm uppercase tracking-wide leading-relaxed">
               {first.firstPartyName || 'First Party'}

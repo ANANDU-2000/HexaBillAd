@@ -7,8 +7,10 @@ import { productsAPI, settingsAPI } from '../../services/index'
 import { calcQuoteLine, calcQuoteTotals } from '../../utils/quoteMath'
 import QuotationProductDrawer from '../../components/QuotationProductDrawer'
 import { getSetting, getSettingBool } from '../../utils/settingsKeys'
+import { localDateString } from '../../utils/dateFormat'
+import { useAuthedImageSrc } from '../../utils/useAuthedImageSrc'
 import { useBranding } from '../../tenant/TenantBrandingContext'
-import BackLink from '../../components/ui/BackLink'
+import BackLink from '../../components/ui/BackLink'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 
 /** productsAPI returns ApiResponse; list is often nested as data.items (paged) or data (array). */
@@ -67,7 +69,7 @@ export default function QuotationEditorPage() {
   const isEdit = Boolean(id)
   const navigate = useNavigate()
   const [quoteNo, setQuoteNo] = useState('Quote-…')
-  const [quoteDate, setQuoteDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [quoteDate, setQuoteDate] = useState(() => localDateString())
   const [customerName, setCustomerName] = useState('')
   const [customerAddress, setCustomerAddress] = useState('')
   const [status, setStatus] = useState('Draft')
@@ -91,6 +93,9 @@ export default function QuotationEditorPage() {
     logoUrl: '',
     letterheadOnly: false,
   })
+
+  // UIX-003: the logo is a tenant storage URL, so it must load with the auth header.
+  const companyLogoSrc = useAuthedImageSrc(company.logoUrl)
 
   const [drawerRow, setDrawerRow] = useState(null)
   const autoSaveTimer = useRef(null)
@@ -270,7 +275,7 @@ export default function QuotationEditorPage() {
           if (cancelled) return
           setQuoteNo(res?.data || res || 'Quote-1')
           const next = {
-            quoteDate: new Date().toISOString().slice(0, 10),
+            quoteDate: localDateString(),
             customerName: '',
             customerAddress: '',
             status: 'Draft',
@@ -691,8 +696,8 @@ export default function QuotationEditorPage() {
           <div className="flex justify-between items-start gap-3 mb-3">
             {!company.letterheadOnly ? (
               <div className="flex gap-2 min-w-0 flex-1">
-                {company.logoUrl ? (
-                  <img src={company.logoUrl} alt="" className="h-10 w-10 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                {companyLogoSrc ? (
+                  <img src={companyLogoSrc} alt="" className="h-10 w-10 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
                 ) : null}
                 <div className="text-center flex-1 min-w-0">
                   <div className="font-bold text-xs uppercase leading-tight">{company.name || 'Company'}</div>
@@ -759,8 +764,8 @@ export default function QuotationEditorPage() {
           <p className="text-xs mt-4">{closingLine}</p>
           {!company.letterheadOnly ? (
             <div className="mt-8 ml-auto w-40 text-center text-xs">
-              {company.logoUrl ? (
-                <img src={company.logoUrl} alt="" className="h-8 mx-auto object-contain mb-1" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+              {companyLogoSrc ? (
+                <img src={companyLogoSrc} alt="" className="h-8 mx-auto object-contain mb-1" onError={(e) => { e.currentTarget.style.display = 'none' }} />
               ) : (
                 <div className="h-8" />
               )}

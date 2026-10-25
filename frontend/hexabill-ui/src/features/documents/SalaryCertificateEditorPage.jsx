@@ -3,8 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Save, Download, Printer } from 'lucide-react'
 import { salaryCertificatesAPI } from '../../services/documentsApi'
 import { getSetting } from '../../utils/settingsKeys'
+import { localDateString } from '../../utils/dateFormat'
+import { useAuthedImageSrc } from '../../utils/useAuthedImageSrc'
 import { amountToWordsUpper } from '../../utils/amountToWords'
-import BackLink from '../../components/ui/BackLink'
+import BackLink from '../../components/ui/BackLink'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 
 function downloadBlob(blob, filename) {
@@ -47,7 +49,7 @@ export default function SalaryCertificateEditorPage() {
   const isEdit = Boolean(id)
   const navigate = useNavigate()
   const [certificateNo, setCertificateNo] = useState('')
-  const [certificateDate, setCertificateDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [certificateDate, setCertificateDate] = useState(() => localDateString())
   const [status, setStatus] = useState('Draft')
   const [recipient, setRecipient] = useState('')
   const [employeeName, setEmployeeName] = useState('')
@@ -72,6 +74,8 @@ export default function SalaryCertificateEditorPage() {
   const [error, setError] = useState('')
   const [baseline, setBaseline] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
+  // UIX-003: tenant storage logos need the auth header, so load them through the API client.
+  const logoSrc = useAuthedImageSrc(logoUrl)
   const [autoSaveStatus, setAutoSaveStatus] = useState('')
   /** Track if user manually edited words so we don't overwrite their custom text */
   const wordsTouchedRef = useRef(false)
@@ -174,7 +178,7 @@ export default function SalaryCertificateEditorPage() {
 
   const applyDto = (a, { setClean = false } = {}) => {
     const next = {
-      certificateDate: String(a.certificateDate || '').slice(0, 10) || new Date().toISOString().slice(0, 10),
+      certificateDate: String(a.certificateDate || '').slice(0, 10) || localDateString(),
       status: a.status || 'Draft',
       recipient: a.recipient || '',
       employeeName: a.employeeName || '',
@@ -592,9 +596,9 @@ export default function SalaryCertificateEditorPage() {
 
         <div className="border rounded-lg bg-white p-5 md:p-6 max-w-[210mm] mx-auto xl:mx-0 shadow-sm">
           <div className="flex items-start gap-3 mb-5 pb-3 border-b border-orange-400">
-            {logoUrl ? (
+            {logoSrc ? (
               <img
-                src={logoUrl}
+                src={logoSrc}
                 alt=""
                 className="h-10 w-10 object-contain shrink-0"
                 onError={(e) => {

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
 import {
   User,
   Mail,
@@ -10,12 +9,10 @@ import {
   Lock,
   CheckCircle,
   AlertCircle,
-  History,
   Camera,
   Globe
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
-import { isAdminOrOwner } from '../../utils/roles'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import Modal from '../../components/Modal'
 import { LoadingCard } from '../../components/Loading'
@@ -33,7 +30,6 @@ const LANGUAGES = [
 const ProfilePage = () => {
   const { user: currentUser, updateUser } = useAuth()
   const { companyName } = useBranding()
-  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [profile, setProfile] = useState(null)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -329,25 +325,6 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        {isAdminOrOwner(currentUser) && (
-          <div className="bg-white rounded-lg border-2 border-error-border shadow-sm p-4">
-            <h3 className="text-sm font-bold text-red-900 uppercase tracking-wider flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              Danger zone
-            </h3>
-            <p className="text-sm text-error-fg mt-1 mb-3">
-              Reset company data: wipe sales, purchases, expenses. Keeps users, products, customers; resets stock and balances.
-            </p>
-            <button
-              type="button"
-              onClick={() => navigate('/settings', { state: { tab: 'backup' } })}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-error bg-white border-2 border-red-300 rounded-lg hover:bg-error-bg transition-colors"
-            >
-              <History className="h-4 w-4" />
-              Clear all data
-            </button>
-          </div>
-        )}
       </div>
 
       <Modal
