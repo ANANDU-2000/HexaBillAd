@@ -326,9 +326,9 @@ const SuperAdminDashboard = () => {
                           if (!err?._handledByInterceptor) toast.error(err?.response?.data?.message || 'Impersonation failed')
                         }
                       }}
-                      className="px-2 py-1 text-xs font-medium bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                      className="px-2 py-1 text-xs font-medium bg-primary-600 text-white rounded hover:bg-primary-700"
                     >
-                      Impersonate
+                      Open read-only support
                     </button>
                     <button
                       type="button"

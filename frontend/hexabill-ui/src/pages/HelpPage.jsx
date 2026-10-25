@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { 
   HelpCircle, 
   BookOpen, 
-  MessageCircle, 
   Mail, 
   Phone, 
   Search,
@@ -89,12 +88,6 @@ const HelpPage = () => {
       title: 'Phone Support (India)',
       description: '+91 75919 99365',
       action: 'tel:+917591999365'
-    },
-    {
-      icon: <MessageCircle className="h-5 w-5" />,
-      title: 'Live Chat',
-      description: 'Available 9 AM - 6 PM GST',
-      action: '#'
     }
   ]
 

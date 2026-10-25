@@ -54,6 +54,7 @@ import toast from 'react-hot-toast'
 import { Input, Select } from '../components/Form'
 import ConfirmDangerModal from '../components/ConfirmDangerModal'
 import { isValidTenantSlug } from '../tenant/tenantHost'
+import { localDateString } from '../utils/dateFormat'
 import { TabNavigation } from '../components/ui'
 import ErrorState from '../components/ui/ErrorState'
 
@@ -319,7 +320,7 @@ const SuperAdminTenantDetailPage = () => {
       const blob = res.data
       const disp = res.headers?.['content-disposition']
       const match = disp && /filename[*]?=(?:UTF-8'')?"?([^";\n]+)"?/i.exec(disp)
-      const filename = match ? decodeURIComponent(match[1].trim()) : `export_tenant_${id}_${new Date().toISOString().slice(0, 10)}.zip`
+      const filename = match ? decodeURIComponent(match[1].trim()) : `export_tenant_${id}_${localDateString()}.zip`
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -2135,7 +2136,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
   const [featuresSaving, setFeaturesSaving] = useState(false)
   const [vatBasis, setVatBasis] = useState('SalesBased')
   const [vatBasisDraft, setVatBasisDraft] = useState('SalesBased')
-  const [vatEffectiveFrom, setVatEffectiveFrom] = useState(() => new Date().toISOString().slice(0, 10))
+  const [vatEffectiveFrom, setVatEffectiveFrom] = useState(() => localDateString())
   const [vatBasisSaving, setVatBasisSaving] = useState(false)
 
   // Define available system features
