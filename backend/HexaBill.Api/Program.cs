@@ -372,6 +372,7 @@ builder.Services.AddScoped<IAlertService, AlertService>();
 builder.Services.AddScoped<IProductSeedService, ProductSeedService>();
 builder.Services.AddScoped<IResetService, ResetService>();
 builder.Services.AddScoped<IInvoiceNumberService, InvoiceNumberService>();
+builder.Services.AddScoped<IInvoiceRenumberService, InvoiceRenumberService>();
 builder.Services.AddScoped<IValidationService, ValidationService>();
 builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>(); // Owner-specific company settings
