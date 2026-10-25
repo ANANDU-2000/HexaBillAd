@@ -14,7 +14,7 @@ const Input = forwardRef(({
   ...props
 }, ref) => {
   const inputId = props.id || (props.name ? `input-${props.name}` : undefined)
-  const height = size === 'sm' ? 'min-h-[32px]' : 'min-h-[36px]'
+  const height = size === 'sm' ? 'min-h-11 lg:min-h-[32px]' : 'min-h-11 lg:min-h-[36px]'
   return (
     <div className="space-y-1">
       {label && (
@@ -37,7 +37,7 @@ const Input = forwardRef(({
           id={inputId}
           aria-invalid={!!error}
           aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined}
-          className={`block w-full ${icon ? 'pl-9' : 'px-3'} pr-8 ${height} bg-white border rounded-md text-sm text-neutral-900 placeholder:text-neutral-400
+          className={`block w-full ${icon ? 'pl-9' : 'px-3'} pr-8 ${height} bg-white border rounded-md text-base lg:text-sm text-neutral-900 placeholder:text-neutral-400
             focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
             disabled:bg-neutral-50 disabled:text-neutral-500 read-only:bg-neutral-50
             ${error ? 'border-error focus:ring-error focus:border-error' : success ? 'border-success' : 'border-neutral-300'} ${className}`}
