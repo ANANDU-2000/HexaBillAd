@@ -912,54 +912,76 @@ namespace HexaBill.Api.Modules.Sales
                             });
                             inner.Item().Text($"Customer: {sale.CustomerName ?? "Cash Customer"}").FontSize(7);
 
-                            // Items table - 5 columns to prevent overflow: # | Item | Qty | Total | VAT
+                            // P0-PRINT-004: A5 carries the same invoice content as A4 (unit, unit price, words, receiver block).
+                            // # | Item | Unit | Qty | Unit Price | VAT | Amount
+                            const int a5Span = 6;
                             inner.Item().PaddingTop(2).Border(0.5f).Table(table =>
                             {
                                 table.ColumnsDefinition(c =>
                                 {
-                                    c.ConstantColumn(16);     // #
+                                    c.ConstantColumn(12);     // #
                                     c.RelativeColumn(4);      // Item
-                                    c.ConstantColumn(24);     // Qty
-                                    c.ConstantColumn(38);     // Total
-                                    c.ConstantColumn(32);     // VAT 5%
+                                    c.ConstantColumn(20);     // Unit
+                                    c.ConstantColumn(18);     // Qty
+                                    c.ConstantColumn(30);     // Unit Price
+                                    c.ConstantColumn(26);     // VAT
+                                    c.ConstantColumn(34);     // Amount
                                 });
                                 table.Header(h =>
                                 {
                                     h.Cell().Border(0.5f).Padding(2).AlignCenter().Text("#").FontSize(6);
                                     h.Cell().Border(0.5f).Padding(2).AlignLeft().Text("Item").FontSize(6);
+                                    h.Cell().Border(0.5f).Padding(2).AlignCenter().Text("Unit").FontSize(6);
                                     h.Cell().Border(0.5f).Padding(2).AlignCenter().Text("Qty").FontSize(6);
-                                    h.Cell().Border(0.5f).Padding(2).AlignRight().Text("Total").FontSize(6);
+                                    h.Cell().Border(0.5f).Padding(2).AlignRight().Text("Unit Price").FontSize(6);
                                     h.Cell().Border(0.5f).Padding(2).AlignRight().Text("VAT 5%").FontSize(6);
+                                    h.Cell().Border(0.5f).Padding(2).AlignRight().Text("Amount").FontSize(6);
                                 });
                                 if (sale.Items != null)
                                 {
                                     for (int i = 0; i < sale.Items.Count; i++)
                                     {
                                         var item = sale.Items[i];
-                                        table.Cell().Border(0.5f).Padding(2).AlignCenter().Text((i + 1).ToString()).FontSize(6);
-                                        table.Cell().Border(0.5f).Padding(2).AlignLeft().Text(item.ProductName ?? "").FontSize(6);
-                                        table.Cell().Border(0.5f).Padding(2).AlignCenter().Text(item.Qty.ToString("0.##")).FontSize(6);
-                                        table.Cell().Border(0.5f).Padding(2).AlignRight().Text(item.LineTotal.ToString("0.00")).FontSize(6);
-                                        table.Cell().Border(0.5f).Padding(2).AlignRight().Text(item.VatAmount.ToString("0.00")).FontSize(6);
+                                        table.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(2).AlignCenter().Text((i + 1).ToString()).FontSize(6);
+                                        table.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(2).AlignLeft().Text(item.ProductName ?? "").FontSize(6);
+                                        table.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(2).AlignCenter().Text(item.UnitType ?? "").FontSize(6);
+                                        table.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(2).AlignCenter().Text(item.Qty.ToString("0.##")).FontSize(6);
+                                        table.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Text(item.UnitPrice.ToString("0.00")).FontSize(6);
+                                        table.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Text(item.VatAmount.ToString("0.00")).FontSize(6);
+                                        table.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Text(item.LineTotal.ToString("0.00")).FontSize(6);
                                     }
                                 }
-                                table.Cell().ColumnSpan(4).Border(0.5f).Padding(2).AlignRight().Text("Subtotal").FontSize(6);
-                                table.Cell().Border(0.5f).Padding(2).AlignRight().Text(sale.Subtotal.ToString("0.00")).FontSize(6);
+                                table.Cell().ColumnSpan(a5Span).Border(0.5f).Padding(2).AlignRight().Text("Subtotal").FontSize(6);
+                                table.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Text(sale.Subtotal.ToString("0.00")).FontSize(6);
                                 if (sale.Discount != 0)
                                 {
-                                    table.Cell().ColumnSpan(4).Border(0.5f).Padding(2).AlignRight().Text("Discount").FontSize(6);
-                                    table.Cell().Border(0.5f).Padding(2).AlignRight().Text(sale.Discount.ToString("0.00")).FontSize(6);
+                                    table.Cell().ColumnSpan(a5Span).Border(0.5f).Padding(2).AlignRight().Text("Discount").FontSize(6);
+                                    table.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Text(sale.Discount.ToString("0.00")).FontSize(6);
                                 }
-                                table.Cell().ColumnSpan(4).Border(0.5f).Padding(2).AlignRight().Text("VAT 5%").FontSize(6);
-                                table.Cell().Border(0.5f).Padding(2).AlignRight().Text(sale.VatTotal.ToString("0.00")).FontSize(6);
+                                table.Cell().ColumnSpan(a5Span).Border(0.5f).Padding(2).AlignRight().Text("VAT 5%").FontSize(6);
+                                table.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Text(sale.VatTotal.ToString("0.00")).FontSize(6);
                                 if (sale.RoundOff != 0)
                                 {
-                                    table.Cell().ColumnSpan(4).Border(0.5f).Padding(2).AlignRight().Text("Round Off").FontSize(6);
-                                    table.Cell().Border(0.5f).Padding(2).AlignRight().Text(sale.RoundOff.ToString("0.00")).FontSize(6);
+                                    table.Cell().ColumnSpan(a5Span).Border(0.5f).Padding(2).AlignRight().Text("Round Off").FontSize(6);
+                                    table.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Text(sale.RoundOff.ToString("0.00")).FontSize(6);
                                 }
-                                table.Cell().ColumnSpan(4).Border(0.5f).Padding(2).AlignRight().Text("Total (" + (settings.Currency ?? "AED") + ")").FontSize(7).Bold();
-                                table.Cell().Border(0.5f).Padding(2).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(7).Bold();
+                                table.Cell().ColumnSpan(a5Span).Border(0.5f).Padding(2).AlignRight().Text("Total (" + (settings.Currency ?? "AED") + ")").FontSize(7).Bold();
+                                table.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(7).Bold();
                             });
+                            inner.Item().PaddingTop(1).Text(ConvertToWords(sale.GrandTotal)).FontSize(6).Italic();
+                            if (!letterheadOnly && !useOrangeLetterhead)
+                            {
+                                inner.Item().PaddingTop(3).ShowEntire().Column(f =>
+                                {
+                                    f.Item().Text("Received the above goods in good order").FontSize(6.5f);
+                                    f.Item().PaddingTop(6).Row(r =>
+                                    {
+                                        r.RelativeItem().Column(l => { l.Item().Text(new string('.', 30)).FontSize(6.5f); l.Item().Text("Receiver's Name").FontSize(6f); });
+                                        r.RelativeItem().Column(l => { l.Item().Text(new string('.', 30)).FontSize(6.5f); l.Item().Text("Receiver's Sign").FontSize(6f); });
+                                        r.RelativeItem(2).Column(rc => { rc.Item().AlignRight().Text(new string('.', 30)).FontSize(6.5f); rc.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(6.5f); });
+                                    });
+                                });
+                            }
                             if (useOrangeLetterhead)
                                 RenderStampNearSignatory(inner, settings);
                             else if (!letterheadOnly && !settings.FrozenHubHeaderPolicy)

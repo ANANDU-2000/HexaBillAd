@@ -140,8 +140,16 @@ public class LetterheadLogoSizeTests
         using var document = PdfDocument.Open(bytes);
 
         Assert.True(document.NumberOfPages >= 1);
+        // P0-PRINT-004: A5 now carries the receiver block. With 20 rows it may move, whole, to page 2,
+        // but it must never be split, and the table must not spill past page 1.
         if (format == "A5" && itemCount == 20)
-            Assert.Equal(1, document.NumberOfPages);
+        {
+            Assert.True(document.NumberOfPages <= 2);
+            var lastText = document.GetPage(document.NumberOfPages).Text;
+            Assert.Contains("Receiver's Name", lastText);
+            Assert.Contains("Receiver's Sign", lastText);
+            Assert.Contains("734.62", document.GetPage(1).Text);
+        }
         Assert.Contains("FROZENHUB", document.GetPage(1).Text);
         Assert.Contains("0.40", string.Concat(document.GetPages().Select(page => page.Text)));
         Assert.Contains((invoice.GrandTotal).ToString("0.00"), string.Concat(document.GetPages().Select(page => page.Text)));
