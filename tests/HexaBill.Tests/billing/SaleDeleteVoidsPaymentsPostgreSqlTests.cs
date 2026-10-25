@@ -91,6 +91,10 @@ public class SaleDeleteVoidsPaymentsPostgreSqlTests
             // Stock restored once per deleted line (10 seeded; this fixture never decremented, so +3).
             Assert.Equal(13m, (await verify.Products.IgnoreQueryFilters().SingleAsync(p => p.Id == productId)).StockQty);
             Assert.Equal(3, await verify.InventoryTransactions.IgnoreQueryFilters().CountAsync(x => x.TenantId == t && x.ProductId == productId && x.TransactionType == TransactionType.Adjustment));
+            // P0-FIN-002: each reversal is linked to the sale it reverses, so audits never read it as a manual adjustment.
+            var reversals = await verify.InventoryTransactions.IgnoreQueryFilters()
+                .Where(x => x.TenantId == t && x.TransactionType == TransactionType.Adjustment).ToListAsync();
+            Assert.Equal(testIds.OrderBy(x => x), reversals.Select(x => x.RefId ?? 0).OrderBy(x => x));
             // Test customer recalculated to zero; genuine customer and invoices untouched.
             var customers = await verify.Customers.IgnoreQueryFilters().Where(c => c.TenantId == t).ToListAsync();
             var test = customers.Single(c => c.Name == "Onboard test customer");
