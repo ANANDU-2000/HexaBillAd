@@ -63,7 +63,7 @@ namespace HexaBill.Api.Models
         /// VAT effective date (for legal compliance)
         /// Example: "01-01-2026"
         /// </summary>
-        public string VatEffectiveDate { get; set; } = "01-01-2026";
+        public string VatEffectiveDate { get; set; } = "";
         
         /// <summary>
         /// VAT legal disclaimer text for invoices
