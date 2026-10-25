@@ -350,7 +350,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
   return (
   <>
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] max-h-[90dvh] overflow-y-auto overscroll-contain" role="dialog" aria-modal="true">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-2">
@@ -511,8 +511,8 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
+          {/* Actions — sticky so they stay reachable when the form scrolls */}
+          <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-4 bg-white border-t border-neutral-100 flex gap-3">
             {!showConfirmation ? (
               // Initial form buttons
               <>
