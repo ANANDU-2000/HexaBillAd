@@ -19,8 +19,18 @@ Afterwards, the next new invoice must be **7004**.
   next-number rule takes the highest issued number in the series, so 7000-7003 move it to 7004 on their own.
 - Keep `$API` (the API base) and `$TOKEN` in your shell only. Never paste a token or connection string into chat.
 
-## 1. Fresh backup
+## 1. Fresh backup (this is the only rollback)
 Take a fresh production backup (the normal pre-change backup) and record its file name and time (IST). Do not continue without it.
+
+**Rollback:** restoring this pre-renumber backup is the **only** way back. There is no "undo" endpoint, and renumbering back
+to the old numbers through the API is not a supported rollback. A restore also discards any
+invoices, payments or other changes made after the backup, so agree the restore with the Engineering Lead and Anandu first.
+
+## 1b. VAT period must be open
+Before running, confirm in Reports > VAT Return that the period covering **20-24 Oct 2026** is **not** filed (`Submitted`)
+or `Locked`. Draft/Calculated/Reviewed is fine. The API refuses (400, "This invoice is in a VAT period that is locked or
+filed...") for invoices in a filed or locked period, and the dry run reports the same refusal. If the period is filed, stop:
+do not unlock or amend it to make the renumber pass without the Lead's and Anandu's decision.
 
 ## 2. Read-only pre-check
 Find each sale's id (the API needs the id, not the number):
@@ -29,7 +39,10 @@ for n in 1791254852 1791254853 1791254858 1791254859; do
   curl -s -H "Authorization: Bearer $TOKEN" "$API/api/sales?search=$n&pageSize=5"
 done
 ```
-For each one confirm: exactly one match, `invoiceNo` equals the current number, the sale is not deleted, and the
+`search` is a partial (contains) match, so it can return other invoices whose number contains the same digits. Pick the
+row whose `invoiceNo` is **exactly** equal to the current number (character for character); ignore any partial match. Then
+open it by id (`GET $API/api/sales/{id}`) and confirm the id, date, customer and total before using that id.
+For each one confirm: exactly one exact match, `invoiceNo` equals the current number, the sale is not deleted, and the
 date/customer/total match the table (720.00, 281.00, 299.00, 806.00). Also confirm 7000-7003 are not used by any invoice
 (the dry run in step 3 refuses them if they are, including deleted ones). Write the 4 ids down as ID1..ID4. Then:
 ```
@@ -57,6 +70,8 @@ A 409 means the number was just taken or the invoice changed; re-check before re
   hold the old and new numbers. This is where the old numbers stay findable.
 - QA checks the preview and the 4 invoice PDFs (they show only the new number).
 
-## 6. After
-Anandu reprints or re-sends the 4 invoices to DILKUSH, GOLDEN PLATE and ISHAKALI, because copies they already hold show the old numbers.
-Receipts already issued keep their original snapshot (by design).
+## 6. After: tell the customers
+Customers who already received an invoice with the old number (DILKUSH, GOLDEN PLATE, ISHAKALI) must be sent the reprinted
+invoice and told plainly that the invoice number changed, e.g. "Invoice 1791254852 dated 20 Oct is now invoice 7000; amount
+and VAT are unchanged. Please use 7000 for any reference." Anandu sends these; nothing is sent automatically.
+Stored receipt snapshots are not rewritten (by design); with P0-PRINT-013 live, a reprinted receipt shows the current number.

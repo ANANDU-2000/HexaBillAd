@@ -1,6 +1,7 @@
 using System.Text.Json;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.Reports;
 using Microsoft.EntityFrameworkCore;
 
 namespace HexaBill.Api.Modules.Sales
@@ -39,6 +40,7 @@ namespace HexaBill.Api.Modules.Sales
     public class InvoiceRenumberService : IInvoiceRenumberService
     {
         public const string AuditAction = "InvoiceNumberChanged";
+        public const string VatPeriodClosedMessage = "This invoice is in a VAT period that is locked or filed, so its number cannot be changed. Amend the VAT return first.";
         private readonly AppDbContext _context;
         private readonly IInvoiceNumberService _numbers;
 
@@ -66,6 +68,13 @@ namespace HexaBill.Api.Modules.Sales
                 return (InvoiceNumberChangeOutcome.Invalid, "Deleted invoices cannot be renumbered.", null);
             if (sale.ExternalReference != null && sale.ExternalReference.StartsWith("starplus:", StringComparison.OrdinalIgnoreCase))
                 return (InvoiceNumberChangeOutcome.Invalid, "Imported invoices keep their original number and cannot be renumbered.", null);
+
+            // A filed (Submitted) or Locked VAT period is frozen: the invoice number is printed on the return evidence.
+            try { await VatReturnWriteGuard.EnsurePeriodOpenAsync(_context, tenantId, sale.InvoiceDate); }
+            catch (InvalidOperationException)
+            {
+                return (InvoiceNumberChangeOutcome.Invalid, VatPeriodClosedMessage, null);
+            }
 
             var oldNo = sale.InvoiceNo;
             var result = new InvoiceNumberChangeResult { SaleId = sale.Id, OldInvoiceNo = oldNo, NewInvoiceNo = newNo, DryRun = dryRun };
