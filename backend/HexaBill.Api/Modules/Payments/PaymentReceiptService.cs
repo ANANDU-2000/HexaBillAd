@@ -25,6 +25,8 @@ namespace HexaBill.Api.Modules.Payments
         Task<(PaymentReceiptDetailDto Detail, List<PaymentReceiptDto> Receipts)> GenerateBatchReceiptAsync(int tenantId, List<int> paymentIds, int userId);
         Task<PaymentReceiptDto?> GetReceiptByPaymentIdAsync(int paymentId, int tenantId);
         Task<List<PaymentReceiptDto>> GetReceiptsByCustomerAsync(int customerId, int tenantId);
+        Task<List<PaymentReceiptDto>> GetReceiptsByPaymentIdAsync(int paymentId, int tenantId);
+        Task<PaymentReceiptDetailDto?> GetReceiptDetailByIdAsync(int tenantId, int receiptId, int userId);
     }
 
     public class PaymentReceiptService : IPaymentReceiptService
@@ -125,7 +127,12 @@ namespace HexaBill.Api.Modules.Payments
                     {
                         existingByPayment.TryGetValue(pay.Id, out var existing);
                         PaymentReceiptDetailDto document;
-                        if (!string.IsNullOrWhiteSpace(existing?.SnapshotJson))
+                        if (existing != null && IsStarplusImported(existing.SnapshotJson))
+                        {
+                            // Imported Starplus receipt: preserved history, never validated as a v1 snapshot or replaced.
+                            document = await BuildImportedDetailAsync(tenantId, existing, tenant);
+                        }
+                        else if (!string.IsNullOrWhiteSpace(existing?.SnapshotJson))
                         {
                             ReceiptSnapshot snapshot;
                             try { snapshot = JsonSerializer.Deserialize<ReceiptSnapshot>(existing.SnapshotJson)!; }
@@ -300,20 +307,107 @@ namespace HexaBill.Api.Modules.Payments
             public PaymentReceiptDetailDto Detail { get; set; } = null!;
         }
 
+        /// <summary>Same prefix as the importer (RECEIPT_MARKER_PREFIX) and the P0-NUM-003 partial index predicates.</summary>
+        public const string StarplusReceiptMarkerPrefix = "{\"marker\": \"starplus:";
+        public static bool IsStarplusImported(string? snapshotJson) =>
+            snapshotJson != null && snapshotJson.StartsWith(StarplusReceiptMarkerPrefix, StringComparison.Ordinal);
+
+        private async Task<PaymentReceiptDetailDto> BuildImportedDetailAsync(int tenantId, PaymentReceipt receipt, Tenant? tenant)
+        {
+            var paymentIds = new List<int>();
+            string? originalNumber = null;
+            try
+            {
+                using var doc = JsonDocument.Parse(receipt.SnapshotJson!);
+                if (doc.RootElement.TryGetProperty("original_receipt_number", out var n) && n.ValueKind == JsonValueKind.String)
+                    originalNumber = n.GetString();
+                if (doc.RootElement.TryGetProperty("target_payment_ids", out var ids) && ids.ValueKind == JsonValueKind.Array)
+                    foreach (var id in ids.EnumerateArray())
+                        if (id.TryGetInt32(out var v) && v > 0 && !paymentIds.Contains(v)) paymentIds.Add(v);
+            }
+            catch (JsonException) { /* marker present but body unreadable: fall back to the linked payment */ }
+            if (paymentIds.Count == 0) paymentIds.Add(receipt.PaymentId);
+            var payments = await _context.Payments.AsNoTracking()
+                .Where(p => p.TenantId == tenantId && paymentIds.Contains(p.Id))
+                .Include(p => p.Sale).Include(p => p.Customer)
+                .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
+            if (payments.Count == 0)
+                throw new InvalidOperationException("Imported receipt payments are unavailable in this workspace.");
+            var settings = await _settings.GetCompanySettingsAsync(tenantId);
+            var amount = payments.Sum(p => p.Amount);
+            var currency = string.IsNullOrWhiteSpace(tenant?.Currency) ? "AED" : tenant!.Currency;
+            var methods = payments.Select(p => p.Mode.ToString()).Distinct().ToList();
+            var first = payments[0];
+            return new PaymentReceiptDetailDto
+            {
+                IsImportedHistory = true,
+                IsHistoricalSnapshot = true,
+                LegacyReconstruction = true,
+                ReceiptNumber = receipt.ReceiptNumber, // stored number is the original verbatim (importer)
+                ReceiptDate = first.PaymentDate,
+                ReceiptEndDate = payments.Count > 1 ? payments[^1].PaymentDate : null,
+                CompanyName = settings.LegalNameEn ?? "", CompanyNameAr = settings.LegalNameAr, CompanyTrn = settings.VatNumber,
+                CorporateTaxTrn = settings.CorporateTaxTrn, CompanyAddress = settings.Address, CompanyPhone = settings.Mobile,
+                CompanyEmail = settings.Email, CompanyLogoDataUri = settings.LogoDataUri,
+                CompanySettingsVersion = settings.SettingsVersion, BilingualMonochromeHeader = settings.BilingualMonochromeHeader,
+                Currency = currency,
+                ReceivedFrom = first.Customer?.Name ?? "Cash customer",
+                CustomerTrn = first.Customer?.Trn,
+                AmountReceived = amount,
+                AmountPaid = amount,
+                AmountInWords = currency == "AED" ? AmountToWords(amount) : "",
+                PaymentMethod = methods.Count == 1 ? methods[0] : "Multiple",
+                Reference = payments.Count == 1 ? first.Reference : null,
+                Invoices = payments.Select(p => new PaymentReceiptInvoiceLineDto
+                {
+                    InvoiceNo = p.Sale?.InvoiceNo ?? "On account",
+                    InvoiceDate = p.Sale?.InvoiceDate ?? p.PaymentDate,
+                    InvoiceTotal = p.Sale?.GrandTotal ?? p.Amount,
+                    AmountApplied = p.Amount
+                }).ToList()
+            };
+        }
+
+        /// <summary>Open one exact receipt by its own id (imported receipts keep their own number and payment list).</summary>
+        public async Task<PaymentReceiptDetailDto?> GetReceiptDetailByIdAsync(int tenantId, int receiptId, int userId)
+        {
+            if (tenantId <= 0 || receiptId <= 0) return null;
+            var receipt = await _context.PaymentReceipts.AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Id == receiptId && r.TenantId == tenantId);
+            if (receipt == null) return null;
+            if (IsStarplusImported(receipt.SnapshotJson))
+            {
+                var tenant = await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId);
+                return SealDocument(await BuildImportedDetailAsync(tenantId, receipt, tenant));
+            }
+            var detail = await GenerateReceiptAsync(tenantId, receipt.PaymentId, userId);
+            if (detail.ReceiptNumber != receipt.ReceiptNumber)
+                throw new InvalidOperationException("This receipt has been superseded for its payment. Open the payment's current receipt.");
+            return detail;
+        }
+
         public async Task<PaymentReceiptDto?> GetReceiptByPaymentIdAsync(int paymentId, int tenantId)
         {
-            return await _context.PaymentReceipts
+            return (await GetReceiptsByPaymentIdAsync(paymentId, tenantId)).FirstOrDefault();
+        }
+
+        /// <summary>All receipts linked to a payment, newest first (imported payments may have several).</summary>
+        public async Task<List<PaymentReceiptDto>> GetReceiptsByPaymentIdAsync(int paymentId, int tenantId)
+        {
+            var rows = await _context.PaymentReceipts
                 .Where(r => r.PaymentId == paymentId && r.TenantId == tenantId)
-                .OrderByDescending(r => r.GeneratedAt)
-                .Select(r => new PaymentReceiptDto { Id = r.Id, ReceiptNumber = r.ReceiptNumber, PaymentId = r.PaymentId, GeneratedAt = r.GeneratedAt })
-                .FirstOrDefaultAsync();
+                .OrderByDescending(r => r.GeneratedAt).ThenByDescending(r => r.Id)
+                .Select(r => new { r.Id, r.ReceiptNumber, r.PaymentId, r.GeneratedAt, r.SnapshotJson })
+                .ToListAsync();
+            return rows.Select(r => new PaymentReceiptDto { Id = r.Id, ReceiptNumber = r.ReceiptNumber, PaymentId = r.PaymentId,
+                GeneratedAt = r.GeneratedAt, IsImported = IsStarplusImported(r.SnapshotJson) }).ToList();
         }
 
         public async Task<List<PaymentReceiptDto>> GetReceiptsByCustomerAsync(int customerId, int tenantId)
         {
             return await _context.PaymentReceipts
                 .Where(r => r.TenantId == tenantId && r.Payment.CustomerId == customerId)
-                .OrderByDescending(r => r.GeneratedAt)
+                .OrderByDescending(r => r.GeneratedAt).ThenByDescending(r => r.Id)
                 .Select(r => new PaymentReceiptDto { Id = r.Id, ReceiptNumber = r.ReceiptNumber, PaymentId = r.PaymentId, GeneratedAt = r.GeneratedAt })
                 .ToListAsync();
         }
