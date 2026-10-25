@@ -32,6 +32,21 @@ import { readSalesLedgerStateFromParams, syncSalesLedgerSearchParams } from '../
 import { canReceivePaymentReceipt, receiptIneligibilityReason } from '../../utils/receiptEligibility'
 
 const SHOW_FILTERS_KEY = 'hexabill_sales_ledger_show_filters'
+const NARROW_QUERY = '(max-width: 639.98px)'
+
+/** True below Tailwind `sm` (640px); phones collapse the date/filter block by default. */
+function useIsNarrow () {
+  const get = () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(NARROW_QUERY).matches
+  const [narrow, setNarrow] = useState(get)
+  useEffect(() => {
+    if (!window.matchMedia) return undefined
+    const mq = window.matchMedia(NARROW_QUERY)
+    const on = () => setNarrow(mq.matches)
+    mq.addEventListener?.('change', on)
+    return () => mq.removeEventListener?.('change', on)
+  }, [])
+  return narrow
+}
 const SORT_ORDER_KEY = 'hexabill_sales_ledger_sort_order'
 
 /** Canonical row type for filter/sort (API may send Type/type or different casing). */
@@ -247,6 +262,7 @@ const SalesLedgerPage = () => {
   })
   const [routesForBranch, setRoutesForBranch] = useState([]) // Routes for selected branch (filtered from context)
   const [staffUsers, setStaffUsers] = useState([])
+  const isNarrow = useIsNarrow()
   const [showFilters, setShowFilters] = useState(() => {
     try {
       const v = localStorage.getItem(SHOW_FILTERS_KEY)
@@ -960,23 +976,39 @@ const SalesLedgerPage = () => {
       {/* Header — full width, filters horizontal, export right */}
       <div className="flex-shrink-0 bg-white border-b border-neutral-200 px-2 sm:px-4 lg:px-6 py-2 md:py-3">
         <h1 className={`${mobilePageTitleClass} mb-2`}>Sales Ledger</h1>
-        <div className={`${mobileFilterGridClass} mb-2 md:hidden`}>
+        {isNarrow && !showFilters && (
+          <button
+            type="button"
+            onClick={() => {
+              setShowFilters(true)
+              try { localStorage.setItem(SHOW_FILTERS_KEY, 'true') } catch (_) { }
+            }}
+            aria-expanded={false}
+            aria-label="Show date range and filters"
+            className={`mb-2 flex w-full min-h-11 items-center gap-2 rounded-lg border px-3 text-sm ${hasActiveFilters ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-neutral-300 bg-white text-neutral-700'}`}
+          >
+            <Filter className="h-4 w-4 shrink-0" />
+            <span className="truncate tabular-nums">{dateRange.from || '…'} → {dateRange.to || '…'}</span>
+            {hasActiveFilters && <span className="ml-auto shrink-0 rounded-full bg-primary-600 px-2 py-0.5 text-xs font-medium text-white">Filtered</span>}
+          </button>
+        )}
+        {(!isNarrow || showFilters) && <div className={`${mobileFilterGridClass} mb-2 md:hidden`}>
           <input
             type="date"
             value={dateRange.from}
             onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
             aria-label="From date"
-            className={`${mobileFormFieldClass} min-h-10 py-2 text-sm`}
+            className={`${mobileFormFieldClass} min-w-0 px-1.5 text-base tabular-nums [&::-webkit-calendar-picker-indicator]:ml-0.5 [&::-webkit-calendar-picker-indicator]:shrink-0`}
           />
           <input
             type="date"
             value={dateRange.to}
             onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
             aria-label="To date"
-            className={`${mobileFormFieldClass} min-h-10 py-2 text-sm`}
+            className={`${mobileFormFieldClass} min-w-0 px-1.5 text-base tabular-nums [&::-webkit-calendar-picker-indicator]:ml-0.5 [&::-webkit-calendar-picker-indicator]:shrink-0`}
           />
           <DatePresetChips from={dateRange.from} to={dateRange.to} onChange={(r) => setDateRange(r)} className="col-span-2" />
-        </div>
+        </div>}
         <MobileActionStrip className="md:flex-wrap md:overflow-visible">
             <div className="hidden md:flex md:flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
               <input
@@ -1220,7 +1252,7 @@ const SalesLedgerPage = () => {
       )}
 
       <div className="flex-shrink-0 px-2 md:px-4 py-1.5 bg-white border-b border-neutral-200 text-xs text-neutral-700" aria-label="Ledger totals">
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 md:flex md:flex-wrap md:items-center md:gap-x-0">
+        <dl className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px] min-[360px]:text-xs md:flex md:flex-wrap md:items-center md:gap-x-0">
           <dt className="col-span-2 font-medium text-neutral-500 md:mr-2">Totals:</dt>
           {[
             ['Sales', formatCurrency(filteredSummary.totalSales)],
@@ -1233,10 +1265,10 @@ const SalesLedgerPage = () => {
             [null, `${filteredSummary.totalInvoices || 0} invoices`],
             [null, `${filteredLedger.length} rows`]
           ].map(([label, value], i) => (
-            <dd key={label || value} className="flex justify-between gap-1 min-w-0 md:block">
+            <dd key={label || value} className="flex justify-between gap-1 min-w-0 whitespace-nowrap md:block">
               {i > 0 && <span className="hidden md:inline mx-1.5 text-neutral-300">|</span>}
               {label && <span className="text-neutral-500 md:text-inherit">{label} </span>}
-              <span className="font-medium md:font-normal">{value}</span>
+              <span className="font-medium md:font-normal tabular-nums whitespace-nowrap">{value}</span>
             </dd>
           ))}
         </dl>
@@ -1255,47 +1287,47 @@ const SalesLedgerPage = () => {
             <table className="w-full min-w-[1100px] divide-y divide-neutral-200 text-xs lg:text-sm">
               <thead className="bg-neutral-100 sticky top-0 z-20 border-b-2 border-neutral-300">
                 <tr>
-                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Date
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Type
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Invoice No
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Customer
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     <span className="xl:hidden" title="Payment Mode">Mode</span>
                     <span className="hidden xl:inline">Payment Mode</span>
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Bill Amount
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     VAT
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Paid Amount
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Returns
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Pending
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Days overdue
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Status
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Balance
                   </th>
-                  <th className={`px-2 lg:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap min-w-[7rem] ${stickyActionTh}`}>
+                  <th className={`px-2 2xl:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap min-w-[7rem] ${stickyActionTh}`}>
                     Actions
                   </th>
                 </tr>
@@ -1329,31 +1361,31 @@ const SalesLedgerPage = () => {
                           // Use full customer totals from customerGroups, not just displayed entries
                           rows.push(
                             <tr key={`subtotal-${prevCustomer}-${idx}`} className="bg-indigo-50 border-t-2 border-indigo-300">
-                              <td colSpan="5" className="px-2 lg:px-3 py-2 text-left text-xs lg:text-sm font-bold text-indigo-900 border-r border-neutral-300">
+                              <td colSpan="5" className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-sm font-bold text-indigo-900 border-r border-neutral-300">
                                 <span className="sticky left-2">Subtotal for {prevCustomer}:</span>
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
+                              <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalSales)}
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-neutral-300">
+                              <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalVat ?? 0)}
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
+                              <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalPayments)}
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
+                              <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalReturns)}
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-error-fg border-r border-neutral-300">
+                              <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-error-fg border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalPending)}
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-500 border-r border-neutral-300">
+                              <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-500 border-r border-neutral-300">
                                 —
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
+                              <td className="px-2 2xl:px-3 py-2 text-center text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
                                 {prevCustomerGroup.subtotal.totalInvoices} invoices
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-neutral-300">
+                              <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-neutral-300">
                                 {formatBalance(prevCustomerGroup.subtotal.balance)}
                               </td>
                               <td className={stickyActionCell('bg-indigo-50')} />
@@ -1399,10 +1431,10 @@ const SalesLedgerPage = () => {
 
                       rows.push(
                         <tr key={ledgerRowKey(entry, idx)} className={rowBgColor}>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-900 border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-900 border-r border-neutral-200">
                           {dateStr}
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-medium text-neutral-900 border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-medium text-neutral-900 border-r border-neutral-200">
                           <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${entry.type === 'Payment'
                             ? 'bg-green-100 text-green-800'
                             : entry.type === 'Return'
@@ -1412,17 +1444,17 @@ const SalesLedgerPage = () => {
                             {entry.type}
                           </span>
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-semibold text-neutral-900 border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-semibold text-neutral-900 border-r border-neutral-200">
                           {entry.invoiceNo}
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-900 border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-900 border-r border-neutral-200">
                           {entry.customerName}
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-600 border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-600 border-r border-neutral-200">
                           {entry.paymentMode || '-'}
                         </td>
                         {/* Bill Amount - Sales: GrandTotal; Return: -; Payment: credit amount */}
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold text-primary-600 border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold text-primary-600 border-r border-neutral-200">
                           {entry.type === 'Sale'
                             ? formatCurrency(entry.grandTotal || 0)
                             : entry.type === 'Return'
@@ -1432,11 +1464,11 @@ const SalesLedgerPage = () => {
                                 : '-'}
                         </td>
                         {/* VAT - Sale/Return: vatTotal; Payment: - */}
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-teal-700 border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-teal-700 border-r border-neutral-200">
                           {entry.type === 'Payment' ? '-' : (entry.vatTotal > 0 ? formatCurrency(entry.vatTotal) : '-')}
                         </td>
                         {/* Paid Amount excludes returned goods, which have their own column. */}
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-success border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-success border-r border-neutral-200">
                           {entry.type === 'Sale'
                             ? (entry.paidAmount > 0 ? formatCurrency(entry.paidAmount) : '-')
                             : entry.type === 'Return'
@@ -1445,22 +1477,22 @@ const SalesLedgerPage = () => {
                                 ? formatCurrency(entry.realGotPayment || 0)
                                 : '-'}
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-neutral-700 border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-neutral-700 border-r border-neutral-200">
                           {entry.type === 'Return' ? formatCurrency(entry.grandTotal || 0) : '-'}
                         </td>
                         {/* Pending - Show only for Sales (unpaid amount) */}
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-error border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-error border-r border-neutral-200">
                           {entry.type === 'Sale' && entry.realPending > 0
                             ? formatCurrency(entry.realPending)
                             : '-'}
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-neutral-800 border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-neutral-800 border-r border-neutral-200">
                           {(() => {
                             const d = getSaleDaysOutstanding(entry)
                             return d == null ? '—' : `${d}d`
                           })()}
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-center border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-center border-r border-neutral-200">
                           {displayStatus && displayStatus !== '-' ? (
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${statusColor}`}>
                               {displayStatus}
@@ -1470,7 +1502,7 @@ const SalesLedgerPage = () => {
                           )}
                         </td>
                         <td
-                          className={`px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold ${customerBalance < 0
+                          className={`px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold ${customerBalance < 0
                             ? 'text-success'
                             : customerBalance > 0
                               ? 'text-error'
@@ -1570,31 +1602,31 @@ const SalesLedgerPage = () => {
                         // Use full customer totals from customerGroups, not just displayed entries
                         rows.push(
                           <tr key={`subtotal-${prevCustomer}-final`} className="bg-indigo-50 border-t-2 border-indigo-300">
-                            <td colSpan="5" className="px-2 lg:px-3 py-2 text-left text-xs lg:text-sm font-bold text-indigo-900 border-r border-neutral-300">
+                            <td colSpan="5" className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-sm font-bold text-indigo-900 border-r border-neutral-300">
                               <span className="sticky left-2">Subtotal for {prevCustomer}:</span>
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
+                            <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalSales)}
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-neutral-300">
+                            <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalVat ?? 0)}
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
+                            <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalPayments)}
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
+                            <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalReturns)}
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-error-fg border-r border-neutral-300">
+                            <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-error-fg border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalPending)}
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-500 border-r border-neutral-300">
+                            <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-500 border-r border-neutral-300">
                               —
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
+                            <td className="px-2 2xl:px-3 py-2 text-center text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
                               {lastCustomerGroup.subtotal.totalInvoices} invoices
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-neutral-300">
+                            <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-neutral-300">
                               {formatBalance(lastCustomerGroup.subtotal.balance)}
                             </td>
                             <td className={stickyActionCell('bg-indigo-50')} />
@@ -1626,32 +1658,32 @@ const SalesLedgerPage = () => {
                 <tr className="bg-primary-50">
                   <td
                     colSpan="5"
-                    className="px-2 lg:px-3 py-2 text-left text-xs lg:text-sm font-bold text-neutral-900 border-r border-neutral-300"
+                    className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-sm font-bold text-neutral-900 border-r border-neutral-300"
                   >
                     <span className="sticky left-2">TOTALS (filtered)</span>
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
+                  <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalSales)}
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-neutral-300">
+                  <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalVat ?? 0)}
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
+                  <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalPayments)}
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
+                  <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalReturns)}
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-error-fg border-r border-neutral-300">
+                  <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-error-fg border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalRealPending)}
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-500 border-r border-neutral-300">
+                  <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-500 border-r border-neutral-300">
                     —
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-neutral-900 border-r border-neutral-300">
+                  <td className="px-2 2xl:px-3 py-2 text-center text-xs lg:text-sm font-bold text-neutral-900 border-r border-neutral-300">
                     -
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold border-r border-neutral-300">
+                  <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold border-r border-neutral-300">
                     <span className={filteredSummary.pendingBalance > 0 ? 'text-error-fg' : filteredSummary.pendingBalance < 0 ? 'text-success-fg' : 'text-neutral-900'}>
                       {formatBalance(filteredSummary.pendingBalance)}
                     </span>

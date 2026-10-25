@@ -70,7 +70,7 @@ export function QuickCreateMenu () {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="btn btn-primary min-h-[40px] gap-1 px-3"
+        className="btn btn-primary min-h-11 lg:min-h-[40px] gap-1 px-3"
         aria-haspopup="menu"
         aria-expanded={open}
       >

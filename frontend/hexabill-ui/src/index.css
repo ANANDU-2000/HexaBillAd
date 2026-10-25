@@ -52,8 +52,8 @@
     line-height: 1.65;
   }
 
-  /* Mobile: 16px form text so iOS does not zoom on focus. */
-  @media (max-width: 767px) {
+  /* Below lg (phones + tablets): 16px form text so iOS does not zoom on focus. */
+  @media (max-width: 1023.98px) {
     input:not([type='checkbox']):not([type='radio']),
     select,
     textarea {
@@ -208,7 +208,7 @@
     cursor: not-allowed;
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 1023.98px) {
     .input {
       min-height: 44px;
     }

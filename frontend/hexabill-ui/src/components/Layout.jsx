@@ -412,7 +412,7 @@ const Layout = () => {
       <div className={`no-print hidden md:fixed md:flex md:flex-col md:min-h-0 md:w-20 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
         <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
           <div className={`flex h-16 shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'justify-between gap-2' : 'justify-center'}`}>
-            <Link to="/dashboard" className={`flex min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
+            <Link to="/dashboard" className={`flex min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
               <Logo size="small" showText={false} className="!space-x-0" />
               {labelsVisible && (
                 <span className="line-clamp-3 break-words text-sm font-semibold leading-tight text-white">{companyName}</span>
@@ -453,7 +453,7 @@ const Layout = () => {
                       <Link
                         key={item.id}
                         to={item.href}
-                        className={`group/nav relative flex items-center rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'min-h-10 px-3' : 'min-h-11 justify-center px-2'} ${
+                        className={`group/nav relative flex items-center rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'min-h-11 lg:min-h-10 px-3' : 'min-h-11 justify-center px-2'} ${
                           active ? 'bg-primary-600 text-white shadow-sm ring-1 ring-white/10' : 'text-primary-100/80 hover:bg-primary-800 hover:text-white'
                         }`}
                         aria-label={item.label}
@@ -473,7 +473,7 @@ const Layout = () => {
             })}
             <Link
               to="/more"
-              className={`group/nav relative flex items-center rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'min-h-10 px-3' : 'min-h-11 justify-center px-2'} ${
+              className={`group/nav relative flex items-center rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'min-h-11 lg:min-h-10 px-3' : 'min-h-11 justify-center px-2'} ${
                 location.pathname === '/more' ? 'bg-primary-600 text-white shadow-sm ring-1 ring-white/10' : 'border border-dashed border-primary-700 text-primary-100/80 hover:border-primary-500 hover:bg-primary-800 hover:text-white'
               }`}
               aria-label="More"
@@ -506,7 +506,7 @@ const Layout = () => {
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="flex min-h-[40px] w-full max-w-md items-center gap-2 rounded-md border border-surface-border bg-neutral-50 px-3 text-sm text-neutral-500 transition-colors hover:border-neutral-300 hover:bg-white"
+              className="flex min-h-11 lg:min-h-[40px] w-full max-w-md items-center gap-2 rounded-md border border-surface-border bg-neutral-50 px-3 text-sm text-neutral-500 transition-colors hover:border-neutral-300 hover:bg-white"
               aria-label="Search (Ctrl+K)"
             >
               <Search className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
@@ -518,7 +518,7 @@ const Layout = () => {
                 <button
                   type="button"
                   onClick={() => setAssistantOpen(true)}
-                  className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-md text-neutral-600 transition-colors hover:bg-neutral-100"
+                  className="flex min-h-11 min-w-11 lg:min-h-[40px] lg:min-w-[40px] items-center justify-center rounded-md text-neutral-600 transition-colors hover:bg-neutral-100"
                   aria-label="Open assistant"
                   title="Assistant"
                 >
@@ -562,7 +562,7 @@ const Layout = () => {
                         type="button"
                         role="menuitem"
                         onClick={() => { setShowProfileDropdown(false); onClick() }}
-                        className="flex min-h-[40px] w-full items-center gap-2.5 px-4 text-left text-sm text-text-primary hover:bg-neutral-50"
+                        className="flex min-h-11 lg:min-h-[40px] w-full items-center gap-2.5 px-4 text-left text-sm text-text-primary hover:bg-neutral-50"
                       >
                         <ItemIcon className="h-4 w-4 text-neutral-500" strokeWidth={1.75} aria-hidden />
                         <span className="flex-1">{label}</span>
@@ -574,7 +574,7 @@ const Layout = () => {
                       type="button"
                       role="menuitem"
                       onClick={() => { setShowProfileDropdown(false); logout() }}
-                      className="flex min-h-[40px] w-full items-center gap-2.5 px-4 text-left text-sm text-error hover:bg-error-bg"
+                      className="flex min-h-11 lg:min-h-[40px] w-full items-center gap-2.5 px-4 text-left text-sm text-error hover:bg-error-bg"
                     >
                       <LogOut className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                       Log out
