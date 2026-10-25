@@ -82,6 +82,29 @@ public class ProductionShapedInvoicePdfTests
         }
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(20)]
+    public async Task A5Invoice_CarriesUnitUnitPriceWordsAndReceiverBlock(int itemCount)
+    {
+        // P0-PRINT-004: A5 must carry the same invoice content as A4.
+        await using var db = await SeedProductionShapeAsync(approvedHeader: true);
+        var fonts = new FontService(NullLogger<FontService>.Instance);
+        fonts.RegisterFonts();
+        var pdf = new PdfService(db, null!, fonts, new SettingsService(db), null!, NullLogger<PdfService>.Instance, null!);
+        var invoice = Sale1632Shape(itemCount);
+        var bytes = await pdf.GenerateInvoicePdfAsync(invoice, "A5", "full");
+        using var document = PdfDocument.Open(bytes);
+        var text = string.Concat(document.GetPages().Select(p => p.Text));
+        Assert.Contains("Unit Price", text);
+        Assert.Contains("CRTN", text);
+        Assert.Contains("375.00", text);
+        Assert.Contains("Dirhams", text);
+        var last = document.GetPage(document.NumberOfPages).Text;
+        Assert.Contains("Receiver's Name", last);
+        Assert.Contains("Receiver's Sign", last);
+    }
+
     [Fact]
     public async Task FrozenHubSubdomain_WithStoredLegacyRow_StillPrintsApprovedHeaderAndSettings()
     {
