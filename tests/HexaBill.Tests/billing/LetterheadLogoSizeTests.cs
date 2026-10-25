@@ -96,7 +96,7 @@ public class LetterheadLogoSizeTests
                 Assert.Contains("FOODSTUFF TRADING - L.L.C - S.P.C", page.Text);
                 Assert.Contains("Abu Dhabi, Musaffah 17", page.Text);
                 Assert.DoesNotContain("frozenhubfoods@gmail.com", page.Text, StringComparison.OrdinalIgnoreCase);
-                Assert.DoesNotContain("+971 55 552 8878", page.Text, StringComparison.OrdinalIgnoreCase);
+                Assert.Contains("+971 55 552 8878", page.Text); // P0-PRINT-005: saved tenant phone prints
                 Assert.DoesNotContain("International Transport", page.Text, StringComparison.OrdinalIgnoreCase);
                 var logo = Assert.Single(page.GetImages());
                 Assert.InRange(logo.Bounds.Height, sample.Format == "A4" ? 40f : 25f, sample.Format == "A4" ? 62f : 52f);

@@ -53,7 +53,7 @@ public class ProductionShapedInvoicePdfTests
         {
             var first = document.GetPage(1).Text;
             Assert.Contains("Abu Dhabi, Musaffah 17", first);
-            Assert.DoesNotContain("971555298878", first);
+            Assert.Contains("971555298878", first); // P0-PRINT-005: saved tenant phone prints
             Assert.DoesNotContain("frozenhubfoods@gmail.com", first, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("International Transport", first, StringComparison.OrdinalIgnoreCase);
         }
@@ -123,7 +123,7 @@ public class ProductionShapedInvoicePdfTests
         using var document = PdfDocument.Open(bytes);
         var first = document.GetPage(1).Text;
         Assert.Contains("Abu Dhabi, Musaffah 17", first);
-        Assert.DoesNotContain("971555298878", first);
+        Assert.Contains("971555298878", first); // P0-PRINT-005: saved tenant phone prints
         Assert.DoesNotContain("frozenhubfoods@gmail.com", first, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("International Transport", first, StringComparison.OrdinalIgnoreCase);
     }
