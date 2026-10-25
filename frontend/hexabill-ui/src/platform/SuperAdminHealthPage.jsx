@@ -90,6 +90,13 @@ const SuperAdminHealthPage = () => {
         </button>
       </div>
 
+      <p className="mb-6 text-sm text-neutral-600">
+        Database diagnostics.{' '}
+        <a href="/superadmin/sql-console" className="font-medium text-primary-700 underline hover:text-primary-900">
+          Open read-only SQL console
+        </a>
+      </p>
+
       {error && (
         <div className="mb-6 p-4 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm flex items-start gap-3">
           <XCircle className="h-6 w-6 text-error flex-shrink-0 mt-0.5" />

@@ -17,7 +17,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Search,
-  Database,
   Bell
 } from 'lucide-react'
 import Logo from './Logo'
@@ -80,7 +79,6 @@ const SuperAdminLayout = () => {
     { name: 'Audit Logs', href: '/superadmin/audit-logs', icon: ClipboardList },
     { name: 'Error Logs', href: '/superadmin/error-logs', icon: AlertCircle },
     { name: 'Infrastructure', href: '/superadmin/health', icon: Activity },
-    { name: 'SQL Console', href: '/superadmin/sql-console', icon: Database },
     { name: 'Settings', href: '/superadmin/settings', icon: Shield },
   ]
 
