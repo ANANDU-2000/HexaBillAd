@@ -155,6 +155,29 @@ namespace HexaBill.Api.Modules.Sales
 
         public async Task<byte[]> GenerateInvoicePdfAsync(SaleDto sale, string format = "A4", string? layout = null)
         {
+            try
+            {
+                return await GenerateInvoicePdfCoreAsync(sale, format, layout, dropLogo: false);
+            }
+            catch (Exception ex) when (IsLayoutException(ex))
+            {
+                // A logo with an unexpected shape must never stop a committed invoice from printing
+                // (24 Oct 2026, tenant 20: old 22 KB logo -> DocumentLayoutException on 3-item A4 invoices).
+                // Retry once with the text-only header; the full layout, totals and footer are unchanged.
+                _logger.LogWarning(ex, "Invoice PDF layout failed for sale {SaleId} ({Format}); retrying without logo", sale.Id, format);
+                return await GenerateInvoicePdfCoreAsync(sale, format, layout, dropLogo: true);
+            }
+        }
+
+        internal static bool IsLayoutException(Exception? ex)
+        {
+            for (; ex != null; ex = ex.InnerException)
+                if (ex is QuestPDF.Drawing.Exceptions.DocumentLayoutException) return true;
+            return false;
+        }
+
+        private async Task<byte[]> GenerateInvoicePdfCoreAsync(SaleDto sale, string format, string? layout, bool dropLogo)
+        {
             var formatNormalized = (format ?? "A4").Trim();
             if (string.IsNullOrEmpty(formatNormalized) || !new[] { "A4", "A5", "80mm", "58mm" }.Contains(formatNormalized, StringComparer.OrdinalIgnoreCase))
                 formatNormalized = "A4";
@@ -170,6 +193,7 @@ namespace HexaBill.Api.Modules.Sales
                 
                 var settings = await GetCompanySettingsAsync(sale.OwnerId); // Use OwnerId from SaleDto
                 ApplyInvoiceLayoutOverride(settings, layout);
+                if (dropLogo) settings.LogoImageBytes = null;
                 
                 // CRITICAL: Get customer's pending balance for invoice footer acknowledgment (A4 only)
                 var customerPendingInfo = await GetCustomerPendingBalanceInfoAsync(sale.CustomerId, sale.OwnerId);
@@ -1238,7 +1262,9 @@ namespace HexaBill.Api.Modules.Sales
             bool drawBottomRule = true,
             bool a5Letterhead = false)
         {
-            container.DefaultTextStyle(x => x.FontColor(Colors.Black)).Column(column =>
+            // Disable standard ligatures so "ff" in "Musaffah" stays two searchable/copyable characters
+            // (Lato/Noto shape it into U+FB00, which breaks PDF text search and copy-paste).
+            container.DefaultTextStyle(x => x.FontColor(Colors.Black).DisableFontFeature(FontFeatures.StandardLigatures)).Column(column =>
             {
                 column.Spacing(1);
                 var logo = MonochromeLogo(settings.LogoImageBytes);
