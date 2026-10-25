@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Printer, Download, Share2, Mail, MessageCircle, RotateCcw, MoreHorizontal } from 'lucide-react'
+import { X, Printer, Download, Share2, Mail, MessageCircle, RotateCcw, MoreHorizontal, Hash } from 'lucide-react'
 import { salesAPI } from '../services'
 import { formatCurrency } from '../utils/currency'
 import toast from 'react-hot-toast'
@@ -8,12 +8,18 @@ import { showToast } from '../utils/toast'
 import PrintOptionsModal from './PrintOptionsModal'
 import ConfirmDangerModal from './ConfirmDangerModal'
 import { useBranding } from '../tenant/TenantBrandingContext'
+import { useAuth } from '../hooks/useAuth'
+import ChangeInvoiceNumberModal from '../features/sales/ChangeInvoiceNumberModal'
+import { canChangeInvoiceNumber, isRenumberableSale } from '../utils/invoiceNumberChange'
 
-const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrint, onNew, onReturnItems }) => {
+const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrint, onNew, onReturnItems, onInvoiceNumberChanged }) => {
+  const { user } = useAuth()
+  const [renumberOpen, setRenumberOpen] = useState(false)
   const { currency = 'AED' } = useBranding()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [invoice, setInvoice] = useState(null)
+  const canRenumber = canChangeInvoiceNumber(user?.role) && !!invoice && isRenumberableSale(invoice)
   const [showPrintOptions, setShowPrintOptions] = useState(false)
   const [sheet, setSheet] = useState(null) // null | 'share' | 'more'
   const [dangerModal, setDangerModal] = useState({
@@ -422,7 +428,8 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
                   { key: 'print', label: 'Print', hint: 'Choose a layout and print', icon: Printer, onClick: handlePrint }
                 ]
                 : [
-                  { key: 'return', label: 'Return items', hint: 'Create a sales return for this invoice', icon: RotateCcw, onClick: handleReturnItems }
+                  { key: 'return', label: 'Return items', hint: 'Create a sales return for this invoice', icon: RotateCcw, onClick: handleReturnItems },
+                  ...(canRenumber ? [{ key: 'renumber', label: 'Change invoice number', hint: 'Owner or Admin only', icon: Hash, onClick: () => setRenumberOpen(true) }] : [])
                 ]
               ).map(({ key, label, hint, icon: Icon, onClick }) => (
                 <button
@@ -464,6 +471,12 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
         defaultValue={dangerModal.defaultValue}
         onConfirm={dangerModal.onConfirm}
         onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
+      />
+      <ChangeInvoiceNumberModal
+        isOpen={renumberOpen}
+        sale={invoice ? { ...invoice, id: invoice.id ?? saleId } : null}
+        onClose={() => setRenumberOpen(false)}
+        onChanged={() => { loadInvoice(); onInvoiceNumberChanged?.() }}
       />
     </div>
   )

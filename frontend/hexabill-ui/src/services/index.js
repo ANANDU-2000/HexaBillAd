@@ -182,6 +182,16 @@ export const productCategoriesAPI = {
 }
 
 export const salesAPI = {
+  /** UX-008 / P0-NUM-004: Owner/Admin invoice number correction. silent: the modal shows errors inline (one-toast rule). */
+  changeInvoiceNumber: async (saleId, { newInvoiceNumber, reason }, { dryRun = true } = {}) => {
+    const response = await api.put(
+      `/sales/${saleId}/invoice-number`,
+      { newInvoiceNumber: String(newInvoiceNumber), reason: String(reason || '').trim() },
+      { params: { dryRun: dryRun ? 'true' : 'false' }, silent: true, _bypassCache: true }
+    )
+    return response.data
+  },
+
   getSales: async (params = {}) => {
     // Sales change constantly; never serve stale list from GET cache (was hiding updated payment status).
     const response = await api.get('/sales', { params, _bypassCache: true })

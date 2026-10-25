@@ -16,7 +16,8 @@ import {
   Edit,
   Maximize2,
   CheckSquare,
-  Square
+  Square,
+  Hash
 } from 'lucide-react'
 import { OverflowMenu } from '../../components/ui'
 import { useAuth } from '../../hooks/useAuth'
@@ -29,6 +30,8 @@ import { Input } from '../../components/Form'
 import InvoicePreviewModal from '../../components/InvoicePreviewModal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import ChangeInvoiceNumberModal from './ChangeInvoiceNumberModal'
+import { canChangeInvoiceNumber, isRenumberableSale } from '../../utils/invoiceNumberChange'
 import { syncBillingHistorySearchParams } from '../../utils/billingHistoryUrl'
 import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 
@@ -59,6 +62,8 @@ const BillingHistoryPage = () => {
   const [loadingReceiptSaleId, setLoadingReceiptSaleId] = useState(null)
   const [listError, setListError] = useState(false)
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'owner'
+  const canRenumber = canChangeInvoiceNumber(user?.role)
+  const [saleToRenumber, setSaleToRenumber] = useState(null)
   const canEdit = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'owner' // Admin and Owner can edit
 
   const fetchSales = useCallback(async () => {
@@ -605,6 +610,17 @@ const BillingHistoryPage = () => {
                               <Edit className="h-4 w-4" />
                             </button>
                           )}
+                          {canRenumber && isRenumberableSale(sale) && (
+                            <button
+                              type="button"
+                              onClick={() => setSaleToRenumber(sale)}
+                              className="inline-flex h-8 w-8 items-center justify-center text-neutral-700 hover:bg-neutral-100 rounded-md"
+                              title="Change invoice number"
+                              aria-label={`Change invoice number ${sale.invoiceNo || ''}`.trim()}
+                            >
+                              <Hash className="h-4 w-4" />
+                            </button>
+                          )}
                           {isAdmin && (
                             <button
                               onClick={() => handleDeleteSale(sale.id)}
@@ -657,6 +673,7 @@ const BillingHistoryPage = () => {
                         { label: 'Customer ledger', icon: Wallet, hidden: !sale.customerId, onClick: () => openCustomerLedgerForSale(sale) },
                         { label: 'Print receipt', icon: Printer, hidden: !saleHasReceipt(sale), disabled: loadingReceiptSaleId === sale.id, onClick: () => handlePrintPaymentReceipt(sale) },
                         { label: 'Edit invoice', icon: Edit, hidden: !canEdit, onClick: () => handleEditSale(sale) },
+                        { label: 'Change invoice number', icon: Hash, hidden: !(canRenumber && isRenumberableSale(sale)), onClick: () => setSaleToRenumber(sale) },
                         { label: 'Delete invoice', icon: Trash2, hidden: !isAdmin, danger: true, separatorBefore: true, onClick: () => handleDeleteSale(sale.id) },
                       ]}
                     />
@@ -716,6 +733,7 @@ const BillingHistoryPage = () => {
         <InvoicePreviewModal
           saleId={selectedSale.id}
           invoiceNo={selectedSale.invoiceNo}
+          onInvoiceNumberChanged={() => fetchSales()}
           onClose={() => {
             setShowInvoiceModal(false)
             setSelectedSale(null)
@@ -733,6 +751,13 @@ const BillingHistoryPage = () => {
           setShowReceiptPreviewModal(false)
           setReceiptPreviewPaymentIds([])
         }}
+      />
+
+      <ChangeInvoiceNumberModal
+        isOpen={!!saleToRenumber}
+        sale={saleToRenumber}
+        onClose={() => setSaleToRenumber(null)}
+        onChanged={() => fetchSales()}
       />
 
       <ConfirmDangerModal
