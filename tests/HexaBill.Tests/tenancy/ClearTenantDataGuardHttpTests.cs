@@ -12,6 +12,7 @@ namespace HexaBill.Tests;
 public class ClearTenantDataGuardHttpTests
 {
     private const string Password = "Correct-Horse-9!";
+    private static int _nextTenantId = 7_300_000;
     private readonly HexaBillWebApplicationFactory _factory;
 
     public ClearTenantDataGuardHttpTests(HexaBillWebApplicationFactory factory) => _factory = factory;
@@ -21,7 +22,10 @@ public class ClearTenantDataGuardHttpTests
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var id = 9000 + Random.Shared.Next(1, 900);
+        // QA-HARNESS-001: was 9000 + Random(1, 900), which could land on ids other HttpIntegration classes seed
+        // (RouteAccess 930x, RouteMap 941x, ...) and break their fixtures depending on the draw. Use a unique id
+        // from a range no fixture uses.
+        var id = Interlocked.Increment(ref _nextTenantId);
         var slug = $"cleartest{id}";
         db.Tenants.Add(new Tenant { Id = id, Name = $"Clear Test {id}", Subdomain = slug, Status = TenantStatus.Active });
         db.Users.Add(new User
