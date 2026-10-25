@@ -7,6 +7,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using UglyToad.PdfPig;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 
 namespace HexaBill.Tests;
 
@@ -91,6 +94,72 @@ public class FrozenHubHeaderReproTests
         }
         if (format is "80mm" or "58mm")
             Assert.Equal(1, document.NumberOfPages);
+    }
+
+    [Fact]
+    public async Task Thermal58mm_ArabicCompanyNameTakesAtMostTwoLines_AndAddressStaysWhole()
+    {
+        const string format = "58mm";
+        await using var db = await SeedAsync(CreateLogo(720, 279));
+        var bytes = await CreatePdfService(db).GenerateInvoicePdfAsync(CreateSale(3), format, "full");
+        await SaveAsync(bytes, $"header-{format}.pdf");
+        using var document = PdfDocument.Open(bytes);
+        var page = document.GetPage(1);
+        // Arabic name glyphs are the bold Arabic letters in the header, above the Arabic address label line.
+        static bool IsArabic(string v) => v.Any(c => c is >= '\u0600' and <= '\u06FF' or >= '\uFB50' and <= '\uFEFF');
+        var arabic = page.Letters.Where(l => IsArabic(l.Value)).ToList();
+        var nameLines = arabic.Where(l => l.FontName.Contains("Bold", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(l => Math.Round(l.StartBaseLine.Y))
+            .OrderByDescending(g => g.Key).ToList();
+        var headerTop = nameLines.First().Key;
+        var nameLineCount = nameLines.Count(g => headerTop - g.Key < 40);
+        Assert.InRange(nameLineCount, 1, 2);
+        // "Abu Dhabi, Musaffah 17" sits on one baseline (no break after "Abu Dhabi,").
+        var address = page.Letters.Where(l => "AbuDhabiMusaffah17".Contains(l.Value)).GroupBy(l => Math.Round(l.StartBaseLine.Y))
+            .Where(g => string.Concat(g.OrderBy(l => l.StartBaseLine.X).Select(l => l.Value)).Contains("Musaffah17")).ToList();
+        Assert.NotEmpty(address);
+        Assert.Contains(address, g => string.Concat(g.OrderBy(l => l.StartBaseLine.X).Select(l => l.Value)).Contains("AbuDhabiMusaffah17"));
+        Assert.DoesNotContain("+971500000000", page.Text);
+    }
+
+    /// <summary>
+    /// Root cause of the 24 Oct production crash (deployed b7e45a9, PdfService.cs:559): the A4 items-table
+    /// filler row used <c>Height(spacerHeight).Text("")</c> with spacerHeight = 72 - 18*items. At 3 items
+    /// that is 18pt, but the empty Text inherits the page default (10pt Noto Sans Arabic), whose line box is
+    /// taller than 18pt, so QuestPDF throws "conflicting size constraints". Minimal reproduction of that structure.
+    /// </summary>
+    [Fact]
+    public void CrashRepro_FixedHeightEmptyTextWithArabicDefaultStyle_ThrowsUnlessFontShrunk()
+    {
+        QuestPDF.Settings.License = LicenseType.Community;
+        var fonts = new FontService(NullLogger<FontService>.Instance);
+        fonts.RegisterFonts();
+        byte[] Build(bool fixedVersion) => Document.Create(c => c.Page(page =>
+        {
+            page.Size(PageSizes.A4);
+            page.DefaultTextStyle(x => x.FontFamily(fonts.GetArabicFontFamily()).FontSize(10));
+            page.Content().Table(table =>
+            {
+                table.ColumnsDefinition(cols => { for (var i = 0; i < 8; i++) cols.RelativeColumn(); });
+                for (var i = 0; i < 8; i++)
+                {
+                    var cell = table.Cell().BorderLeft(0.5f).BorderRight(0.5f).Height(18f).Text("");
+                    if (fixedVersion) cell.FontSize(1);
+                }
+            });
+        })).GeneratePdf();
+
+        Assert.Throws<QuestPDF.Drawing.Exceptions.DocumentLayoutException>(() => Build(false));
+        Assert.NotEmpty(Build(true));
+    }
+
+    [Fact]
+    public async Task CrashRepro_CurrentA4ThreeItemInvoiceRenders()
+    {
+        await using var db = await SeedAsync(CreateLogo(720, 279));
+        var bytes = await CreatePdfService(db).GenerateInvoicePdfAsync(CreateSale(3), "A4", "full");
+        using var document = PdfDocument.Open(bytes);
+        Assert.Equal(1, document.NumberOfPages);
     }
 
     private static PdfService CreatePdfService(AppDbContext db)
