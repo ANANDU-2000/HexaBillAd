@@ -70,6 +70,20 @@ public static class SampleVatTrn
         return effective.HasValue && invoiceDate.Date < effective.Value ? "INVOICE" : title;
     }
 
+    /// <summary>Internal marker prefix on Sale.ExternalReference for migrated history rows (exact, case-sensitive). Never printed.</summary>
+    public const string ImportedSaleReferencePrefix = "starplus:";
+
+    /// <summary>True when the sale's ExternalReference carries the exact, case-sensitive imported-history marker.</summary>
+    public static bool IsImportedSale(string? externalReference) =>
+        externalReference != null && externalReference.StartsWith(ImportedSaleReferencePrefix, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Invoice title including the imported-history rule: imported sales are titled by the TRN rule alone, so a real TRN
+    /// always gives "TAX INVOICE" regardless of the VAT effective date. Non-imported sales use the date-aware rule unchanged.
+    /// </summary>
+    public static string DocumentTitle(string? vatTrn, DateTime invoiceDate, string? vatEffectiveDate, string? externalReference) =>
+        IsImportedSale(externalReference) ? DocumentTitle(vatTrn) : DocumentTitle(vatTrn, invoiceDate, vatEffectiveDate);
+
     /// <summary>Accepts yyyy-MM-dd (contract form) and dd-MM-yyyy / dd/MM/yyyy (stored settings form). Null when unset or invalid.</summary>
     public static DateTime? ParseVatEffectiveDate(string? value)
     {
