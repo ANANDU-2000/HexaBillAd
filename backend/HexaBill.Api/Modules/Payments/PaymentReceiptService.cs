@@ -123,6 +123,8 @@ namespace HexaBill.Api.Modules.Payments
                             parentIds.Contains(p.ParentPaymentId.Value) && p.Status == PaymentStatus.CLEARED)
                         .ToDictionaryAsync(p => p.ParentPaymentId!.Value);
                     var plans = new List<(Payment Payment, PaymentReceipt? Existing, PaymentReceiptDetailDto Detail)>();
+                    var liveTargets = new List<(int? SaleId, PaymentReceiptDetailDto Detail)>();
+                    int? snapshotSaleId = null;
                     foreach (var pay in payments)
                     {
                         existingByPayment.TryGetValue(pay.Id, out var existing);
@@ -143,6 +145,7 @@ namespace HexaBill.Api.Modules.Payments
                                 snapshot.Detail.AmountReceived <= 0 || snapshot.Detail.Invoices == null || snapshot.Detail.Invoices.Count == 0)
                                 throw new InvalidOperationException("Saved receipt details do not match this payment. Contact support; no replacement was created.");
                             document = snapshot.Detail;
+                            snapshotSaleId = snapshot.SaleId;
                             document.PaymentChangedSinceSnapshot = document.AmountReceived != pay.Amount ||
                                 document.PaymentMethod != pay.Mode.ToString() || document.Reference != pay.Reference ||
                                 document.ReceiptDate != pay.PaymentDate;
@@ -187,7 +190,12 @@ namespace HexaBill.Api.Modules.Payments
                             };
                         }
                         plans.Add((pay, existing, document));
+                        if (snapshotSaleId.HasValue) liveTargets.Add((snapshotSaleId, document));
+                        snapshotSaleId = null;
                     }
+                    // P0-PRINT-013: saved snapshots keep the issue-time invoice number; reprints show the
+                    // sale's current number (e.g. after an audited renumber). One batched, tenant-scoped read.
+                    await ApplyLiveInvoiceNumbersAsync(tenantId, liveTargets);
                     // Financial/customer snapshots must agree; company identity is resolved at render time.
                     var identities = plans.Select(p => JsonSerializer.Serialize(new {
                         p.Detail.Currency, p.Detail.ReceivedFrom, p.Detail.CustomerTrn
@@ -287,6 +295,29 @@ namespace HexaBill.Api.Modules.Payments
                 .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).Select(p => p.Id).Take(501).ToListAsync();
             if (ids.Count > 500) throw new InvalidOperationException("This invoice has more than 500 eligible payments. Generate receipts from the customer payment list in smaller groups.");
             return ids;
+        }
+
+        /// <summary>
+        /// Replace the invoice number on snapshot-backed receipt documents with the sale's current number.
+        /// Only a sale that exists, is not deleted and belongs to <paramref name="tenantId"/> is used; anything
+        /// else keeps the snapshot's number. Mutates only the in-memory document, never the stored snapshot.
+        /// </summary>
+        internal async Task ApplyLiveInvoiceNumbersAsync(int tenantId, IReadOnlyList<(int? SaleId, PaymentReceiptDetailDto Detail)> targets)
+        {
+            var saleIds = targets.Where(t => t.SaleId.HasValue && t.Detail?.Invoices?.Count == 1)
+                .Select(t => t.SaleId!.Value).Distinct().ToList();
+            if (saleIds.Count == 0) return;
+            var live = await _context.Sales.AsNoTracking()
+                .Where(s => s.TenantId == tenantId && !s.IsDeleted && saleIds.Contains(s.Id))
+                .Select(s => new { s.Id, s.TenantId, s.InvoiceNo })
+                .ToListAsync();
+            var byId = live.Where(s => s.TenantId == tenantId && !string.IsNullOrWhiteSpace(s.InvoiceNo))
+                .ToDictionary(s => s.Id, s => s.InvoiceNo);
+            foreach (var (saleId, detail) in targets)
+            {
+                if (!saleId.HasValue || detail?.Invoices?.Count != 1) continue;
+                if (byId.TryGetValue(saleId.Value, out var current)) detail.Invoices[0].InvoiceNo = current;
+            }
         }
 
         private static PaymentReceiptDetailDto SealDocument(PaymentReceiptDetailDto detail)

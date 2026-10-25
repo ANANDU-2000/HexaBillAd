@@ -174,7 +174,8 @@ public class PaymentReceiptTests
         Assert.True(reprint.PaymentChangedSinceSnapshot);
         Assert.Equal("Changed company name", reprint.CompanyName);
         Assert.Equal(first.ReceivedFrom, reprint.ReceivedFrom);
-        Assert.Equal("FIXTURE-1", reprint.Invoices.Single().InvoiceNo);
+        // P0-PRINT-013: invoice number is read live from the same-tenant sale; amounts stay as saved.
+        Assert.Equal("CHANGED-2", reprint.Invoices.Single().InvoiceNo);
         Assert.Equal(1000m, reprint.Invoices.Single().InvoiceTotal);
         Assert.Equal(100m, reprint.AmountReceived);
         Assert.Null(reprint.Reference);
