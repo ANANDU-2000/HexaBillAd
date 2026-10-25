@@ -42,13 +42,20 @@ namespace HexaBill.Api.Modules.Sales
         public const string AuditAction = "InvoiceNumberChanged";
         public const string VatPeriodClosedMessage = "This invoice is in a VAT period that is locked or filed, so its number cannot be changed. Amend the VAT return first.";
         private readonly AppDbContext _context;
+        /// <summary>Same wording ordinary sale edits use (SaleService) when the invoice date is in a locked VAT period.</summary>
+        public const string SaleEditVatLockedMessage = "VAT return period is locked for this invoice date. You cannot add or edit transactions in a locked period.";
         private readonly IInvoiceNumberService _numbers;
+        private readonly IVatReturnValidationService _vatValidation;
 
-        public InvoiceRenumberService(AppDbContext context, IInvoiceNumberService numbers)
+        public InvoiceRenumberService(AppDbContext context, IInvoiceNumberService numbers, IVatReturnValidationService vatValidation)
         {
             _context = context;
             _numbers = numbers;
+            _vatValidation = vatValidation;
         }
+
+        public InvoiceRenumberService(AppDbContext context, IInvoiceNumberService numbers)
+            : this(context, numbers, new VatReturnValidationService(context)) { }
 
         public async Task<(InvoiceNumberChangeOutcome Outcome, string? Problem, InvoiceNumberChangeResult? Result)> ChangeAsync(
             int saleId, int tenantId, int userId, ChangeInvoiceNumberRequest request, bool dryRun)
@@ -75,6 +82,9 @@ namespace HexaBill.Api.Modules.Sales
             {
                 return (InvoiceNumberChangeOutcome.Invalid, VatPeriodClosedMessage, null);
             }
+            // Lead ruling: also apply the exact check ordinary sale edits use.
+            if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, sale.InvoiceDate))
+                return (InvoiceNumberChangeOutcome.Invalid, SaleEditVatLockedMessage, null);
 
             var oldNo = sale.InvoiceNo;
             var result = new InvoiceNumberChangeResult { SaleId = sale.Id, OldInvoiceNo = oldNo, NewInvoiceNo = newNo, DryRun = dryRun };

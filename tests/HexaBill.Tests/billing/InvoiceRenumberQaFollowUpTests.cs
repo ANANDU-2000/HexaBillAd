@@ -59,6 +59,27 @@ public class InvoiceRenumberVatPeriodTests
         Assert.Equal(0, await db.AuditLogs.CountAsync());
     }
 
+    private sealed class AlwaysLockedVat : HexaBill.Api.Modules.Reports.IVatReturnValidationService
+    {
+        public Task<bool> IsTransactionDateInLockedPeriodAsync(int tenantId, DateTime transactionDate) => Task.FromResult(true);
+        public Task<List<HexaBill.Api.Models.ValidationIssueDto>> ValidatePeriodAsync(int tenantId, DateTime from, DateTime to, HexaBill.Api.Models.VatReturn201Dto? precomputed = null) => throw new NotSupportedException();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SaleEditVatCheckAlone_RefusesWithSaleEditWording(bool dryRun)
+    {
+        var (db, sale) = Seed(null); // no frozen period, so VatReturnWriteGuard passes; only the sale-edit check refuses
+        await using var _ = db;
+        var (outcome, problem, _) = await new InvoiceRenumberService(db, new InvoiceNumberService(db, new ConfigurationBuilder().Build()), new AlwaysLockedVat())
+            .ChangeAsync(sale.Id, TenantId, 77, new ChangeInvoiceNumberRequest { NewInvoiceNumber = "7000" }, dryRun);
+        Assert.Equal(InvoiceNumberChangeOutcome.Invalid, outcome);
+        Assert.Equal("VAT return period is locked for this invoice date. You cannot add or edit transactions in a locked period.", problem);
+        Assert.Equal("1791254852", (await db.Sales.AsNoTracking().SingleAsync(s => s.Id == sale.Id)).InvoiceNo);
+        Assert.Equal(0, await db.AuditLogs.CountAsync());
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("Draft")]
