@@ -98,7 +98,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             var current = await _context.Settings.AsNoTracking()
                 .Where(s => s.Key == InvoiceSeriesStartKey && (s.TenantId == tenantId || (s.TenantId == null && s.OwnerId == tenantId)))
                 .Select(s => s.Value).FirstOrDefaultAsync();
-            if (!int.TryParse(current?.Trim(), out var start) || start < 1) return;
+            if (!int.TryParse(current?.Trim(), out var start) || start < 0) return;
             var numbers = await _context.Sales.IgnoreQueryFilters().AsNoTracking()
                 .Where(s => s.TenantId == tenantId && s.InvoiceNo != null)
                 .Select(s => s.InvoiceNo).ToListAsync();
@@ -135,7 +135,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 if (key == InvoiceSeriesStartKey)
                 {
                     value = value.Trim();
-                    if (value.Length != 0 && (!int.TryParse(value, out var start) || start < 1 || start > 998_999_999))
+                    if (value.Length != 0 && (!int.TryParse(value, out var start) || start < 0 || start > 998_999_999))
                         throw new ArgumentException("New invoice numbers must start at a whole number such as 7000.");
                 }
                 if (result.TryGetValue(key, out var existing) && existing != value)

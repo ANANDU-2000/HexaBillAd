@@ -93,7 +93,7 @@ namespace HexaBill.Api.Modules.Sales
         }
 
         /// <summary>
-        /// Tenant setting that starts a fresh numbering series (FrozenHub: 7000). Absent or invalid keeps the legacy max+1 rule.
+        /// Tenant setting that starts a fresh numbering series (FrozenHub: 7000). 0 is allowed so a tenant can issue a literal first number such as 00000. Absent or invalid keeps the legacy max+1 rule.
         /// </summary>
         private async Task<int?> GetSeriesStartAsync(int tenantId)
         {
@@ -102,7 +102,7 @@ namespace HexaBill.Api.Modules.Sales
                 .OrderByDescending(s => s.TenantId == tenantId)
                 .Select(s => s.Value)
                 .FirstOrDefaultAsync();
-            return int.TryParse(value?.Trim(), out var start) && start > 0 && start <= int.MaxValue - SeriesWidth ? start : null;
+            return int.TryParse(value?.Trim(), out var start) && start >= 0 && start <= int.MaxValue - SeriesWidth ? start : null;
         }
 
         /// <summary>
