@@ -2465,6 +2465,7 @@ namespace HexaBill.Api.Modules.Sales
                                 ProductId = product.Id,
                                 ChangeQty = baseQty,
                                 TransactionType = TransactionType.Adjustment,
+                                RefId = sale.Id, // Link the reversal to the deleted sale so audits can match it
                                 Reason = $"Sale Deleted/Canceled: {sale.InvoiceNo}",
                                 CreatedAt = DateTime.UtcNow
                             });
