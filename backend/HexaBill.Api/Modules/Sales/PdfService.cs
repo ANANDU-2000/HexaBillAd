@@ -382,7 +382,9 @@ namespace HexaBill.Api.Modules.Sales
                                         custRow.RelativeItem(35);
                                 });
 
-                                innerColumn.Item().Border(0.5f).Table(table =>
+                                // P0-PRINT-006: item rows use a tight line height (the default Arabic-capable font has a tall line box),
+                                // so 10-20 lines plus totals and the receiver block fit on page 1.
+                                innerColumn.Item().Border(0.5f).DefaultTextStyle(x => x.LineHeight(1.0f)).Table(table =>
                                 {
                                     // Column widths matching RAFCO 11: balanced equal widths
                                     table.ColumnsDefinition(columns =>
@@ -534,7 +536,7 @@ namespace HexaBill.Api.Modules.Sales
                                 // margin (client request). ShowEntire keeps the block on one page instead of splitting it.
                                 // P0-PRINT-003: receiver block follows the totals (old-bill style) instead of being pushed to the page bottom,
                                 // leaving the writable space below the signature lines.
-                                innerColumn.Item().PaddingTop(28).PaddingBottom(20).ShowEntire().Column(footerCol =>
+                                innerColumn.Item().PaddingTop(14).PaddingBottom(6).ShowEntire().Column(footerCol =>
                                 {
                                     // Acknowledgement text
                                     footerCol.Item().AlignLeft().Text("Received the above goods in good order")
@@ -923,7 +925,7 @@ namespace HexaBill.Api.Modules.Sales
                                     c.ConstantColumn(11);     // #
                                     c.RelativeColumn();       // Item
                                     c.ConstantColumn(19);     // Unit
-                                    c.ConstantColumn(16);     // Qty
+                                    c.ConstantColumn(25);     // Qty (P0-PRINT-006: fits 1234.5 / 129.5 / 12.44 on one line)
                                     c.ConstantColumn(29);     // Unit Price
                                     c.ConstantColumn(24);     // VAT
                                     c.ConstantColumn(40);     // Amount (wide enough for a bold 6-digit total)
