@@ -21,9 +21,9 @@ export function validateInvoiceSeriesStart(v) {
   return String(v ?? '').trim() === '' || /^\d+$/.test(String(v).trim()) || 'Enter a whole number such as 7000'
 }
 
-// UX-005B: invoice number width (INVOICE_NUMBER_WIDTH). Digits only, 4-10. Blank keeps the server default (4).
+// UX-005B: invoice number width (INVOICE_NUMBER_WIDTH). Digits only, 4-9. Blank keeps the server default (4).
 export const INVOICE_NUMBER_WIDTH_MIN = 4
-export const INVOICE_NUMBER_WIDTH_MAX = 10
+export const INVOICE_NUMBER_WIDTH_MAX = 9
 export function validateInvoiceNumberWidth(v) {
   const s = String(v ?? '').trim()
   if (s === '') return true

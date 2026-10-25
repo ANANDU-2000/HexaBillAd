@@ -38,10 +38,10 @@ test('UX-005: the Settings field allows 0 and uses the shared validator', async 
 })
 
 // UX-005B: number of digits (INVOICE_NUMBER_WIDTH), auto-width and preview.
-test('UX-005B: validateInvoiceNumberWidth accepts 4-10 and rejects -0, +5, decimals, out of range', async () => {
+test('UX-005B: validateInvoiceNumberWidth accepts 4-9 and rejects -0, +5, decimals, out of range', async () => {
   const { validateInvoiceNumberWidth } = await import('../src/features/settings/settingsUpdatePayload.js')
-  for (const v of ['4', '5', ' 10 ', 7, '']) assert.equal(validateInvoiceNumberWidth(v), true, `value ${JSON.stringify(v)}`)
-  for (const v of ['-0', '+5', '5.0', '1.5', '3', '11', '0', 'abc', '-5']) assert.equal(typeof validateInvoiceNumberWidth(v), 'string', `value ${v}`)
+  for (const v of ['4', '5', ' 9 ', 7, '']) assert.equal(validateInvoiceNumberWidth(v), true, `value ${JSON.stringify(v)}`)
+  for (const v of ['-0', '+5', '5.0', '1.5', '3', '10', '11', '0', 'abc', '-5']) assert.equal(typeof validateInvoiceNumberWidth(v), 'string', `value ${v}`)
 })
 
 test('UX-005B: typing a start with leading zeros raises the digits to its length', async () => {
@@ -52,7 +52,7 @@ test('UX-005B: typing a start with leading zeros raises the digits to its length
   assert.equal(autoWidthForStart('0000', '4'), null)
   assert.equal(autoWidthForStart('7000', '4'), null)
   assert.equal(autoWidthForStart('0', '4'), null)
-  assert.equal(autoWidthForStart('000000000000', '4'), '10')
+  assert.equal(autoWidthForStart('000000000000', '4'), '9')
   assert.equal(autoWidthForStart('00000', ''), '5')
 })
 

@@ -1395,7 +1395,7 @@ const SettingsPage = () => {
                     </p>
                   )}
                   <p className="text-xs text-neutral-500 mt-1">
-                    New invoices continue from the highest number at or above this. Numbers below it stay with earlier invoices, and issued numbers never change. Numbers are padded with zeros to the number of digits (4 to 10).
+                    New invoices continue from the highest number at or above this. Numbers below it stay with earlier invoices, and issued numbers never change. Numbers are padded with zeros to the number of digits (4 to 9).
                   </p>
                 </div>
                 <Input
