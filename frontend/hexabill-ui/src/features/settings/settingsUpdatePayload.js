@@ -15,3 +15,8 @@ export function addInvoiceSeriesStartForUpdate(payload, data, initial) {
   if (next !== before) payload.INVOICE_SERIES_START = next
   return payload
 }
+
+// UX-005: a blank field keeps the current series; otherwise any whole number, including 0, is accepted.
+export function validateInvoiceSeriesStart(v) {
+  return String(v ?? '').trim() === '' || /^\d+$/.test(String(v).trim()) || 'Enter a whole number such as 7000'
+}

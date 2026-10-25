@@ -37,7 +37,7 @@ import { isAdminOrOwner } from '../../utils/roles'  // CRITICAL: Multi-tenant ro
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import StampSignaturePlacementPreview from '../../components/StampSignaturePlacementPreview'
-import { addInvoiceHeaderStyleForUpdate, addInvoiceSeriesStartForUpdate } from './settingsUpdatePayload'
+import { addInvoiceHeaderStyleForUpdate, addInvoiceSeriesStartForUpdate, validateInvoiceSeriesStart } from './settingsUpdatePayload'
 
 const SettingsPage = () => {
   const { user } = useAuth()
@@ -1360,7 +1360,7 @@ const SettingsPage = () => {
                     placeholder="e.g. 7000"
                     error={errors.invoiceSeriesStart?.message}
                     {...register('invoiceSeriesStart', {
-                      validate: (v) => String(v ?? '').trim() === '' || /^\d+$/.test(String(v).trim()) || 'Enter a whole number such as 7000'
+                      validate: validateInvoiceSeriesStart
                     })}
                   />
                   <p className="text-xs text-neutral-500 mt-1">
