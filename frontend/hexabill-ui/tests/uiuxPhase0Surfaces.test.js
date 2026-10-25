@@ -39,3 +39,10 @@ test('UIX014: document editors and tenant VAT date use the local day, not the UT
     assert.equal(src(...parts).includes('toISOString().slice(0, 10)'), false, parts.join('/'))
   }
 })
+
+test('UIX006: maintenance mode is a switch that asks before turning on, and says so', () => {
+  const page = src('platform', 'SuperAdminSettingsPage.jsx')
+  assert.equal(page.includes('role="switch"'), true)
+  assert.equal(page.includes('window.confirm('), true)
+  assert.equal(page.includes('Maintenance mode is on'), true)
+})

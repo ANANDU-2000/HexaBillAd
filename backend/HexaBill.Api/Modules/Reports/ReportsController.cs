@@ -246,13 +246,8 @@ namespace HexaBill.Api.Modules.Reports
                     request.ExpenseCount,
                     request.Extra
                 }, new JsonSerializerOptions { WriteIndented = false, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                await _auditService.LogAsync(
-                    $"VatTracking.{request.EventType}",
-                    "VatTracking",
-                    null,
-                    null,
-                    null,
-                    details);
+                // UIX-008: UI telemetry belongs in the application log, not the business audit trail.
+                _logger.LogInformation("VAT UI event {EventType}: {Details}", request.EventType, details);
                 return Ok(new ApiResponse<object> { Success = true, Message = "Event logged" });
             }
             catch (Exception ex)

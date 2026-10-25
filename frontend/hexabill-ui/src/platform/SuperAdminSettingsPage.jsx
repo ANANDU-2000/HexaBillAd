@@ -262,14 +262,27 @@ const SuperAdminSettingsPage = () => {
                 <Construction className="h-5 w-5" />
                 Maintenance Mode
               </span>
-              <input
-                type="checkbox"
-                checked={form.maintenanceMode}
-                onChange={(e) => setForm({ ...form, maintenanceMode: e.target.checked })}
-                className="rounded"
-              />
+              <span className="flex items-center gap-2 text-sm font-medium text-amber-900">
+                {form.maintenanceMode ? 'On' : 'Off'}
+                <input
+                  type="checkbox"
+                  role="switch"
+                  aria-checked={form.maintenanceMode}
+                  aria-label="Maintenance mode"
+                  checked={form.maintenanceMode}
+                  onChange={(e) => {
+                    // UIX-006: turning this on locks every tenant out, so confirm first and name the impact.
+                    if (e.target.checked && !window.confirm('Turn on maintenance mode? All tenant users will see a maintenance screen until you turn it off. You still need to click Save.')) return
+                    setForm({ ...form, maintenanceMode: e.target.checked })
+                  }}
+                  className="h-4 w-4 rounded"
+                />
+              </span>
             </label>
             <p className="text-sm text-warning-fg mt-2">When ON, all tenant users see a maintenance screen. SuperAdmin can still access.</p>
+            {form.maintenanceMode && (
+              <p className="mt-2 p-2 text-sm font-medium text-amber-900 bg-amber-100 border border-amber-300 rounded">Maintenance mode is on. Tenant users see the maintenance screen.</p>
+            )}
             {form.maintenanceMode && (
               <Input
                 label="Maintenance Message"
