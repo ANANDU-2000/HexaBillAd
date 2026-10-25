@@ -1013,7 +1013,7 @@ namespace HexaBill.Api.Modules.Sales
                     {
                         column.Spacing(0);
                         if (settings.BilingualMonochromeHeader)
-                            RenderCompanyHeader(column.Item(), settings, 9);
+                            RenderCompanyHeader(column.Item(), settings, 9, stacked: true);
                         else
                         {
                             column.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(9).Bold();
@@ -1052,7 +1052,7 @@ namespace HexaBill.Api.Modules.Sales
                     {
                         column.Spacing(0);
                         if (settings.BilingualMonochromeHeader)
-                            RenderCompanyHeader(column.Item(), settings, 7);
+                            RenderCompanyHeader(column.Item(), settings, 7, stacked: true);
                         else
                         {
                             column.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(7).Bold();
@@ -1290,7 +1290,8 @@ namespace HexaBill.Api.Modules.Sales
             bool a4Letterhead = false,
             string? dateLine = null,
             bool drawBottomRule = true,
-            bool a5Letterhead = false)
+            bool a5Letterhead = false,
+            bool stacked = false)
         {
             // Disable standard ligatures so "ff" in "Musaffah" stays two searchable/copyable characters
             // (Lato/Noto shape it into U+FB00, which breaks PDF text search and copy-paste).
@@ -1304,6 +1305,10 @@ namespace HexaBill.Api.Modules.Sales
                 var (logoW, logoH, logoColW) = LetterheadLogoBox(a4Letterhead, fontSize);
                 if (a5Letterhead)
                     (logoW, logoH, logoColW) = LetterheadLogoBox(false, fontSize);
+                if (stacked)
+                    // Thermal stacked header: the logo has its own full-width row, so fit it into a
+                    // 140x40pt box (tall logos readable, wide logos still inside the paper).
+                    (logoW, logoH, logoColW) = (140f, 40f, 140f);
                 var logoDisplayWidth = logoW;
                 if (logo != null)
                 {
@@ -1317,6 +1322,10 @@ namespace HexaBill.Api.Modules.Sales
                 // email, and stored contact settings out of this invoice header only.
                 const string frozenHubPrintedAddress = "Abu Dhabi, Musaffah 17";
                 var printedAddress = settings.FrozenHubHeaderPolicy ? frozenHubPrintedAddress : settings.CompanyAddress;
+                // Stacked (58mm/80mm) header: no-break spaces keep a short address such as "Abu Dhabi, Musaffah 17"
+                // on one line next to its Arabic label instead of breaking after "Abu Dhabi,".
+                var arabicAddress = stacked && printedAddress != null && printedAddress.Length <= 40
+                    ? printedAddress.Replace(' ', '\u00A0') : printedAddress;
 
                 Action<IContainer> composeEnglish = cell => cell.Column(en =>
                 {
@@ -1358,7 +1367,7 @@ namespace HexaBill.Api.Modules.Sales
                     ar.Spacing(1);
                     if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
                         ar.Item().AlignRight().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
-                            .FontSize(a4Letterhead ? (settings.CompanyNameAr.Length > 28 ? 12f : 14f) : nameSize).Bold().DirectionFromRightToLeft();
+                            .FontSize(a4Letterhead ? (settings.CompanyNameAr.Length > 28 ? 12f : 14f) : stacked ? Math.Min(nameSize, 7f) : nameSize).Bold().DirectionFromRightToLeft();
                     if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(settings.CompanyPhone))
                         ar.Item().PaddingTop(1).AlignRight().Text(text =>
                         {
@@ -1375,7 +1384,7 @@ namespace HexaBill.Api.Modules.Sales
                         {
                             // Isolate the Latin address so bidi keeps "العنوان:" before it (right side) in RTL order.
                             text.Span("العنوان: ").FontFamily(_arabicFont).FontSize(detailSize);
-                            text.Span($"\u2066{printedAddress}\u2069").FontFamily(_englishFont).FontSize(detailSize);
+                            text.Span($"\u2066{arabicAddress}\u2069").FontFamily(_englishFont).FontSize(detailSize);
                         });
                     var vatTrn = HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn);
                     if (!string.IsNullOrWhiteSpace(vatTrn) && (a4Letterhead || a5Letterhead))
@@ -1388,7 +1397,16 @@ namespace HexaBill.Api.Modules.Sales
 
                 var letterhead = a4Letterhead || a5Letterhead;
                 var headerHeight = a4Letterhead ? 95f : a5Letterhead ? 65f : 0f;
-                if (letterhead)
+                if (stacked)
+                {
+                    // 58mm/80mm: the three header blocks are stacked full-width (English, logo, Arabic) so the
+                    // long Arabic legal name gets the whole paper width and wraps to at most two lines.
+                    column.Item().Element(composeEnglish);
+                    if (logo != null)
+                        column.Item().AlignCenter().Width(logoColW).Element(composeLogo);
+                    column.Item().Element(composeArabic);
+                }
+                else if (letterhead)
                 {
                     // Keep the logo centered against the page itself. Placing it between two
                     // fixed-width Row cells can shift its PDF bounds when the available width
