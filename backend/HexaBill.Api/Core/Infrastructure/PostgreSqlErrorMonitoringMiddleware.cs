@@ -45,6 +45,23 @@ namespace HexaBill.Api.Core.Infrastructure
                 _logger.LogInformation("✅ [CorrelationId: {CorrelationId}] {Method} {Path} - Completed in {ElapsedMs}ms (Status: {StatusCode})", 
                     correlationId, requestMethod, requestPath, stopwatch.ElapsedMilliseconds, context.Response.StatusCode);
             }
+            catch (UnauthorizedAccessException ex)
+            {
+                // UIX-003: a missing or invalid auth claim is an auth failure, not a server fault.
+                // Answer 401 and skip the critical error log so Super Admin sees real faults only.
+                stopwatch.Stop();
+                _logger.LogWarning("[CorrelationId: {CorrelationId}] {Method} {Path} - Unauthorized: {Message}",
+                    correlationId, requestMethod, requestPath, ex.Message);
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    errorCode = "AUTH_UNAUTHORIZED",
+                    message = "Your session is not valid. Sign in again.",
+                    traceId = correlationId,
+                    correlationId = correlationId,
+                    timestamp = DateTime.UtcNow
+                });
+            }
             catch (Exception ex)
             {
                 stopwatch.Stop();

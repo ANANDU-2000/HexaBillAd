@@ -27,6 +27,15 @@ import { Input, Select, TextArea } from '../components/Form'
 import Modal from '../components/Modal'
 import { ModernTable, StatCard } from '../components/ui/index'
 import toast from 'react-hot-toast'
+import { useAuthedImageSrc } from '../utils/useAuthedImageSrc'
+
+// UIX-003: storage logos are fetched with auth, so a raw <img> never 401s in the error log.
+// Shows the first letter while the logo loads or if it cannot be loaded.
+const TenantLogo = ({ src, initial }) => {
+  const resolved = useAuthedImageSrc(src)
+  if (resolved) return <img src={resolved} alt="" className="h-full w-full object-contain" />
+  return <span className="text-neutral-500 font-semibold text-sm">{initial}</span>
+}
 
 const SuperAdminTenantsPage = () => {
   const navigate = useNavigate()
@@ -363,12 +372,7 @@ const SuperAdminTenantsPage = () => {
     company: (
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-lg bg-neutral-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-          {logoUrl(tenant) ? (
-            <img src={logoUrl(tenant)} alt="" className="h-full w-full object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling?.classList.remove('hidden') }} />
-          ) : null}
-          <span className={logoUrl(tenant) ? 'hidden text-neutral-500 font-semibold text-sm' : 'text-neutral-500 font-semibold text-sm'}>
-            {(tenant.name || 'C').charAt(0).toUpperCase()}
-          </span>
+          <TenantLogo src={logoUrl(tenant)} initial={(tenant.name || 'C').charAt(0).toUpperCase()} />
         </div>
         <div className="flex flex-col">
           <span className="font-medium text-neutral-900 truncate max-w-[140px]" title={tenant.name}>{tenant.name || '—'}</span>
