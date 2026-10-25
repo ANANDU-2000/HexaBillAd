@@ -686,6 +686,32 @@ namespace HexaBill.Api.Modules.Payments
             }
         }
 
+        /// <summary>PDF of exactly this saved receipt (its own number and payments). Read-only: never creates a receipt row.</summary>
+        [HttpGet("receipt/{receiptId:int}/pdf")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<IActionResult> GetReceiptPdfById(int receiptId)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("UserId");
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId)) return Unauthorized(new ApiResponse<object> { Success = false, Message = "Invalid user" });
+                var detail = await _receiptService.GetReceiptDetailByIdAsync(tenantId, receiptId, userId);
+                if (detail == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Receipt not found" });
+                var bytes = await _pdfService.GeneratePaymentReceiptPdfAsync(detail);
+                var safeName = string.Concat((detail.ReceiptNumber ?? "receipt").Select(c => char.IsLetterOrDigit(c) || c == '-' ? c : '_'));
+                return File(bytes, "application/pdf", $"receipt-{safeName}.pdf");
+            }
+            catch (InvalidOperationException ex) { return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message }); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Receipt PDF failed for receipt {ReceiptId}", receiptId);
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Receipt PDF could not be generated. Please try again or contact support." });
+            }
+        }
+
         [HttpGet("customers/{customerId}/receipts")]
         [Authorize(Roles = "Admin,Owner,Manager")]
         public async Task<ActionResult<ApiResponse<List<PaymentReceiptDto>>>> GetCustomerReceipts(int customerId)

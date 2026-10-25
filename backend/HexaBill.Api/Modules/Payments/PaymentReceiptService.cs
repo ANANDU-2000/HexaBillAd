@@ -332,7 +332,7 @@ namespace HexaBill.Api.Modules.Payments
                 .Include(p => p.Sale).Include(p => p.Customer)
                 .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
             if (payments.Count == 0)
-                throw new InvalidOperationException("Imported receipt payments are unavailable in this workspace.");
+                throw new InvalidOperationException("Receipt payments are unavailable in this workspace.");
             var settings = await _settings.GetCompanySettingsAsync(tenantId);
             var amount = payments.Sum(p => p.Amount);
             var currency = string.IsNullOrWhiteSpace(tenant?.Currency) ? "AED" : tenant!.Currency;
@@ -342,7 +342,7 @@ namespace HexaBill.Api.Modules.Payments
             {
                 IsImportedHistory = true,
                 IsHistoricalSnapshot = true,
-                LegacyReconstruction = true,
+                LegacyReconstruction = false,
                 ReceiptNumber = receipt.ReceiptNumber, // stored number is the original verbatim (importer)
                 ReceiptDate = first.PaymentDate,
                 ReceiptEndDate = payments.Count > 1 ? payments[^1].PaymentDate : null,
