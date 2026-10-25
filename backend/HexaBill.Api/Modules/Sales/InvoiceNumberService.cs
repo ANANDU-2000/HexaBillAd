@@ -155,8 +155,13 @@ namespace HexaBill.Api.Modules.Sales
                     var lockId = 1000000 + tenantId;
                     if (IsPostgres())
                     {
+                        // Without the lock two requests could compute the same number, so fail instead of carrying on.
                         try { await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_lock({lockId})"); }
-                        catch { /* ignore */ }
+                        catch (Exception lockEx)
+                        {
+                            throw new InvoiceNumberLockException(
+                                $"Could not lock invoice numbering for tenant {tenantId}. The invoice was not numbered; please try again.", lockEx);
+                        }
                     }
 
                     try
@@ -195,7 +200,7 @@ namespace HexaBill.Api.Modules.Sales
                         }
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not InvoiceNumberLockException)
                 {
                     if (attempt == MAX_RETRIES - 1) throw;
                     _ = ex; // avoid CS0168 unused variable
@@ -295,5 +300,10 @@ namespace HexaBill.Api.Modules.Sales
             return await query.AnyAsync();
         }
     }
-}
 
+    /// <summary>Raised when the per-tenant numbering lock cannot be taken; numbering must not proceed unlocked.</summary>
+    public class InvoiceNumberLockException : InvalidOperationException
+    {
+        public InvoiceNumberLockException(string message, Exception inner) : base(message, inner) { }
+    }
+}
