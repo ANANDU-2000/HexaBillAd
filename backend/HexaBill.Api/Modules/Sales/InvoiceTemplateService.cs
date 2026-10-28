@@ -399,6 +399,12 @@ namespace HexaBill.Api.Modules.Sales
             public string CompanyWebsite { get; set; } = "";
             public bool BilingualMonochromeHeader { get; set; }
             public bool FrozenHubHeaderPolicy { get; set; }
+            public bool InvoiceCompactHeader { get; set; }
+            public string InvoicePrintAddress { get; set; } = "";
+            public string InvoicePoBox { get; set; } = "";
+            public string InvoiceBankAccountName { get; set; } = "";
+            public string InvoiceBankName { get; set; } = "";
+            public string InvoiceBankIban { get; set; } = "";
             public string Currency { get; set; } = "AED";
             public decimal VatPercent { get; set; } = 5.0m;
             public string InvoicePrefix { get; set; } = "INV";

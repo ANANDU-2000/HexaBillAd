@@ -42,6 +42,12 @@ namespace HexaBill.Api.Models
         public string? LogoDataUri { get; set; }
         public bool BilingualMonochromeHeader { get; set; }
         public bool FrozenHubHeaderPolicy { get; set; }
+        public bool InvoiceCompactHeader { get; set; }
+        public string InvoicePrintAddress { get; set; } = "";
+        public string InvoicePoBox { get; set; } = "";
+        public string InvoiceBankAccountName { get; set; } = "";
+        public string InvoiceBankName { get; set; } = "";
+        public string InvoiceBankIban { get; set; } = "";
 
         public static void RequireTaxInvoiceVatTrn(string? vatTrn, string? environmentName = null) =>
             HexaBill.Api.Core.Tenancy.SampleVatTrn.RequireTaxInvoiceVatTrn(vatTrn, environmentName);

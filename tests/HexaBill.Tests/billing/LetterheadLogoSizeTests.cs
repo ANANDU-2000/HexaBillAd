@@ -36,6 +36,82 @@ public class LetterheadLogoSizeTests
         Assert.Equal("FOODSTUFF TRADING - L.L.C - S.P.C", split.Subtitle);
     }
 
+    [Theory]
+    [InlineData("A4", 1)]
+    [InlineData("A4", 50)]
+    [InlineData("A5", 1)]
+    [InlineData("A5", 50)]
+    public async Task InvoicePrintDetails_AreSearchableAcrossFormatsAndPages(string format, int count)
+    {
+        await using var db = await SeedSquareLogoTenantAsync();
+        var settings = new SettingsService(db);
+        await settings.UpdateOwnerSettingsBulkAsync(TenantId, new Dictionary<string, string> {
+            ["INVOICE_HEADER_PRESENTATION"] = "compact", ["INVOICE_PRINT_ADDRESS"] = "Synthetic address 17, UAE",
+            ["INVOICE_PO_BOX"] = "9999", ["INVOICE_BANK_ACCOUNT_NAME"] = "SYNTHETIC LONG ACCOUNT NAME FOR TESTING WRAPPING",
+            ["INVOICE_BANK_NAME"] = "SYNTHETIC BANK", ["INVOICE_BANK_IBAN"] = "AE010123456789012345678"
+        });
+        var fonts = new FontService(NullLogger<FontService>.Instance);
+        fonts.RegisterFonts();
+        var pdf = new PdfService(db, null!, fonts, settings, null!, NullLogger<PdfService>.Instance, null!);
+        var invoice = CreateSampleInvoice();
+        invoice.Items = Enumerable.Range(0, count).Select(i => new SaleItemDto {
+            ProductId = i + 1, ProductName = $"Synthetic item {i}", Qty = 1, UnitType = "CTN", UnitPrice = 20, LineTotal = 21, VatAmount = 1
+        }).ToList();
+        var bytes = await pdf.GenerateInvoicePdfAsync(invoice, format, "full");
+        await File.WriteAllBytesAsync(Path.Combine(AppContext.BaseDirectory, $"synthetic-invoice-print-{format}-{count}.pdf"), bytes);
+        using var doc = PdfDocument.Open(bytes);
+        var text = string.Join(" ", doc.GetPages().Select(p => p.Text));
+        Assert.Contains("Synthetic address 17, UAE", text);
+        Assert.Contains("P.O. Box: 9999", text);
+        Assert.Contains("frozenhubfoods@gmail.com", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SYNTHETIC LONG ACCOUNT NAME", text);
+        Assert.Contains("SYNTHETIC BANK", text);
+        Assert.Contains("AE01 0123 4567 8901 2345 678", text);
+        Assert.Contains("FH-QA-2026", text);
+        Assert.Contains("21.00", text);
+        Assert.DoesNotContain("International Transport", text);
+    }
+
+    [Theory]
+    [InlineData("A4", "body")]
+    [InlineData("A5", "body")]
+    [InlineData("80mm", "full")]
+    [InlineData("58mm", "full")]
+    public async Task InvoiceBankDetails_DoNotChangePreprintedOrThermal(string format, string layout)
+    {
+        await using var db = await SeedSquareLogoTenantAsync();
+        var settings = new SettingsService(db);
+        await settings.UpdateOwnerSettingsBulkAsync(TenantId, new Dictionary<string, string> {
+            ["INVOICE_BANK_ACCOUNT_NAME"] = "SYNTHETIC ACCOUNT", ["INVOICE_BANK_NAME"] = "SYNTHETIC BANK",
+            ["INVOICE_BANK_IBAN"] = "AE010123456789012345678", ["INVOICE_HEADER_PRESENTATION"] = "compact"
+        });
+        var fonts = new FontService(NullLogger<FontService>.Instance);
+        fonts.RegisterFonts();
+        var pdf = new PdfService(db, null!, fonts, settings, null!, NullLogger<PdfService>.Instance, null!);
+        using var doc = PdfDocument.Open(await pdf.GenerateInvoicePdfAsync(CreateSampleInvoice(), format, layout));
+        Assert.DoesNotContain("SYNTHETIC BANK", string.Join(" ", doc.GetPages().Select(p => p.Text)));
+    }
+
+    [Fact]
+    public async Task CompactInvoice_MissingLogoRetainsCompanyNameAndIncompleteBankIsOmitted()
+    {
+        await using var db = await SeedSquareLogoTenantAsync();
+        var logo = await db.Settings.SingleAsync(s => s.TenantId == TenantId && s.Key == "LOGO_BASE64_DATA_URI");
+        logo.Value = "";
+        await db.SaveChangesAsync();
+        var settings = new SettingsService(db);
+        await settings.UpdateOwnerSettingsBulkAsync(TenantId, new Dictionary<string, string> {
+            ["INVOICE_HEADER_PRESENTATION"] = "compact", ["INVOICE_BANK_NAME"] = "INCOMPLETE BANK"
+        });
+        var fonts = new FontService(NullLogger<FontService>.Instance);
+        fonts.RegisterFonts();
+        var pdf = new PdfService(db, null!, fonts, settings, null!, NullLogger<PdfService>.Instance, null!);
+        using var doc = PdfDocument.Open(await pdf.GenerateInvoicePdfAsync(CreateSampleInvoice(), "A4", "full"));
+        var text = string.Join(" ", doc.GetPages().Select(p => p.Text));
+        Assert.Contains("FROZENHUB", text);
+        Assert.DoesNotContain("INCOMPLETE BANK", text);
+    }
+
     [Fact]
     public async Task A4Invoice_PrintsOriginalLogoWithAspectRatioAndCentred()
     {

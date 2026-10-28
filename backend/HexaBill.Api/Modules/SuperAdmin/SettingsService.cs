@@ -124,6 +124,16 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 if (key.Equals("INVOICE_HEADER_STYLE_LOCKED", StringComparison.OrdinalIgnoreCase))
                     throw new ArgumentException("Invoice header policy is managed by the workspace.");
                 var value = pair.Value ?? "";
+                if (key.StartsWith("INVOICE_PRINT_", StringComparison.Ordinal) || key.StartsWith("INVOICE_BANK_", StringComparison.Ordinal) || key == "INVOICE_PO_BOX" || key == "INVOICE_HEADER_PRESENTATION")
+                {
+                    value = value.Trim();
+                    if (value.Length > 160 || value.Any(char.IsControl))
+                        throw new ArgumentException("Invoice print settings must be a single line of at most 160 characters.");
+                    if (key == "INVOICE_HEADER_PRESENTATION" && value != "" && value != "compact")
+                        throw new ArgumentException("Invalid invoice header presentation.");
+                    if (key == "INVOICE_BANK_IBAN" && value.Length > 0 && (value.Count(c => !char.IsWhiteSpace(c)) > 34 || value.Any(c => !char.IsAsciiLetterOrDigit(c) && !char.IsWhiteSpace(c))))
+                        throw new ArgumentException("IBAN must contain only letters, digits and spaces, up to 34 characters.");
+                }
                 if (key == "COMPANY_TRN")
                 {
                     value = value.Trim();
@@ -162,7 +172,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
             var sensitive = key.Contains("SECRET", StringComparison.OrdinalIgnoreCase)
                 || key.Contains("TOKEN", StringComparison.OrdinalIgnoreCase)
                 || key.Contains("PASSWORD", StringComparison.OrdinalIgnoreCase)
-                || key.Contains("API_KEY", StringComparison.OrdinalIgnoreCase);
+                || key.Contains("API_KEY", StringComparison.OrdinalIgnoreCase)
+                || key.StartsWith("INVOICE_BANK_", StringComparison.OrdinalIgnoreCase);
             _context.AuditLogs.Add(new AuditLog {
                 TenantId = tenantId, OwnerId = tenantId, UserId = actor,
                 Action = "SettingsChanged", EntityType = "Setting", CreatedAt = DateTime.UtcNow,
@@ -280,6 +291,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 LogoDataUri = NullIfEmpty(settingsDict.GetValueOrDefault("LOGO_BASE64_DATA_URI", "")),
                 BilingualMonochromeHeader = settingsDict.GetValueOrDefault("INVOICE_HEADER_STYLE", "") == "BilingualMonochrome",
                 FrozenHubHeaderPolicy = settingsDict.GetValueOrDefault("INVOICE_HEADER_STYLE_LOCKED", "") == "true",
+                InvoiceCompactHeader = settingsDict.GetValueOrDefault("INVOICE_HEADER_PRESENTATION", "") == "compact",
+                InvoicePrintAddress = settingsDict.GetValueOrDefault("INVOICE_PRINT_ADDRESS", ""),
+                InvoicePoBox = settingsDict.GetValueOrDefault("INVOICE_PO_BOX", ""),
+                InvoiceBankAccountName = settingsDict.GetValueOrDefault("INVOICE_BANK_ACCOUNT_NAME", ""),
+                InvoiceBankName = settingsDict.GetValueOrDefault("INVOICE_BANK_NAME", ""),
+                InvoiceBankIban = settingsDict.GetValueOrDefault("INVOICE_BANK_IBAN", ""),
                 SettingsVersion = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(settingsDict.Where(p => p.Key.StartsWith("COMPANY_") || p.Key.StartsWith("LOGO_") || p.Key == "INVOICE_HEADER_STYLE").OrderBy(p => p.Key))))),
                 Address = settingsDict.GetValueOrDefault("COMPANY_ADDRESS", ""),
                 Mobile = settingsDict.GetValueOrDefault("COMPANY_PHONE", ""),

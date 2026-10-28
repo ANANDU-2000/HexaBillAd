@@ -1,4 +1,12 @@
 # Task Tracker
+
+### FrozenHub invoice settings release — 2026-10-28
+
+- Release base `ecc94d7544262b4931e9c217500e44c0c57a1a2b`, verified live on Render as deploy `dep-dbf43b49v7es73d28or0`. Changes are opt-in per tenant, without a schema migration or production setting changes.
+- PASS: isolated PG18 synthetic targeted backend selection: 144 passed; subsequent invoice/settings/phone selection: 135 passed; targeted PostgreSQL own/foreign invoice PDF and settings HTTP selection: 18 passed, none skipped. Frontend `npm ci`, `npm run build`, `npm test`: exit 0, 333 tests passed. A4/A5 one-item synthetic output visually inspected; one/50-item searchable PDF tests pass. Physical printers and browser save/refetch are NOT TESTED.
+- PASS: current production read-only snapshot restored into a private, password-protected isolated PostgreSQL cluster; all 75 table row counts and full-row hashes match the snapshot. The required Settings columns exist in the restored schema. Protected backup/restore evidence is outside Git. No production database changes were made. Previous live commit/deploy is the application rollback target; the change has no migration.
+- Pending after release: owner confirmation of P.O. Box and IBAN and verification of both tenant identities before any per-tenant settings update; real browser/physical printer verification. No settings are automatically enabled by this release.
+
 | ID | Pri | Module | Problem | Root cause | Files | Fix | Test | Evidence | Status |
 |----|-----|--------|---------|-----------|-------|-----|------|----------|--------|
 | FH-P0-01 | P0 | Sales Ledger | FrozenHub payment row stored as `Completed` crashed enum materialization; ledger omitted it from cleared settlement totals | `PaymentStatus` had no legacy `Completed` member; `CLEARED` aggregates excluded that persisted status | Payment.cs, PaymentService.cs, ReportService.cs, ReportsController.cs, SalesLedgerPage.jsx | Read legacy status without DB writes; count it as settled; sanitize API failure details | SalesLedgerReceiptStateTests + LetterheadLogoSizeTests | Live read-only DB: one tenant-20 row (`Id=1462`, `SaleId=1618`, AED 10.50); focused tests 15/15 pass | PASS (local targeted) |

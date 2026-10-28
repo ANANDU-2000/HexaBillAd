@@ -147,6 +147,15 @@ public class HttpIsolationPostgreSqlTests
     }
 
     [SkippableFact]
+    public async Task GetInvoicePdf_OtherTenantSale_ReturnsNotFound_OnPostgreSql()
+    {
+        var factory = PostgresIntegrationSkip.RequireFactory(_fixture.Factory);
+        using var client = HttpIntegrationClient.Create(factory, factory.TenantBId, factory.TenantBId, factory.SlugB);
+        var response = await client.GetAsync($"/api/sales/{factory.SaleAId}/pdf?layout=full");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [SkippableFact]
     public async Task GetSale_CrossTenant_ReturnsNotFound_OnPostgreSql()
     {
         var factory = PostgresIntegrationSkip.RequireFactory(_fixture.Factory);

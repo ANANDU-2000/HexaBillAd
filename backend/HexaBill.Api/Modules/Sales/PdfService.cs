@@ -300,7 +300,7 @@ namespace HexaBill.Api.Modules.Sales
 
                                 if (settings.BilingualMonochromeHeader && !settings.LetterheadOnlyPrint)
                                 {
-                                    RenderCompanyHeader(innerColumn.Item(), settings, 14, a4Letterhead: true, dateLine: $"DATE: {invoiceDateStr}", drawBottomRule: false);
+                                    RenderCompanyHeader(innerColumn.Item(), settings, 14, a4Letterhead: true, dateLine: $"DATE: {invoiceDateStr}", drawBottomRule: false, invoiceHeader: true);
                                 }
                                 else if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                 {
@@ -532,6 +532,8 @@ namespace HexaBill.Api.Modules.Sales
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(10);
                                 });
 
+                                if (!settings.LetterheadOnlyPrint)
+                                    RenderInvoiceBankDetails(innerColumn, settings, 8);
                                 // Pin signature / Pending near A4 page bottom after short tables, lifted slightly off the
                                 // margin (client request). ShowEntire keeps the block on one page instead of splitting it.
                                 // P0-PRINT-003: receiver block follows the totals (old-bill style) instead of being pushed to the page bottom,
@@ -863,6 +865,24 @@ namespace HexaBill.Api.Modules.Sales
             }
         }
 
+        private void RenderInvoiceBankDetails(ColumnDescriptor column, InvoiceTemplateService.CompanySettings settings, float fontSize)
+        {
+            if (string.IsNullOrWhiteSpace(settings.InvoiceBankAccountName) ||
+                string.IsNullOrWhiteSpace(settings.InvoiceBankName) ||
+                string.IsNullOrWhiteSpace(settings.InvoiceBankIban)) return;
+
+            // Group the IBAN for readable wrapping without altering its characters.
+            var iban = string.Concat(settings.InvoiceBankIban.Where(c => !char.IsWhiteSpace(c)));
+            var groupedIban = string.Join(" ", Enumerable.Range(0, (iban.Length + 3) / 4)
+                .Select(i => iban.Substring(i * 4, Math.Min(4, iban.Length - i * 4))));
+            column.Item().PaddingTop(4).ShowEntire().Column(bank =>
+            {
+                bank.Item().Text($"Account Name: {settings.InvoiceBankAccountName}").FontFamily(_englishFont).FontSize(fontSize);
+                bank.Item().Text($"Bank: {settings.InvoiceBankName}").FontFamily(_englishFont).FontSize(fontSize);
+                bank.Item().Text($"IBAN: {groupedIban}").FontFamily(_englishFont).FontSize(fontSize);
+            });
+        }
+
         /// <summary>A5 (148x210mm) compact invoice - letterhead-only + stamp/sign when enabled.</summary>
         private byte[] GenerateInvoicePdfA5(SaleDto sale, InvoiceTemplateService.CompanySettings settings, string trnDisplay)
         {
@@ -889,7 +909,7 @@ namespace HexaBill.Api.Modules.Sales
                         {
                             inner.Spacing(0);
                             if (settings.BilingualMonochromeHeader && !letterheadOnly)
-                                RenderCompanyHeader(inner.Item(), settings, 10, drawBottomRule: false, a5Letterhead: true);
+                                RenderCompanyHeader(inner.Item(), settings, 10, drawBottomRule: false, a5Letterhead: true, invoiceHeader: true);
                             else if (!letterheadOnly && !useOrangeLetterhead)
                             {
                                 inner.Item().AlignCenter().Column(c =>
@@ -972,6 +992,8 @@ namespace HexaBill.Api.Modules.Sales
                                 table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(7).Bold();
                             });
                             inner.Item().PaddingTop(1).Text(ConvertToWords(sale.GrandTotal)).FontSize(6).Italic();
+                            if (!letterheadOnly)
+                                RenderInvoiceBankDetails(inner, settings, 7);
                             if (!letterheadOnly && !useOrangeLetterhead)
                             {
                                 inner.Item().PaddingTop(2).ShowEntire().Column(f =>
@@ -1306,7 +1328,8 @@ namespace HexaBill.Api.Modules.Sales
             string? dateLine = null,
             bool drawBottomRule = true,
             bool a5Letterhead = false,
-            bool stacked = false)
+            bool stacked = false,
+            bool invoiceHeader = false)
         {
             // Disable standard ligatures so "ff" in "Musaffah" stays two searchable/copyable characters
             // (Lato/Noto shape it into U+FB00, which breaks PDF text search and copy-paste).
@@ -1336,7 +1359,9 @@ namespace HexaBill.Api.Modules.Sales
                 // FrozenHub's approved printed address is intentionally minimal. Keep phone,
                 // email, and stored contact settings out of this invoice header only.
                 const string frozenHubPrintedAddress = "Abu Dhabi, Musaffah 17";
-                var printedAddress = settings.FrozenHubHeaderPolicy ? frozenHubPrintedAddress : settings.CompanyAddress;
+                var compactInvoice = invoiceHeader && settings.InvoiceCompactHeader;
+                var printedAddress = compactInvoice && !string.IsNullOrWhiteSpace(settings.InvoicePrintAddress)
+                    ? settings.InvoicePrintAddress : settings.FrozenHubHeaderPolicy ? frozenHubPrintedAddress : settings.CompanyAddress;
                 // Stacked (58mm/80mm) header: no-break spaces keep a short address such as "Abu Dhabi, Musaffah 17"
                 // on one line next to its Arabic label instead of breaking after "Abu Dhabi,".
                 var arabicAddress = stacked && printedAddress != null && printedAddress.Length <= 40
@@ -1345,14 +1370,17 @@ namespace HexaBill.Api.Modules.Sales
                 Action<IContainer> composeEnglish = cell => cell.Column(en =>
                 {
                     en.Spacing(1);
-                    en.Item().Text(title.ToUpperInvariant()).FontFamily(_englishFont).FontSize(nameSize).Bold();
+                    if (!compactInvoice || logo == null)
+                        en.Item().Text(title.ToUpperInvariant()).FontFamily(_englishFont).FontSize(nameSize).Bold();
                     if (!string.IsNullOrWhiteSpace(subtitle))
                         en.Item().Text(subtitle.ToUpperInvariant()).FontFamily(_englishFont).FontSize(a4Letterhead ? 8.5f : detailSize).SemiBold();
                     // P0-PRINT-005: every tenant prints its own saved phone (FrozenHub included); no line when unset.
                     if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
                         en.Item().PaddingTop(1).Text($"Mob: {settings.CompanyPhone.Trim()}").FontFamily(_englishFont).FontSize(detailSize);
-                    if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(settings.CompanyEmail))
+                    if ((!settings.FrozenHubHeaderPolicy || compactInvoice) && !string.IsNullOrWhiteSpace(settings.CompanyEmail))
                         en.Item().Text(settings.CompanyEmail).FontFamily(_englishFont).FontSize(detailSize);
+                    if (compactInvoice && !string.IsNullOrWhiteSpace(settings.InvoicePoBox))
+                        en.Item().Text($"P.O. Box: {settings.InvoicePoBox}").FontFamily(_englishFont).FontSize(detailSize);
                     if (!string.IsNullOrWhiteSpace(printedAddress))
                         en.Item().Text(printedAddress).FontFamily(_englishFont).FontSize(detailSize);
                     if (!string.IsNullOrWhiteSpace(settings.CorporateTaxTrn))
@@ -1384,7 +1412,7 @@ namespace HexaBill.Api.Modules.Sales
                     if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
                         ar.Item().AlignRight().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
                             .FontSize(a4Letterhead ? (settings.CompanyNameAr.Length > 28 ? 12f : 14f) : stacked ? Math.Min(nameSize, 7f) : nameSize).Bold().DirectionFromRightToLeft();
-                    if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                    if ((!settings.FrozenHubHeaderPolicy || compactInvoice) && !string.IsNullOrWhiteSpace(settings.CompanyPhone))
                         ar.Item().PaddingTop(1).AlignRight().Text(text =>
                         {
                             text.Span("الهاتف: ").FontFamily(_arabicFont).FontSize(detailSize).DirectionFromRightToLeft();
@@ -1392,7 +1420,7 @@ namespace HexaBill.Api.Modules.Sales
                             // does not reverse the digits or move the plus sign to the wrong edge.
                             text.Span($"\u2066{settings.CompanyPhone}\u2069").FontFamily(_englishFont).FontSize(detailSize).DirectionFromLeftToRight();
                         });
-                    if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(settings.CompanyEmail) && (a4Letterhead || a5Letterhead))
+                    if ((!settings.FrozenHubHeaderPolicy || compactInvoice) && !string.IsNullOrWhiteSpace(settings.CompanyEmail) && (a4Letterhead || a5Letterhead))
                         ar.Item().AlignRight().Text($"البريد الإلكتروني: {settings.CompanyEmail}").FontFamily(_arabicFont)
                             .FontSize(detailSize).DirectionFromRightToLeft();
                     if (!string.IsNullOrWhiteSpace(printedAddress))
@@ -1735,6 +1763,12 @@ if (hasLogo)
                 CompanyWebsite = companySettings.Website,
                 BilingualMonochromeHeader = companySettings.BilingualMonochromeHeader,
                 FrozenHubHeaderPolicy = companySettings.FrozenHubHeaderPolicy,
+                InvoiceCompactHeader = companySettings.InvoiceCompactHeader,
+                InvoicePrintAddress = companySettings.InvoicePrintAddress,
+                InvoicePoBox = companySettings.InvoicePoBox,
+                InvoiceBankAccountName = companySettings.InvoiceBankAccountName,
+                InvoiceBankName = companySettings.InvoiceBankName,
+                InvoiceBankIban = companySettings.InvoiceBankIban,
                 Currency = companySettings.Currency ?? "AED",
                 VatPercent = companySettings.VatPercent,
                 InvoicePrefix = companySettings.InvoicePrefix ?? "INV",

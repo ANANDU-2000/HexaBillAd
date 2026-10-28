@@ -84,6 +84,12 @@ const SettingsPage = () => {
     companyAddress: '',
     companyPhone: '',
     companyEmail: '',
+    invoiceHeaderPresentation: '',
+    invoicePrintAddress: '',
+    invoicePoBox: '',
+    invoiceBankAccountName: '',
+    invoiceBankName: '',
+    invoiceBankIban: '',
     defaultCurrency: 'AED',
     vatPercentage: 5,
     invoiceSeriesStart: '',
@@ -443,6 +449,12 @@ const SettingsPage = () => {
           companyAddress: getSetting(d, 'COMPANY_ADDRESS') || getSetting(d, 'companyAddress') || '',
           companyPhone: getSetting(d, 'COMPANY_PHONE') || getSetting(d, 'companyPhone') || '',
           companyEmail: getSetting(d, 'COMPANY_EMAIL') || getSetting(d, 'companyEmail') || '',
+          invoiceHeaderPresentation: getSetting(d, 'INVOICE_HEADER_PRESENTATION') || '',
+          invoicePrintAddress: getSetting(d, 'INVOICE_PRINT_ADDRESS') || '',
+          invoicePoBox: getSetting(d, 'INVOICE_PO_BOX') || '',
+          invoiceBankAccountName: getSetting(d, 'INVOICE_BANK_ACCOUNT_NAME') || '',
+          invoiceBankName: getSetting(d, 'INVOICE_BANK_NAME') || '',
+          invoiceBankIban: getSetting(d, 'INVOICE_BANK_IBAN') || '',
           defaultCurrency: getSetting(d, 'CURRENCY') || getSetting(d, 'defaultCurrency') || 'AED',
           vatPercentage: parseFloat(getSetting(d, 'VAT_PERCENT') || getSetting(d, 'vatPercentage') || '5'),
           invoiceSeriesStart: getSetting(d, 'INVOICE_SERIES_START') ?? '',
@@ -510,6 +522,12 @@ const SettingsPage = () => {
         COMPANY_ADDRESS: data.companyAddress || '',
         COMPANY_PHONE: data.companyPhone || '',
         COMPANY_EMAIL: data.companyEmail || '',
+        INVOICE_HEADER_PRESENTATION: data.invoiceHeaderPresentation || '',
+        INVOICE_PRINT_ADDRESS: data.invoicePrintAddress || '',
+        INVOICE_PO_BOX: data.invoicePoBox || '',
+        INVOICE_BANK_ACCOUNT_NAME: data.invoiceBankAccountName || '',
+        INVOICE_BANK_NAME: data.invoiceBankName || '',
+        INVOICE_BANK_IBAN: data.invoiceBankIban || '',
         CURRENCY: data.defaultCurrency || 'AED',
         VAT_PERCENT: data.vatPercentage?.toString() || '5',
         INVOICE_TEMPLATE: data.invoiceTemplate || '',
@@ -1043,6 +1061,22 @@ const SettingsPage = () => {
                     {...register('companyAddress')}
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+              <h2 className="text-lg font-semibold text-neutral-900 mb-2">Invoice print details</h2>
+              <p className="text-sm text-neutral-600 mb-4">Bank details appear on full A4 and A5 invoices when all three fields are filled. Verify them before saving.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Select label="Invoice header" {...register('invoiceHeaderPresentation')} options={[
+                  { value: '', label: 'Existing layout' },
+                  { value: 'compact', label: 'Compact bilingual header' }
+                ]} />
+                <Input label="Invoice print address" maxLength={160} {...register('invoicePrintAddress')} />
+                <Input label="P.O. Box" maxLength={160} {...register('invoicePoBox')} />
+                <Input label="Bank account name" maxLength={160} {...register('invoiceBankAccountName')} />
+                <Input label="Bank name" maxLength={160} {...register('invoiceBankName')} />
+                <Input label="IBAN" maxLength={42} {...register('invoiceBankIban')} />
               </div>
             </div>
 

@@ -22,6 +22,59 @@ public class TenantCompanySettingsTests
             new[] { new Claim(ClaimTypes.NameIdentifier, "7") }, "test")) }
     });
 
+    [Fact]
+    public async Task InvoicePrintSettings_PostgresScopesReadsAndRejectsForgedTenant()
+    {
+        var connection = Environment.GetEnvironmentVariable("HEXABILL_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connection)) return;
+        var tenantA = 700000 + Random.Shared.Next(1, 90000);
+        var tenantB = tenantA + 100000;
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connection).Options;
+        await using (var seed = new AppDbContext(options))
+        {
+            seed.SetRequestTenantScope(null, true);
+            await PostgresTestSchema.EnsureCreatedAsync(seed);
+            seed.Tenants.AddRange(
+                new Tenant { Id = tenantA, Name = "Synthetic A", Subdomain = $"print-a-{tenantA}" },
+                new Tenant { Id = tenantB, Name = "Synthetic B", Subdomain = $"print-b-{tenantB}" });
+            await seed.SaveChangesAsync();
+            await new SettingsService(seed).UpdateOwnerSettingsBulkAsync(tenantA, new() {
+                ["INVOICE_BANK_ACCOUNT_NAME"] = "A account", ["INVOICE_BANK_NAME"] = "A bank",
+                ["INVOICE_BANK_IBAN"] = "AE010123456789012345678", ["INVOICE_HEADER_PRESENTATION"] = "compact"
+            });
+        }
+        await using (var scoped = new AppDbContext(options))
+        {
+            scoped.SetRequestTenantScope(tenantB, false);
+            var service = new SettingsService(scoped);
+            Assert.Equal("", (await service.GetCompanySettingsAsync(tenantB)).InvoiceBankIban);
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.GetCompanySettingsAsync(tenantA));
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.UpdateOwnerSettingAsync(tenantA, "INVOICE_BANK_NAME", "forged"));
+        }
+    }
+
+    [Fact]
+    public async Task InvoicePrintSettings_AreTenantScopedAndBankAuditIsRedacted()
+    {
+        await using var db = Database();
+        var service = Service(db);
+        await service.UpdateOwnerSettingsBulkAsync(10, new() {
+            ["INVOICE_HEADER_PRESENTATION"] = "compact", ["INVOICE_PRINT_ADDRESS"] = "Tenant A address",
+            ["INVOICE_BANK_ACCOUNT_NAME"] = "Tenant A account", ["INVOICE_BANK_NAME"] = "Tenant A bank",
+            ["INVOICE_BANK_IBAN"] = "AE010123456789012345678"
+        });
+        var a = await service.GetCompanySettingsAsync(10);
+        var b = await service.GetCompanySettingsAsync(20);
+        Assert.True(a.InvoiceCompactHeader);
+        Assert.Equal("Tenant A address", a.InvoicePrintAddress);
+        Assert.Equal("Tenant A bank", a.InvoiceBankName);
+        Assert.False(b.InvoiceCompactHeader);
+        Assert.Equal("", b.InvoiceBankIban);
+        Assert.All(db.AuditLogs.Where(x => x.Details!.StartsWith("INVOICE_BANK_")),
+            entry => Assert.DoesNotContain("Tenant A", entry.NewValues!));
+        await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateOwnerSettingAsync(10, "INVOICE_BANK_IBAN", "bad!"));
+    }
+
     [Theory]
     [InlineData("123")]
     [InlineData("1234567890123456")]
