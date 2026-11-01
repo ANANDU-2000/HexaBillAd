@@ -3,8 +3,8 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { chromium } = require(path.resolve('frontend/hexabill-ui/node_modules/playwright'));
 
-const SECRET = "z4qGVNFXkPS9mxTVuLVpT3iVp3TV5+rau2mY1hSmaT7vJ4ZXV9yegsvREiIXBqzqm0YPJ9o6I3cfYTJ4ZrVqKw==";
-const EDGE_SECRET = "spNjekAfZtuAtxhEzfshUKNnIGkhS+Rym2W50jK8oQiMx6ILaDmJ0+sSV0DXAi9Y";
+const SECRET = require("./require-env")("HEXABILL_JWT_SECRET");
+const EDGE_SECRET = require("./require-env")("HEXABILL_EDGE_PROXY_SECRET");
 const ARTIFACT_DIR = 'C:/Users/anand/.gemini/antigravity/brain/4a4fe5a8-450b-44ef-a20b-98406a94f6cf';
 
 function base64UrlEncode(str) {

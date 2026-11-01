@@ -31,6 +31,39 @@ public class UpstreamApiGuardTests
     }
 
     [Fact]
+    public async Task ValidRotationSecret_OnUpstream_AllowsApiDuringCoordinatedRotation()
+    {
+        var nextCalled = false;
+        var options = Microsoft.Extensions.Options.Options.Create(new HostingOptions
+        {
+            BaseDomain = "hexabill.company",
+            PlatformHost = "admin.hexabill.company",
+            ApiHost = "api.hexabill.company",
+            EdgeProxySecret = EdgeSecret,
+            EdgeProxyRotationSecret = "next-test-edge-secret",
+        });
+        var middleware = new UpstreamApiGuardMiddleware(
+            _ =>
+            {
+                nextCalled = true;
+                return Task.CompletedTask;
+            },
+            options,
+            NullLogger<UpstreamApiGuardMiddleware>.Instance);
+        var context = CreateContext(
+            "hexabill.onrender.com",
+            "/api/sales",
+            withEdge: true,
+            originalHost: "tenanta.hexabill.company",
+            secret: "next-test-edge-secret");
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(nextCalled);
+        Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
+    }
+
+    [Fact]
     public async Task MissingEdgeSecret_OnUpstream_BlocksApi()
     {
         var middleware = CreateMiddleware(() => { });

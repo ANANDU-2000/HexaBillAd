@@ -2,7 +2,7 @@ const path = require('path');
 const { chromium } = require(path.resolve('frontend/hexabill-ui/node_modules/playwright'));
 const crypto = require('crypto');
 
-const SECRET = 'z4qGVNFXkPS9mxTVuLVpT3iVp3TV5+rau2mY1hSmaT7vJ4ZXV9yegsvREiIXBqzqm0YPJ9o6I3cfYTJ4ZrVqKw==';
+const SECRET = require("./require-env")("HEXABILL_JWT_SECRET");
 function base64UrlEncode(str) {
   return Buffer.from(str).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }

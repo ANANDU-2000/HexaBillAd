@@ -8,6 +8,7 @@ public sealed class HostingOptions
     public string EnforcementMode { get; set; } = "LogOnly";
     /// <summary>Shared secret injected by the trusted edge proxy (Vercel middleware / Vite dev proxy).</summary>
     public string EdgeProxySecret { get; set; } = string.Empty;
+    public string EdgeProxyRotationSecret { get; set; } = string.Empty;
 }
 
 public enum TenantHostKind

@@ -1,8 +1,8 @@
 const crypto = require('crypto');
 const https = require('https');
 
-const SECRET = 'z4qGVNFXkPS9mxTVuLVpT3iVp3TV5+rau2mY1hSmaT7vJ4ZXV9yegsvREiIXBqzqm0YPJ9o6I3cfYTJ4ZrVqKw==';
-const EDGE_SECRET = 'spNjekAfZtuAtxhEzfshUKNnIGkhS+Rym2W50jK8oQiMx6ILaDmJ0+sSV0DXAi9Y';
+const SECRET = require("./require-env")("HEXABILL_JWT_SECRET");
+const EDGE_SECRET = require("./require-env")("HEXABILL_EDGE_PROXY_SECRET");
 
 function base64UrlEncode(str) {
   return Buffer.from(str).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');

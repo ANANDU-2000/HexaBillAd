@@ -32,3 +32,5 @@ services:
         value: Enforce
       - key: Hosting__EdgeProxySecret
         sync: false
+      - key: Hosting__EdgeProxyRotationSecret
+        sync: false

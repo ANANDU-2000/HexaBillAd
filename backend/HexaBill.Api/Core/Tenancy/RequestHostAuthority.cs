@@ -38,10 +38,13 @@ public static class RequestHostAuthority
     {
         var originalHost = NormalizeHost(context.Request.Headers[OriginalHostHeader].FirstOrDefault());
         var edgeSecret = context.Request.Headers[EdgeSecretHeader].FirstOrDefault();
-        return !string.IsNullOrEmpty(originalHost)
-            && !string.IsNullOrEmpty(options.EdgeProxySecret)
-            && !string.IsNullOrEmpty(edgeSecret)
+        var matchesPrimary = !string.IsNullOrEmpty(options.EdgeProxySecret)
             && string.Equals(edgeSecret, options.EdgeProxySecret, StringComparison.Ordinal);
+        var matchesRotation = !string.IsNullOrEmpty(options.EdgeProxyRotationSecret)
+            && string.Equals(edgeSecret, options.EdgeProxyRotationSecret, StringComparison.Ordinal);
+        return !string.IsNullOrEmpty(originalHost)
+            && !string.IsNullOrEmpty(edgeSecret)
+            && (matchesPrimary || matchesRotation);
     }
 
     /// <summary>
