@@ -41,7 +41,7 @@ import { Input, Select } from '../../components/Form'
 import Modal from '../../components/Modal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { OverflowMenu } from '../../components/ui'
-import { customersAPI, paymentsAPI, salesAPI, reportsAPI, adminAPI, returnsAPI, subscriptionAPI } from '../../services/index'
+import { customersAPI, paymentsAPI, salesAPI, reportsAPI, adminAPI, returnsAPI, subscriptionAPI, legacyAPI } from '../../services/index'
 import {
   computeInvoiceSettlementShortfall,
   computeOutstanding,
@@ -54,6 +54,7 @@ import EditPaymentModal from '../../components/EditPaymentModal'
 import { mobilePageShellClass, mobileFilterGridClass, mobileDateInputClass } from '../../components/tallyFormClasses'
 import { MobileIconTabBar, mobilePageTitleClass, mobileLedgerCardClass, mobileLedgerAmountClass, mobileLedgerLabelClass } from '../../components/mobilePageUi'
 import InvoicePreviewModal from '../../components/InvoicePreviewModal'
+import LegacyInvoiceDetailModal from '../../components/LegacyInvoiceDetailModal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
 import { isAdminOrOwner } from '../../utils/roles'
 import {
@@ -155,6 +156,8 @@ const CustomerLedgerPage = () => {
   })
   const [paymentModalInvoiceId, setPaymentModalInvoiceId] = useState(null)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [showLegacyInvoiceModal, setShowLegacyInvoiceModal] = useState(false)
+  const [selectedLegacyInvoiceId, setSelectedLegacyInvoiceId] = useState(null)
   const [selectedInvoiceForView, setSelectedInvoiceForView] = useState(null)
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false)
   const [showEditCustomerModal, setShowEditCustomerModal] = useState(false)
@@ -3016,6 +3019,18 @@ const CustomerLedgerPage = () => {
             setShowSettleCreditModal(false)
             setSettleCreditEntry(null)
             if (selectedCustomer) await loadCustomerData(selectedCustomer.id)
+          }}
+        />
+      )}
+
+      {/* Starplus Historical Invoice Modal */}
+      {showLegacyInvoiceModal && selectedLegacyInvoiceId && (
+        <LegacyInvoiceDetailModal
+          invoiceId={selectedLegacyInvoiceId}
+          isOpen={showLegacyInvoiceModal}
+          onClose={() => {
+            setShowLegacyInvoiceModal(false)
+            setSelectedLegacyInvoiceId(null)
           }}
         />
       )}

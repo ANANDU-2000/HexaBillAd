@@ -190,7 +190,7 @@ const BillingHistoryPage = () => {
 
   // Sync URL params to state on popstate / external navigation
   useEffect(() => {
-    const tab = searchParams.get('tab') || 'operating'
+    const tab = searchParams.get('tab') || (isFrozenHub1 ? 'all' : 'operating')
     const page = Number(searchParams.get('page')) || 1
     const from = searchParams.get('from') || ''
     const to = searchParams.get('to') || ''

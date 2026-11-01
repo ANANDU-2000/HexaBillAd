@@ -17,6 +17,8 @@ import { cleanText, fixMoney } from '../../utils/productFields'
 import { saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 import { useAuth } from '../../hooks/useAuth'
 import ProductPicker from './ProductPicker'
+import { legacyAPI } from '../../services/index'
+import LegacyPurchaseDetailModal from '../../components/LegacyPurchaseDetailModal'
 import { savePurchaseDraft, loadPurchaseDraft, clearPurchaseDraft } from '../../utils/purchaseDraft'
 
 const tallyInputClass = 'w-full max-w-full px-3 py-1.5 min-h-[44px] text-base md:text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50'
@@ -42,6 +44,10 @@ const PurchasesPage = () => {
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(() => Number(searchParams.get('page')) || 1)
   const [totalPages, setTotalPages] = useState(1)
+  const isFrozenHub1 = authUser?.tenantId === 20 || (typeof window !== 'undefined' && window.location.hostname.includes('frozenhub'))
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'operating')
+  const [selectedLegacyPurchaseId, setSelectedLegacyPurchaseId] = useState(null)
+  const [showLegacyModal, setShowLegacyModal] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingPurchase, setEditingPurchase] = useState(null)
 
@@ -238,7 +244,7 @@ const PurchasesPage = () => {
   const loadPurchases = async () => {
     try {
       setLoading(true)
-      const params = { page: currentPage, pageSize: 10 }
+      const params = { page: currentPage, pageSize: 15 }
 
       // Apply date filters based on period
       const dateRange = getDateRangeFromPeriod(filterPeriod)
@@ -260,13 +266,24 @@ const PurchasesPage = () => {
       // Apply status filter (paid, partial, unpaid, overdue)
       if (statusFilter && statusFilter !== 'all') params.status = statusFilter
 
-      const response = await purchasesAPI.getPurchases(params)
-      if (response.success) {
-        setPurchases(response.data.items)
-        setTotalPages(response.data.totalPages)
-        setListError(false)
+      if (activeTab === 'legacy') {
+        const response = await legacyAPI.getPurchases(params)
+        if (response?.success && response?.data) {
+          setPurchases(response.data.items || [])
+          setTotalPages(response.data.totalPages || 1)
+          setListError(false)
+        } else {
+          setListError(true)
+        }
       } else {
-        setListError(true)
+        const response = await purchasesAPI.getPurchases(params)
+        if (response.success) {
+          setPurchases(response.data.items)
+          setTotalPages(response.data.totalPages)
+          setListError(false)
+        } else {
+          setListError(true)
+        }
       }
     } catch (error) {
       setListError(true)
@@ -831,6 +848,29 @@ const PurchasesPage = () => {
       <div className="bg-white border-b border-neutral-200 px-3 sm:px-4 py-2 sticky top-0 z-20">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-xl font-semibold text-neutral-900">Purchases</h1>
+          {isFrozenHub1 && (
+            <div className="flex items-center gap-3 border-b border-neutral-200 mt-1 sm:mt-0">
+              <button
+                type="button"
+                onClick={() => { setActiveTab('operating'); setCurrentPage(1); }}
+                className={`pb-1 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${
+                  activeTab === 'operating' ? 'border-primary-600 text-primary-700' : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                }`}
+              >
+                Operating
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveTab('legacy'); setCurrentPage(1); }}
+                className={`pb-1 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center gap-1 ${
+                  activeTab === 'legacy' ? 'border-amber-600 text-amber-800' : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                }`}
+              >
+                <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                Historical (Starplus · 1,563)
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
@@ -1490,7 +1530,20 @@ const PurchasesPage = () => {
                                   <CreditCard className="h-3.5 w-3.5" aria-hidden /> Pay supplier
                                 </button>
                               )}
-                              <OverflowMenu label={`More actions for ${purchase.invoiceNo}`} items={purchaseMenuItems(purchase)} />
+                              {activeTab === 'legacy' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedLegacyPurchaseId(purchase.id)
+                                    setShowLegacyModal(true)
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-md border border-amber-200"
+                                >
+                                  <Eye className="h-3.5 w-3.5" /> View
+                                </button>
+                              ) : (
+                                <OverflowMenu label={`More actions for ${purchase.invoiceNo}`} items={purchaseMenuItems(purchase)} />
+                              )}
                             </div>
                           </td>
                         </tr>

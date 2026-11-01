@@ -49,6 +49,13 @@ export const BrandingProvider = ({ children }) => {
   const updateFavicon = useCallback((logoUrl) => {
     if (!logoUrl) return
     try {
+      if (typeof logoUrl === 'string' && logoUrl.startsWith('data:')) {
+        const link = document.querySelector("link[rel*='icon']") || document.createElement('link')
+        link.rel = 'shortcut icon'
+        link.href = logoUrl
+        document.getElementsByTagName('head')[0].appendChild(link)
+        return
+      }
       const base = getApiBaseUrlNoSuffix()
       const path = logoUrl.startsWith('http') ? logoUrl : (logoUrl.startsWith('/') ? logoUrl : `/uploads/${logoUrl}`)
       const href = path.startsWith('http') ? path : `${base}${path.startsWith('/') ? '' : '/'}${path}`

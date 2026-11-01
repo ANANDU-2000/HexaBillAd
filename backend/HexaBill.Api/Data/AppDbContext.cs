@@ -201,12 +201,21 @@ namespace HexaBill.Api.Data
         public DbSet<BackupRun> BackupRuns { get; set; }
 
         // Legacy Historical Data Archive (Starplus / FrozenHub 1 Cutover)
+        public DbSet<LegacyProduct> LegacyProducts { get; set; }
         public DbSet<LegacyCustomer> LegacyCustomers { get; set; }
         public DbSet<LegacyInvoice> LegacyInvoices { get; set; }
         public DbSet<LegacyInvoiceItem> LegacyInvoiceItems { get; set; }
         public DbSet<LegacyPayment> LegacyPayments { get; set; }
         public DbSet<LegacyOpeningReceivable> LegacyOpeningReceivables { get; set; }
         public DbSet<LegacyCustomerMapping> LegacyCustomerMappings { get; set; }
+        public DbSet<LegacyPurchase> LegacyPurchases { get; set; }
+        public DbSet<LegacyPurchaseItem> LegacyPurchaseItems { get; set; }
+        public DbSet<LegacyExpenseCategory> LegacyExpenseCategories { get; set; }
+        public DbSet<LegacyExpense> LegacyExpenses { get; set; }
+        public DbSet<LegacyInventoryTransaction> LegacyInventoryTransactions { get; set; }
+        public DbSet<LegacyInvoiceVersion> LegacyInvoiceVersions { get; set; }
+        public DbSet<LegacyPaymentReceipt> LegacyPaymentReceipts { get; set; }
+        public DbSet<LegacyPaymentReceiptPayment> LegacyPaymentReceiptPayments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Eye, RefreshCw, Plus, Pencil, Trash2, Filter } from 'lucide-react'
-import { suppliersAPI } from '../../services/index'
+import { suppliersAPI, legacyAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
 import { moneyTone, moneyWord } from '../../utils/moneyTone'
 import { fixSupplierForm } from '../../utils/supplierFields'
@@ -169,18 +169,44 @@ const SuppliersPage = () => {
     try {
       setLoading(true)
       setLoadError('')
-      const response = await suppliersAPI.getAllSuppliersSummary({ includeInactive: showDeactivated })
-      if (response?.success && Array.isArray(response?.data)) setSuppliers(response.data)
-      else {
-        setSuppliers([])
-        setLoadError('Could not load suppliers.')
+      const isFrozenHub1 = user?.tenantId === 20 || (typeof window !== 'undefined' && window.location.hostname.includes('frozenhub'))
+      const [response, legacyRes] = await Promise.all([
+        suppliersAPI.getAllSuppliersSummary({ includeInactive: showDeactivated }),
+        isFrozenHub1 ? legacyAPI.getSuppliers().catch(() => null) : Promise.resolve(null)
+      ])
+      let list = (response?.success && Array.isArray(response?.data)) ? [...response.data] : []
+      if (legacyRes?.success && Array.isArray(legacyRes?.data)) {
+        const existingNames = new Set(list.map(s => (s.supplierName || '').toLowerCase().trim()))
+        for (const leg of legacyRes.data) {
+          const norm = (leg.supplierName || '').toLowerCase().trim()
+          if (!norm) continue
+          if (existingNames.has(norm)) {
+            const matched = list.find(s => (s.supplierName || '').toLowerCase().trim() === norm)
+            if (matched) {
+              matched.totalPurchases = (matched.totalPurchases || 0) + (leg.totalPurchases || 0)
+              matched.purchaseCount = (matched.purchaseCount || 0) + (leg.purchaseCount || 0)
+              matched.hasHistoricalData = true
+            }
+          } else {
+            list.push({
+              id: `leg_${leg.supplierName}`,
+              supplierName: leg.supplierName,
+              phone: '—',
+              email: '—',
+              purchaseCount: leg.purchaseCount,
+              totalPurchases: leg.totalPurchases,
+              netPayable: 0,
+              isActive: true,
+              isHistorical: true
+            })
+          }
+        }
       }
+      setSuppliers(list)
     } catch (error) {
       console.error('Failed to load suppliers:', error)
       setSuppliers([])
       setLoadError('Could not load suppliers.')
-      const msg = safeMessage(error, 'Could not load suppliers.')
-      if (msg) toast.error(msg)
     } finally {
       setLoading(false)
     }

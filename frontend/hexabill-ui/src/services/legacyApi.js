@@ -29,7 +29,24 @@ export const legacyAPI = {
     const response = await api.get('/legacy/reconciliation')
     return response.data
   }
-}
+,
+  getPurchases: async (params = {}) => {
+    const response = await api.get('/legacy/purchases', { params })
+    return response.data
+  },
+  getPurchaseById: async (id) => {
+    const response = await api.get(`/legacy/purchases/${id}`)
+    return response.data
+  },
+  getExpenses: async (params = {}) => {
+    const response = await api.get('/legacy/expenses', { params })
+    return response.data
+  },
+  getSuppliers: async (params = {}) => {
+    const response = await api.get('/legacy/suppliers', { params })
+    return response.data
+  }
+};
 
 export default legacyAPI
 

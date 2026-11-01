@@ -72,7 +72,17 @@ namespace StarplusMigrationRunner
 
                 var archiveData = await MigrationEngine.LoadArchiveAsync(archivePath);
 
-                if (mode == "rehearse")
+                if (mode == "rehearse-c")
+                {
+                    var dataDir = Path.GetFullPath("frozhen/2026-10-31T13_45Z/starplus_billing_2025");
+                    return await ReleaseCMigrationRunner.RunMigrationAsync(conn, dataDir, "starplus_rehearsal_c", targetTenantId, true);
+                }
+                else if (mode == "apply-c")
+                {
+                    var dataDir = Path.GetFullPath("frozhen/2026-10-31T13_45Z/starplus_billing_2025");
+                    return await ReleaseCMigrationRunner.RunMigrationAsync(conn, dataDir, "public", targetTenantId, false);
+                }
+                else if (mode == "rehearse")
                 {
                     return await RunIsolatedRehearsalAsync(conn, targetTenantId, archiveData);
                 }
@@ -161,6 +171,22 @@ namespace StarplusMigrationRunner
                             Console.WriteLine($"  {count}. Cust {reader["Id"]}: {reader["Name"]} -> AED {bal:N2}");
                         }
                         Console.WriteLine($"[VERIFY] Total Customers: {count}, Sum: AED {sum:N2} (Expected: 21 customers, AED 70,077.29)");
+                    }
+                    return 0;
+                }
+                else if (mode == "get-users")
+                {
+                    Console.WriteLine("[USERS CHECK] Finding users for Tenant 20 and Tenant 23...");
+                    await using var cmd = new NpgsqlCommand(@"
+                        SELECT ""Id"", ""TenantId"", ""Email"", ""Name"", ""Role"", ""IsActive"", ""SessionVersion"", ""SessionVersion""
+                        FROM ""public"".""Users""
+                        WHERE ""TenantId"" IN (20, 23)
+                        ORDER BY ""TenantId"", ""Id"";
+                    ", conn);
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        Console.WriteLine($"  Tenant {reader["TenantId"]} | User {reader["Id"]}: {reader["Name"]} ({reader["Email"]}) | Role: {reader["Role"]} | Active: {reader["IsActive"]} | SV: {reader["SessionVersion"]}");
                     }
                     return 0;
                 }
