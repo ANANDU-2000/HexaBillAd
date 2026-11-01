@@ -541,6 +541,15 @@ api.interceptors.request.use(
       }
     }
     plainConfig.method = String(plainConfig.method || 'GET').trim().toUpperCase() || 'GET'
+    if (plainConfig.params && typeof plainConfig.params === 'object' && !Array.isArray(plainConfig.params)) {
+      const cleaned = {}
+      for (const [k, v] of Object.entries(plainConfig.params)) {
+        if (v !== '' && v !== null && v !== undefined) {
+          cleaned[k] = v
+        }
+      }
+      plainConfig.params = cleaned
+    }
     config = plainConfig
 
     // A delayed retry must never run with a replacement owner's credentials.

@@ -26,8 +26,14 @@ namespace HexaBill.Api.ModelBinders
 
             var value = valueProviderResult.FirstValue;
 
-            if (string.IsNullOrEmpty(value))
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                if (bindingContext.ModelMetadata?.ModelType == typeof(DateTime?) || bindingContext.ModelType == typeof(DateTime?))
+                {
+                    bindingContext.Result = ModelBindingResult.Success(null);
+                }
                 return Task.CompletedTask;
+            }
 
             // CRITICAL: Try YYYY-MM-DD first (API standard), then DD-MM-YYYY (locale fallback)
             var formats = new[] { "yyyy-MM-dd", "yyyy-MM-ddTHH:mm:ss", "yyyy-MM-ddTHH:mm:ssZ", "dd-MM-yyyy", "dd/MM/yyyy" };
