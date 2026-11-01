@@ -445,7 +445,17 @@ namespace HexaBill.Api.Modules.Reports
                     pendingBillsCount = await pendingBillsQuery.CountAsync();
                     pendingBillsAmount = await pendingBillsQuery.SumAsync(s => (decimal?)s.Balance) ?? 0m;
                     
-                    if (tenantId > 0)
+                    if (tenantId == 20)
+                    {
+                        var legacyPendingQuery = _context.LegacyInvoices
+                            .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.OutstandingCalculated > tol);
+                        var legacyPendingCount = await legacyPendingQuery.CountAsync();
+                        var legacyPendingAmount = await legacyPendingQuery.SumAsync(li => (decimal?)li.OutstandingCalculated) ?? 0m;
+
+                        pendingBillsAmount += legacyPendingAmount;
+                        pendingBillsCount += legacyPendingCount;
+                    }
+                    else if (tenantId > 0)
                     {
                         var legacyOpeningAr = await _context.LegacyOpeningReceivables
                             .Where(lo => lo.TenantId == tenantId)
@@ -521,6 +531,34 @@ namespace HexaBill.Api.Modules.Reports
                             Items = new List<SaleItemDto>() // Empty list for summary view
                         })
                         .ToListAsync();
+
+                    if (tenantId == 20 && pendingInvoices.Count < 10)
+                    {
+                        var needed = 10 - pendingInvoices.Count;
+                        var legacyPendingTop = await _context.LegacyInvoices.AsNoTracking()
+                            .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.OutstandingCalculated > tol)
+                            .OrderByDescending(li => li.InvoiceDate)
+                            .Take(needed)
+                            .Select(li => new SaleDto
+                            {
+                                Id = li.Id,
+                                InvoiceNo = li.LegacyInvoiceNumber,
+                                InvoiceDate = li.InvoiceDate,
+                                CustomerId = li.DestinationCustomerId ?? li.SourceCustomerId,
+                                CustomerName = li.CustomerName ?? "Cash Customer",
+                                Subtotal = li.Subtotal,
+                                VatTotal = li.VatTotal,
+                                Discount = li.Discount,
+                                RoundOff = li.RoundOff,
+                                GrandTotal = li.GrandTotal,
+                                PaidAmount = li.PaidAmount,
+                                PaymentStatus = li.PaidAmount > 0 ? "Partial" : "Pending",
+                                Notes = li.Notes,
+                                Items = new List<SaleItemDto>()
+                            })
+                            .ToListAsync();
+                        pendingInvoices.AddRange(legacyPendingTop);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -588,15 +626,32 @@ namespace HexaBill.Api.Modules.Reports
                         overdueAmountTotal = await overdueSalesQ.SumAsync(s => (decimal?)s.Balance) ?? 0m;
                         overdueCustomersCount = await overdueSalesQ.Select(s => s.CustomerId!.Value).Distinct().CountAsync();
 
-                        var legacyOpeningOverdue = await _context.LegacyOpeningReceivables
-                            .Where(lo => lo.TenantId == tenantId)
-                            .SumAsync(lo => (decimal?)lo.OpeningBalance) ?? 0m;
-                        var legacyOpeningOverdueCount = await _context.LegacyOpeningReceivables
-                            .Where(lo => lo.TenantId == tenantId && lo.OpeningBalance > tolOverdue)
-                            .CountAsync();
+                        if (tenantId == 20)
+                        {
+                            var legacyOverdueQ = _context.LegacyInvoices
+                                .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.OutstandingCalculated > tolOverdue && li.InvoiceDate <= overdueCutoff);
+                            var legacyOverdueAmt = await legacyOverdueQ.SumAsync(li => (decimal?)li.OutstandingCalculated) ?? 0m;
+                            var legacyOverdueCusts = await legacyOverdueQ
+                                .Where(li => li.DestinationCustomerId != null || li.SourceCustomerId != null)
+                                .Select(li => li.DestinationCustomerId ?? li.SourceCustomerId)
+                                .Distinct()
+                                .CountAsync();
 
-                        overdueAmountTotal += legacyOpeningOverdue;
-                        overdueCustomersCount += legacyOpeningOverdueCount;
+                            overdueAmountTotal += legacyOverdueAmt;
+                            overdueCustomersCount += legacyOverdueCusts;
+                        }
+                        else
+                        {
+                            var legacyOpeningOverdue = await _context.LegacyOpeningReceivables
+                                .Where(lo => lo.TenantId == tenantId)
+                                .SumAsync(lo => (decimal?)lo.OpeningBalance) ?? 0m;
+                            var legacyOpeningOverdueCount = await _context.LegacyOpeningReceivables
+                                .Where(lo => lo.TenantId == tenantId && lo.OpeningBalance > tolOverdue)
+                                .CountAsync();
+
+                            overdueAmountTotal += legacyOpeningOverdue;
+                            overdueCustomersCount += legacyOpeningOverdueCount;
+                        }
                     }
                 }
                 catch (Exception ex)
