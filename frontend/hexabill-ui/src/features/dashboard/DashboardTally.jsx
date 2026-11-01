@@ -183,6 +183,7 @@ const DashboardTally = () => {
     const [dailySalesTrend, setDailySalesTrend] = useState([])
     const [topCustomers, setTopCustomers] = useState([])
     const [topProducts, setTopProducts] = useState([])
+    const [legacyMetrics, setLegacyMetrics] = useState(null)
 
     const lastFetchTimeRef = useRef(0)
     const isFetchingRef = useRef(false)
@@ -373,6 +374,14 @@ const DashboardTally = () => {
             setSelectedBranchId(availableBranches[0].id)
         }
     }, [user, availableBranches])
+
+    useEffect(() => {
+        if (isAdminOrOwner(user) && !legacyMetrics) {
+            legacyAPI.getReconciliation().then(res => {
+                if (res?.success && res.data) setLegacyMetrics(res.data)
+            }).catch(err => console.warn('Failed to load legacy metrics for dashboard:', err))
+        }
+    }, [user, legacyMetrics])
 
     useEffect(() => {
         if (!user || !isAdminOrOwner(user)) return
