@@ -177,6 +177,13 @@ namespace HexaBill.Api.Modules.Reports
                     var salesCount = await salesQuery.CountAsync();
                     _logger.LogDebug("Found {SalesCount} sales records in date range (SuperAdmin: {IsSuperAdmin})", salesCount, tenantId == 0);
                     salesToday = await salesQuery.SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
+                    if (tenantId == 20 && startDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
+                    {
+                        var legacySales = await _context.LegacyInvoices
+                            .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.InvoiceDate >= startDate && li.InvoiceDate < endDate)
+                            .SumAsync(li => (decimal?)li.TotalAmount) ?? 0m;
+                        salesToday += legacySales;
+                    }
                     _logger.LogDebug("Total sales today: {SalesToday}", salesToday);
                 }
                 catch (Exception ex)
@@ -270,6 +277,13 @@ namespace HexaBill.Api.Modules.Reports
                     var purchasesCount = await purchasesQuery.CountAsync();
                     _logger.LogDebug("Found {Count} purchase records in date range (SuperAdmin: {IsSuperAdmin})", purchasesCount, tenantId == 0);
                     purchasesToday = await purchasesQuery.SumAsync(p => (decimal?)p.TotalAmount) ?? 0;
+                    if (tenantId == 20 && startDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
+                    {
+                        var legacyPurchases = await _context.LegacyPurchases
+                            .Where(lp => lp.TenantId == tenantId && lp.PurchaseDate >= startDate && lp.PurchaseDate < endDate)
+                            .SumAsync(lp => (decimal?)lp.TotalAmount) ?? 0m;
+                        purchasesToday += legacyPurchases;
+                    }
                     _logger.LogDebug("Total purchases today: {PurchasesToday}", purchasesToday);
                 }
                 catch (Exception ex)
@@ -293,6 +307,13 @@ namespace HexaBill.Api.Modules.Reports
                     var expensesCount = await expensesQuery.CountAsync();
                     _logger.LogDebug("Found {Count} expense records in date range (SuperAdmin: {IsSuperAdmin})", expensesCount, tenantId == 0);
                     expensesToday = await expensesQuery.SumAsync(e => (decimal?)e.Amount) ?? 0;
+                    if (tenantId == 20 && startDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
+                    {
+                        var legacyExpenses = await _context.LegacyExpenses
+                            .Where(le => le.TenantId == tenantId && le.Date >= startDate && le.Date < endDate)
+                            .SumAsync(le => (decimal?)le.Amount) ?? 0m;
+                        expensesToday += legacyExpenses;
+                    }
                     _logger.LogDebug("Total expenses today: {ExpensesToday}", expensesToday);
                 }
                 catch (Exception ex)
@@ -363,6 +384,13 @@ namespace HexaBill.Api.Modules.Reports
                 }
 
                 // Profit = Net Sales (Sales - Returns) - COGS - Expenses. VendorDiscounts are not included in P&L.
+                if (tenantId == 20 && startDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
+                {
+                    var legacyPurchasesCost = await _context.LegacyPurchases
+                        .Where(lp => lp.TenantId == tenantId && lp.PurchaseDate >= startDate && lp.PurchaseDate < endDate)
+                        .SumAsync(lp => (decimal?)lp.TotalAmount) ?? 0m;
+                    cogsToday += legacyPurchasesCost;
+                }
                 var grossProfit = netSalesToday - cogsToday;
                 var profitToday = grossProfit - expensesToday;
                 
@@ -519,6 +547,12 @@ namespace HexaBill.Api.Modules.Reports
                     if (tenantId > 0)
                         payQ = payQ.Where(p => p.TenantId == tenantId || (p.TenantId == null && p.OwnerId == tenantId));
                     cashCollectionsTotal = await payQ.SumAsync(p => (decimal?)p.Amount) ?? 0m;
+                    if (tenantId == 20 && startDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
+                    {
+                        var legacyPayQuery = _context.LegacyPayments
+                            .Where(lp => lp.TenantId == tenantId && lp.PaymentDate >= startDate && lp.PaymentDate < endDate && (lp.Status == "Cleared" || lp.Status == "CLEARED"));
+                        cashCollectionsTotal += await legacyPayQuery.SumAsync(lp => (decimal?)lp.Amount) ?? 0m;
+                    }
 
                     var creditSalesQ = _context.Sales.Where(s =>
                         !s.IsDeleted
@@ -527,6 +561,13 @@ namespace HexaBill.Api.Modules.Reports
                     if (tenantId > 0)
                         creditSalesQ = creditSalesQ.Where(s => s.TenantId == tenantId);
                     creditInvoicedTotal = await creditSalesQ.SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
+                    if (tenantId == 20 && startDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
+                    {
+                        var legacyCredit = await _context.LegacyInvoices
+                            .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.InvoiceDate >= startDate && li.InvoiceDate < endDate && li.SourceCustomerId != null)
+                            .SumAsync(li => (decimal?)li.TotalAmount) ?? 0m;
+                        creditInvoicedTotal += legacyCredit;
+                    }
 
                     if (tenantId > 0)
                     {
@@ -714,6 +755,34 @@ namespace HexaBill.Api.Modules.Reports
                         })
                         .OrderBy(x => x.Date)
                         .ToListAsync();
+
+                    if (tenantId == 20 && trendFromDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
+                    {
+                        var legacyDaily = await _context.LegacyInvoices
+                            .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.InvoiceDate >= trendFromDate && li.InvoiceDate < trendToDate)
+                            .GroupBy(li => li.InvoiceDate.Date)
+                            .Select(g => new
+                            {
+                                Date = g.Key,
+                                Sales = g.Sum(li => li.TotalAmount),
+                                InvoiceCount = g.Count()
+                            })
+                            .ToListAsync();
+
+                        var merged = dailySalesData.ToDictionary(d => d.Date.Date, d => new { Sales = d.Sales, InvoiceCount = d.InvoiceCount });
+                        foreach (var ld in legacyDaily)
+                        {
+                            if (merged.TryGetValue(ld.Date.Date, out var existing))
+                            {
+                                merged[ld.Date.Date] = new { Sales = existing.Sales + ld.Sales, InvoiceCount = existing.InvoiceCount + ld.InvoiceCount };
+                            }
+                            else
+                            {
+                                merged[ld.Date.Date] = new { Sales = ld.Sales, InvoiceCount = ld.InvoiceCount };
+                            }
+                        }
+                        dailySalesData = merged.Select(m => new { Date = m.Key, Sales = m.Value.Sales, InvoiceCount = m.Value.InvoiceCount }).OrderBy(x => x.Date).ToList();
+                    }
                     
                     // Fill in missing days with zero sales
                     var currentDate = trendFromDate.Date;
@@ -967,6 +1036,14 @@ namespace HexaBill.Api.Modules.Reports
                     && p.PaymentDate >= startUtc
                     && p.PaymentDate < endUtc)
                 .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+            if (tenantId == 20 && startUtc < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
+            {
+                var legacyReceived = await _context.LegacyPayments
+                    .Where(lp => lp.TenantId == tenantId && (lp.Status == "Cleared" || lp.Status == "CLEARED") && lp.PaymentDate >= startUtc && lp.PaymentDate < endUtc)
+                    .SumAsync(lp => (decimal?)lp.Amount) ?? 0m;
+                totalReceived += legacyReceived;
+            }
 
             return new WorksheetReportDto
             {
