@@ -1611,8 +1611,42 @@ namespace HexaBill.Api.Modules.Customers
                 baseOpeningBalance = legacyOpening.OpeningBalance;
             }
 
-            // Opening balance = baseOpeningBalance + Sales (debit) - Payments (credit) - Returns (credit)
-            var openingBalance = baseOpeningBalance + openingSales - openingPayments - openingSalesReturns;
+            // Query legacy Starplus invoices and payments for customer continuity (Tenant 20)
+            var legacyInvoices = await _context.LegacyInvoices.AsNoTracking()
+                .Where(i => i.TenantId == tenantId && !i.IsDeleted &&
+                           (i.DestinationCustomerId == customerId || i.SourceCustomerId == customerId))
+                .OrderBy(i => i.InvoiceDate)
+                .ThenBy(i => i.Id)
+                .ToListAsync();
+
+            var legacyPayments = await _context.LegacyPayments.AsNoTracking()
+                .Where(p => p.TenantId == tenantId &&
+                           (p.DestinationCustomerId == customerId || p.SourceCustomerId == customerId))
+                .OrderBy(p => p.PaymentDate)
+                .ThenBy(p => p.Id)
+                .ToListAsync();
+
+            var cutoverUtc = new DateTime(2026, 10, 31, 23, 59, 59, DateTimeKind.Utc);
+            bool hasLegacyData = legacyInvoices.Count > 0 || legacyPayments.Count > 0;
+            bool includesLegacyPeriod = hasLegacyData && (fromDate <= cutoverUtc);
+
+            decimal openingBalance;
+            if (includesLegacyPeriod)
+            {
+                var priorLegacyDebits = legacyInvoices
+                    .Where(i => i.InvoiceDate < fromDate)
+                    .Sum(i => i.GrandTotal);
+
+                var priorLegacyCredits = legacyPayments
+                    .Where(p => p.Status.Equals("Cleared", StringComparison.OrdinalIgnoreCase) && p.PaymentDate < fromDate)
+                    .Sum(p => p.Amount);
+
+                openingBalance = (priorLegacyDebits - priorLegacyCredits) + (openingSales - openingPayments - openingSalesReturns);
+            }
+            else
+            {
+                openingBalance = baseOpeningBalance + openingSales - openingPayments - openingSalesReturns;
+            }
 
             var payments = await _context.Payments
                 .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId &&
@@ -1806,8 +1840,77 @@ namespace HexaBill.Api.Modules.Customers
                     ));
                 }
                 
-                // Use grouped transactions instead of allTransactions
-                allTransactions = groupedTransactions;
+                if (includesLegacyPeriod)
+                {
+                    var legInvsInRange = legacyInvoices
+                        .Where(i => i.InvoiceDate >= fromDate && i.InvoiceDate <= toEnd)
+                        .OrderBy(i => i.InvoiceDate).ThenBy(i => i.Id)
+                        .ToList();
+
+                    foreach (var leg in legInvsInRange)
+                    {
+                        var legStatus = leg.OutstandingCalculated <= SalePaymentHelpers.SettlementToleranceAed ? "Paid"
+                            : leg.PaidAmount > 0 ? "Partial" : "Unpaid";
+
+                        groupedTransactions.Add((
+                            leg.InvoiceDate,
+                            leg.LegacyInvoiceNumber,
+                            leg.LegacyInvoiceNumber,
+                            leg.GrandTotal,
+                            0m,
+                            legStatus,
+                            leg.PaidAmount,
+                            leg.OutstandingCalculated,
+                            ""
+                        ));
+
+                        var linkedPayments = legacyPayments
+                            .Where(p => p.LegacyInvoiceId == leg.Id && p.PaymentDate >= fromDate && p.PaymentDate <= toEnd && p.Status.Equals("Cleared", StringComparison.OrdinalIgnoreCase))
+                            .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id)
+                            .ToList();
+
+                        foreach (var lp in linkedPayments)
+                        {
+                            groupedTransactions.Add((
+                                lp.PaymentDate,
+                                leg.LegacyInvoiceNumber,
+                                leg.LegacyInvoiceNumber,
+                                0m,
+                                lp.Amount,
+                                "",
+                                0m,
+                                0m,
+                                lp.Mode
+                            ));
+                        }
+                    }
+
+                    var standaloneLegPayments = legacyPayments
+                        .Where(p => (!p.LegacyInvoiceId.HasValue || !legacyInvoices.Any(i => i.Id == p.LegacyInvoiceId.Value)) &&
+                                   p.PaymentDate >= fromDate && p.PaymentDate <= toEnd &&
+                                   p.Status.Equals("Cleared", StringComparison.OrdinalIgnoreCase))
+                        .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id)
+                        .ToList();
+
+                    foreach (var slp in standaloneLegPayments)
+                    {
+                        var refText = slp.Reference ?? "Historical Payment";
+                        groupedTransactions.Add((
+                            slp.PaymentDate,
+                            refText,
+                            refText,
+                            0m,
+                            slp.Amount,
+                            "",
+                            0m,
+                            0m,
+                            slp.Mode
+                        ));
+                    }
+                }
+
+                // Use grouped transactions sorted chronologically
+                allTransactions = groupedTransactions.OrderBy(t => t.Date).ToList();
 
             // CRITICAL: Closing balance will be calculated from running balance in the PDF loop
             // This ensures it matches the ledger tab exactly

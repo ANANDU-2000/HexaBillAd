@@ -97,6 +97,11 @@ namespace StarplusMigrationRunner
                     var audit = await ReconciliationAuditor.AuditAsync(conn, "public", targetTenantId);
                     return audit.Passed ? 0 : 1;
                 }
+                else if (mode == "comprehensive-audit")
+                {
+                    var outDir = Path.GetFullPath("artifacts/reconciliation");
+                    return await ComprehensiveAuditor.RunFullAuditAsync(conn, archiveData, targetTenantId, outDir);
+                }
                 else if (mode == "test-ef-queries")
                 {
                     Console.WriteLine("[EF TEST] Testing real PostgreSQL materialization of Legacy entities...");
@@ -242,6 +247,26 @@ namespace StarplusMigrationRunner
                 {
                     await SchemaBuilder.DropRehearsalSchemaAsync(conn, "starplus_rehearsal");
                     Console.WriteLine("[CLEANUP] Rehearsal schema 'starplus_rehearsal' dropped successfully.");
+                    return 0;
+                }
+                else if (mode == "check-sales")
+                {
+                    Console.WriteLine("[CHECK SALES] Inspecting all sales for Tenant 20 in public.Sales...");
+                    await using var cmd = new NpgsqlCommand(@"
+                        SELECT s.""Id"", s.""InvoiceNo"", s.""InvoiceDate"", s.""CreatedAt"", s.""CustomerId"", c.""Name"" as ""CustomerName"", s.""GrandTotal"", s.""IsDeleted""
+                        FROM ""public"".""Sales"" s
+                        LEFT JOIN ""public"".""Customers"" c ON c.""Id"" = s.""CustomerId""
+                        WHERE s.""TenantId"" = 20
+                        ORDER BY s.""InvoiceDate"" ASC, s.""CreatedAt"" ASC, s.""Id"" ASC;
+                    ", conn);
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    int count = 0;
+                    while (await reader.ReadAsync())
+                    {
+                        count++;
+                        Console.WriteLine($"  {count:D2}. ID: {reader["Id"]} | InvNo: {reader["InvoiceNo"]} | Date: {Convert.ToDateTime(reader["InvoiceDate"]):yyyy-MM-dd HH:mm} | Cust: {reader["CustomerName"]} (Id: {reader["CustomerId"]}) | GrandTotal: AED {reader["GrandTotal"]} | Deleted: {reader["IsDeleted"]}");
+                    }
+                    Console.WriteLine($"[CHECK SALES] Total sales found: {count}");
                     return 0;
                 }
                 else if (mode == "resequence-frozenhub-invoices")
