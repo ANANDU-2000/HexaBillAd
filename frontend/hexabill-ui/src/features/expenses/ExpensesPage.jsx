@@ -31,7 +31,7 @@ import { LoadingButton } from '../../components/Loading'
 import { Input, Select, TextArea } from '../../components/Form'
 import Modal from '../../components/Modal'
 import { ListSkeleton } from '../../components/mobile/index'
-import { expensesAPI, reportsAPI } from '../../services/index'
+import { expensesAPI, reportsAPI, legacyAPI } from '../../services/index'
 import api from '../../services/api'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { buildDailyCloseHref, readExpensesStateFromParams, syncExpensesSearchParams } from '../../utils/expensesUrl'
@@ -238,6 +238,8 @@ const ExpensesPage = () => {
   const [expenseView, setExpenseView] = useState('ledger')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const isFrozenHub1 = user?.tenantId === 20 || (typeof window !== 'undefined' && window.location.hostname.includes('frozenhub'))
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'operating')
   const EXPENSES_DATE_RANGE_KEY = 'EXPENSES_DATE_RANGE'
   const EXPENSES_BRANCH_KEY = 'EXPENSES_BRANCH'
   const [dateRange, setDateRange] = useState(() => {
@@ -421,7 +423,18 @@ const ExpensesPage = () => {
         }
       }
 
-      const response = await expensesAPI.getExpenses(params)
+      let response
+      if (isFrozenHub1 && activeTab === 'legacy') {
+        response = await legacyAPI.getExpenses({
+          page: currentPage,
+          pageSize: 25,
+          search: debouncedSearch || undefined,
+          fromDate: dateRange.from,
+          toDate: dateRange.to
+        })
+      } else {
+        response = await expensesAPI.getExpenses(params)
+      }
       if (response?.success && response?.data) {
         const expenseList = response.data.items || []
         setExpenses(expenseList)
