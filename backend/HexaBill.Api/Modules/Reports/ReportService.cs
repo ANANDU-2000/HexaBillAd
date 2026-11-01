@@ -814,7 +814,7 @@ namespace HexaBill.Api.Modules.Reports
                     if (tenantId == 20 && trendFromDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
                     {
                         var legacyDaily = await _context.LegacyInvoices
-                            .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.InvoiceDate >= trendFromDate && li.InvoiceDate < trendToDate)
+                            .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.InvoiceDate >= trendFromDate && li.InvoiceDate < trendToDate.AddDays(1))
                             .GroupBy(li => li.InvoiceDate.Date)
                             .Select(g => new
                             {
@@ -910,10 +910,42 @@ namespace HexaBill.Api.Modules.Reports
                             _context.Sales.Any(s => s.CustomerId == tc.CustomerId && s.BranchId == branchId.Value));
                     }
                     
-                    topCustomers = await topCustomersQuery
+                    topCustomers = await topCustomersQuery.ToListAsync();
+
+                    if (tenantId == 20 && startDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
+                    {
+                        var legacyCustList = await _context.LegacyInvoices.AsNoTracking()
+                            .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.InvoiceDate >= startDate && li.InvoiceDate < endDate && (li.DestinationCustomerId != null || li.SourceCustomerId != null))
+                            .GroupBy(li => new { CustId = li.DestinationCustomerId ?? li.SourceCustomerId!.Value, Name = li.CustomerName ?? "Cash Customer" })
+                            .Select(g => new TopCustomerDto
+                            {
+                                CustomerId = g.Key.CustId,
+                                CustomerName = g.Key.Name,
+                                TotalSales = g.Sum(li => li.TotalAmount),
+                                InvoiceCount = g.Count()
+                            })
+                            .ToListAsync();
+
+                        var mergedC = topCustomers.ToDictionary(c => c.CustomerId, c => c);
+                        foreach (var lc in legacyCustList)
+                        {
+                            if (mergedC.TryGetValue(lc.CustomerId, out var exCust))
+                            {
+                                exCust.TotalSales += lc.TotalSales;
+                                exCust.InvoiceCount += lc.InvoiceCount;
+                            }
+                            else
+                            {
+                                mergedC[lc.CustomerId] = lc;
+                            }
+                        }
+                        topCustomers = mergedC.Values.ToList();
+                    }
+
+                    topCustomers = topCustomers
                         .OrderByDescending(c => c.TotalSales)
                         .Take(5)
-                        .ToListAsync();
+                        .ToList();
                 }
                 catch (Exception ex)
                 {
@@ -1001,10 +1033,43 @@ namespace HexaBill.Api.Modules.Reports
                         }
                     }
                     
-                    topProducts = await topProductsQuery
+                    topProducts = await topProductsQuery.ToListAsync();
+
+                    if (tenantId == 20 && startDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
+                    {
+                        var legacyProdList = await (from lii in _context.LegacyInvoiceItems.AsNoTracking()
+                                                    join li in _context.LegacyInvoices.AsNoTracking() on lii.LegacyInvoiceId equals li.Id
+                                                    where lii.TenantId == tenantId && !li.IsDeleted && li.InvoiceDate >= startDate && li.InvoiceDate < endDate
+                                                    group lii by new { Name = lii.ProductName, Unit = lii.UnitType } into g
+                                                    select new TopProductDto
+                                                    {
+                                                        ProductId = 0,
+                                                        ProductName = g.Key.Name,
+                                                        TotalSales = g.Sum(x => x.LineTotal),
+                                                        TotalQty = g.Sum(x => x.Quantity),
+                                                        UnitType = g.Key.Unit
+                                                    }).ToListAsync();
+
+                        var mergedP = topProducts.ToDictionary(p => p.ProductName, p => p);
+                        foreach (var lp in legacyProdList)
+                        {
+                            if (mergedP.TryGetValue(lp.ProductName, out var exProd))
+                            {
+                                exProd.TotalSales += lp.TotalSales;
+                                exProd.TotalQty += lp.TotalQty;
+                            }
+                            else
+                            {
+                                mergedP[lp.ProductName] = lp;
+                            }
+                        }
+                        topProducts = mergedP.Values.ToList();
+                    }
+
+                    topProducts = topProducts
                         .OrderByDescending(p => p.TotalSales)
                         .Take(5)
-                        .ToListAsync();
+                        .ToList();
                 }
                 catch (Exception ex)
                 {
@@ -1523,8 +1588,8 @@ namespace HexaBill.Api.Modules.Reports
                                         .Take(top)
                                         .ToListAsync();
 
-                // If no data, return empty list
-                if (!groupedData.Any())
+                // If no data and not tenant 20 legacy range, return empty list
+                if (!groupedData.Any() && !(tenantId == 20 && fromDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc)))
                 {
                     return new List<ProductSalesDto>();
                 }
@@ -1555,6 +1620,40 @@ namespace HexaBill.Api.Modules.Reports
                         TotalSales = g.TotalSales
                     };
                 }).ToList();
+
+                if (tenantId == 20 && fromDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
+                {
+                    var legacyProdData = await (from lii in _context.LegacyInvoiceItems.AsNoTracking()
+                                                join li in _context.LegacyInvoices.AsNoTracking() on lii.LegacyInvoiceId equals li.Id
+                                                where lii.TenantId == tenantId && !li.IsDeleted && li.InvoiceDate >= fromDate && li.InvoiceDate < toDate
+                                                group lii by new { lii.DestinationProductId, Name = lii.ProductName, lii.UnitType } into g
+                                                select new ProductSalesDto
+                                                {
+                                                    ProductId = g.Key.DestinationProductId ?? 0,
+                                                    ProductName = g.Key.Name,
+                                                    Sku = "N/A",
+                                                    UnitType = g.Key.UnitType,
+                                                    TotalQty = g.Sum(x => x.Quantity),
+                                                    TotalAmount = g.Sum(x => x.LineTotal),
+                                                    TotalSales = g.Count()
+                                                }).ToListAsync();
+
+                    var mergedMap = productSales.ToDictionary(p => p.ProductName, p => p);
+                    foreach (var lp in legacyProdData)
+                    {
+                        if (mergedMap.TryGetValue(lp.ProductName, out var exP))
+                        {
+                            exP.TotalAmount += lp.TotalAmount;
+                            exP.TotalQty += lp.TotalQty;
+                            exP.TotalSales += lp.TotalSales;
+                        }
+                        else
+                        {
+                            mergedMap[lp.ProductName] = lp;
+                        }
+                    }
+                    productSales = mergedMap.Values.OrderByDescending(p => p.TotalAmount).Take(top).ToList();
+                }
 
                 return productSales;
             }

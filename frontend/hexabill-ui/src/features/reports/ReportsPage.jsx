@@ -267,9 +267,12 @@ const ReportsPage = () => {
   const periodPresets = [
     { id: 'today', label: 'Today', range: () => { const t = localDateString(new Date()); return { from: t, to: t } } },
     { id: 'yesterday', label: 'Yesterday', range: () => { const d = new Date(); d.setDate(d.getDate() - 1); const t = localDateString(d); return { from: t, to: t } } },
-    { id: 'last7', label: 'Last 7 days', range: () => { const f = new Date(); f.setDate(f.getDate() - 7); return { from: localDateString(f), to: localDateString(new Date()) } } },
-    { id: 'week', label: 'This week', range: () => { const f = new Date(); f.setDate(f.getDate() - f.getDay()); return { from: localDateString(f), to: localDateString(new Date()) } } },
+    { id: 'last7', label: 'Last 7 days', range: () => { const f = new Date(); f.setDate(f.getDate() - 6); return { from: localDateString(f), to: localDateString(new Date()) } } },
+    { id: 'week', label: 'This week (7 days)', range: () => { const f = new Date(); f.setDate(f.getDate() - 6); return { from: localDateString(f), to: localDateString(new Date()) } } },
+    { id: 'last30', label: 'Last 30 days', range: () => { const f = new Date(); f.setDate(f.getDate() - 29); return { from: localDateString(f), to: localDateString(new Date()) } } },
     { id: 'month', label: 'This month', range: () => { const f = new Date(); f.setDate(1); return { from: localDateString(f), to: localDateString(new Date()) } } },
+    { id: 'lastMonth', label: 'Last month', range: () => { const f = new Date(); const s = new Date(f.getFullYear(), f.getMonth() - 1, 1); const e = new Date(f.getFullYear(), f.getMonth(), 0); return { from: localDateString(s), to: localDateString(e) } } },
+    { id: 'allTime', label: 'All Dates (Full History)', range: () => ({ from: '2024-01-01', to: localDateString(new Date()) }) },
     { id: 'year', label: 'This year', range: () => { const f = new Date(); f.setMonth(0, 1); return { from: localDateString(f), to: localDateString(new Date()) } } },
   ]
 

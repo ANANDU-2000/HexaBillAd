@@ -140,7 +140,7 @@ const DashboardTally = () => {
     const [hasFigures, setHasFigures] = useState(false)
     const [summaryError, setSummaryError] = useState(false)
     const periodKey = user?.id ? `hb_dash_period_${user.id}` : null
-    const allowedPeriod = ['today', 'week', 'month', 'lastMonth', 'custom']
+    const allowedPeriod = ['today', 'week', 'last30', 'month', 'lastMonth', 'allTime', 'custom']
     const urlPeriod = searchParams.get('period')
     const readStoredPeriod = () => {
         if (!periodKey || typeof sessionStorage === 'undefined') return null
@@ -202,8 +202,14 @@ const DashboardTally = () => {
             case 'today': return { from: todayStr, to: todayStr }
             case 'week': {
                 const weekStart = new Date(today)
-                weekStart.setDate(today.getDate() - today.getDay())
+                // Use rolling 7 days so "Week" always covers the active 7-day business cycle regardless of day of week
+                weekStart.setDate(today.getDate() - 6)
                 return { from: localDateString(weekStart), to: todayStr }
+            }
+            case 'last30': {
+                const thirtyDaysAgo = new Date(today)
+                thirtyDaysAgo.setDate(today.getDate() - 29)
+                return { from: localDateString(thirtyDaysAgo), to: todayStr }
             }
             case 'month': {
                 const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -213,6 +219,9 @@ const DashboardTally = () => {
                 const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1)
                 const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0)
                 return { from: localDateString(lastMonthStart), to: localDateString(lastMonthEnd) }
+            }
+            case 'allTime': {
+                return { from: '2024-01-01', to: todayStr }
             }
             case 'custom': {
                 if (customFromDate && customToDate) return { from: customFromDate, to: customToDate }
@@ -464,7 +473,7 @@ const DashboardTally = () => {
     const showSkeleton = !hasFigures && refreshing
     const trendSales = dailySalesTrend.reduce((sum, point) => sum + num(point.sales), 0)
     const trendHasSales = trendSales > 0
-    const periodName = dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week' : dateRange === 'month' ? 'This month' : 'Period'
+    const periodName = dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week (7 days)' : dateRange === 'last30' ? 'Last 30 days' : dateRange === 'month' ? 'This month' : dateRange === 'lastMonth' ? 'Last month' : dateRange === 'allTime' ? 'All time' : 'Period'
     const rangeLabel = dateRange === 'custom' && customFromDate && customToDate
         ? `${formatDisplayDate(customFromDate)} – ${formatDisplayDate(customToDate)}`
         : periodName
@@ -580,8 +589,10 @@ const DashboardTally = () => {
                     <div className="grid min-w-0 flex-1 grid-cols-4 gap-2 sm:flex sm:flex-none sm:flex-wrap">
                         <button type="button" onClick={() => applyPeriod('today')} className={periodChip(dateRange === 'today')} aria-pressed={dateRange === 'today'}>Today</button>
                         <button type="button" onClick={() => applyPeriod('week')} className={periodChip(dateRange === 'week')} aria-pressed={dateRange === 'week'}>Week</button>
+                        <button type="button" onClick={() => applyPeriod('last30')} className={periodChip(dateRange === 'last30')} aria-pressed={dateRange === 'last30'}>30 Days</button>
                         <button type="button" onClick={() => applyPeriod('month')} className={periodChip(dateRange === 'month')} aria-pressed={dateRange === 'month'}>Month</button>
                         <button type="button" onClick={() => applyPeriod('lastMonth')} className={periodChip(dateRange === 'lastMonth')} aria-pressed={dateRange === 'lastMonth'}>Last Month</button>
+                        <button type="button" onClick={() => applyPeriod('allTime')} className={periodChip(dateRange === 'allTime')} aria-pressed={dateRange === 'allTime'}>All Time</button>
                         <button type="button" onClick={selectCustom} className={periodChip(dateRange === 'custom')} aria-pressed={dateRange === 'custom'}>Custom</button>
                     </div>
                     {!isAdminOrOwner(user) && availableBranches.length > 1 && (
