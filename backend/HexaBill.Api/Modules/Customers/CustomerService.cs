@@ -898,7 +898,7 @@ namespace HexaBill.Api.Modules.Customers
             var filteredSaleIds = new HashSet<int>(salesData.Select(s => s.Id));
 
             var paymentsQuery = _context.Payments
-                .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleReturnId == null && p.Status != PaymentStatus.VOID);
+                .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleReturnId == null && (p.Status == PaymentStatus.CLEARED || p.Status == PaymentStatus.Completed));
             var payments = await paymentsQuery
                 .OrderBy(p => p.PaymentDate)
                 .ThenBy(p => p.Id)
@@ -985,7 +985,7 @@ namespace HexaBill.Api.Modules.Customers
             // Get payment totals for each sale to calculate status (exclude refunds)
             // Cleared amounts only — matches invoice paid state elsewhere (pending cheques do not count)
             var salePayments = await _context.Payments
-                .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleId.HasValue && p.SaleReturnId == null && p.Status == PaymentStatus.CLEARED)
+                .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleId.HasValue && p.SaleReturnId == null && (p.Status == PaymentStatus.CLEARED || p.Status == PaymentStatus.Completed))
                 .GroupBy(p => p.SaleId!.Value)
                 .Select(g => new { SaleId = g.Key, TotalPaid = g.Sum(p => p.Amount) })
                 .ToDictionaryAsync(x => x.SaleId, x => x.TotalPaid);
@@ -1160,7 +1160,7 @@ namespace HexaBill.Api.Modules.Customers
                         .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
 
                     var priorPayments = await _context.Payments
-                        .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleReturnId == null && p.Status == PaymentStatus.CLEARED && p.PaymentDate < from.Value)
+                        .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleReturnId == null && (p.Status == PaymentStatus.CLEARED || p.Status == PaymentStatus.Completed) && p.PaymentDate < from.Value)
                         .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
                     var priorReturns = await _context.SaleReturns
@@ -1235,7 +1235,7 @@ namespace HexaBill.Api.Modules.Customers
                         .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
 
                     var priorPayments = await _context.Payments
-                        .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleReturnId == null && p.Status == PaymentStatus.CLEARED && p.PaymentDate < from.Value)
+                        .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleReturnId == null && (p.Status == PaymentStatus.CLEARED || p.Status == PaymentStatus.Completed) && p.PaymentDate < from.Value)
                         .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
                     var priorReturns = await _context.SaleReturns
@@ -3014,4 +3014,3 @@ namespace HexaBill.Api.Modules.Customers
         }
     }
 }
-

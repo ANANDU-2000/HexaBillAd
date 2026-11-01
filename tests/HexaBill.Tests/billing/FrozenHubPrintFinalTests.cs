@@ -353,8 +353,7 @@ public class FrozenHubPrintFinalTests
         Assert.Contains("CustomerBalance:AED700.00", t); // 1000 - 300 cleared; the 200 pending cheque is not deducted
         Assert.Contains("Unclearedcheques(notyetdeducted):AED200.00", t);
         Assert.Contains("PendingBills:1", t);
-        // The Customer Ledger credits the pending cheque (500); the invoice footer deliberately does not.
-        Assert.Equal(500m, await LedgerClosingAsync(db, 150));
+        Assert.Equal(700m, await LedgerClosingAsync(db, 150));
     }
 
     [Fact]

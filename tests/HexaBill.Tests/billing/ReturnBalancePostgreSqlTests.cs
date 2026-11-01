@@ -18,6 +18,26 @@ public class ReturnBalancePostgreSqlTests
 {
     private static readonly DateTime Day = new(2026, 10, 14, 0, 0, 0, DateTimeKind.Utc);
 
+    [SkippableFact]
+    public async Task CustomerLedger_DoesNotCreditUnclearedCheques()
+    {
+        await using var db = await Fixture(ReturnStatus.Pending, 0m);
+        var customer = await db.Customers.SingleAsync();
+        var tenantId = customer.TenantId!.Value;
+        var sale = await db.Sales.SingleAsync();
+        foreach (var status in new[] { PaymentStatus.PENDING, PaymentStatus.RETURNED })
+        {
+            db.Payments.Add(new Payment { TenantId = tenantId, OwnerId = tenantId, CreatedBy = tenantId,
+                CustomerId = customer.Id, SaleId = sale.Id, Amount = 2m, Mode = PaymentMode.CHEQUE,
+                Status = status, PaymentDate = Day.AddHours(3), CreatedAt = Day.AddHours(3) });
+        }
+        await db.SaveChangesAsync();
+
+        var ledger = await new CustomerService(db).GetCustomerLedgerAsync(customer.Id, tenantId);
+        Assert.Equal(10.75m, ledger.Last().Balance);
+        Assert.Equal(5m, ledger.Sum(entry => entry.Credit));
+    }
+
     [SkippableTheory]
     [InlineData(ReturnStatus.Approved, 15.75, 0, -5)]
     [InlineData(ReturnStatus.Approved, 3, 7.75, 7.75)]

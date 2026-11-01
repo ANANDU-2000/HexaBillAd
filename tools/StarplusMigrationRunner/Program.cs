@@ -97,10 +97,77 @@ namespace StarplusMigrationRunner
                     var audit = await ReconciliationAuditor.AuditAsync(conn, "public", targetTenantId);
                     return audit.Passed ? 0 : 1;
                 }
+                else if (mode == "reconcile-all")
+                {
+                    var outDir = Path.GetFullPath("artifacts/reconciliation");
+                    return await AllDomainAuditor.RunAllDomainAuditAsync(conn, outDir);
+                }
+                else if (mode == "audit-c")
+                {
+                    await ReleaseCMigrationRunner.AuditChecksAsync(conn, "public", targetTenantId);
+                    return 0;
+                }
                 else if (mode == "comprehensive-audit")
                 {
                     var outDir = Path.GetFullPath("artifacts/reconciliation");
                     return await ComprehensiveAuditor.RunFullAuditAsync(conn, archiveData, targetTenantId, outDir);
+                }
+                else if (mode == "inspect-vat")
+                {
+                    Console.WriteLine("=== INSPECTING TENANTS & VAT ===");
+                    await using (var cmd = new NpgsqlCommand(@"SELECT ""Id"", ""Name"", ""Subdomain"", ""TRN"" FROM ""Tenants"" ORDER BY ""Id"";", conn))
+                    await using (var r = await cmd.ExecuteReaderAsync())
+                    {
+                        Console.WriteLine("-- TENANTS --");
+                        while (await r.ReadAsync())
+                            Console.WriteLine($"Tenant {r["Id"]}: {r["Name"]} (Subdomain: {r["Subdomain"]}, TRN: {r["TRN"]})");
+                    }
+
+                    await using (var cmd = new NpgsqlCommand(@"SELECT ""TenantId"", ""CompanyName"", ""TRN"", ""IsVatRegistered"", ""TaxRate"" FROM ""CompanySettings"" ORDER BY ""TenantId"";", conn))
+                    await using (var r = await cmd.ExecuteReaderAsync())
+                    {
+                        Console.WriteLine("-- COMPANY SETTINGS --");
+                        while (await r.ReadAsync())
+                            Console.WriteLine($"Tenant {r["TenantId"]}: {r["CompanyName"]} | TRN: {r["TRN"]} | IsVatRegistered: {r["IsVatRegistered"]} | TaxRate: {r["TaxRate"]}");
+                    }
+
+                    await using (var cmd = new NpgsqlCommand(@"SELECT ""Id"", ""InvoiceNumber"", ""InvoiceDate"", ""SubTotal"", ""TaxAmount"", ""TaxRate"", ""GrandTotal"" FROM ""Sales"" WHERE ""TenantId"" = 20 ORDER BY ""Id"" DESC LIMIT 10;", conn))
+                    await using (var r = await cmd.ExecuteReaderAsync())
+                    {
+                        Console.WriteLine("-- TENANT 20 SALES SAMPLE --");
+                        while (await r.ReadAsync())
+                            Console.WriteLine($"Sale #{r["InvoiceNumber"]} ({r["InvoiceDate"]}): SubTotal={r["SubTotal"]}, TaxAmount={r["TaxAmount"]}, TaxRate={r["TaxRate"]}, GrandTotal={r["GrandTotal"]}");
+                    }
+
+                    await using (var cmd = new NpgsqlCommand(@"SELECT COUNT(*) as cnt, SUM(""TaxAmount"") as sum_tax FROM ""Sales"" WHERE ""TenantId"" = 20;", conn))
+                    await using (var r = await cmd.ExecuteReaderAsync())
+                    {
+                        if (await r.ReadAsync())
+                            Console.WriteLine($"Tenant 20 Total Sales: {r["cnt"]}, Total TaxAmount: {r["sum_tax"]}");
+                    }
+
+                    await using (var cmd = new NpgsqlCommand(@"SELECT COUNT(*) as cnt, SUM(""VatAmount"") as sum_vat FROM ""LegacyInvoices"" WHERE ""TenantId"" = 20;", conn))
+                    await using (var r = await cmd.ExecuteReaderAsync())
+                    {
+                        if (await r.ReadAsync())
+                            Console.WriteLine($"Tenant 20 LegacyInvoices: {r["cnt"]}, Total VatAmount: {r["sum_vat"]}");
+                    }
+
+                    await using (var cmd = new NpgsqlCommand(@"SELECT COUNT(*) as cnt, SUM(""VatAmount"") as sum_vat FROM ""Expenses"" WHERE ""TenantId"" = 20;", conn))
+                    await using (var r = await cmd.ExecuteReaderAsync())
+                    {
+                        if (await r.ReadAsync())
+                            Console.WriteLine($"Tenant 20 Expenses: {r["cnt"]}, Total VatAmount: {r["sum_vat"]}");
+                    }
+
+                    await using (var cmd = new NpgsqlCommand(@"SELECT ""TenantId"", COUNT(*) FROM ""LegacyInvoices"" GROUP BY ""TenantId"";", conn))
+                    await using (var r = await cmd.ExecuteReaderAsync())
+                    {
+                        Console.WriteLine("-- LEGACY INVOICES BY TENANT --");
+                        while (await r.ReadAsync())
+                            Console.WriteLine($"Tenant {r["TenantId"]}: {r["count"]} invoices");
+                    }
+                    return 0;
                 }
                 else if (mode == "test-ef-queries")
                 {

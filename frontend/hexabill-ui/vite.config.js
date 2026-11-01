@@ -73,10 +73,8 @@ window.$RefreshSig$ = () => (type) => type;`
             const originalHost = resolveProxyOriginalHost(browserHost, override)
             if (originalHost) {
               proxyReq.setHeader('X-HexaBill-Original-Host', originalHost)
-              proxyReq.setHeader(
-                'X-HexaBill-Edge-Secret',
-                process.env.HEXABILL_EDGE_PROXY_SECRET || 'dev-local-edge-secret'
-              )
+              const edgeSecret = process.env.HEXABILL_EDGE_PROXY_SECRET
+              if (edgeSecret) proxyReq.setHeader('X-HexaBill-Edge-Secret', edgeSecret)
             }
           })
         },

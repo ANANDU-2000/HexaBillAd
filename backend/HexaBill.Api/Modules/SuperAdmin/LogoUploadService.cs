@@ -4,6 +4,7 @@
  */
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Core.Images;
 using Microsoft.EntityFrameworkCore;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -64,7 +65,7 @@ public class LogoUploadService : ILogoUploadService
         if (!IsValidImageMagicBytes(header, read))
             throw new ArgumentException("Invalid image file.");
 
-        using var image = await Image.LoadAsync(stream, ct);
+        using var image = await SafeImageDecoder.LoadAsync(stream, ct);
         TrimNearWhiteMargins(image);
         if (image.Width > MaxWidth || image.Height > MaxHeight)
         {

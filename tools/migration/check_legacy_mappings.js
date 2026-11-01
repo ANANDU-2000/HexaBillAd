@@ -1,7 +1,9 @@
+const requireEnv = require('./require-env');
+const databaseUrl = process.env.HEXABILL_DB_URL || requireEnv('DATABASE_URL');
 const { Client } = require('pg');
 
 async function run() {
-  const connStr = process.env.HEXABILL_DB_URL || 'Host=dpg-d68jhpk9c44c73ft047g-a.singapore-postgres.render.com;Port=5432;Database=hexabill;Username=hexabill_user;Password=KGYtLyUd2AwcKSiC1LW6VsTGn6PIJnxQ;SSL Mode=Require;Trust Server Certificate=true';
+  const connStr = databaseUrl;
   const client = new Client({ connectionString: connStr });
   await client.connect();
 

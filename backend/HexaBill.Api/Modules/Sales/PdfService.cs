@@ -8,6 +8,7 @@ using QuestPDF.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Core.Images;
 using System.IO;
 using SixLabors.ImageSharp.Processing;
 using HexaBill.Api.Modules.SuperAdmin;
@@ -1321,7 +1322,7 @@ namespace HexaBill.Api.Modules.Sales
             if (bytes == null || bytes.Length == 0) return null;
             try
             {
-                using var image = SixLabors.ImageSharp.Image.Load(bytes);
+                using var image = SafeImageDecoder.Load(bytes);
                 image.Mutate(x => x.Grayscale());
                 using var output = new MemoryStream();
                 SixLabors.ImageSharp.ImageExtensions.SaveAsPng(image, output);
@@ -1406,7 +1407,7 @@ namespace HexaBill.Api.Modules.Sales
                 var logoDisplayWidth = logoW;
                 if (logo != null)
                 {
-                    using var logoDimensions = SixLabors.ImageSharp.Image.Load(logo);
+                    var logoDimensions = SafeImageDecoder.Identify(logo);
                     logoDisplayWidth = Math.Min(logoW, logoH * logoDimensions.Width / (float)logoDimensions.Height);
                 }
                 var (title, subtitle) = SplitBilingualCompanyNameLines(settings.CompanyNameEn);
@@ -1920,10 +1921,14 @@ if (hasLogo)
                 }
             }
 
+            dto.LogoImageBytes = NormalizePdfImage(dto.LogoImageBytes, tenantId, "logo");
+
             if (dto.DocumentStampSignatureEnabled)
             {
                 dto.StampImageBytes = await TryLoadAssetBytesAsync(tenantId, companySettings.StampStorageKey, "STAMP_BASE64_DATA_URI");
                 dto.SignatureImageBytes = await TryLoadAssetBytesAsync(tenantId, companySettings.SignatureStorageKey, "SIGNATURE_BASE64_DATA_URI");
+                dto.StampImageBytes = NormalizePdfImage(dto.StampImageBytes, tenantId, "stamp");
+                dto.SignatureImageBytes = NormalizePdfImage(dto.SignatureImageBytes, tenantId, "signature");
                 var hasStamp = dto.StampImageBytes != null && dto.StampImageBytes.Length > 0;
                 var hasSig = dto.SignatureImageBytes != null && dto.SignatureImageBytes.Length > 0;
                 if (!hasStamp && !hasSig)
@@ -1937,6 +1942,27 @@ if (hasLogo)
             }
 
             return dto;
+        }
+
+        private byte[]? NormalizePdfImage(byte[]? imageBytes, int tenantId, string assetKind)
+        {
+            if (imageBytes == null || imageBytes.Length == 0)
+                return null;
+
+            try
+            {
+                using var image = SafeImageDecoder.Load(imageBytes);
+                using var normalized = new MemoryStream();
+                SixLabors.ImageSharp.ImageExtensions.SaveAsPng(image, normalized);
+                return normalized.ToArray();
+            }
+            catch (Exception ex) when (ex is InvalidDataException or IOException or ArgumentException
+                or SixLabors.ImageSharp.UnknownImageFormatException
+                or SixLabors.ImageSharp.InvalidImageContentException)
+            {
+                _logger.LogWarning(ex, "Ignoring invalid tenant {AssetKind} image for tenant {TenantId}", assetKind, tenantId);
+                return null;
+            }
         }
 
         private async Task<byte[]?> TryLoadAssetBytesAsync(int tenantId, string? storageKey, string base64SettingKey)
@@ -2322,13 +2348,11 @@ if (hasLogo)
                 var ledgerService = new HexaBill.Api.Modules.Customers.CustomerService(_context);
                 var ledger = await ledgerService.GetCustomerLedgerAsync(customerId.Value, tenantId);
                 var ledgerClosing = ledger.Count > 0 ? ledger[^1].Balance : 0m;
-                // The ledger credits every non-void payment, including cheques still PENDING (or RETURNED/bounced).
-                // The invoice must not treat those as collected, so add them back and print them separately.
                 var unclearedPayments = await _context.Payments.AsNoTracking()
                     .Where(p => p.CustomerId == customerId.Value && p.TenantId == tenantId && p.SaleReturnId == null
                                 && (p.Status == PaymentStatus.PENDING || p.Status == PaymentStatus.RETURNED))
                     .SumAsync(p => (decimal?)p.Amount) ?? 0m;
-                var closingBalance = ledgerClosing + unclearedPayments;
+                var closingBalance = ledgerClosing;
                 var outstanding = await ledgerService.GetOutstandingInvoicesAsync(customerId.Value, tenantId);
 
                 return new CustomerPendingBalanceInfo

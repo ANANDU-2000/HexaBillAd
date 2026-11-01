@@ -1,0 +1,79 @@
+{
+  "dashboardCustom": {
+    "status": 200,
+    "salesToday": 3825363.88,
+    "purchasesToday": 3527138.48,
+    "expensesToday": 14239,
+    "profitToday": 284390.46,
+    "cashCollectionsTotal": 3755189.98,
+    "pendingBills": 87,
+    "pendingBillsAmount": 70178.03,
+    "overdueAmountTotal": 35236.88,
+    "overdueCustomersCount": 13,
+    "pendingInvoicesCount": 10
+  },
+  "salesLedger": {
+    "status": 200,
+    "totalEntries": 4948
+  },
+  "billingHistory": {
+    "operatingCount": 16,
+    "unifiedCount": 4932
+  },
+  "pendingBills": {
+    "status": 200,
+    "totalCount": 87,
+    "returnedItems": 87,
+    "calculatedTotal": "70178.03"
+  },
+  "customers": {
+    "status": 200,
+    "totalCustomers": 84,
+    "sampleCustomers": [
+      {
+        "customerId": 143,
+        "name": "ABAYAN MANDI REST & KITCHEN"
+      },
+      {
+        "customerId": 136,
+        "name": "CHAWARMA AALMASHI SNACK"
+      },
+      {
+        "customerId": 137,
+        "name": "DAR AL MANDI AL MUMAIZ"
+      }
+    ]
+  },
+  "payments": {
+    "status": 200,
+    "totalCount": 23
+  },
+  "purchases": {
+    "operatingCount": 10,
+    "legacyCount": 1563
+  },
+  "suppliers": {
+    "status": 405
+  },
+  "expenses": {
+    "operatingCount": 0,
+    "legacyCount": 242
+  },
+  "reportsTabs": {
+    "salesReportCount": 453,
+    "agingStatus": 200,
+    "worksheetStatus": 200,
+    "worksheetData": {
+      "totalSales": 3825363.88,
+      "totalPurchases": 3527138.48,
+      "totalExpenses": 14239,
+      "totalReceived": 3755189.98,
+      "pendingAmount": 70178.03
+    }
+  },
+  "dailyCloseAndVat": {
+    "dailyCloseStatus": 404,
+    "vatReturnStatus": 200,
+    "vatReturnBox13a": 59.77
+  }
+}

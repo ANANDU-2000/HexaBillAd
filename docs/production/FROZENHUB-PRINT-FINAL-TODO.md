@@ -87,7 +87,7 @@ Code work in C–E can proceed now; F (live data) and G (release) wait for B.
 
 ## D. Local verification — P0 gate
 - [x] `dotnet test` full suite, in-memory: **2093 passed, 0 failed, 114 skipped** (114 = PostgreSQL-gated). With a fresh disposable PostgreSQL 18 (127.0.0.1:55491): **2203–2206 passed, 1 skipped** (`MigrationRehearsal…`, needs migration rehearsal env) and **1 pre-existing failure** `ReturnBalancePostgreSqlTests.Ledger_NetsApprovedReturns_…(-5)` — fails identically on clean `HEAD 6171d688` without these changes.
-- [~] Intermittent text-layer flake: 1–3 PDF tests per full run report a missing substring; the PDF *renders correctly* but its Lato text layer extracts as blanks. Rate ≈1/12 focused runs on this tree vs 0/18 on clean HEAD. Guarding QuestPDF global re-assignment (PdfService + CustomerService ctors) did not remove it. Root cause unresolved — see Open issues.
+- [~] Intermittent text-layer flake: 1–3 PDF tests per full run report a missing substring; the PDF *renders correctly* but its Lato text layer extracts as blanks. Also reproduced on clean HEAD 6171d688 (run 18 of a 30-run sample), so it is pre-existing, not caused by this change. Guarding QuestPDF global re-assignment (PdfService + CustomerService ctors) did not remove it. Root cause unresolved — see Open issues.
 - [x] PNG evidence for invoice 7000 shape (cust 131), cust 143, cust 136, 1-item, 40-item A4, 30-item A5, FH1 + FH2, A4 + A5, using the repo FrozenHub B/W logo — `docs/production/print-evidence/2026-11-01-final/` (+ BEFORE client screenshot). Visually inspected.
 - [x] Frontend: `npm test` 342/342, build OK, lint 0 errors in changed files (3 pre-existing lint errors in `ExpensesPage.jsx` etc., not touched).
 
@@ -111,6 +111,8 @@ Code work in C–E can proceed now; F (live data) and G (release) wait for B.
 - [ ] Verify T20 save did not touch T23 and vice versa.
 
 ## G. Release + live acceptance — after B-7
+
+> 2026-11-01: code pushed to `main` at `9e7a3f3b` on owner instruction; Vercel production READY (`dpl_CHa8wqRFBoGwdbvjEYXJb5qeufxW`), Render `dep-dbjn6bdg1s2s7385fedg` LIVE 17:14 UTC; API /health 200, both tenant sites 200. Live tenant settings (IBAN, P.O. Box, email) NOT changed; authenticated live PDF check NOT done.
 - [ ] Review diff, no secrets, no invoice/payment/VAT/numbering mutation.
 - [ ] Push → verify GitHub main SHA → Render deploy SHA → Vercel deploy.
 - [ ] Authenticated Chrome: T20 invoice 7000 + cust 143/136 invoices; T23 test invoice → download PDF + browser print → screenshots.

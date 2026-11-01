@@ -5,7 +5,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const API = process.env.HEXABILL_API || 'http://127.0.0.1:5000'
-export const EDGE = process.env.HEXABILL_EDGE_PROXY_SECRET || 'dev-local-edge-secret'
+export const EDGE = process.env.HEXABILL_EDGE_PROXY_SECRET
+if (!EDGE) throw new Error('HEXABILL_EDGE_PROXY_SECRET must be set in the E2E process environment.')
 export const TENANTS = (process.env.HEXABILL_E2E_TENANTS || 'gulfharvest,frozenhub1,frozenhub2')
   .split(',').map((s) => s.trim()).filter(Boolean)
 

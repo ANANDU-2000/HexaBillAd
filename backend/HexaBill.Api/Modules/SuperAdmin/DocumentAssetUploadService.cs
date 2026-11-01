@@ -4,6 +4,7 @@
  * Does not convert to grayscale (colour stamps/signatures must stay blue).
  */
 using HexaBill.Api.Data;
+using HexaBill.Api.Core.Images;
 using HexaBill.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using SixLabors.ImageSharp;
@@ -68,7 +69,7 @@ public class DocumentAssetUploadService : IDocumentAssetUploadService
         if (!IsValidImageMagicBytes(header, read))
             throw new ArgumentException("Invalid image file.");
 
-        using var image = await Image.LoadAsync(stream, ct);
+        using var image = await SafeImageDecoder.LoadAsync(stream, ct);
         if (image.Width > MaxWidth || image.Height > MaxHeight)
         {
             image.Mutate(x => x.Resize(new ResizeOptions

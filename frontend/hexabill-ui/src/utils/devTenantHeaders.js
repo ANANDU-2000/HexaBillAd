@@ -10,10 +10,8 @@ export function resolveDevTenantHeaders (hostname, getItem) {
   if (typeof getItem !== 'function') return null
   const tenantHost = (getItem('hexabill_dev_tenant_host') || '').trim().toLowerCase()
   if (!tenantHost || !tenantHost.endsWith('.localhost')) return null
-  const secret = (getItem('hexabill_dev_edge_secret') || 'dev-local-edge-secret').trim()
   return {
     'X-HexaBill-Original-Host': tenantHost,
-    'X-HexaBill-Edge-Secret': secret,
   }
 }
 
