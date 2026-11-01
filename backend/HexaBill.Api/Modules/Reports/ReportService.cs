@@ -417,6 +417,19 @@ namespace HexaBill.Api.Modules.Reports
                     pendingBillsCount = await pendingBillsQuery.CountAsync();
                     pendingBillsAmount = await pendingBillsQuery.SumAsync(s => (decimal?)s.Balance) ?? 0m;
                     
+                    if (tenantId > 0)
+                    {
+                        var legacyOpeningAr = await _context.LegacyOpeningReceivables
+                            .Where(lo => lo.TenantId == tenantId)
+                            .SumAsync(lo => (decimal?)lo.OpeningBalance) ?? 0m;
+                        var legacyOpeningCount = await _context.LegacyOpeningReceivables
+                            .Where(lo => lo.TenantId == tenantId && lo.OpeningBalance > tol)
+                            .CountAsync();
+
+                        pendingBillsAmount += legacyOpeningAr;
+                        pendingBillsCount += legacyOpeningCount;
+                    }
+                    
                     var paidBillsQuery = baseSalesQuery
                         .Where(s => (s.GrandTotal - s.PaidAmount -
                             (approvedReturnsForReceivables.Where(r => r.SaleId == s.Id).Sum(r => (decimal?)r.GrandTotal) ?? 0m)) <= tol);
@@ -533,6 +546,16 @@ namespace HexaBill.Api.Modules.Reports
                             }).Where(s => s.Balance > tolOverdue);
                         overdueAmountTotal = await overdueSalesQ.SumAsync(s => (decimal?)s.Balance) ?? 0m;
                         overdueCustomersCount = await overdueSalesQ.Select(s => s.CustomerId!.Value).Distinct().CountAsync();
+
+                        var legacyOpeningOverdue = await _context.LegacyOpeningReceivables
+                            .Where(lo => lo.TenantId == tenantId)
+                            .SumAsync(lo => (decimal?)lo.OpeningBalance) ?? 0m;
+                        var legacyOpeningOverdueCount = await _context.LegacyOpeningReceivables
+                            .Where(lo => lo.TenantId == tenantId && lo.OpeningBalance > tolOverdue)
+                            .CountAsync();
+
+                        overdueAmountTotal += legacyOpeningOverdue;
+                        overdueCustomersCount += legacyOpeningOverdueCount;
                     }
                 }
                 catch (Exception ex)

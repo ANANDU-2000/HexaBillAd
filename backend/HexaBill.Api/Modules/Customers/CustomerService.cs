@@ -1141,9 +1141,61 @@ namespace HexaBill.Api.Modules.Customers
                     foreach (var r in refs) groupedTransactions.Add(r);
             }
 
+            // Determine approved opening balance (from Customer or LegacyOpeningReceivables)
+            var customer = await _context.Customers.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == customerId && c.TenantId == tenantId);
+
+            decimal baseOpeningBalance = 0m;
+            var legacyOpening = await _context.LegacyOpeningReceivables.AsNoTracking()
+                .FirstOrDefaultAsync(o => o.DestinationCustomerId == customerId && o.TenantId == tenantId);
+            if (legacyOpening != null && legacyOpening.OpeningBalance > 0)
+            {
+                baseOpeningBalance = legacyOpening.OpeningBalance;
+            }
+
+            decimal startBalance = baseOpeningBalance;
+            if (from.HasValue)
+            {
+                var priorSales = await _context.Sales
+                    .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate < from.Value)
+                    .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
+
+                var priorPayments = await _context.Payments
+                    .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleReturnId == null && p.Status == PaymentStatus.CLEARED && p.PaymentDate < from.Value)
+                    .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+                var priorReturns = await _context.SaleReturns
+                    .Where(sr => sr.CustomerId.HasValue && sr.CustomerId.Value == customerId && sr.TenantId == tenantId && sr.Status == ReturnStatus.Approved && sr.ReturnDate < from.Value)
+                    .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0m;
+
+                startBalance = baseOpeningBalance + priorSales - priorPayments - priorReturns;
+            }
+
             var ledgerEntries = new List<CustomerLedgerEntry>();
+            if (startBalance != 0 || (baseOpeningBalance != 0 && !from.HasValue))
+            {
+                ledgerEntries.Add(new CustomerLedgerEntry
+                {
+                    Date = from ?? (customer?.CreatedAt ?? DateTime.UtcNow),
+                    Type = "Opening Balance",
+                    Reference = "OPENING",
+                    PaymentMode = null,
+                    Remarks = from.HasValue
+                        ? $"Opening Balance as of {from.Value:yyyy-MM-dd}"
+                        : "Approved Cutover Opening Balance",
+                    Debit = startBalance > 0 ? startBalance : 0m,
+                    Credit = startBalance < 0 ? Math.Abs(startBalance) : 0m,
+                    Balance = startBalance,
+                    SaleId = null,
+                    PaymentId = null,
+                    ReturnId = null,
+                    Status = "Cleared",
+                    PaidAmount = 0
+                });
+            }
+
             var seenTransactions = new HashSet<(int? SaleId, int? PaymentId, int? ReturnId, DateTime Date, decimal Amount)>();
-            decimal runningBalance = 0;
+            decimal runningBalance = startBalance;
 
             foreach (var transaction in groupedTransactions)
             {
@@ -1468,8 +1520,16 @@ namespace HexaBill.Api.Modules.Customers
                 salesReturnsList = returnsData.Select(x => (x.ReturnDate, (string?)x.ReturnNo, x.GrandTotal)).ToList();
             }
             
-            // Opening balance = Sales (debit) - Payments (credit) - Returns (credit)
-            var openingBalance = openingSales - openingPayments - openingSalesReturns;
+            decimal baseOpeningBalance = 0m;
+            var legacyOpening = await _context.LegacyOpeningReceivables.AsNoTracking()
+                .FirstOrDefaultAsync(o => o.DestinationCustomerId == customerId && o.TenantId == tenantId);
+            if (legacyOpening != null && legacyOpening.OpeningBalance > 0)
+            {
+                baseOpeningBalance = legacyOpening.OpeningBalance;
+            }
+
+            // Opening balance = baseOpeningBalance + Sales (debit) - Payments (credit) - Returns (credit)
+            var openingBalance = baseOpeningBalance + openingSales - openingPayments - openingSalesReturns;
 
             var payments = await _context.Payments
                 .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId &&

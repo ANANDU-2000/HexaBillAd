@@ -115,6 +115,86 @@ namespace StarplusMigrationRunner
                     }
                     return 0;
                 }
+                else if (mode == "sync-opening-balances")
+                {
+                    Console.WriteLine("[SYNC BALANCES] Synchronizing approved opening receivables from LegacyOpeningReceivables to Customers for Tenant 20...");
+                    await using var tx = await conn.BeginTransactionAsync();
+                    try
+                    {
+                        await using var cmd = new NpgsqlCommand(@"
+                            UPDATE ""public"".""Customers"" c
+                            SET ""Balance"" = lo.""OpeningBalance"",
+                                ""PendingBalance"" = lo.""OpeningBalance""
+                            FROM ""public"".""LegacyOpeningReceivables"" lo
+                            WHERE c.""Id"" = lo.""DestinationCustomerId""
+                              AND c.""TenantId"" = lo.""TenantId""
+                              AND c.""TenantId"" = 20
+                              AND lo.""OpeningBalance"" > 0;
+                        ", conn, tx);
+                        var updatedCount = await cmd.ExecuteNonQueryAsync();
+                        await tx.CommitAsync();
+                        Console.WriteLine($"[SYNC BALANCES] Successfully updated {updatedCount} customers with approved opening receivables.");
+                    }
+                    catch (Exception ex)
+                    {
+                        await tx.RollbackAsync();
+                        Console.WriteLine($"[SYNC BALANCES ERROR] Rolled back: {ex.Message}");
+                        return 1;
+                    }
+
+                    // Print updated balances
+                    await using (var verifyCmd = new NpgsqlCommand(@"
+                        SELECT c.""Id"", c.""Name"", c.""Balance"", c.""PendingBalance""
+                        FROM ""public"".""Customers"" c
+                        WHERE c.""TenantId"" = 20 AND c.""Balance"" > 0
+                        ORDER BY c.""Balance"" DESC;
+                    ", conn))
+                    {
+                        await using var reader = await verifyCmd.ExecuteReaderAsync();
+                        decimal sum = 0;
+                        int count = 0;
+                        while (await reader.ReadAsync())
+                        {
+                            count++;
+                            var bal = Convert.ToDecimal(reader["Balance"]);
+                            sum += bal;
+                            Console.WriteLine($"  {count}. Cust {reader["Id"]}: {reader["Name"]} -> AED {bal:N2}");
+                        }
+                        Console.WriteLine($"[VERIFY] Total Customers: {count}, Sum: AED {sum:N2} (Expected: 21 customers, AED 70,077.29)");
+                    }
+                    return 0;
+                }
+                else if (mode == "check-balances")
+                {
+                    Console.WriteLine("[BALANCE CHECK] Checking Customers vs LegacyOpeningReceivables for Tenant 20...");
+                    await using (var opCmd = new NpgsqlCommand(@"
+                        SELECT COUNT(*) FROM ""public"".""Sales"" WHERE ""TenantId"" = 20 AND ""CustomerId"" BETWEEN 134 AND 154;
+                    ", conn))
+                    {
+                        var opSales = Convert.ToInt32(await opCmd.ExecuteScalarAsync());
+                        Console.WriteLine($"  Existing Operating Sales for cutover customers (134-154): {opSales}");
+                    }
+                    await using (var payCmd = new NpgsqlCommand(@"
+                        SELECT COUNT(*) FROM ""public"".""Payments"" WHERE ""TenantId"" = 20 AND ""CustomerId"" BETWEEN 134 AND 154;
+                    ", conn))
+                    {
+                        var opPays = Convert.ToInt32(await payCmd.ExecuteScalarAsync());
+                        Console.WriteLine($"  Existing Operating Payments for cutover customers (134-154): {opPays}");
+                    }
+                    await using var cmd = new NpgsqlCommand(@"
+                        SELECT c.""Id"", c.""Name"", c.""Balance"", c.""PendingBalance"", lo.""OpeningBalance""
+                        FROM ""public"".""Customers"" c
+                        JOIN ""public"".""LegacyOpeningReceivables"" lo ON lo.""DestinationCustomerId"" = c.""Id"" AND lo.""TenantId"" = c.""TenantId""
+                        WHERE c.""TenantId"" = 20
+                        ORDER BY lo.""OpeningBalance"" DESC LIMIT 10;
+                    ", conn);
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        Console.WriteLine($"  Customer {reader["Id"]}: {reader["Name"]} | OpeningRec: AED {reader["OpeningBalance"]} | DB Balance: AED {reader["Balance"]} | PendingBalance: AED {reader["PendingBalance"]}");
+                    }
+                    return 0;
+                }
                 else if (mode == "fix-schema")
                 {
                     Console.WriteLine("[SCHEMA FIX] Applying additive schema update to public.LegacyInvoices...");

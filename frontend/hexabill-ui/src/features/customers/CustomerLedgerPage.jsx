@@ -3790,7 +3790,9 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
   }
 
   // Always use the LAST entry of the full ledger (not paginated) for true closing balance
-  const lastEntryBalance = ledgerEntries.length > 0 ? ledgerEntries[ledgerEntries.length - 1].balance : 0
+  const lastEntryBalance = ledgerEntries.length > 0
+    ? ledgerEntries[ledgerEntries.length - 1].balance
+    : (customer?.balance ?? customer?.pendingBalance ?? 0)
   const closingBalance = Number(lastEntryBalance) || 0
   // Totals for summary cards and closing balance footer:
   // - Total Sales (debit) should only include invoice/sale rows

@@ -47,7 +47,9 @@ const BillingHistoryPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
 
   // Navigation tab: 'operating' | 'legacy' | 'all'
-  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'operating')
+  const isFrozenHub1 = user?.tenantId === 20 || (typeof window !== 'undefined' && window.location.hostname.includes('frozenhub') && !window.location.hostname.includes('frozenhub2'))
+  // Navigation tab: 'all' | 'operating' | 'legacy' - defaults to 'all' for FrozenHub 1 continuity
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || (isFrozenHub1 ? 'all' : 'operating'))
 
   // Shared state
   const [loading, setLoading] = useState(true)
