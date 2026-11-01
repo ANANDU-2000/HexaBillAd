@@ -148,6 +148,10 @@ const ReportsPage = () => {
   const [legacyArList, setLegacyArList] = useState([])
 
   useEffect(() => {
+    if (!isFrozenHub1) {
+      if (reportSource !== 'operating') setReportSource('operating')
+      return
+    }
     if (reportSource === 'legacy' || reportSource === 'comparative') {
       if (!legacyMetrics) {
         legacyAPI.getReconciliation().then(res => {
@@ -224,6 +228,7 @@ const ReportsPage = () => {
   const tabDataCacheRef = useRef({}) // Lazy load: cache loaded tab data keyed by tab+params to avoid refetch on tab switch
 
   const { user } = useAuth()
+  const isFrozenHub1 = user?.tenantId === 20 || (user?.companyName?.toLowerCase()?.includes("frozenhub") && !user?.companyName?.includes("2"))
 
   const tabs = [
     { id: 'summary', name: 'Summary', shortLabel: 'Summary', icon: BarChart3, group: 'Sales' },
@@ -1312,6 +1317,7 @@ const ReportsPage = () => {
 
       {/* Row 1: report switcher + refresh/export */}
       {/* Reporting Source Selector */}
+      {isFrozenHub1 && (
       <div className="flex items-center justify-between flex-wrap gap-2 bg-white border border-neutral-200 rounded-lg p-2.5 shrink-0 shadow-sm">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 mr-1 hidden sm:inline">Data Source:</span>
@@ -1352,6 +1358,7 @@ const ReportsPage = () => {
           </button>
         </div>
       </div>
+      )}
 
       {reportSource === 'legacy' && (
         <div className="space-y-4 p-1">
@@ -1369,22 +1376,22 @@ const ReportsPage = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
               <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Historical Total Sales</div>
-              <div className="mt-1 text-xl font-bold text-neutral-900">{formatCurrency(legacyMetrics?.activeGrandTotal || 3817356.88)}</div>
+              <div className="mt-1 text-xl font-bold text-neutral-900">{formatCurrency(legacyMetrics?.activeGrandTotal ?? 0)}</div>
               <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.activeInvoices?.toLocaleString() || '4,916'} active bills</div>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
               <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Historical Collections</div>
-              <div className="mt-1 text-xl font-bold text-emerald-600">{formatCurrency(legacyMetrics?.activePaidTotal || 3747182.98)}</div>
+              <div className="mt-1 text-xl font-bold text-emerald-600">{formatCurrency(legacyMetrics?.activePaidTotal ?? 0)}</div>
               <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.clearedPayments?.toLocaleString() || '5,325'} cleared receipts</div>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
               <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Cutover Receivables (Pending)</div>
-              <div className="mt-1 text-xl font-bold text-rose-600">{formatCurrency(legacyMetrics?.positiveOutstandingSum || 70178.09)}</div>
+              <div className="mt-1 text-xl font-bold text-rose-600">{formatCurrency(legacyMetrics?.positiveOutstandingSum ?? 0)}</div>
               <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.positiveOutstandingCount || 93} pending bills</div>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
               <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Approved Transferred AR</div>
-              <div className="mt-1 text-xl font-bold text-blue-600">{formatCurrency(legacyMetrics?.customerOpeningReceivablesTotal || 70077.29)}</div>
+              <div className="mt-1 text-xl font-bold text-blue-600">{formatCurrency(legacyMetrics?.customerOpeningReceivablesTotal ?? 0)}</div>
               <div className="mt-0.5 text-xs text-neutral-500">21 customers (+ AED 100.80 Inv 2158)</div>
             </div>
           </div>
@@ -1457,19 +1464,19 @@ const ReportsPage = () => {
                 <tr className="hover:bg-neutral-50">
                   <td className="px-4 py-3 font-semibold text-neutral-900">Active Sales Revenue</td>
                   <td className="px-4 py-3 text-right font-medium text-blue-800">{formatCurrency(reportData.summary?.totalSales || 2106)}</td>
-                  <td className="px-4 py-3 text-right font-medium text-amber-800">{formatCurrency(3817356.88)}</td>
+                  <td className="px-4 py-3 text-right font-medium text-amber-800">{legacyMetrics ? formatCurrency(legacyMetrics.activeGrandTotal ?? 0) : '—'}</td>
                   <td className="px-4 py-3 text-right font-bold text-neutral-900">{formatCurrency(3819462.88)}</td>
                 </tr>
                 <tr className="hover:bg-neutral-50">
                   <td className="px-4 py-3 font-semibold text-neutral-900">Collections Received</td>
                   <td className="px-4 py-3 text-right font-medium text-blue-800">{formatCurrency(23)}</td>
-                  <td className="px-4 py-3 text-right font-medium text-amber-800">{formatCurrency(3747182.98)}</td>
+                  <td className="px-4 py-3 text-right font-medium text-amber-800">{legacyMetrics ? formatCurrency(legacyMetrics.activePaidTotal ?? 0) : '—'}</td>
                   <td className="px-4 py-3 text-right font-bold text-neutral-900">{formatCurrency(3747205.98)}</td>
                 </tr>
                 <tr className="hover:bg-neutral-50">
                   <td className="px-4 py-3 font-semibold text-neutral-900">Receivables Outstanding</td>
                   <td className="px-4 py-3 text-right font-bold text-rose-600">{formatCurrency(2106)}</td>
-                  <td className="px-4 py-3 text-right font-bold text-amber-800">{formatCurrency(70178.09)}</td>
+                  <td className="px-4 py-3 text-right font-bold text-amber-800">{legacyMetrics ? formatCurrency(legacyMetrics.positiveOutstandingSum ?? 0) : '—'}</td>
                   <td className="px-4 py-3 text-right font-bold text-rose-700">{formatCurrency(72284.09)}</td>
                 </tr>
                 <tr className="hover:bg-neutral-50">

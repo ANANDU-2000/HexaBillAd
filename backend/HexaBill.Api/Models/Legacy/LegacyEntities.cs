@@ -58,9 +58,21 @@ namespace HexaBill.Api.Models.Legacy
         public decimal TotalAmount { get; set; }
         public decimal PaidAmount { get; set; }
         public decimal OutstandingCalculated { get; set; }
+
+        [Column("ItemsCount")]
         public int ItemCount { get; set; }
+
         public bool ReportedAsPending { get; set; }
+
+        [Column("HasLineItems")]
+        public bool HasLineItems { get; set; } = true;
+
+        [Column("PaymentsCount")]
+        public int PaymentsCount { get; set; } = 0;
+
         public string? Notes { get; set; }
+
+        [Column("SourceExternalReference")]
         public string? ExternalReference { get; set; }
         public string MigrationRunId { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -78,7 +90,7 @@ namespace HexaBill.Api.Models.Legacy
         public int LegacyInvoiceId { get; set; }
         public int SourceItemId { get; set; }
         public string SourceSystem { get; set; } = "Starplus";
-        public int SourceProductId { get; set; }
+        public int? SourceProductId { get; set; }
         public int? DestinationProductId { get; set; }
         public string? Sku { get; set; }
         public string ProductName { get; set; } = string.Empty;

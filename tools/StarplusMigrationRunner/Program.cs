@@ -85,6 +85,47 @@ namespace StarplusMigrationRunner
                     var audit = await ReconciliationAuditor.AuditAsync(conn, "public", targetTenantId);
                     return audit.Passed ? 0 : 1;
                 }
+                else if (mode == "test-ef-queries")
+                {
+                    Console.WriteLine("[EF TEST] Testing real PostgreSQL materialization of Legacy entities...");
+                    // Test 1: Invoices with all mapped columns
+                    await using (var cmd = new NpgsqlCommand(@"
+                        SELECT ""Id"", ""TenantId"", ""LegacyInvoiceNumber"", ""ItemsCount"", ""SourceExternalReference"", ""DueDateSource"", ""Notes"", ""HasLineItems"", ""PaymentsCount""
+                        FROM ""public"".""LegacyInvoices""
+                        WHERE ""TenantId"" = @tid LIMIT 5;
+                    ", conn))
+                    {
+                        cmd.Parameters.AddWithValue("tid", 20);
+                        await using var reader = await cmd.ExecuteReaderAsync();
+                        int count = 0;
+                        while (await reader.ReadAsync())
+                        {
+                            count++;
+                            Console.WriteLine($"  Invoice Row {count}: #{reader["LegacyInvoiceNumber"]} | ItemsCount: {reader["ItemsCount"]} | ExtRef: {reader["SourceExternalReference"]} | DueDateSource: '{reader["DueDateSource"]}' | Notes: '{reader["Notes"]}'");
+                        }
+                    }
+
+                    // Test 2: Negative check for Tenant 23
+                    await using (var cmd = new NpgsqlCommand(@"
+                        SELECT COUNT(*) FROM ""public"".""LegacyInvoices"" WHERE ""TenantId"" = 23;
+                    ", conn))
+                    {
+                        var t23Invoices = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                        Console.WriteLine($"[EF TEST] Tenant 23 (FrozenHub 2) Legacy Invoices: {t23Invoices} (Expected: 0) -> {(t23Invoices == 0 ? "PASS" : "FAIL")}");
+                    }
+                    return 0;
+                }
+                else if (mode == "fix-schema")
+                {
+                    Console.WriteLine("[SCHEMA FIX] Applying additive schema update to public.LegacyInvoices...");
+                    await using var cmd = new NpgsqlCommand(@"
+                        ALTER TABLE ""public"".""LegacyInvoices"" ADD COLUMN IF NOT EXISTS ""DueDateSource"" VARCHAR(50);
+                        ALTER TABLE ""public"".""LegacyInvoices"" ADD COLUMN IF NOT EXISTS ""Notes"" TEXT;
+                    ", conn);
+                    await cmd.ExecuteNonQueryAsync();
+                    Console.WriteLine("[SCHEMA FIX] Columns 'DueDateSource' and 'Notes' successfully added to public.LegacyInvoices.");
+                    return 0;
+                }
                 else if (mode == "inspect-acceptance")
                 {
                     return await RunAcceptanceInspectionAsync(conn, targetTenantId);

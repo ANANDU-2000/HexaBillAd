@@ -46,7 +46,7 @@ namespace HexaBill.Api.Modules.Legacy
     {
         public int Id { get; set; }
         public int SourceItemId { get; set; }
-        public int SourceProductId { get; set; }
+        public int? SourceProductId { get; set; }
         public int? DestinationProductId { get; set; }
         public string? Sku { get; set; }
         public string ProductName { get; set; } = string.Empty;

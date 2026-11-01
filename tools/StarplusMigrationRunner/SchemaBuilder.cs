@@ -87,6 +87,7 @@ namespace StarplusMigrationRunner
                     ""SourceLegalTaxId"" VARCHAR(50) NOT NULL DEFAULT '100366253100003',
                     ""InvoiceDate"" TIMESTAMPTZ NOT NULL,
                     ""DueDate"" TIMESTAMPTZ,
+                    ""DueDateSource"" VARCHAR(50),
                     ""SourceCustomerId"" INT,
                     ""CustomerName"" VARCHAR(255),
                     ""DestinationCustomerId"" INT,
@@ -107,6 +108,7 @@ namespace StarplusMigrationRunner
                     ""ItemsCount"" INT NOT NULL DEFAULT 0,
                     ""PaymentsCount"" INT NOT NULL DEFAULT 0,
                     ""SourceExternalReference"" VARCHAR(255),
+                    ""Notes"" TEXT,
                     ""MigrationRunId"" VARCHAR(100) NOT NULL,
                     ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                     CONSTRAINT ""UQ_{schemaName}_LegacyInvoices_Source"" UNIQUE (""TenantId"", ""SourceSystem"", ""SourceInvoiceId"")
@@ -196,6 +198,15 @@ namespace StarplusMigrationRunner
             ", conn);
 
             await cmd.ExecuteNonQueryAsync();
+
+            // Additive migration for schema alignment
+            await using (var altCmd = new NpgsqlCommand($@"
+                ALTER TABLE ""{schemaName}"".""LegacyInvoices"" ADD COLUMN IF NOT EXISTS ""DueDateSource"" VARCHAR(50);
+                ALTER TABLE ""{schemaName}"".""LegacyInvoices"" ADD COLUMN IF NOT EXISTS ""Notes"" TEXT;
+            ", conn))
+            {
+                await altCmd.ExecuteNonQueryAsync();
+            }
             Console.WriteLine($"[INFO] Successfully ensured all legacy tables and indexes in schema '{schemaName}'.");
         }
 
