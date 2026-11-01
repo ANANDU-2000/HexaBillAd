@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using HexaBill.Api.Core.Infrastructure;
 using HexaBill.Api.Core.Tenancy;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
@@ -63,7 +64,8 @@ namespace HexaBill.Api.Modules.Legacy
 
                 if (customerId.HasValue && customerId.Value > 0)
                 {
-                    query = query.Where(i => i.SourceCustomerId == customerId.Value || i.DestinationCustomerId == customerId.Value);
+                    // Destination mapping only: source-system customer ids are a different namespace.
+                    query = query.Where(i => i.DestinationCustomerId == customerId.Value);
                 }
 
                 if (fromDate.HasValue)
@@ -478,7 +480,8 @@ namespace HexaBill.Api.Modules.Legacy
 
                 if (customerId.HasValue && customerId.Value > 0)
                 {
-                    query = query.Where(x => x.p.SourceCustomerId == customerId.Value || x.p.DestinationCustomerId == customerId.Value);
+                    // Destination mapping only: source-system customer ids are a different namespace.
+                    query = query.Where(x => x.p.DestinationCustomerId == customerId.Value);
                 }
 
                 if (fromDate.HasValue)
@@ -556,8 +559,15 @@ namespace HexaBill.Api.Modules.Legacy
 
         /// <summary>
         /// GET /api/legacy/invoices/unified
-        /// Unified chronological invoice history combining FrozenHub operating sales and Starplus legacy archive.
+        /// The normal Billing History list: one chronological, server-paged history combining this tenant's
+        /// operating sales and its read-only historical (migrated) invoices. Historical rows keep their original
+        /// number, date, amounts and legal issuer; they are never re-posted or made editable.
+        /// Tenants with no historical rows simply get their operating invoices.
         /// </summary>
+        /// <param name="status">all (default) | paid | partial | unpaid | voided. "voided" lists deleted invoices only.</param>
+        /// <param name="sort">newest (default) | oldest.</param>
+        /// <param name="fromDate">Inclusive Dubai business date (yyyy-MM-dd).</param>
+        /// <param name="toDate">Inclusive Dubai business date (yyyy-MM-dd).</param>
         [HttpGet("invoices/unified")]
         public async Task<ActionResult<ApiResponse<PagedResponse<UnifiedInvoiceSummaryDto>>>> GetUnifiedInvoices(
             [FromQuery] int page = 1,
@@ -566,7 +576,9 @@ namespace HexaBill.Api.Modules.Legacy
             [FromQuery] string? company = null,
             [FromQuery] int? customerId = null,
             [FromQuery] DateTime? fromDate = null,
-            [FromQuery] DateTime? toDate = null)
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] string? status = null,
+            [FromQuery] string? sort = null)
         {
             try
             {
@@ -574,125 +586,127 @@ namespace HexaBill.Api.Modules.Legacy
                 if (tenantId <= 0) return Forbid();
 
                 page = Math.Max(1, page);
-                pageSize = Math.Clamp(pageSize, 1, 1000);
+                pageSize = Math.Clamp(pageSize, 1, 200);
 
-                var includeFrozenHub = string.IsNullOrWhiteSpace(company) || company.Equals("FROZENHUB", StringComparison.OrdinalIgnoreCase);
-                var includeStarplus = string.IsNullOrWhiteSpace(company) || company.Equals("STARPLUS", StringComparison.OrdinalIgnoreCase);
-
-                IQueryable<UnifiedInvoiceSummaryDto>? fhQuery = null;
-                if (includeFrozenHub)
+                var statusKey = (status ?? "all").Trim().ToLowerInvariant();
+                if (statusKey is not ("all" or "paid" or "partial" or "unpaid" or "voided"))
                 {
-                    var baseFh = _context.Sales.AsNoTracking().Where(s => s.TenantId == tenantId && !s.IsDeleted);
-                    if (fromDate.HasValue)
+                    return BadRequest(new ApiResponse<PagedResponse<UnifiedInvoiceSummaryDto>>
                     {
-                        var fromUtc = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
-                        baseFh = baseFh.Where(s => s.InvoiceDate >= fromUtc);
-                    }
-                    if (toDate.HasValue)
+                        Success = false,
+                        Message = "status must be one of: all, paid, partial, unpaid, voided"
+                    });
+                }
+                if (fromDate.HasValue && toDate.HasValue && fromDate.Value.Date > toDate.Value.Date)
+                {
+                    return BadRequest(new ApiResponse<PagedResponse<UnifiedInvoiceSummaryDto>>
                     {
-                        var toUtc = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
-                        baseFh = baseFh.Where(s => s.InvoiceDate <= toUtc);
-                    }
-                    if (customerId.HasValue && customerId.Value > 0)
+                        Success = false,
+                        Message = "fromDate must be on or before toDate"
+                    });
+                }
+
+                var oldestFirst = string.Equals(sort?.Trim(), "oldest", StringComparison.OrdinalIgnoreCase);
+                var voided = statusKey == "voided";
+                var tolerance = UnifiedSettlementToleranceAed;
+
+                // "company" is kept for old clients. It filters by record origin, not legal entity.
+                var includeOperating = string.IsNullOrWhiteSpace(company)
+                    || company.Equals("FROZENHUB", StringComparison.OrdinalIgnoreCase)
+                    || company.Equals("OPERATING", StringComparison.OrdinalIgnoreCase);
+                var includeHistorical = string.IsNullOrWhiteSpace(company)
+                    || company.Equals("STARPLUS", StringComparison.OrdinalIgnoreCase)
+                    || company.Equals("HISTORICAL", StringComparison.OrdinalIgnoreCase);
+
+                // Dubai business-day boundaries: inclusive start, exclusive end.
+                DateTime? fromUtc = fromDate.HasValue ? BusinessDateRange.StartUtc(fromDate.Value) : null;
+                DateTime? toExclusiveUtc = toDate.HasValue ? BusinessDateRange.EndExclusiveUtc(toDate.Value) : null;
+
+                var term = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+                var termLower = term?.ToLowerInvariant();
+
+                // ---- Operating sales (paid = cleared payments only, same rule as the operating list) ----
+                IQueryable<UnifiedInvoiceKey>? operatingKeys = null;
+                if (includeOperating)
+                {
+                    var sales = _context.Sales.AsNoTracking().Where(s => s.TenantId == tenantId && s.IsDeleted == voided);
+                    if (fromUtc.HasValue) sales = sales.Where(s => s.InvoiceDate >= fromUtc.Value);
+                    if (toExclusiveUtc.HasValue) sales = sales.Where(s => s.InvoiceDate < toExclusiveUtc.Value);
+                    if (customerId is > 0) sales = sales.Where(s => s.CustomerId == customerId.Value);
+                    if (termLower != null)
                     {
-                        baseFh = baseFh.Where(s => s.CustomerId == customerId.Value);
-                    }
-                    if (!string.IsNullOrWhiteSpace(search))
-                    {
-                        var term = search.Trim();
-                        baseFh = baseFh.Where(s =>
-                            EF.Functions.ILike(s.InvoiceNo, $"%{term}%") ||
-                            (s.Customer != null && EF.Functions.ILike(s.Customer.Name, $"%{term}%")));
+                        sales = sales.Where(s =>
+                            s.InvoiceNo.ToLower().Contains(termLower) ||
+                            (s.Customer != null && s.Customer.Name.ToLower().Contains(termLower)));
                     }
 
-                    fhQuery = baseFh.Select(s => new UnifiedInvoiceSummaryDto
+                    if (!voided && statusKey != "all")
                     {
-                        Id = "FH-" + s.Id,
-                        OperatingSaleId = s.Id,
-                        LegacyInvoiceId = null,
-                        SourceCompany = "FrozenHub",
-                        InvoiceNumber = s.InvoiceNo,
-                        InvoiceDate = s.InvoiceDate,
-                        CustomerId = s.CustomerId,
-                        CustomerName = s.Customer != null ? s.Customer.Name : null,
-                        ItemCount = s.Items.Count,
-                        Subtotal = s.Subtotal,
-                        VatTotal = s.VatTotal,
-                        GrandTotal = s.GrandTotal,
-                        PaidAmount = s.PaidAmount,
-                        OutstandingBalance = (s.GrandTotal - s.PaidAmount) > 0 ? (s.GrandTotal - s.PaidAmount) : 0,
-                        PaymentStatus = s.PaidAmount >= s.GrandTotal ? "Paid" : (s.PaidAmount > 0 ? "Partial" : "Pending"),
-                        OriginalStatus = s.PaymentStatus.ToString(),
-                        IsDeleted = s.IsDeleted,
+                        var withPaid = sales.Select(s => new
+                        {
+                            Sale = s,
+                            Paid = _context.Payments
+                                .Where(p => p.TenantId == tenantId && p.SaleId == s.Id && p.Status == PaymentStatus.CLEARED)
+                                .Sum(p => (decimal?)p.Amount) ?? 0m
+                        });
+                        withPaid = statusKey switch
+                        {
+                            "paid" => withPaid.Where(x => x.Sale.GrandTotal <= 0 || x.Sale.GrandTotal - x.Paid <= tolerance),
+                            "partial" => withPaid.Where(x => x.Sale.GrandTotal > 0 && x.Paid > 0 && x.Sale.GrandTotal - x.Paid > tolerance),
+                            _ => withPaid.Where(x => x.Sale.GrandTotal > 0 && x.Paid <= 0 && x.Sale.GrandTotal - x.Paid > tolerance),
+                        };
+                        sales = withPaid.Select(x => x.Sale);
+                    }
+
+                    operatingKeys = sales.Select(s => new UnifiedInvoiceKey
+                    {
                         IsLegacy = false,
-                        Notes = s.Notes
+                        RecordId = s.Id,
+                        InvoiceDate = s.InvoiceDate,
+                        InvoiceNumber = s.InvoiceNo
                     });
                 }
 
-                IQueryable<UnifiedInvoiceSummaryDto>? legacyQuery = null;
-                if (includeStarplus)
+                // ---- Historical invoices (read-only; customer resolved only through the tenant-scoped destination mapping) ----
+                IQueryable<UnifiedInvoiceKey>? historicalKeys = null;
+                if (includeHistorical)
                 {
-                    var baseLegacy = _context.LegacyInvoices.AsNoTracking().Where(i => i.TenantId == tenantId && !i.IsDeleted);
-                    if (fromDate.HasValue)
+                    var legacy = _context.LegacyInvoices.AsNoTracking().Where(i => i.TenantId == tenantId && i.IsDeleted == voided);
+                    if (fromUtc.HasValue) legacy = legacy.Where(i => i.InvoiceDate >= fromUtc.Value);
+                    if (toExclusiveUtc.HasValue) legacy = legacy.Where(i => i.InvoiceDate < toExclusiveUtc.Value);
+                    // Never compare the source system's customer id with a destination customer id: they are different namespaces.
+                    if (customerId is > 0) legacy = legacy.Where(i => i.DestinationCustomerId == customerId.Value);
+                    if (termLower != null)
                     {
-                        var fromUtc = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
-                        baseLegacy = baseLegacy.Where(i => i.InvoiceDate >= fromUtc);
+                        legacy = legacy.Where(i =>
+                            i.LegacyInvoiceNumber.ToLower().Contains(termLower) ||
+                            (i.CustomerName != null && i.CustomerName.ToLower().Contains(termLower)));
                     }
-                    if (toDate.HasValue)
+                    if (!voided)
                     {
-                        var toUtc = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
-                        baseLegacy = baseLegacy.Where(i => i.InvoiceDate <= toUtc);
-                    }
-                    if (customerId.HasValue && customerId.Value > 0)
-                    {
-                        baseLegacy = baseLegacy.Where(i => i.DestinationCustomerId == customerId.Value || i.SourceCustomerId == customerId.Value);
-                    }
-                    if (!string.IsNullOrWhiteSpace(search))
-                    {
-                        var term = search.Trim();
-                        baseLegacy = baseLegacy.Where(i =>
-                            EF.Functions.ILike(i.LegacyInvoiceNumber, $"%{term}%") ||
-                            (i.CustomerName != null && EF.Functions.ILike(i.CustomerName, $"%{term}%")));
+                        legacy = statusKey switch
+                        {
+                            "paid" => legacy.Where(i => i.OutstandingCalculated <= tolerance),
+                            "partial" => legacy.Where(i => i.OutstandingCalculated > tolerance && i.PaidAmount > 0),
+                            "unpaid" => legacy.Where(i => i.OutstandingCalculated > tolerance && i.PaidAmount <= 0),
+                            _ => legacy
+                        };
                     }
 
-                    legacyQuery = baseLegacy.Select(i => new UnifiedInvoiceSummaryDto
+                    historicalKeys = legacy.Select(i => new UnifiedInvoiceKey
                     {
-                        Id = "LP-" + i.Id,
-                        OperatingSaleId = null,
-                        LegacyInvoiceId = i.Id,
-                        SourceCompany = "Starplus Foodstuff Trading",
-                        InvoiceNumber = i.LegacyInvoiceNumber,
-                        InvoiceDate = i.InvoiceDate,
-                        CustomerId = i.DestinationCustomerId ?? i.SourceCustomerId,
-                        CustomerName = i.CustomerName,
-                        ItemCount = i.ItemCount,
-                        Subtotal = i.Subtotal,
-                        VatTotal = i.VatTotal,
-                        GrandTotal = i.GrandTotal,
-                        PaidAmount = i.PaidAmount,
-                        OutstandingBalance = i.OutstandingCalculated,
-                        PaymentStatus = i.OutstandingCalculated <= 0.005m ? "Paid" : (i.PaidAmount > 0 ? "Partial" : "Pending"),
-                        OriginalStatus = i.Status,
-                        IsDeleted = i.IsDeleted,
                         IsLegacy = true,
-                        Notes = i.Notes
+                        RecordId = i.Id,
+                        InvoiceDate = i.InvoiceDate,
+                        InvoiceNumber = i.LegacyInvoiceNumber
                     });
                 }
 
-                IQueryable<UnifiedInvoiceSummaryDto> combinedQuery;
-                if (fhQuery != null && legacyQuery != null)
-                {
-                    combinedQuery = fhQuery.Concat(legacyQuery);
-                }
-                else if (fhQuery != null)
-                {
-                    combinedQuery = fhQuery;
-                }
-                else if (legacyQuery != null)
-                {
-                    combinedQuery = legacyQuery;
-                }
-                else
+                IQueryable<UnifiedInvoiceKey>? keys = operatingKeys != null && historicalKeys != null
+                    ? operatingKeys.Concat(historicalKeys)
+                    : operatingKeys ?? historicalKeys;
+
+                if (keys == null)
                 {
                     return Ok(new ApiResponse<PagedResponse<UnifiedInvoiceSummaryDto>>
                     {
@@ -701,15 +715,121 @@ namespace HexaBill.Api.Modules.Legacy
                     });
                 }
 
-                var totalCount = await combinedQuery.CountAsync();
+                var totalCount = await keys.CountAsync();
                 var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
-                var items = await combinedQuery
-                    .OrderByDescending(x => x.InvoiceDate)
-                    .ThenByDescending(x => x.InvoiceNumber)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
+                var ordered = oldestFirst
+                    ? keys.OrderBy(k => k.InvoiceDate).ThenBy(k => k.InvoiceNumber).ThenBy(k => k.IsLegacy).ThenBy(k => k.RecordId)
+                    : keys.OrderByDescending(k => k.InvoiceDate).ThenByDescending(k => k.InvoiceNumber).ThenBy(k => k.IsLegacy).ThenByDescending(k => k.RecordId);
+
+                var pageKeys = await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+                // ---- Hydrate only the rows on this page ----
+                var saleIds = pageKeys.Where(k => !k.IsLegacy).Select(k => k.RecordId).ToList();
+                var legacyIds = pageKeys.Where(k => k.IsLegacy).Select(k => k.RecordId).ToList();
+
+                var saleRows = saleIds.Count == 0
+                    ? new Dictionary<int, UnifiedInvoiceSummaryDto>()
+                    : (await _context.Sales.AsNoTracking()
+                        .Where(s => s.TenantId == tenantId && saleIds.Contains(s.Id))
+                        .Select(s => new
+                        {
+                            s.Id,
+                            s.InvoiceNo,
+                            s.InvoiceDate,
+                            s.CustomerId,
+                            CustomerName = s.Customer != null ? s.Customer.Name : null,
+                            ItemCount = s.Items.Count,
+                            s.Subtotal,
+                            s.VatTotal,
+                            s.GrandTotal,
+                            s.PaymentStatus,
+                            s.IsDeleted,
+                            s.IsLocked,
+                            s.Notes
+                        })
+                        .ToListAsync())
+                        .ToDictionary(s => s.Id, s => new UnifiedInvoiceSummaryDto
+                        {
+                            Id = "FH-" + s.Id,
+                            OperatingSaleId = s.Id,
+                            SourceCompany = "Operating",
+                            InvoiceNumber = s.InvoiceNo,
+                            InvoiceDate = s.InvoiceDate,
+                            CustomerId = s.CustomerId,
+                            CustomerName = s.CustomerName,
+                            ItemCount = s.ItemCount,
+                            Subtotal = s.Subtotal,
+                            VatTotal = s.VatTotal,
+                            GrandTotal = s.GrandTotal,
+                            OriginalStatus = s.PaymentStatus.ToString(),
+                            IsDeleted = s.IsDeleted,
+                            IsLocked = s.IsLocked,
+                            IsLegacy = false,
+                            Notes = s.Notes
+                        });
+
+                if (saleIds.Count > 0)
+                {
+                    var cleared = await _context.Payments.AsNoTracking()
+                        .Where(p => p.TenantId == tenantId && p.SaleId.HasValue && saleIds.Contains(p.SaleId.Value) && p.Status == PaymentStatus.CLEARED)
+                        .Select(p => new { SaleId = p.SaleId!.Value, p.Amount, p.Mode, p.Id })
+                        .ToListAsync();
+                    foreach (var dto in saleRows.Values)
+                    {
+                        var lines = cleared.Where(c => c.SaleId == dto.OperatingSaleId).OrderBy(c => c.Id).ToList();
+                        var paid = Math.Round(lines.Sum(c => c.Amount), 2, MidpointRounding.AwayFromZero);
+                        dto.PaidAmount = paid;
+                        dto.PrimaryPaymentMode = lines.FirstOrDefault()?.Mode.ToString();
+                        if (dto.IsDeleted)
+                        {
+                            dto.OutstandingBalance = 0;
+                            dto.PaymentStatus = "Voided";
+                            continue;
+                        }
+                        var outstanding = Math.Max(0, dto.GrandTotal - paid);
+                        dto.OutstandingBalance = outstanding;
+                        dto.PaymentStatus = ResolveUnifiedStatus(dto.GrandTotal, paid, outstanding, tolerance);
+                    }
+                }
+
+                var legacyRows = legacyIds.Count == 0
+                    ? new Dictionary<int, UnifiedInvoiceSummaryDto>()
+                    : (await _context.LegacyInvoices.AsNoTracking()
+                        .Where(i => i.TenantId == tenantId && legacyIds.Contains(i.Id))
+                        .ToListAsync())
+                        .ToDictionary(i => i.Id, i => new UnifiedInvoiceSummaryDto
+                        {
+                            Id = "LP-" + i.Id,
+                            LegacyInvoiceId = i.Id,
+                            SourceCompany = "Historical",
+                            LegacyIssuer = i.LegacyIssuer,
+                            InvoiceNumber = i.LegacyInvoiceNumber,
+                            InvoiceDate = i.InvoiceDate,
+                            CustomerId = i.DestinationCustomerId,
+                            CustomerName = i.CustomerName,
+                            ItemCount = i.ItemCount,
+                            Subtotal = i.Subtotal,
+                            VatTotal = i.VatTotal,
+                            GrandTotal = i.GrandTotal,
+                            PaidAmount = i.PaidAmount,
+                            OutstandingBalance = i.IsDeleted ? 0 : i.OutstandingCalculated,
+                            PaymentStatus = i.IsDeleted
+                                ? "Voided"
+                                : ResolveUnifiedStatus(i.GrandTotal, i.PaidAmount, i.OutstandingCalculated, tolerance),
+                            OriginalStatus = i.Status,
+                            IsDeleted = i.IsDeleted,
+                            IsLocked = true,
+                            IsLegacy = true,
+                            Notes = i.Notes
+                        });
+
+                var items = new List<UnifiedInvoiceSummaryDto>(pageKeys.Count);
+                foreach (var key in pageKeys)
+                {
+                    var map = key.IsLegacy ? legacyRows : saleRows;
+                    if (map.TryGetValue(key.RecordId, out var row)) items.Add(row);
+                }
 
                 return Ok(new ApiResponse<PagedResponse<UnifiedInvoiceSummaryDto>>
                 {
@@ -731,10 +851,28 @@ namespace HexaBill.Api.Modules.Legacy
                 return StatusCode(500, new ApiResponse<PagedResponse<UnifiedInvoiceSummaryDto>>
                 {
                     Success = false,
-                    Message = "An error occurred retrieving unified invoices",
-                    Errors = new List<string> { ex.Message }
+                    Message = "Billing history could not be loaded. Please try again.",
+                    Errors = new List<string> { "UNIFIED_INVOICES_FAILED" }
                 });
             }
+        }
+
+        /// <summary>Same tolerance as operating sales settlement (SalePaymentHelpers.SettlementToleranceAed).</summary>
+        internal const decimal UnifiedSettlementToleranceAed = 0.05m;
+
+        internal static string ResolveUnifiedStatus(decimal grandTotal, decimal paid, decimal outstanding, decimal tolerance)
+        {
+            if (grandTotal <= 0 || outstanding <= tolerance) return "Paid";
+            return paid > 0 ? "Partial" : "Pending";
+        }
+
+        /// <summary>Lightweight row used to page the combined history before loading details.</summary>
+        public sealed class UnifiedInvoiceKey
+        {
+            public bool IsLegacy { get; set; }
+            public int RecordId { get; set; }
+            public DateTime InvoiceDate { get; set; }
+            public string InvoiceNumber { get; set; } = string.Empty;
         }
     
         /// <summary>

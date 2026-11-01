@@ -1405,7 +1405,7 @@ const ReportsPage = () => {
                 <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider">Top Historical Customer Receivables</h3>
                 <p className="text-xs text-neutral-500">21 customer accounts with approved opening balances transferred at cutover</p>
               </div>
-              <Link to="/billing-history?tab=legacy" className="text-xs font-semibold text-primary-700 hover:underline">
+              <Link to="/billing-history?status=unpaid" className="text-xs font-semibold text-primary-700 hover:underline">
                 View all pending bills &rarr;
               </Link>
             </div>
