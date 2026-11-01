@@ -174,12 +174,7 @@ const CustomerLedgerPage = () => {
     const fromParam = searchParams.get('from')
     const toParam = searchParams.get('to')
     if (fromParam && toParam) return { from: fromParam, to: toParam }
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    return {
-      from: localDateString(monthStart),
-      to: localDateString(now)
-    }
+    return { from: '', to: '' }
   })
   const [ledgerFilters, setLedgerFilters] = useState({
     status: 'all',

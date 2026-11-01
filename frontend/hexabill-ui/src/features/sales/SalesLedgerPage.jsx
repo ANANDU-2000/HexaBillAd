@@ -240,7 +240,7 @@ const SalesLedgerPage = () => {
     const fromParam = searchParams.get('from')
     const toParam = searchParams.get('to')
     if (fromParam && toParam) return { from: fromParam, to: toParam }
-    return getDefaultDateRange()
+    return { from: '', to: '' }
   })
   const [filters, setFilters] = useState(() => ({
     date: searchParams.get('date') || '',

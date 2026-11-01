@@ -209,6 +209,11 @@ const DashboardTally = () => {
                 const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
                 return { from: localDateString(monthStart), to: todayStr }
             }
+            case 'lastMonth': {
+                const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+                const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0)
+                return { from: localDateString(lastMonthStart), to: localDateString(lastMonthEnd) }
+            }
             case 'custom': {
                 if (customFromDate && customToDate) return { from: customFromDate, to: customToDate }
                 const weekAgo = new Date(today)
@@ -576,6 +581,7 @@ const DashboardTally = () => {
                         <button type="button" onClick={() => applyPeriod('today')} className={periodChip(dateRange === 'today')} aria-pressed={dateRange === 'today'}>Today</button>
                         <button type="button" onClick={() => applyPeriod('week')} className={periodChip(dateRange === 'week')} aria-pressed={dateRange === 'week'}>Week</button>
                         <button type="button" onClick={() => applyPeriod('month')} className={periodChip(dateRange === 'month')} aria-pressed={dateRange === 'month'}>Month</button>
+                        <button type="button" onClick={() => applyPeriod('lastMonth')} className={periodChip(dateRange === 'lastMonth')} aria-pressed={dateRange === 'lastMonth'}>Last Month</button>
                         <button type="button" onClick={selectCustom} className={periodChip(dateRange === 'custom')} aria-pressed={dateRange === 'custom'}>Custom</button>
                     </div>
                     {!isAdminOrOwner(user) && availableBranches.length > 1 && (
