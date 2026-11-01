@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Linq;
 using Npgsql;
 
 namespace StarplusMigrationRunner
@@ -240,6 +242,235 @@ namespace StarplusMigrationRunner
                 {
                     await SchemaBuilder.DropRehearsalSchemaAsync(conn, "starplus_rehearsal");
                     Console.WriteLine("[CLEANUP] Rehearsal schema 'starplus_rehearsal' dropped successfully.");
+                    return 0;
+                }
+                else if (mode == "resequence-frozenhub-invoices")
+                {
+                    Console.WriteLine("==================================================================");
+                    Console.WriteLine("[RESEQUENCE] Starting FrozenHub 1 Operating Invoice Resequencing");
+                    Console.WriteLine("Target sequence: 6997 through 7012 (after Starplus #6996)");
+                    Console.WriteLine("==================================================================");
+
+                    // 1. Check current Settings for Tenant 20
+                    await using (var setCmd = new NpgsqlCommand(@"
+                        SELECT ""Key"", ""Value"" FROM ""public"".""Settings""
+                        WHERE ""TenantId"" = 20 OR (""TenantId"" IS NULL AND ""OwnerId"" = 20);
+                    ", conn))
+                    {
+                        await using var setReader = await setCmd.ExecuteReaderAsync();
+                        Console.WriteLine("[SETTINGS] Current Tenant 20 Settings:");
+                        while (await setReader.ReadAsync())
+                        {
+                            Console.WriteLine($"  Setting: {setReader["Key"]} = {setReader["Value"]}");
+                        }
+                    }
+
+                    // 2. Load all sales for Tenant 20
+                    var allSales = new List<(int Id, string InvoiceNo, DateTime InvoiceDate, DateTime CreatedAt, int CustomerId, decimal GrandTotal, bool IsDeleted, string? ExtRef)>();
+                    await using (var salesCmd = new NpgsqlCommand(@"
+                        SELECT ""Id"", ""InvoiceNo"", ""InvoiceDate"", ""CreatedAt"", ""CustomerId"", ""GrandTotal"", ""IsDeleted"", ""ExternalReference""
+                        FROM ""public"".""Sales""
+                        WHERE ""TenantId"" = 20
+                        ORDER BY ""InvoiceDate"" ASC, ""CreatedAt"" ASC, ""Id"" ASC;
+                    ", conn))
+                    {
+                        await using var reader = await salesCmd.ExecuteReaderAsync();
+                        while (await reader.ReadAsync())
+                        {
+                            allSales.Add((
+                                Convert.ToInt32(reader["Id"]),
+                                reader["InvoiceNo"]?.ToString() ?? "",
+                                Convert.ToDateTime(reader["InvoiceDate"]),
+                                Convert.ToDateTime(reader["CreatedAt"]),
+                                Convert.ToInt32(reader["CustomerId"]),
+                                Convert.ToDecimal(reader["GrandTotal"]),
+                                Convert.ToBoolean(reader["IsDeleted"]),
+                                reader["ExternalReference"]?.ToString()
+                            ));
+                        }
+                    }
+
+                    var activeSales = allSales.Where(s => !s.IsDeleted).ToList();
+                    Console.WriteLine($"Found {allSales.Count} total sales ({activeSales.Count} active, {allSales.Count - activeSales.Count} deleted).");
+                    if (activeSales.Count != 16)
+                    {
+                        Console.WriteLine($"[ERROR] Expected exactly 16 active sales for Tenant 20, but found {activeSales.Count}!");
+                        return 1;
+                    }
+
+                    // Define the target sequence: 6997 through 7012
+                    var targetSequence = new string[] {
+                        "6997", "6998", "6999", "7000",
+                        "7001", "7002", "7003", "7004",
+                        "7005", "7006", "7007", "7008",
+                        "7009", "7010", "7011", "7012"
+                    };
+
+                    Console.WriteLine("[PLAN] Alignment plan for all 16 active invoices:");
+                    for (int i = 0; i < 16; i++)
+                    {
+                        var sale = activeSales[i];
+                        Console.WriteLine($"  Pos {i + 1:D2} | ID {sale.Id} | Date: {sale.InvoiceDate:yyyy-MM-dd HH:mm} | Current: {sale.InvoiceNo} -> Target: {targetSequence[i]} | Cust: {sale.CustomerId} | Amt: AED {sale.GrandTotal}");
+                    }
+
+                    // Check soft-deleted ID 1645 which currently holds 7004
+                    var deleted1645 = allSales.FirstOrDefault(s => s.Id == 1645);
+                    if (deleted1645.Id != 0)
+                    {
+                        Console.WriteLine($"[CHECK] Soft-deleted sale 1645 currently has InvoiceNo: '{deleted1645.InvoiceNo}'.");
+                    }
+
+                    // Perform atomic update inside a single transaction
+                    await using var tx = await conn.BeginTransactionAsync();
+                    try
+                    {
+                        // Step A: Relabel deleted 1645 if needed
+                        if (deleted1645.Id != 0 && deleted1645.InvoiceNo == "7004")
+                        {
+                            Console.WriteLine("[STEP A] Updating deleted sale 1645 from '7004' to '7004-VOID'...");
+                            await using var relabelCmd = new NpgsqlCommand(@"
+                                UPDATE ""public"".""Sales""
+                                SET ""InvoiceNo"" = '7004-VOID', ""LastModifiedAt"" = NOW()
+                                WHERE ""Id"" = 1645 AND ""TenantId"" = 20;
+                            ", conn, tx);
+                            await relabelCmd.ExecuteNonQueryAsync();
+                        }
+
+                        // Step B: Update active sales in descending order (from target 7004 down to 6997)
+                        for (int i = 7; i >= 0; i--)
+                        {
+                            var sale = activeSales[i];
+                            var newNo = targetSequence[i];
+                            var oldNo = sale.InvoiceNo;
+                            if (oldNo == newNo)
+                            {
+                                Console.WriteLine($"  ID {sale.Id} already has {newNo}. Skipping.");
+                                continue;
+                            }
+
+                            Console.WriteLine($"[STEP B.{7 - i + 1}] Updating Sale ID {sale.Id}: '{oldNo}' -> '{newNo}'...");
+
+                            // 1. Update Sale
+                            await using var updateSaleCmd = new NpgsqlCommand(@"
+                                UPDATE ""public"".""Sales""
+                                SET ""InvoiceNo"" = @newNo,
+                                    ""LastModifiedAt"" = NOW(),
+                                    ""LastModifiedBy"" = 34
+                                WHERE ""Id"" = @id AND ""TenantId"" = 20;
+                            ", conn, tx);
+                            updateSaleCmd.Parameters.AddWithValue("newNo", newNo);
+                            updateSaleCmd.Parameters.AddWithValue("id", sale.Id);
+                            await updateSaleCmd.ExecuteNonQueryAsync();
+
+                            // 2. Update InventoryTransactions Reason
+                            await using var updateInvCmd = new NpgsqlCommand(@"
+                                UPDATE ""public"".""InventoryTransactions""
+                                SET ""Reason"" = SUBSTRING(""Reason"" FROM 1 FOR LENGTH(""Reason"") - LENGTH(@oldNo)) || @newNo
+                                WHERE ""TenantId"" = 20 AND ""RefId"" = @id AND ""TransactionType"" = 'Sale'
+                                  AND ""Reason"" LIKE '%: ' || @oldNo;
+                            ", conn, tx);
+                            updateInvCmd.Parameters.AddWithValue("newNo", newNo);
+                            updateInvCmd.Parameters.AddWithValue("oldNo", oldNo);
+                            updateInvCmd.Parameters.AddWithValue("id", sale.Id);
+                            var invUpdated = await updateInvCmd.ExecuteNonQueryAsync();
+                            if (invUpdated > 0)
+                            {
+                                Console.WriteLine($"    Updated {invUpdated} inventory movement reasons for sale {sale.Id}.");
+                            }
+
+                            // 3. Add AuditLog entry
+                            await using var auditCmd = new NpgsqlCommand(@"
+                                INSERT INTO ""public"".""AuditLogs""
+                                (""OwnerId"", ""TenantId"", ""UserId"", ""Action"", ""EntityType"", ""EntityId"", ""OldValues"", ""NewValues"", ""Details"", ""CreatedAt"")
+                                VALUES
+                                (20, 20, 34, 'InvoiceNumberChanged', 'Sale', @id,
+                                 @oldJson, @newJson, @details, NOW());
+                            ", conn, tx);
+                            auditCmd.Parameters.AddWithValue("id", sale.Id);
+                            auditCmd.Parameters.AddWithValue("oldJson", $"{{\"InvoiceNo\":\"{oldNo}\"}}");
+                            auditCmd.Parameters.AddWithValue("newJson", $"{{\"InvoiceNo\":\"{newNo}\"}}");
+                            auditCmd.Parameters.AddWithValue("details", $"Continuous sequence alignment after Starplus 6996: {oldNo} -> {newNo}.");
+                            await auditCmd.ExecuteNonQueryAsync();
+                        }
+
+                        // Step C: Ensure INVOICE_SERIES_START setting is 6997 for Tenant 20
+                        await using (var updateSetCmd = new NpgsqlCommand(@"
+                            UPDATE ""public"".""Settings"" SET ""Value"" = '6997', ""UpdatedAt"" = NOW()
+                            WHERE ""TenantId"" = 20 AND ""Key"" = 'INVOICE_SERIES_START';
+                        ", conn, tx))
+                        {
+                            var rows = await updateSetCmd.ExecuteNonQueryAsync();
+                            if (rows == 0)
+                            {
+                                await using var insSetCmd = new NpgsqlCommand(@"
+                                    INSERT INTO ""public"".""Settings"" (""Key"", ""OwnerId"", ""TenantId"", ""Value"", ""CreatedAt"", ""UpdatedAt"")
+                                    VALUES ('INVOICE_SERIES_START', 20, 20, '6997', NOW(), NOW());
+                                ", conn, tx);
+                                await insSetCmd.ExecuteNonQueryAsync();
+                            }
+                            Console.WriteLine("[STEP C] Setting INVOICE_SERIES_START set to '6997'.");
+                        }
+
+                        await tx.CommitAsync();
+                        Console.WriteLine("[COMMIT] Transaction committed successfully!");
+                    }
+                    catch (Exception txEx)
+                    {
+                        await tx.RollbackAsync();
+                        Console.WriteLine($"[ROLLBACK] Transaction rolled back due to error: {txEx.Message}");
+                        throw;
+                    }
+
+                    // Post-check: Verify all 16 sales in Tenant 20
+                    Console.WriteLine("\n[POST-VERIFICATION] Checking updated sales in public.Sales:");
+                    await using (var verifyCmd = new NpgsqlCommand(@"
+                        SELECT ""Id"", ""InvoiceNo"", ""InvoiceDate"", ""CustomerId"", ""GrandTotal""
+                        FROM ""public"".""Sales""
+                        WHERE ""TenantId"" = 20 AND ""IsDeleted"" = false
+                        ORDER BY ""InvoiceDate"" ASC, ""CreatedAt"" ASC, ""Id"" ASC;
+                    ", conn))
+                    {
+                        await using var verifyReader = await verifyCmd.ExecuteReaderAsync();
+                        int idx = 0;
+                        bool allMatched = true;
+                        while (await verifyReader.ReadAsync())
+                        {
+                            var inv = verifyReader["InvoiceNo"]?.ToString();
+                            var expected = targetSequence[idx];
+                            var ok = inv == expected;
+                            if (!ok) allMatched = false;
+                            Console.WriteLine($"  {idx + 1:D2}. ID: {verifyReader["Id"]} | InvoiceNo: {inv} (Expected: {expected}) -> {(ok ? "PASS" : "FAIL")}");
+                            idx++;
+                        }
+                        if (allMatched && idx == 16)
+                        {
+                            Console.WriteLine("\n[SUCCESS] ALL 16 INVOICES PERFECTLY RESEQUENCED FROM 6997 TO 7012!");
+                            return 0;
+                        }
+                        else
+                        {
+                            Console.WriteLine("\n[FAIL] Mismatches detected in resequenced invoices.");
+                            return 1;
+                        }
+                    }
+                }
+                else if (mode == "inspect-all-sales")
+                {
+                    Console.WriteLine("[INSPECT ALL SALES] All Sales in public.Sales for Tenant 20 (including deleted):");
+                    await using var cmd = new NpgsqlCommand(@"
+                        SELECT ""Id"", ""InvoiceNo"", ""InvoiceDate"", ""CreatedAt"", ""CustomerId"", ""GrandTotal"", ""IsDeleted"", ""ExternalReference""
+                        FROM ""public"".""Sales""
+                        WHERE ""TenantId"" = 20
+                        ORDER BY ""InvoiceDate"" ASC, ""CreatedAt"" ASC, ""Id"" ASC;
+                    ", conn);
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    int count = 0;
+                    while (await reader.ReadAsync())
+                    {
+                        count++;
+                        Console.WriteLine($"{count}. ID: {reader["Id"]} | Inv: {reader["InvoiceNo"]} | Date: {reader["InvoiceDate"]} | Total: {reader["GrandTotal"]} | Deleted: {reader["IsDeleted"]} | Ref: {reader["ExternalReference"]}");
+                    }
+                    Console.WriteLine($"Total: {count} rows");
                     return 0;
                 }
                 else if (mode == "sync-mappings")
