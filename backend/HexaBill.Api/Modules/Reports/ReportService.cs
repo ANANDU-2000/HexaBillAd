@@ -1298,7 +1298,7 @@ namespace HexaBill.Api.Modules.Reports
 
             // Tenant 20 (FrozenHub 1) Starplus continuity: Merge legacy invoices into Sales Report
             var cutoverUtc = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
-            if (tenantId == 20 && fromDate < cutoverUtc && !branchId.HasValue && !routeId.HasValue && !userIdForStaff.HasValue)
+            if (tenantId == 20 && fromDate < cutoverUtc && !branchId.HasValue && !routeId.HasValue && !string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
             {
                 var legacyQ = _context.LegacyInvoices.AsNoTracking()
                     .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.InvoiceDate >= fromDate && li.InvoiceDate < toDate);
