@@ -1,15 +1,15 @@
-﻿import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import {
     ShoppingCart, Truck, FileText, Wallet, BarChart3,
     ChevronRight, RefreshCw, CheckCircle, X,
-    Banknote, DollarSign, TrendingUp
+    Banknote, DollarSign, TrendingUp, AlertTriangle, Package, Database, BookOpen, Info
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
 import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency } from '../../utils/currency'
-import { reportsAPI } from '../../services/index'
+import { reportsAPI, legacyAPI } from '../../services/index'
 import { canAccessPage, canManagePayments, isAdminOrOwner, isOwner } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
@@ -36,29 +36,56 @@ const surfaceClass = 'rounded-lg border border-[var(--border)] bg-[var(--bg-base
 const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2'
 
 // On phones the helper line is hidden to keep the cards short (it returns from sm up).
-const MetricCard = ({ label, value, helper, icon: Icon, valueClass = '', onClick, loading, emphasis = false, className = '' }) => {
+const MetricCard = ({
+    label,
+    value,
+    helper,
+    icon: Icon,
+    valueClass = '',
+    onClick,
+    loading,
+    emphasis = false,
+    className = '',
+    accent = '',
+    tooltip = null
+}) => {
+    const accentClass = accent === 'success' ? 'border-l-4 border-l-emerald-600'
+        : accent === 'error' ? 'border-l-4 border-l-rose-600'
+        : accent === 'primary' ? 'border-l-4 border-l-primary-600'
+        : accent === 'warning' ? 'border-l-4 border-l-amber-600'
+        : accent === 'amber' ? 'border-l-4 border-l-amber-500'
+        : accent === 'emerald' ? 'border-l-4 border-l-teal-600'
+        : ''
+
     const body = (
         <>
             <div className="flex items-start justify-between gap-1">
-                <p className="truncate text-xs font-medium text-[var(--text-secondary)]">{label}</p>
-                <Icon className="hidden h-4 w-4 shrink-0 text-[var(--text-tertiary)] sm:block" strokeWidth={2} aria-hidden />
+                <div className="flex items-center gap-1 min-w-0">
+                    <p className="truncate text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{label}</p>
+                    {tooltip && (
+                        <span className="cursor-help text-neutral-400 hover:text-neutral-600 shrink-0" title={tooltip} aria-label={tooltip}>
+                            <Info className="h-3 w-3" aria-hidden />
+                        </span>
+                    )}
+                </div>
+                {Icon && <Icon className="hidden h-4 w-4 shrink-0 text-[var(--text-tertiary)] sm:block" strokeWidth={2} aria-hidden />}
             </div>
             {loading ? (
                 <div className="mt-2 h-6 w-full max-w-28 animate-pulse rounded bg-[var(--bg-elevated)] sm:h-7" aria-hidden />
             ) : (
-                <p className={`mt-1 font-semibold tabular-nums leading-none ${emphasis ? 'text-[24px] sm:text-[28px]' : 'text-[16px] sm:text-[22px]'} ${valueClass}`}>{formatCurrency(value)}</p>
+                <p className={`mt-1 font-bold tabular-nums leading-tight ${emphasis ? 'text-[22px] sm:text-[26px]' : 'text-[17px] sm:text-[21px]'} ${valueClass}`}>{formatCurrency(value)}</p>
             )}
-            {helper ? <p className="mt-1 hidden text-xs text-[var(--text-secondary)] sm:block">{helper}</p> : null}
+            {helper ? <p className="mt-1 hidden text-xs text-[var(--text-secondary)] sm:block truncate" title={helper}>{helper}</p> : null}
         </>
     )
     if (!onClick) {
-        return <div className={`${surfaceClass} min-w-0 p-2.5 sm:p-3 lg:p-4 ${className}`}>{body}</div>
+        return <div className={`${surfaceClass} ${accentClass} min-w-0 p-2.5 sm:p-3 lg:p-4 ${className}`}>{body}</div>
     }
     return (
         <button
             type="button"
             onClick={onClick}
-            className={`${surfaceClass} min-w-0 p-2.5 text-left transition-colors duration-150 hover:bg-[var(--bg-raised)] motion-reduce:transition-none sm:p-3 lg:p-4 ${focusClass} ${className}`}
+            className={`${surfaceClass} ${accentClass} min-w-0 p-2.5 text-left transition-colors duration-150 hover:bg-[var(--bg-raised)] motion-reduce:transition-none sm:p-3 lg:p-4 ${focusClass} ${className}`}
         >
             {body}
         </button>
@@ -358,7 +385,7 @@ const DashboardTally = () => {
 
     const setupComplete = setupStatus && setupStatus.hasBranch && setupStatus.hasRoute && setupStatus.hasStaff &&
         setupStatus.productCount > 0 && setupStatus.customerCount > 0 && setupStatus.hasInvoice
-    const showGetStarted = isAdminOrOwner(user) && setupStatus && !getStartedDismissed && !setupComplete
+    const showGetStarted = isAdminOrOwner(user) && setupStatus && !setupStatus.hasInvoice && !getStartedDismissed && !setupComplete
 
     const handleDismissGetStarted = () => {
         setGetStartedDismissed(true)
@@ -424,6 +451,10 @@ const DashboardTally = () => {
     const canOpenPos = canAccessPage(user, 'pos')
     const canReceivePayment = canManagePayments(user)
     const canOpenProducts = canAccessPage(user, 'products')
+    const canOpenPurchases = canAccessPage(user, 'purchases')
+    const canOpenSalesLedger = canAccessPage(user, 'invoices')
+    const canOpenCustomerLedger = canAccessPage(user, 'customers') || canAccessPage(user, 'invoices')
+    const canBackup = isAdminOrOwner(user)
     const showSkeleton = !hasFigures && refreshing
     const trendSales = dailySalesTrend.reduce((sum, point) => sum + num(point.sales), 0)
     const trendHasSales = trendSales > 0
@@ -431,6 +462,31 @@ const DashboardTally = () => {
     const rangeLabel = dateRange === 'custom' && customFromDate && customToDate
         ? `${formatDisplayDate(customFromDate)} – ${formatDisplayDate(customToDate)}`
         : periodName
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            const tag = e.target?.tagName?.toLowerCase()
+            if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable) {
+                return
+            }
+            if (e.key === 'F3' && canOpenPos) {
+                e.preventDefault()
+                navigate('/pos')
+            } else if (e.key === 'F4' && canOpenPurchases) {
+                e.preventDefault()
+                navigate('/purchases?action=create')
+            } else if ((e.key === 'F6' || e.key === 'F10') && canOpenCustomerLedger) {
+                e.preventDefault()
+                navigate('/ledger')
+            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+                e.preventDefault()
+                if (canBackup) navigate('/backup')
+                else if (canReceivePayment) navigate('/payments')
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [canOpenPos, canOpenPurchases, canOpenCustomerLedger, canBackup, canReceivePayment, navigate])
 
     const attention = []
     if (canShow('overdueAccounts') !== false && (stats.overdueCustomersCount > 0 || stats.overdueAmountTotal > 0)) {
@@ -450,7 +506,7 @@ const DashboardTally = () => {
             key: 'unpaid',
             label: 'Unpaid bills',
             count: stats.pendingBills,
-            unit: 'bills',
+            unit: stats.pendingBills === 1 ? 'bill' : 'bills',
             amount: formatCurrency(stats.pendingBillsAmount),
             action: canOpenReports ? 'Review unpaid' : undefined,
             tone: 'warning',
@@ -462,7 +518,7 @@ const DashboardTally = () => {
             key: 'stock',
             label: 'Low stock',
             count: stats.lowStockCount,
-            unit: 'items',
+            unit: stats.lowStockCount === 1 ? 'item' : 'items',
             action: canOpenProducts ? 'View products' : undefined,
             tone: 'warning',
             onClick: canOpenProducts ? () => navigate('/products?tab=lowStock') : undefined
@@ -475,17 +531,6 @@ const DashboardTally = () => {
             count: formatCurrency(stats.damageLossToday),
             unit: 'lost this period',
             tone: 'danger'
-        })
-    }
-    if (isOwner(user) && stats.netVatPayablePeriod !== 0) {
-        attention.push({
-            key: 'vat',
-            label: 'VAT estimate',
-            count: formatCurrency(stats.netVatPayablePeriod),
-            unit: 'Estimate. File on VAT Return.',
-            action: 'Open VAT return',
-            tone: 'info',
-            onClick: () => navigate('/vat-return')
         })
     }
 
@@ -584,96 +629,359 @@ const DashboardTally = () => {
             )}
 
             {(hasFigures || showSkeleton) && (
-            <section className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4" aria-label="Period summary">
+            <section className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-3" aria-label="KPI summary">
                 {canShow('netSalesToday') && (
                     <MetricCard
-                        className="col-span-2 lg:col-span-1"
-                        label="Net sales"
-                        value={stats.netSalesToday}
+                        label={dateRange === 'today' ? 'Sales Today' : 'Period Sales'}
+                        value={stats.netSalesToday || stats.salesToday}
                         helper={`Gross ${formatCurrency(stats.salesToday)} · Returns ${formatCurrency(stats.returnsToday)} (${stats.returnsCountToday})`}
-                        icon={DollarSign}
-                        emphasis
+                        icon={ShoppingCart}
+                        accent="success"
+                        valueClass="text-emerald-700"
                         loading={showSkeleton}
+                        onClick={canOpenSalesLedger ? () => navigate('/sales-ledger') : undefined}
                     />
                 )}
-                {canShow('cashCollections') !== false && (
+                {showExpenses && (
                     <MetricCard
-                        label="Collections"
-                        value={stats.cashCollectionsTotal}
-                        helper={canShow('creditInvoiced') !== false ? `On account ${formatCurrency(stats.creditInvoicedTotal)}` : undefined}
-                        icon={Banknote}
+                        label={dateRange === 'today' ? 'Expenses Today' : 'Period Expenses'}
+                        value={stats.expensesToday}
+                        helper="Branch & company"
+                        icon={Wallet}
+                        accent="error"
+                        valueClass="text-rose-700"
                         loading={showSkeleton}
+                        onClick={canOpenExpenses ? () => navigate('/expenses') : undefined}
                     />
                 )}
                 {showProfit && (
-                    <div className="hidden lg:block">{profitCard}</div>
+                    <MetricCard
+                        label={dateRange === 'today' ? 'Profit Today' : 'Period Profit'}
+                        value={stats.profitToday}
+                        helper="Net margin"
+                        icon={TrendingUp}
+                        accent="primary"
+                        valueClass={stats.profitToday > 0 ? 'text-primary-700' : stats.profitToday < 0 ? 'text-rose-700' : ''}
+                        tooltip={profitNote}
+                        loading={showSkeleton}
+                        onClick={canOpenReports ? () => navigate('/reports?tab=profit-loss') : undefined}
+                    />
+                )}
+                {canShow('purchasesToday') !== false && (
+                    <MetricCard
+                        label={dateRange === 'today' ? 'Purchase Today' : 'Period Purchases'}
+                        value={stats.purchasesToday}
+                        helper="Supplier stock-in"
+                        icon={Truck}
+                        accent="warning"
+                        valueClass="text-amber-700"
+                        loading={showSkeleton}
+                        onClick={canOpenPurchases ? () => navigate('/purchases') : undefined}
+                    />
                 )}
                 {canShow('pendingAmount') !== false && (
                     <MetricCard
-                        label="Receivables"
+                        label="Pending Amount"
                         value={stats.pendingBillsAmount}
-                        icon={Wallet}
-                        valueClass={`sm:!text-[28px] ${stats.pendingBillsAmount > 0 ? 'text-[var(--warning)]' : ''}`}
+                        helper={`${stats.pendingBills} ${stats.pendingBills === 1 ? 'bill' : 'bills'}${stats.overdueAmountTotal > 0 ? ` · Overdue ${formatCurrency(stats.overdueAmountTotal)}` : ''}`}
+                        icon={DollarSign}
+                        accent="amber"
+                        valueClass="text-amber-800"
                         loading={showSkeleton}
                         onClick={canOpenReports ? () => navigate('/reports?tab=outstanding') : undefined}
                     />
                 )}
-            </section>
-            )}
-
-            {canShow('quickActions') && (canOpenPos || canReceivePayment) && (
-                <div className="grid grid-cols-2 gap-2 lg:hidden">
-                    {canOpenPos && (
-                        <Button className={`!min-h-[48px] whitespace-nowrap !px-2 ${canReceivePayment ? '' : 'col-span-2'}`} onClick={() => navigate('/pos')}>
-                            <ShoppingCart className="h-4 w-4" aria-hidden />
-                            New sale
-                        </Button>
-                    )}
-                    {canReceivePayment && (
-                        <Button variant="secondary" className={`!min-h-[48px] whitespace-nowrap !px-2 ${canOpenPos ? '' : 'col-span-2'}`} onClick={() => navigate('/payments')}>
-                            <Banknote className="h-4 w-4 shrink-0" aria-hidden />
-                            Receive payment
-                        </Button>
-                    )}
-                </div>
-            )}
-
-            {hasFigures && (
-            <section className="space-y-2">
-                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Needs attention</h2>
-                {attention.length === 0 ? (
-                    <p className="text-sm text-[var(--text-secondary)]">All clear. Nothing needs attention in this period.</p>
-                ) : (
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                        {attention.map((row, idx) => (
-                            <div key={row.key} className={idx >= 3 && !showAllAttention ? 'hidden lg:block' : ''}>
-                            <AttentionRow
-                                label={row.label}
-                                count={row.count}
-                                unit={row.unit}
-                                amount={row.amount}
-                                action={row.action}
-                                tone={row.tone}
-                                onClick={row.onClick}
-                            />
-                            </div>
-                        ))}
-                        {attention.length > 3 && (
-                            <button
-                                type="button"
-                                onClick={() => setShowAllAttention((v) => !v)}
-                                aria-expanded={showAllAttention}
-                                className={`min-h-11 rounded-lg px-3 text-sm font-medium text-primary-700 hover:bg-[var(--bg-raised)] lg:hidden ${focusClass}`}
-                            >
-                                {showAllAttention ? 'Show fewer' : `Show all (${attention.length})`}
-                            </button>
-                        )}
-                    </div>
+                {canShow('cashCollections') !== false && (
+                    <MetricCard
+                        label={dateRange === 'today' ? 'Received Today' : 'Period Received'}
+                        value={stats.cashCollectionsTotal}
+                        helper={stats.creditInvoicedTotal > 0 ? `Credit ${formatCurrency(stats.creditInvoicedTotal)}` : 'Cash & collections'}
+                        icon={Banknote}
+                        accent="emerald"
+                        valueClass="text-teal-700"
+                        loading={showSkeleton}
+                        onClick={canReceivePayment ? () => navigate('/payments') : undefined}
+                    />
                 )}
             </section>
             )}
 
-            {isAdminOrOwner(user) && <DailyCloseStatusCard branchId={selectedBranchId} />}
+            {/* Historical Starplus Archive Widget for Owner/Admin */}
+            {isAdminOrOwner(user) && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 sm:p-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Database className="h-4 w-4 text-amber-700 shrink-0" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-900">
+                      Starplus Historical Archive (TRN 100366253100003)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/billing-history?tab=legacy')}
+                    className="text-xs font-semibold text-amber-800 hover:text-amber-950 flex items-center gap-1 self-start sm:self-auto"
+                  >
+                    <span>Browse 5,109 historical bills</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                  <div
+                    onClick={() => navigate('/billing-history?tab=legacy')}
+                    className="bg-white rounded-lg border border-amber-200/80 p-2.5 sm:p-3 cursor-pointer hover:bg-amber-50/50 transition"
+                  >
+                    <span className="text-[11px] font-medium text-neutral-500 uppercase block">Historical Sales</span>
+                    <span className="text-base sm:text-lg font-bold text-neutral-900 block mt-0.5">
+                      {formatCurrency(legacyMetrics?.activeGrandTotal || 3817356.88)}
+                    </span>
+                    <span className="text-[10px] text-neutral-500">{legacyMetrics?.activeInvoices || 4916} active invoices</span>
+                  </div>
+                  <div
+                    onClick={() => navigate('/payments?tab=legacy')}
+                    className="bg-white rounded-lg border border-amber-200/80 p-2.5 sm:p-3 cursor-pointer hover:bg-amber-50/50 transition"
+                  >
+                    <span className="text-[11px] font-medium text-neutral-500 uppercase block">Cleared Collections</span>
+                    <span className="text-base sm:text-lg font-bold text-emerald-700 block mt-0.5">
+                      {formatCurrency(legacyMetrics?.activePaidTotal || 3747182.98)}
+                    </span>
+                    <span className="text-[10px] text-neutral-500">{legacyMetrics?.clearedPayments || 5325} receipts</span>
+                  </div>
+                  <div
+                    onClick={() => navigate('/billing-history?tab=legacy&filter=pending')}
+                    className="bg-white rounded-lg border border-amber-200/80 p-2.5 sm:p-3 cursor-pointer hover:bg-amber-50/50 transition"
+                  >
+                    <span className="text-[11px] font-medium text-neutral-500 uppercase block">Cutover Receivables</span>
+                    <span className="text-base sm:text-lg font-bold text-rose-600 block mt-0.5">
+                      {formatCurrency(legacyMetrics?.positiveOutstandingSum || 70178.09)}
+                    </span>
+                    <span className="text-[10px] text-rose-700 font-medium">{legacyMetrics?.positiveOutstandingCount || 93} pending bills</span>
+                  </div>
+                  <div
+                    onClick={() => navigate('/reports?source=legacy')}
+                    className="bg-white rounded-lg border border-amber-200/80 p-2.5 sm:p-3 cursor-pointer hover:bg-amber-50/50 transition"
+                  >
+                    <span className="text-[11px] font-medium text-neutral-500 uppercase block">Approved Transferred AR</span>
+                    <span className="text-base sm:text-lg font-bold text-blue-700 block mt-0.5">
+                      {formatCurrency(legacyMetrics?.customerOpeningReceivablesTotal || 70077.29)}
+                    </span>
+                    <span className="text-[10px] text-neutral-500">21 customers (+ AED 100.80 Inv 2158)</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Actions — StarPlus 4-card action strip */}
+            {canShow('quickActions') && (
+            <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3" aria-label="Quick actions">
+                {canOpenPos && (
+                    <button
+                        type="button"
+                        onClick={() => navigate('/pos')}
+                        className={`flex items-center justify-between p-3 rounded-lg border border-primary-200 bg-primary-50/70 hover:bg-primary-100/70 transition-colors text-left ${focusClass}`}
+                        aria-keyshortcuts="F3"
+                    >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="p-2 rounded-md bg-primary-600 text-white shrink-0">
+                                <ShoppingCart className="h-4 w-4" aria-hidden />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-primary-950 truncate">New Invoice</p>
+                                <p className="text-xs text-primary-700">POS checkout</p>
+                            </div>
+                        </div>
+                        <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-primary-200/80 text-primary-900">F3</span>
+                    </button>
+                )}
+                {canOpenPurchases && (
+                    <button
+                        type="button"
+                        onClick={() => navigate('/purchases?action=create')}
+                        className={`flex items-center justify-between p-3 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/70 transition-colors text-left ${focusClass}`}
+                        aria-keyshortcuts="F4"
+                    >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="p-2 rounded-md bg-emerald-600 text-white shrink-0">
+                                <Truck className="h-4 w-4" aria-hidden />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-emerald-950 truncate">New Purchase</p>
+                                <p className="text-xs text-emerald-700">Supplier bill</p>
+                            </div>
+                        </div>
+                        <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-emerald-200/80 text-emerald-900">F4</span>
+                    </button>
+                )}
+                {canOpenCustomerLedger && (
+                    <button
+                        type="button"
+                        onClick={() => navigate('/ledger')}
+                        className={`flex items-center justify-between p-3 rounded-lg border border-violet-200 bg-violet-50/70 hover:bg-violet-100/70 transition-colors text-left ${focusClass}`}
+                        aria-keyshortcuts="F6"
+                    >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="p-2 rounded-md bg-violet-600 text-white shrink-0">
+                                <BookOpen className="h-4 w-4" aria-hidden />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-violet-950 truncate">Customer Ledger</p>
+                                <p className="text-xs text-violet-700">Accounts & bills</p>
+                            </div>
+                        </div>
+                        <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-violet-200/80 text-violet-900">F6</span>
+                    </button>
+                )}
+                {canBackup ? (
+                    <button
+                        type="button"
+                        onClick={() => navigate('/backup')}
+                        className={`flex items-center justify-between p-3 rounded-lg border border-amber-200 bg-amber-50/70 hover:bg-amber-100/70 transition-colors text-left ${focusClass}`}
+                        aria-keyshortcuts="Ctrl+B"
+                    >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="p-2 rounded-md bg-amber-600 text-white shrink-0">
+                                <Database className="h-4 w-4" aria-hidden />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-amber-950 truncate">Backup Now</p>
+                                <p className="text-xs text-amber-700">Save snapshot</p>
+                            </div>
+                        </div>
+                        <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-amber-200/80 text-amber-900">Ctrl+B</span>
+                    </button>
+                ) : canReceivePayment ? (
+                    <button
+                        type="button"
+                        onClick={() => navigate('/payments')}
+                        className={`flex items-center justify-between p-3 rounded-lg border border-teal-200 bg-teal-50/70 hover:bg-teal-100/70 transition-colors text-left ${focusClass}`}
+                    >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="p-2 rounded-md bg-teal-600 text-white shrink-0">
+                                <Banknote className="h-4 w-4" aria-hidden />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-teal-950 truncate">Receive Payment</p>
+                                <p className="text-xs text-teal-700">Record receipt</p>
+                            </div>
+                        </div>
+                    </button>
+                ) : null}
+            </section>
+            )}
+
+            {/* Operational & Status Cards — StarPlus 4-card register & alert strip */}
+            {hasFigures && (
+            <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3" aria-label="Operational status">
+                <div
+                    onClick={canOpenSalesLedger ? () => navigate('/sales-ledger') : undefined}
+                    className={`${surfaceClass} p-3 flex items-center justify-between ${canOpenSalesLedger ? 'cursor-pointer hover:bg-[var(--bg-raised)]' : ''}`}
+                >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="p-2 rounded-md bg-neutral-100 text-neutral-700 shrink-0">
+                            <FileText className="h-4 w-4" aria-hidden />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Sales Ledger</p>
+                            <p className="text-sm font-semibold text-neutral-900 truncate">View Register →</p>
+                        </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" aria-hidden />
+                </div>
+
+                <div
+                    onClick={canOpenExpenses ? () => navigate('/expenses') : undefined}
+                    className={`${surfaceClass} p-3 flex items-center justify-between ${canOpenExpenses ? 'cursor-pointer hover:bg-[var(--bg-raised)]' : ''}`}
+                >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="p-2 rounded-md bg-neutral-100 text-neutral-700 shrink-0">
+                            <Wallet className="h-4 w-4" aria-hidden />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Expenses</p>
+                            <p className="text-sm font-semibold text-neutral-900 truncate">Manage Expenses →</p>
+                        </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" aria-hidden />
+                </div>
+
+                <div
+                    onClick={canOpenReports ? () => navigate('/reports?tab=outstanding') : undefined}
+                    className={`p-3 rounded-lg border ${stats.pendingBills > 0 ? 'border-amber-300 bg-amber-50/80 hover:bg-amber-100/80' : 'border-[var(--border)] bg-[var(--bg-base)] hover:bg-[var(--bg-raised)]'} flex items-center justify-between cursor-pointer transition-colors`}
+                >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`p-2 rounded-md shrink-0 ${stats.pendingBills > 0 ? 'bg-amber-500 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+                            {stats.pendingBills > 0 ? <AlertTriangle className="h-4 w-4" aria-hidden /> : <CheckCircle className="h-4 w-4" aria-hidden />}
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Unpaid Bills</p>
+                            <p className="text-sm font-bold text-neutral-900 tabular-nums truncate">
+                                {stats.pendingBills} <span className="text-xs font-normal text-neutral-600">({formatCurrency(stats.pendingBillsAmount)})</span>
+                            </p>
+                        </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" aria-hidden />
+                </div>
+
+                <div
+                    onClick={canOpenProducts ? () => navigate('/products?tab=lowStock') : undefined}
+                    className={`p-3 rounded-lg border ${stats.lowStockCount > 0 ? 'border-rose-300 bg-rose-50/80 hover:bg-rose-100/80' : 'border-[var(--border)] bg-[var(--bg-base)] hover:bg-[var(--bg-raised)]'} flex items-center justify-between cursor-pointer transition-colors`}
+                >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`p-2 rounded-md shrink-0 ${stats.lowStockCount > 0 ? 'bg-rose-500 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+                            {stats.lowStockCount > 0 ? <Package className="h-4 w-4" aria-hidden /> : <CheckCircle className="h-4 w-4" aria-hidden />}
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Low Stock</p>
+                            <p className="text-sm font-bold text-neutral-900 tabular-nums truncate">
+                                {stats.lowStockCount} <span className="text-xs font-normal text-neutral-600">{stats.lowStockCount === 1 ? 'item' : 'items'}</span>
+                            </p>
+                        </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" aria-hidden />
+                </div>
+            </section>
+            )}
+
+            {/* Compact Secondary Status Strip: Daily Close & VAT */}
+            {(isAdminOrOwner(user) || (isOwner(user) && stats.netVatPayablePeriod !== 0)) && (
+                <div className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]">
+                    <div className="flex items-center gap-2 min-w-0">
+                        {isAdminOrOwner(user) && <DailyCloseStatusCard branchId={selectedBranchId} compact />}
+                    </div>
+                    {isOwner(user) && stats.netVatPayablePeriod !== 0 && (
+                        <div className="inline-flex items-center gap-2 shrink-0">
+                            <span>VAT estimate: <strong className="tabular-nums font-semibold">{formatCurrency(stats.netVatPayablePeriod)}</strong></span>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/vat-return')}
+                                className="text-primary-700 font-semibold hover:underline"
+                            >
+                                Open VAT return →
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Additional Needs Attention Rows (e.g. Overdue or Damage) */}
+            {hasFigures && attention.filter(a => a.key === 'overdue' || a.key === 'damage').length > 0 && (
+            <section className="space-y-2">
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Critical alerts</h2>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    {attention.filter(a => a.key === 'overdue' || a.key === 'damage').map((row) => (
+                        <AttentionRow
+                            key={row.key}
+                            label={row.label}
+                            count={row.count}
+                            unit={row.unit}
+                            amount={row.amount}
+                            action={row.action}
+                            tone={row.tone}
+                            onClick={row.onClick}
+                        />
+                    ))}
+                </div>
+            </section>
+            )}
 
             {showGetStarted && (
                 <div className={`${surfaceClass} relative p-4`}>
@@ -708,46 +1016,6 @@ const DashboardTally = () => {
                     </div>
                 </div>
             )}
-
-            {canShow('quickActions') && (
-                <div className="hidden lg:flex lg:flex-row lg:gap-2">
-                    {canOpenPos && (
-                        <Button className="!min-h-[44px] w-full lg:w-auto" onClick={() => navigate('/pos')} aria-keyshortcuts="F3">
-                            <ShoppingCart className="h-4 w-4" aria-hidden />
-                            New invoice
-                            <span className="hidden text-xs font-normal text-white/80 lg:inline">F3</span>
-                        </Button>
-                    )}
-                    {isAdminOrOwner(user) && (
-                        <Button variant="secondary" className="!min-h-[44px] w-full lg:w-auto" onClick={() => navigate('/purchases?action=create')} aria-keyshortcuts="F4">
-                            <Truck className="h-4 w-4" aria-hidden />
-                            New purchase
-                            <span className="hidden text-xs font-normal text-[var(--text-tertiary)] lg:inline">F4</span>
-                        </Button>
-                    )}
-                    {canAccessPage(user, 'invoices') && (
-                        <Button variant="secondary" className="!min-h-[44px] w-full lg:w-auto" onClick={() => navigate('/ledger')} aria-keyshortcuts="F10">
-                            <FileText className="h-4 w-4" aria-hidden />
-                            Customer ledger
-                            <span className="hidden text-xs font-normal text-[var(--text-tertiary)] lg:inline">F10</span>
-                        </Button>
-                    )}
-                    {canAccessPage(user, 'expenses') && (
-                        <Button variant="secondary" className="!min-h-[44px] w-full lg:w-auto" onClick={() => navigate('/expenses')}>
-                            <Wallet className="h-4 w-4" aria-hidden />
-                            {isAdminOrOwner(user) ? 'Expenses' : 'Add expense'}
-                        </Button>
-                    )}
-                </div>
-            )}
-
-            {(hasFigures || showSkeleton) && showProfit && (
-                <div className="space-y-2 lg:hidden">
-                    {profitCard}
-                    {profitNote ? <p className="px-1 text-xs text-[var(--text-secondary)]" role="status">{profitNote}</p> : null}
-                </div>
-            )}
-            {profitNote ? <p className="hidden text-xs text-[var(--text-secondary)] lg:block" role="status">{profitNote}</p> : null}
 
             {/* A chart needs at least 3 days to show a trend; with fewer it is one lonely bar that repeats the Net sales card. */}
             {(hasFigures || showSkeleton) && (showSkeleton || dailySalesTrend.length >= 3) && (

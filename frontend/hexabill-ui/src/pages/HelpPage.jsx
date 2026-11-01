@@ -113,7 +113,7 @@ const HelpPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="bg-neutral-50 pb-8">
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
         {/* Sidebar — sticky on desktop */}
         <aside className="lg:w-56 flex-shrink-0">
@@ -293,7 +293,7 @@ const HelpPage = () => {
         </div>
 
         {/* Quick Links */}
-        <div id="quick-links" className="bg-gradient-to-r from-primary-600 to-indigo-600 rounded-lg shadow p-6 text-white scroll-mt-4">
+        <div id="quick-links" className="bg-primary-900 border border-primary-800 rounded-lg shadow p-6 text-white scroll-mt-4">
           <h2 className="text-xl font-semibold mb-4">Quick Links</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <a href="/feedback" className="flex items-center justify-between p-3 bg-white/10 rounded-lg hover:bg-white/20 transition">

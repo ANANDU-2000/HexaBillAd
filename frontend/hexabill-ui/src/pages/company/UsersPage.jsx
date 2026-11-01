@@ -553,7 +553,7 @@ const UsersPage = () => {
   }
 
   return (
-    <div className="h-full min-h-0 bg-gradient-to-br from-primary-50 to-slate-50 overflow-auto">
+    <div className="h-full min-h-0 bg-neutral-50 border border-neutral-200 overflow-auto">
       <div className="p-4 sm:p-6 w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -692,7 +692,7 @@ const UsersPage = () => {
         <div className="hidden xl:block bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-[900px] w-full divide-y divide-neutral-200">
-              <thead className="bg-gradient-to-r from-primary-900 to-primary-800 text-white">
+              <thead className="bg-neutral-100 text-neutral-800 text-white">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Name

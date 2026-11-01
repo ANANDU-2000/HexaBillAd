@@ -1,0 +1,19 @@
+exception_code,scope,count,status,evidence,required_action
+UNATTRIBUTED_INVOICE,invoice,11,REVIEW REQUIRED,local archive and reconciliation report,identify provenance/customer or retain as approved exception
+MISSING_INVOICE_ITEMS,invoice,19 (17 active),REVIEW REQUIRED,local archive data-quality metadata,inspect source versions/backups/documents; do not invent lines
+LINE_TOTAL_DIFFERENCE,invoice,2072,REVIEW REQUIRED,local archive data-quality metadata,deterministically reconcile source formulas and stored totals
+LINE_TOTAL_METHOD_DELTA,invoice,2156 vs 2072,REVIEW REQUIRED,validator compares sum(item.line_total) to grand_total and disagrees with archive metadata,identify original report formula and review detailed private exception rows
+PENDING_PAYMENT,payment,5,REVIEW REQUIRED,local archive JSON status values,retain as pending and exclude from cleared receipts
+CUSTOMER_MAPPING,customer,81,NOT STARTED,customer target mapping CSV,obtain verified identity match and owner approval
+PRODUCT_MAPPING,product,283,NOT STARTED,product target mapping CSV,verify SKU/unit/packaging and approve mapping
+SOURCE_CUTOVER,source database,unknown,BLOCKED,deep-dive report and no fresh query,confirm final source freeze and requery live database
+SOURCE_SNAPSHOT_DELTA,source database,1 receipt and 12 links,REVIEW REQUIRED,25 live/local table hashes compared; 23 tables match and pre-archive receipt hashes match,capture a final source snapshot after cutover and preserve the added receipt/payment relationships
+RECEIPT_SNAPSHOT_DELTA,source database,1 receipt and 12 links,REVIEW REQUIRED,live 41 receipts/184 links vs restored archive 40/172; added receipt at 2026-10-31 15:24 UTC,capture fresh source snapshot and preserve the receipt/payment relationships
+TENANT_INVENTORY,production destination,5 active tenants,REVIEW REQUIRED,live Tenants query shows IDs 6/8/20/22/23,reconcile earlier four-tenant expectation and test all tenant boundaries
+DEPLOYED_SCHEMA_DIVERGENCE,destination schema,2 live migrations absent locally,BLOCKED,live migration history contains Oct 25 Starplus/numbering migrations not found in active checkout,align active code with deployed SHA/schema before implementation
+SOURCE_TIMESTAMP_POLICY,source/destination schema,unknown,BLOCKED,source timestamps are without timezone and destination timestamps are with timezone,verify source app timezone semantics before any conversion
+POSTGRES_STAGING,local test environment,source restored; target baseline missing,PARTIAL,local PostgreSQL 18.1 loopback cluster has source dump and empty migration ledger but no current target backup,restore a verified target snapshot to a separate disposable database and seed synthetic fixtures if needed
+TARGET_INVOICE_SEQUENCE,tenant 20,13 issued numbers plus smoke outlier,REVIEW REQUIRED,live Sales range/count query,protect current invoice sequence and establish test expectations without modifying production
+DATABASE_INGRESS,source and destination PostgreSQL,0.0.0.0/0 allow list,SECURITY REVIEW,Render metadata lists unrestricted IPv4 allow-list entries,obtain owner-approved ingress policy and verify access without changing it in this migration stage
+DESTINATION_BACKUP,production database,unknown,BLOCKED,no fresh evidence,complete backup and tested restore before any production write
+PRODUCTION_WRITE,production database,0,NOT STARTED,no production writes authorized by gates,require all release conditions and explicit approval

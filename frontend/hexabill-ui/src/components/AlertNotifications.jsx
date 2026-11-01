@@ -33,11 +33,6 @@ const useBrowserNotifications = (unreadCount) => {
 
     if (Notification.permission === 'granted') {
       show()
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then((p) => {
-        permissionRef.current = p
-        if (p === 'granted') show()
-      })
     }
   }, [unreadCount])
 }
@@ -67,6 +62,7 @@ const formatTimeAgo = (date) => {
 const AlertNotifications = () => {
   const [alerts, setAlerts] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [activeCategory, setActiveCategory] = useState('all')
   const [showPanel, setShowPanel] = useState(false)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -202,7 +198,7 @@ const AlertNotifications = () => {
 
   const getAlertAction = (alert) => {
     const type = alert.type
-    if (type === 'LowStock') return { label: 'View Products', path: '/products' }
+    if (type === 'LowStock') return { label: 'View Products', path: '/products?tab=lowStock' }
     if (type === 'ProductExpiring') return { label: 'View Products', path: '/products' }
     if (type === 'OverdueInvoice') return { label: 'View Reports', path: '/reports?tab=outstanding' }
     if (type === 'BalanceMismatch' || type === 'DBMismatch') return { label: 'Customer Ledger', path: '/ledger' }
@@ -269,6 +265,38 @@ const AlertNotifications = () => {
                   <X className="h-5 w-5" />
                 </button>
               </div>
+            </div>
+
+            {/* Category Filter Chips */}
+            <div className="flex items-center gap-1.5 px-4 py-2 border-b border-neutral-100 bg-neutral-50 overflow-x-auto text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveCategory('all')}
+                className={`px-2.5 py-1 rounded-full font-medium transition-colors ${activeCategory === 'all' ? 'bg-primary-600 text-white' : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'}`}
+              >
+                All ({alerts.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCategory('stock')}
+                className={`px-2.5 py-1 rounded-full font-medium transition-colors ${activeCategory === 'stock' ? 'bg-primary-600 text-white' : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'}`}
+              >
+                Stock ({alerts.filter(a => a.type === 'LowStock' || a.type === 'ProductExpiring').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCategory('overdue')}
+                className={`px-2.5 py-1 rounded-full font-medium transition-colors ${activeCategory === 'overdue' ? 'bg-primary-600 text-white' : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'}`}
+              >
+                Overdue ({alerts.filter(a => a.type === 'OverdueInvoice').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCategory('system')}
+                className={`px-2.5 py-1 rounded-full font-medium transition-colors ${activeCategory === 'system' ? 'bg-primary-600 text-white' : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'}`}
+              >
+                System ({alerts.filter(a => a.type !== 'LowStock' && a.type !== 'ProductExpiring' && a.type !== 'OverdueInvoice').length})
+              </button>
             </div>
 
             {/* Alerts List */}

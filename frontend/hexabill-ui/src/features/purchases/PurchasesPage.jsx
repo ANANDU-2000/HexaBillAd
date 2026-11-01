@@ -1211,7 +1211,7 @@ const PurchasesPage = () => {
                 </div>
 
                 {/* Desktop: table */}
-                <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[400px] w-full max-w-full border-2 border-neutral-200 border-t-0 rounded-b-lg" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="hidden md:block overflow-x-auto overflow-y-auto min-h-[160px] w-full max-w-full border-2 border-neutral-200 border-t-0 rounded-b-lg" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <table className="w-full text-xs border-collapse min-w-[640px]">
                     <thead className="bg-neutral-50 sticky top-0 z-10">
                       <tr>

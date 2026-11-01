@@ -35,7 +35,7 @@ import Modal from '../../components/Modal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
 import EditPaymentModal from '../../components/EditPaymentModal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
-import { paymentsAPI, customersAPI } from '../../services/index'
+import { paymentsAPI, customersAPI, legacyAPI } from '../../services/index'
 import { useDebounce } from '../../hooks/useDebounce'
 import { canManagePayments } from '../../utils/roles'
 import { useAuth } from '../../hooks/useAuth'
@@ -97,6 +97,44 @@ const PaymentsPage = () => {
   const [showBulkPaymentModal, setShowBulkPaymentModal] = useState(false)
   const [bulkPayments, setBulkPayments] = useState([{ customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
   const [selectedPaymentIds, setSelectedPaymentIds] = useState([])
+  const [paymentsTab, setPaymentsTab] = useState(() => searchParams.get('tab') || 'active')
+  const [legacyPayments, setLegacyPayments] = useState([])
+  const [legacyPage, setLegacyPage] = useState(1)
+  const [legacyPageSize, setLegacyPageSize] = useState(25)
+  const [legacyTotalCount, setLegacyTotalCount] = useState(0)
+  const [legacyTotalPages, setLegacyTotalPages] = useState(1)
+  const [legacyStatus, setLegacyStatus] = useState('')
+  const [legacyLoading, setLegacyLoading] = useState(false)
+
+  const loadLegacyPayments = useCallback(async () => {
+    try {
+      setLegacyLoading(true)
+      const res = await legacyAPI.getPayments({
+        page: legacyPage,
+        pageSize: legacyPageSize,
+        search: searchTerm?.trim() || undefined,
+        status: legacyStatus || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined
+      })
+      if (res?.success && res.data) {
+        setLegacyPayments(res.data.items || [])
+        setLegacyTotalCount(res.data.totalCount || 0)
+        setLegacyTotalPages(res.data.totalPages || 1)
+      }
+    } catch (err) {
+      console.warn('Error loading historical legacy payments:', err)
+    } finally {
+      setLegacyLoading(false)
+    }
+  }, [legacyPage, legacyPageSize, searchTerm, legacyStatus, fromDate, toDate])
+
+  useEffect(() => {
+    if (paymentsTab === 'legacy') {
+      loadLegacyPayments()
+    }
+  }, [paymentsTab, loadLegacyPayments])
+
   const selectedPaymentIdsRef = useRef(selectedPaymentIds)
   selectedPaymentIdsRef.current = selectedPaymentIds
   const [listScope, setListScope] = useState(null)
@@ -648,6 +686,31 @@ const PaymentsPage = () => {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between lg:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-neutral-900">Payments</h1>
+          <div className="flex items-center gap-2 mt-3 border-b border-neutral-200">
+            <button
+              type="button"
+              onClick={() => setPaymentsTab('active')}
+              className={`px-3 py-1.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${
+                paymentsTab === 'active'
+                  ? 'border-primary-600 text-primary-700 bg-primary-50/50 rounded-t-lg'
+                  : 'border-transparent text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              Current Payments
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentsTab('legacy')}
+              className={`px-3 py-1.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5 ${
+                paymentsTab === 'legacy'
+                  ? 'border-amber-600 text-amber-800 bg-amber-50/50 rounded-t-lg'
+                  : 'border-transparent text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              <span>Historical Payments (Starplus)</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">5,330 Records</span>
+            </button>
+          </div>
           <p className="text-sm text-neutral-600 sm:text-base">Manage customer payments and cheque status. Customer balance reflects cleared payments only; mark cheques as cleared when they clear.</p>
         </div>
         <div className="mt-3 flex flex-nowrap items-center gap-2 sm:gap-3 lg:mt-0 lg:shrink-0">

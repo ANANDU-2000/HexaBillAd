@@ -97,7 +97,7 @@ export const MORE_MENU_GROUPS = [
       { id: 'products', description: 'Items, prices and stock levels', label: 'Products', href: '/products', icon: Package, pageId: 'products', sidebar: true },
       { id: 'suppliers', description: 'Vendors you buy from', label: 'Suppliers', href: '/suppliers', icon: Building2, adminOnly: true, sidebar: true },
       { id: 'branches', description: 'Branches and delivery routes', label: 'Branches & Routes', href: '/branches', icon: LayoutGrid, adminOnly: true, sidebar: true },
-      { id: 'pricelist', description: 'Browse and share your product prices', label: 'Price List', href: '/pricelist', icon: List, pageId: 'products' },
+      { id: 'pricelist', description: 'Browse and share your product prices', label: 'Price List', href: '/pricelist', icon: List, pageId: 'products', sidebar: true },
     ],
   },
   {
@@ -112,8 +112,8 @@ export const MORE_MENU_GROUPS = [
       { id: 'quotations', description: 'Send price quotes to customers', label: 'Quotations', href: '/quotations', icon: Quote, sidebar: true },
       { id: 'delivery-notes', description: 'Record goods delivered', label: 'Delivery Notes', href: '/delivery-notes', icon: PackageCheck, sidebar: true },
       { id: 'returns-create', description: 'Credit notes and returned goods', label: 'Returns', href: '/returns/create', icon: RotateCcw, sidebar: true },
-      { id: 'agreements', description: 'Create and manage customer agreements', label: 'Agreements', href: '/agreements', icon: FileSignature },
-      { id: 'salary-certificates', description: 'Issue salary certificates for staff', label: 'Salary Certificates', href: '/salary-certificates', icon: BadgeDollarSign },
+      { id: 'agreements', description: 'Create and manage customer agreements', label: 'Agreements', href: '/agreements', icon: FileSignature, sidebar: true },
+      { id: 'salary-certificates', description: 'Issue salary certificates for staff', label: 'Salary Certificates', href: '/salary-certificates', icon: BadgeDollarSign, sidebar: true },
     ],
   },
   {

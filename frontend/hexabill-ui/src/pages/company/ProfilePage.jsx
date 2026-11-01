@@ -179,7 +179,7 @@ const ProfilePage = () => {
   const photoUrl = getUploadsUrl(profile?.profilePhotoUrl)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-primary-50/30">
+    <div className="min-h-screen bg-white border border-neutral-200/30">
       <div className="p-4 sm:p-6 w-full">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-xl font-semibold text-neutral-900 flex items-center gap-2">
@@ -190,7 +190,7 @@ const ProfilePage = () => {
         </div>
 
         <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-5 py-6 sm:px-6 sm:py-7">
+          <div className="bg-white border border-neutral-200 text-white px-5 py-6 sm:px-6 sm:py-7">
             <div className="flex items-center gap-4">
               <div className="relative flex-shrink-0">
                 <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border-2 border-white/40">

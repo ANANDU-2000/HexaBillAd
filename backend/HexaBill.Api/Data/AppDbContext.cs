@@ -6,6 +6,7 @@ Date: 2024
 using Microsoft.EntityFrameworkCore;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 using HexaBill.Api.Models;
+using HexaBill.Api.Models.Legacy;
 using System.Linq.Expressions;
 
 namespace HexaBill.Api.Data
@@ -198,6 +199,14 @@ namespace HexaBill.Api.Data
         public DbSet<BackupDeviceToken> BackupDeviceTokens { get; set; }
         public DbSet<BackupPairingCode> BackupPairingCodes { get; set; }
         public DbSet<BackupRun> BackupRuns { get; set; }
+
+        // Legacy Historical Data Archive (Starplus / FrozenHub 1 Cutover)
+        public DbSet<LegacyCustomer> LegacyCustomers { get; set; }
+        public DbSet<LegacyInvoice> LegacyInvoices { get; set; }
+        public DbSet<LegacyInvoiceItem> LegacyInvoiceItems { get; set; }
+        public DbSet<LegacyPayment> LegacyPayments { get; set; }
+        public DbSet<LegacyOpeningReceivable> LegacyOpeningReceivables { get; set; }
+        public DbSet<LegacyCustomerMapping> LegacyCustomerMappings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

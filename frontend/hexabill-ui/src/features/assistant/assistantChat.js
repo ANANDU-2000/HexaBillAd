@@ -19,6 +19,7 @@ const TOOL_NAMES = {
   route_unvisited: 'stops not visited today',
   customers_without_pin: 'customers without a map pin',
   route_summary: 'your routes',
+  dashboard_summary: "today's business summary",
 }
 
 export const ROUTE_TOOLS = new Set(['route_overdue', 'route_unvisited', 'customers_without_pin', 'route_summary'])
@@ -53,6 +54,8 @@ export function routeMapLink (row) {
 const FORM_LABELS = {
   new_customer: { title: 'a new customer', fields: { name: 'Name', phone: 'Phone', email: 'Email', address: 'Address', trn: 'TRN' } },
   new_expense: { title: 'a new expense', fields: { categoryName: 'Category', amount: 'Amount', date: 'Date', note: 'Note' } },
+  new_payment: { title: 'a payment receipt', fields: { customerName: 'Customer', amount: 'Amount (AED)', mode: 'Payment Mode', reference: 'Reference #', note: 'Note' } },
+  new_sale: { title: 'a sale / invoice draft', fields: { customerName: 'Customer', items: 'Items', amount: 'Estimated Total (AED)', paymentMethod: 'Method', notes: 'Notes' } },
 }
 
 /** Rows to show for a suggested form: what the assistant filled in, in the form's own order. */
@@ -90,6 +93,19 @@ export function prefillFor (kind, fields = {}, categories = []) {
  */
 export function describeChatReply (data) {
   const mode = data?.mode
+  if (mode === 'tool' && data.tool === 'dashboard_summary' && data.result) {
+    const row = Array.isArray(data.result.data) && data.result.data.length > 0 ? data.result.data[0] : null
+    return {
+      kind: 'dashboard_summary',
+      tool: 'dashboard_summary',
+      heading: "Today's Business Summary",
+      summary: row,
+      rows: Array.isArray(data.result.data) ? data.result.data : [],
+      asOf: data.result.asOf,
+      text: null,
+      note: 'Figures are calculated from your company records in real-time.',
+    }
+  }
   if (mode === 'tool' && data.result) {
     const what = TOOL_NAMES[data.tool] || 'records'
     return {
@@ -110,9 +126,9 @@ export function describeChatReply (data) {
       fields: s.fields || {},
       dropped: s.dropped || [],
       rows: suggestionRows(s.kind, s.fields),
-      heading: `I filled in ${FORM_LABELS[s.kind]?.title || 'a form'} for you.`,
+      heading: `Action Ready: ${FORM_LABELS[s.kind]?.title || s.kind}`,
       text: null,
-      note: 'Nothing is saved. Check every field, then review and confirm it yourself.',
+      note: 'Nothing is saved. Check every field and tap confirm to post.',
     }
   }
   if (mode === 'reply') {

@@ -12,7 +12,7 @@ const toneClass = {
 }
 
 // Today's Daily Close status for owners/admins. Read-only: closing, variance review and reopening stay in Daily close.
-export default function DailyCloseStatusCard ({ branchId = null }) {
+export default function DailyCloseStatusCard ({ branchId = null, compact = false }) {
   const navigate = useNavigate()
   const [view, setView] = useState(null)
 
@@ -24,8 +24,23 @@ export default function DailyCloseStatusCard ({ branchId = null }) {
     return () => { cancelled = true }
   }, [branchId])
 
-  if (!view) return <div className="h-[72px] animate-pulse rounded-lg bg-[var(--bg-elevated)]" aria-hidden />
+  if (!view) return <div className={compact ? "h-6 w-36 animate-pulse rounded bg-[var(--bg-elevated)]" : "h-[72px] animate-pulse rounded-lg bg-[var(--bg-elevated)]"} aria-hidden />
   const Icon = view.key === 'closed' ? CheckCircle : view.key === 'unavailable' ? CalendarCheck : AlertTriangle
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={() => navigate('/daily-close')}
+        className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${view.tone === 'warning' ? 'bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200'}`}
+      >
+        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span>Daily close: {view.title}</span>
+        <span className="hidden sm:inline font-normal opacity-75">· {view.detail}</span>
+      </button>
+    )
+  }
+
   return (
     <section aria-label="Daily close status" className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 ${toneClass[view.tone]}`}>
       <div className="flex min-w-0 items-start gap-2">

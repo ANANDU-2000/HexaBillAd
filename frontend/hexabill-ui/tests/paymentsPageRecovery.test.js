@@ -14,7 +14,7 @@ before(async()=>{
     b.onResolve({filter:/(?:services\/index|useAuth|TenantBrandingContext|useDebounce|react-hot-toast|react-hook-form|react-router-dom|components\/(?:Loading|Form|Modal|ReceiptPreviewModal|EditPaymentModal|ConfirmDangerModal))$/},a=>({path:a.path,namespace:'fixture'}))
     b.onLoad({filter:/.*/,namespace:'fixture'},a=>{
       const root='globalThis.paymentsPageFixture'
-      if(a.path.endsWith('services/index'))return{loader:'js',contents:`export const paymentsAPI=new Proxy({},{get:(_,k)=>${root}.api[k]});export const customersAPI=new Proxy({},{get:(_,k)=>${root}.customers[k]});export const salesAPI={};`}
+      if(a.path.endsWith('services/index'))return{loader:'js',contents:`export const paymentsAPI=new Proxy({},{get:(_,k)=>${root}.api[k]});export const customersAPI=new Proxy({},{get:(_,k)=>${root}.customers[k]});export const salesAPI={};export const legacyAPI=new Proxy({},{get:(_,k)=>${root}.legacy?.[k]||(async()=>({success:true,data:{items:[],totalCount:0}}))});`}
       if(a.path==='react-router-dom')return{loader:'js',contents:`export const useSearchParams=()=>[${root}.params,()=>{}];export const useLocation=()=>({state:null});export const useNavigate=()=>()=>{};`}
       if(a.path==='react-hook-form')return{loader:'js',contents:`export const useForm=()=>({register:name=>({name}),handleSubmit:fn=>()=>fn(${root}.form),watch:name=>${root}.form[name],reset:()=>{},setValue:()=>{},formState:{errors:{}}});`}
       if(a.path.endsWith('useAuth'))return{loader:'js',contents:`export const useAuth=()=>({user:${root}.user});`}

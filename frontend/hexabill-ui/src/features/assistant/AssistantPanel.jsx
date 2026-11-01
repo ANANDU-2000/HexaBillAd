@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { X, Maximize2, Minimize2, Search, UserPlus, Receipt, MessageSquare, Mic, Volume2 } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  X, Maximize2, Minimize2, Search, UserPlus, Receipt, MessageSquare, Mic, Volume2,
+  Sparkles, Send, CheckCircle2, Printer, ExternalLink, TrendingUp, AlertCircle, RefreshCw,
+  SlidersHorizontal, ChevronDown, ChevronUp, Check, DollarSign, FileText, ArrowRight,
+  ShieldCheck, ShoppingCart, User, Layers, ArrowUpRight
+} from 'lucide-react'
+import toast from 'react-hot-toast'
 import { assistantApi } from './assistantApi'
 import { describeChatReply, CHAT_MAX_CHARS, chatMessageProblem, prefillFor, ROUTE_TOOLS, routeRowDetail, routeMapLink } from './assistantChat'
 import {
@@ -9,593 +15,1391 @@ import {
 import {
   canConfirm, describeConfirmFailure, emptyCustomerForm, emptyExpenseForm, fieldErrorMap, newIdempotencyKey, toDraftRequest, toExpenseDraftRequest,
 } from './assistantDraft'
+import { paymentsAPI, customersAPI } from '../../services'
 
-const inputClass = 'block w-full min-h-11 rounded-md border border-neutral-300 bg-white px-3 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30'
+const inputClass = 'block w-full min-h-10 rounded-md border border-neutral-300 bg-white px-3 text-sm focus:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-500'
+const surfaceCardClass = 'rounded-lg border border-neutral-200 bg-white p-3.5 shadow-sm text-neutral-900'
 
-function Field ({ id, label, error, children }) {
+function formatAED(val) {
+  const n = parseFloat(val)
+  if (!Number.isFinite(n)) return '0.00 AED'
+  return `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED`
+}
+
+function speakUtterance(text, langId = 'en') {
+  if (!ttsSupported(globalThis) || !text) return
+  try {
+    globalThis.speechSynthesis.cancel()
+    const utterance = new globalThis.SpeechSynthesisUtterance(text)
+    utterance.lang = localeFor(langId)
+    globalThis.speechSynthesis.speak(utterance)
+  } catch (err) {
+    console.warn('TTS playback error:', err)
+  }
+}
+
+// ==========================================
+// ACTION EXECUTION CARDS
+// ==========================================
+
+function SummaryActionCard({ summary, asOf, onAskPrompt }) {
+  if (!summary) {
+    return <p className="text-sm text-neutral-600">No summary data available for today.</p>
+  }
+  const sales = summary.salesToday ?? 0
+  const collections = summary.collectionsToday ?? 0
+  const purchases = summary.purchasesToday ?? 0
+  const expenses = summary.expensesToday ?? 0
+  const profit = summary.profitToday
+  const pendingAmount = summary.pendingBillsAmount ?? 0
+  const pendingCount = summary.pendingBills ?? 0
+  const lowStock = summary.lowStockCount ?? 0
+
   return (
-    <div>
-      <label htmlFor={id} className="mb-1 block text-xs font-medium text-neutral-700">{label}</label>
-      {children}
-      {error && <p role="alert" className="mt-1 text-xs text-error">{error}</p>}
+    <div className={`${surfaceCardClass} space-y-3 border-l-4 border-l-primary-600`}>
+      <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+        <div className="flex items-center gap-1.5 font-semibold text-sm text-neutral-900">
+          <TrendingUp className="h-4 w-4 text-primary-600" />
+          <span>Today's Business Summary</span>
+        </div>
+        {asOf && (
+          <span className="text-xs text-neutral-400">
+            {new Date(asOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+        <div className="rounded border border-neutral-100 bg-neutral-50 p-2">
+          <p className="text-[10px] uppercase font-semibold text-neutral-500">Sales Today</p>
+          <p className="mt-0.5 text-sm font-bold tabular-nums text-primary-950">{formatAED(sales)}</p>
+        </div>
+        <div className="rounded border border-neutral-100 bg-neutral-50 p-2">
+          <p className="text-[10px] uppercase font-semibold text-neutral-500">Received Today</p>
+          <p className="mt-0.5 text-sm font-bold tabular-nums text-emerald-700">{formatAED(collections)}</p>
+        </div>
+        <div className="rounded border border-neutral-100 bg-neutral-50 p-2">
+          <p className="text-[10px] uppercase font-semibold text-neutral-500">Purchases Today</p>
+          <p className="mt-0.5 text-sm font-bold tabular-nums text-indigo-700">{formatAED(purchases)}</p>
+        </div>
+        <div className="rounded border border-neutral-100 bg-neutral-50 p-2">
+          <p className="text-[10px] uppercase font-semibold text-neutral-500">Expenses Today</p>
+          <p className="mt-0.5 text-sm font-bold tabular-nums text-rose-700">{formatAED(expenses)}</p>
+        </div>
+        <div className="rounded border border-neutral-100 bg-neutral-50 p-2">
+          <p className="text-[10px] uppercase font-semibold text-neutral-500">Profit Today</p>
+          <p className="mt-0.5 text-sm font-bold tabular-nums text-teal-800">
+            {profit != null ? formatAED(profit) : '— (Owner only)'}
+          </p>
+        </div>
+        <div className="rounded border border-neutral-100 bg-neutral-50 p-2">
+          <p className="text-[10px] uppercase font-semibold text-neutral-500">Pending Amount</p>
+          <p className="mt-0.5 text-sm font-bold tabular-nums text-amber-700">{formatAED(pendingAmount)}</p>
+          {pendingCount > 0 && <span className="text-[10px] text-neutral-500">({pendingCount} bills)</span>}
+        </div>
+      </div>
+
+      {lowStock > 0 && (
+        <div className="flex items-center justify-between rounded bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800">
+          <span className="flex items-center gap-1.5 font-medium">
+            <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+            {lowStock} {lowStock === 1 ? 'item is' : 'items are'} running low on stock
+          </span>
+          <button
+            type="button"
+            onClick={() => onAskPrompt && onAskPrompt('Show low stock products')}
+            className="text-[11px] font-semibold text-amber-900 underline hover:text-amber-950"
+          >
+            View items
+          </button>
+        </div>
+      )}
+
+      <div className="flex items-center justify-end gap-2 border-t border-neutral-100 pt-2 text-xs">
+        <Link to="/sales-ledger" className="text-primary-700 hover:text-primary-800 font-medium hover:underline">
+          Sales Ledger &rarr;
+        </Link>
+        <span className="text-neutral-300">|</span>
+        <Link to="/dashboard" className="text-primary-700 hover:text-primary-800 font-medium hover:underline">
+          Full Dashboard &rarr;
+        </Link>
+      </div>
     </div>
   )
 }
 
-/** Customer or product rows read from the books (shared by the lookup and the chat). */
-function ResultRows ({ tool, rows, asOf }) {
+function PaymentActionCard({ fields = {}, language = 'en' }) {
+  const [customerName, setCustomerName] = useState(fields.customerName || '')
+  const [amount, setAmount] = useState(fields.amount || '')
+  const [mode, setMode] = useState(fields.mode || 'CASH')
+  const [reference, setReference] = useState(fields.reference || '')
+  const [note, setNote] = useState(fields.note || '')
+
+  const [busy, setBusy] = useState(false)
+  const [postedResult, setPostedResult] = useState(null)
+  const [errorMsg, setErrorMsg] = useState('')
+  const [matchedCustomer, setMatchedCustomer] = useState(null)
+
+  // Quick customer search if user enters name
+  useEffect(() => {
+    if (!customerName || customerName.trim().length < 2 || matchedCustomer?.name === customerName) return
+    let active = true
+    customersAPI.searchCustomers(customerName.trim(), 5).then((res) => {
+      if (!active) return
+      const list = res?.data || []
+      const found = list.find((c) => c.name.toLowerCase() === customerName.toLowerCase()) || list[0]
+      if (found) setMatchedCustomer(found)
+    }).catch(() => {})
+    return () => { active = false }
+  }, [customerName])
+
+  const handlePost = async () => {
+    const numAmount = parseFloat(amount)
+    if (!numAmount || numAmount <= 0) {
+      setErrorMsg('Please enter a valid amount greater than 0.')
+      return
+    }
+    if (!customerName.trim() && !matchedCustomer) {
+      setErrorMsg('Please specify customer name.')
+      return
+    }
+
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      const idempotencyKey = newIdempotencyKey()
+      const payload = {
+        customerId: matchedCustomer ? matchedCustomer.id : null,
+        amount: numAmount,
+        mode: mode.toUpperCase(),
+        reference: reference.trim() || undefined,
+        paymentDate: new Date()
+      }
+
+      const res = await paymentsAPI.createPayment(payload, idempotencyKey)
+      if (res?.success || res?.payment || res?.data) {
+        const paymentData = res.data?.payment || res.payment || res.data || {}
+        setPostedResult({
+          id: paymentData.id || res.id,
+          amount: numAmount,
+          customer: matchedCustomer?.name || customerName,
+          reference: reference || 'Direct AI Payment'
+        })
+        toast.success(`Payment of ${formatAED(numAmount)} posted successfully!`)
+      } else {
+        setErrorMsg(res?.message || 'Payment could not be posted. Please review details.')
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Payment failed. Please check customer ledger.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleReadAloud = () => {
+    const text = readBackText('new_payment', { customerName: matchedCustomer?.name || customerName, amount, mode, reference })
+    speakUtterance(text, language)
+  }
+
+  if (postedResult) {
+    return (
+      <div className={`${surfaceCardClass} border-l-4 border-l-emerald-600 space-y-2.5`}>
+        <div className="flex items-center gap-2 text-emerald-800 font-semibold text-sm">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          <span>Payment Recorded & Cleared</span>
+        </div>
+        <p className="text-xs text-neutral-700">
+          <strong>{formatAED(postedResult.amount)}</strong> recorded for <strong>{postedResult.customer}</strong>.
+          Balance has been updated automatically.
+        </p>
+        <div className="flex items-center gap-2 pt-1 border-t border-neutral-100">
+          <Link
+            to="/payments"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary-700 hover:text-primary-800 underline"
+          >
+            Open in Payments &rarr;
+          </Link>
+          <span className="text-neutral-300">|</span>
+          <Link
+            to="/ledger"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-600 hover:text-neutral-800 underline"
+          >
+            Check Customer Ledger &rarr;
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <>
-      <ul aria-label="Results" className="divide-y divide-neutral-200 rounded-md border border-neutral-200">
-        {rows.map((r) => ROUTE_TOOLS.has(tool) ? (
-          <li key={`${r.routeId}-${r.customerId ?? 'route'}`} className="px-3 py-2 text-sm" data-testid="route-answer-row">
-            <p className="font-medium text-neutral-900">{r.name}</p>
-            <p className="text-xs text-neutral-600">{routeRowDetail(tool, r)}</p>
-            {routeMapLink(r) && <Link to={routeMapLink(r)} className="text-xs text-primary-700 underline">Show on map</Link>}
-          </li>
-        ) : (
-          <li key={r.id} className="px-3 py-2 text-sm">
-            {tool === 'search_company_documents' ? (
-              <>
-                <p className="font-medium text-neutral-900">{r.title} <span className="font-normal text-neutral-600">· version {r.version} · {r.location}</span></p>
-                <p className="mt-1 text-xs text-neutral-700 break-words">“{r.snippet}”</p>
-                <Link to="/documents" className="text-xs text-primary-700 underline">Open documents</Link>
-              </>
-            ) : (
-              <p className="font-medium text-neutral-900">{r.name}{r.sku ? ` · ${r.sku}` : ''}</p>
-            )}
-            {tool === 'search_company_documents' ? null : tool === 'find_customers' ? (
-              <p className="text-xs text-neutral-600">{r.phone || 'No phone'}{r.balance != null ? ` · Balance ${Number(r.balance).toFixed(2)}` : ''}</p>
-            ) : (
-              <p className="text-xs text-neutral-600">
-                Stock {r.stockQty} {r.unit}{r.lowStock ? ' (low)' : ''} · Price {Number(r.sellPrice).toFixed(2)}{r.costPrice != null ? ` · Cost ${Number(r.costPrice).toFixed(2)}` : ''}
-              </p>
-            )}
-          </li>
-        ))}
-      </ul>
-      <p className="text-xs text-neutral-500">Read from your records{asOf ? ` as of ${new Date(asOf).toLocaleTimeString()}` : ''}. Nothing was changed.</p>
-    </>
+    <div className={`${surfaceCardClass} border-l-4 border-l-emerald-600 space-y-3`}>
+      <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+        <div className="flex items-center gap-1.5 font-semibold text-sm text-neutral-900">
+          <DollarSign className="h-4 w-4 text-emerald-600" />
+          <span>Receive Payment Action</span>
+        </div>
+        {ttsSupported(globalThis) && (
+          <button
+            type="button"
+            onClick={handleReadAloud}
+            className="inline-flex items-center gap-1 text-[11px] text-neutral-500 hover:text-neutral-700"
+            title="Read back details aloud"
+          >
+            <Volume2 className="h-3.5 w-3.5" /> Read
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-2 text-xs">
+        <div>
+          <label className="block font-medium text-neutral-700 mb-0.5">Customer Name *</label>
+          <input
+            type="text"
+            className={inputClass}
+            placeholder="e.g. Al Noor Supermarket"
+            value={customerName}
+            onChange={(e) => { setCustomerName(e.target.value); setMatchedCustomer(null) }}
+          />
+          {matchedCustomer && (
+            <p className="mt-0.5 text-[11px] text-emerald-700 font-medium">
+              Matched customer: {matchedCustomer.name} (Balance: {formatAED(matchedCustomer.balance || 0)})
+            </p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block font-medium text-neutral-700 mb-0.5">Amount (AED) *</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              className={inputClass}
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block font-medium text-neutral-700 mb-0.5">Payment Mode</label>
+            <select className={inputClass} value={mode} onChange={(e) => setMode(e.target.value)}>
+              <option value="CASH">CASH</option>
+              <option value="ONLINE">ONLINE / BANK</option>
+              <option value="CHEQUE">CHEQUE</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block font-medium text-neutral-700 mb-0.5">Reference #</label>
+            <input
+              type="text"
+              className={inputClass}
+              placeholder="Cheque # / Trx ID"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block font-medium text-neutral-700 mb-0.5">Note</label>
+            <input
+              type="text"
+              className={inputClass}
+              placeholder="Optional memo"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {errorMsg && <p className="text-xs text-rose-600 font-medium">{errorMsg}</p>}
+
+      <div className="flex items-center gap-2 pt-1 border-t border-neutral-100">
+        <button
+          type="button"
+          onClick={handlePost}
+          disabled={busy}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+        >
+          {busy ? (
+            <>
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              <span>Posting Payment...</span>
+            </>
+          ) : (
+            <>
+              <Check className="h-3.5 w-3.5" />
+              <span>Confirm & Post Payment</span>
+            </>
+          )}
+        </button>
+      </div>
+      <p className="text-[10px] text-neutral-500">
+        Zero silent writes: payment is recorded in ledger with idempotency check only when you tap Confirm.
+      </p>
+    </div>
   )
 }
 
-/**
- * Push-to-talk: hold the button, speak, let go. The words land in the text box for the person to read and fix; nothing is sent until
- * they press Ask. No audio or transcript is kept by HexaBill. The browser's own speech service does the listening.
- */
-function VoiceInput ({ onText }) {
-  const [optedOut, setOptedOut] = useState(() => voiceOptedOut())
-  const [language, setLanguage] = useState('en')
+function InvoiceDraftActionCard({ fields = {}, language = 'en' }) {
+  const navigate = useNavigate()
+  const customerName = fields.customerName || ''
+  const items = fields.items || ''
+  const amount = fields.amount || ''
+  const paymentMethod = fields.paymentMethod || 'Cash'
+
+  const handleOpenPos = () => {
+    const params = new URLSearchParams()
+    if (customerName) params.set('customer', customerName)
+    if (items) params.set('draftItems', items)
+    navigate(`/pos?${params.toString()}`)
+  }
+
+  const handleReadAloud = () => {
+    const text = readBackText('new_sale', { customerName, items, amount })
+    speakUtterance(text, language)
+  }
+
+  return (
+    <div className={`${surfaceCardClass} border-l-4 border-l-indigo-600 space-y-3`}>
+      <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+        <div className="flex items-center gap-1.5 font-semibold text-sm text-neutral-900">
+          <ShoppingCart className="h-4 w-4 text-indigo-600" />
+          <span>New Invoice Draft Action</span>
+        </div>
+        {ttsSupported(globalThis) && (
+          <button
+            type="button"
+            onClick={handleReadAloud}
+            className="inline-flex items-center gap-1 text-[11px] text-neutral-500 hover:text-neutral-700"
+            title="Read back details aloud"
+          >
+            <Volume2 className="h-3.5 w-3.5" /> Read
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-1.5 text-xs">
+        {customerName && (
+          <div className="flex justify-between py-1 border-b border-neutral-50">
+            <span className="text-neutral-500">Customer</span>
+            <span className="font-semibold text-neutral-900">{customerName}</span>
+          </div>
+        )}
+        {items && (
+          <div className="flex justify-between py-1 border-b border-neutral-50">
+            <span className="text-neutral-500">Items / Particulars</span>
+            <span className="font-medium text-neutral-800 text-right max-w-[65%]">{items}</span>
+          </div>
+        )}
+        {amount && (
+          <div className="flex justify-between py-1 border-b border-neutral-50">
+            <span className="text-neutral-500">Estimated Total</span>
+            <span className="font-bold text-neutral-950 tabular-nums">{formatAED(amount)}</span>
+          </div>
+        )}
+        <div className="flex justify-between py-1">
+          <span className="text-neutral-500">Tender Method</span>
+          <span className="font-medium text-neutral-800">{paymentMethod}</span>
+        </div>
+      </div>
+
+      <div className="pt-2 border-t border-neutral-100">
+        <button
+          type="button"
+          onClick={handleOpenPos}
+          className="w-full inline-flex items-center justify-center gap-1.5 rounded-md bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
+        >
+          <ArrowUpRight className="h-3.5 w-3.5" />
+          <span>Open in POS & Finish Bill</span>
+        </button>
+      </div>
+      <p className="text-[10px] text-neutral-500">
+        Invoice items and customer pre-fill directly in POS for your final barcode scan and print.
+      </p>
+    </div>
+  )
+}
+
+function ExpenseActionCard({ fields = {}, language = 'en' }) {
+  const [categories, setCategories] = useState([])
+  const [categoryId, setCategoryId] = useState('')
+  const [amount, setAmount] = useState(fields.amount || '')
+  const [date, setDate] = useState(fields.date || new Date().toISOString().slice(0, 10))
+  const [note, setNote] = useState(fields.note || '')
+
+  const [busy, setBusy] = useState(false)
+  const [postedResult, setPostedResult] = useState(null)
+  const [errorMsg, setErrorMsg] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    assistantApi.listExpenseCategories().then((res) => {
+      if (!alive) return
+      if (res.ok && Array.isArray(res.data)) {
+        setCategories(res.data)
+        if (fields.categoryName) {
+          const pre = prefillFor('new_expense', { categoryName: fields.categoryName }, res.data)
+          if (pre.categoryId) setCategoryId(pre.categoryId)
+        }
+      }
+    })
+    return () => { alive = false }
+  }, [fields.categoryName])
+
+  const handlePost = async () => {
+    const numAmount = parseFloat(amount)
+    if (!numAmount || numAmount <= 0) {
+      setErrorMsg('Please enter a valid expense amount.')
+      return
+    }
+
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      const draftRes = await assistantApi.createExpenseDraft(toExpenseDraftRequest({
+        categoryId,
+        amount: numAmount,
+        date,
+        note
+      }))
+      if (!draftRes.ok) {
+        setErrorMsg(draftRes.message || 'Could not validate expense draft.')
+        setBusy(false)
+        return
+      }
+
+      const draft = draftRes.data
+      const key = newIdempotencyKey()
+      const confirmRes = await assistantApi.confirmDraft(draft.id, draft.payloadHash, key)
+      if (confirmRes.ok) {
+        setPostedResult({
+          amount: numAmount,
+          category: categories.find((c) => String(c.id) === String(categoryId))?.name || 'General Expense'
+        })
+        toast.success(`Expense of ${formatAED(numAmount)} recorded successfully!`)
+      } else {
+        setErrorMsg(confirmRes.message || 'Expense could not be confirmed.')
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to record expense.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleReadAloud = () => {
+    const text = readBackText('new_expense', {
+      categoryName: categories.find((c) => String(c.id) === String(categoryId))?.name || fields.categoryName,
+      amount,
+      date,
+      note
+    })
+    speakUtterance(text, language)
+  }
+
+  if (postedResult) {
+    return (
+      <div className={`${surfaceCardClass} border-l-4 border-l-rose-600 space-y-2`}>
+        <div className="flex items-center gap-2 text-rose-800 font-semibold text-sm">
+          <CheckCircle2 className="h-4 w-4 text-rose-600" />
+          <span>Expense Recorded</span>
+        </div>
+        <p className="text-xs text-neutral-700">
+          <strong>{formatAED(postedResult.amount)}</strong> recorded under <strong>{postedResult.category}</strong>.
+        </p>
+        <div className="pt-1 border-t border-neutral-100">
+          <Link to="/expenses" className="text-xs font-semibold text-primary-700 hover:text-primary-800 underline">
+            Open in Expenses &rarr;
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`${surfaceCardClass} border-l-4 border-l-rose-600 space-y-3`}>
+      <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+        <div className="flex items-center gap-1.5 font-semibold text-sm text-neutral-900">
+          <Receipt className="h-4 w-4 text-rose-600" />
+          <span>Record Expense Action</span>
+        </div>
+        {ttsSupported(globalThis) && (
+          <button
+            type="button"
+            onClick={handleReadAloud}
+            className="inline-flex items-center gap-1 text-[11px] text-neutral-500 hover:text-neutral-700"
+            title="Read back details aloud"
+          >
+            <Volume2 className="h-3.5 w-3.5" /> Read
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-2 text-xs">
+        <div>
+          <label className="block font-medium text-neutral-700 mb-0.5">Category *</label>
+          <select className={inputClass} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <option value="">Select Category</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block font-medium text-neutral-700 mb-0.5">Amount (AED) *</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              className={inputClass}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block font-medium text-neutral-700 mb-0.5">Date *</label>
+            <input
+              type="date"
+              className={inputClass}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block font-medium text-neutral-700 mb-0.5">Note</label>
+          <input
+            type="text"
+            className={inputClass}
+            placeholder="e.g. Fuel for delivery van"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {errorMsg && <p className="text-xs text-rose-600 font-medium">{errorMsg}</p>}
+
+      <div className="pt-1 border-t border-neutral-100">
+        <button
+          type="button"
+          onClick={handlePost}
+          disabled={busy}
+          className="w-full inline-flex items-center justify-center gap-1.5 rounded-md bg-rose-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-rose-700 disabled:opacity-50"
+        >
+          {busy ? (
+            <>
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              <span>Recording Expense...</span>
+            </>
+          ) : (
+            <>
+              <Check className="h-3.5 w-3.5" />
+              <span>Confirm & Record Expense</span>
+            </>
+          )}
+        </button>
+      </div>
+      <p className="text-[10px] text-neutral-500">
+        Post happens through tenant-scoped accounting service only when you tap Confirm.
+      </p>
+    </div>
+  )
+}
+
+function CustomerActionCard({ fields = {}, language = 'en' }) {
+  const [form, setForm] = useState(() => ({
+    name: fields.name || '',
+    phone: fields.phone || '',
+    email: fields.email || '',
+    trn: fields.trn || '',
+    address: fields.address || '',
+    creditLimit: fields.creditLimit || '0',
+    customerType: fields.customerType || 'Credit'
+  }))
+
+  const [busy, setBusy] = useState(false)
+  const [createdResult, setCreatedResult] = useState(null)
+  const [errorMsg, setErrorMsg] = useState('')
+
+  const handlePost = async () => {
+    if (!form.name.trim()) {
+      setErrorMsg('Customer name is required.')
+      return
+    }
+
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      const draftRes = await assistantApi.createCustomerDraft(toDraftRequest(form))
+      if (!draftRes.ok) {
+        setErrorMsg(draftRes.message || 'Could not validate customer draft.')
+        setBusy(false)
+        return
+      }
+
+      const draft = draftRes.data
+      const key = newIdempotencyKey()
+      const confirmRes = await assistantApi.confirmDraft(draft.id, draft.payloadHash, key)
+      if (confirmRes.ok) {
+        const result = confirmRes.data?.result || {}
+        setCreatedResult(result)
+        toast.success(`Customer "${form.name}" created successfully!`)
+      } else {
+        setErrorMsg(confirmRes.message || 'Could not confirm customer creation.')
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to create customer.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleReadAloud = () => {
+    const text = readBackText('new_customer', form)
+    speakUtterance(text, language)
+  }
+
+  if (createdResult) {
+    return (
+      <div className={`${surfaceCardClass} border-l-4 border-l-teal-600 space-y-2`}>
+        <div className="flex items-center gap-2 text-teal-800 font-semibold text-sm">
+          <CheckCircle2 className="h-4 w-4 text-teal-600" />
+          <span>Customer Created</span>
+        </div>
+        <p className="text-xs text-neutral-700">
+          <strong>{form.name}</strong> has been added to your accounts.
+        </p>
+        <div className="pt-1 border-t border-neutral-100">
+          <Link
+            to={createdResult.customerId ? `/customers/${createdResult.customerId}` : '/customers'}
+            className="text-xs font-semibold text-primary-700 hover:text-primary-800 underline"
+          >
+            Open Customer Profile &rarr;
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`${surfaceCardClass} border-l-4 border-l-teal-600 space-y-3`}>
+      <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+        <div className="flex items-center gap-1.5 font-semibold text-sm text-neutral-900">
+          <UserPlus className="h-4 w-4 text-teal-600" />
+          <span>New Customer Action</span>
+        </div>
+        {ttsSupported(globalThis) && (
+          <button
+            type="button"
+            onClick={handleReadAloud}
+            className="inline-flex items-center gap-1 text-[11px] text-neutral-500 hover:text-neutral-700"
+            title="Read back details aloud"
+          >
+            <Volume2 className="h-3.5 w-3.5" /> Read
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-2 text-xs">
+        <div>
+          <label className="block font-medium text-neutral-700 mb-0.5">Customer Name *</label>
+          <input
+            type="text"
+            className={inputClass}
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block font-medium text-neutral-700 mb-0.5">Phone</label>
+            <input
+              type="tel"
+              className={inputClass}
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block font-medium text-neutral-700 mb-0.5">TRN (Tax #)</label>
+            <input
+              type="text"
+              className={inputClass}
+              value={form.trn}
+              onChange={(e) => setForm({ ...form, trn: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block font-medium text-neutral-700 mb-0.5">Credit Limit (AED)</label>
+            <input
+              type="number"
+              className={inputClass}
+              value={form.creditLimit}
+              onChange={(e) => setForm({ ...form, creditLimit: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block font-medium text-neutral-700 mb-0.5">Type</label>
+            <select
+              className={inputClass}
+              value={form.customerType}
+              onChange={(e) => setForm({ ...form, customerType: e.target.value })}
+            >
+              <option value="Credit">Credit</option>
+              <option value="Cash">Cash</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {errorMsg && <p className="text-xs text-rose-600 font-medium">{errorMsg}</p>}
+
+      <div className="pt-1 border-t border-neutral-100">
+        <button
+          type="button"
+          onClick={handlePost}
+          disabled={busy}
+          className="w-full inline-flex items-center justify-center gap-1.5 rounded-md bg-teal-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50"
+        >
+          {busy ? (
+            <>
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              <span>Creating Customer...</span>
+            </>
+          ) : (
+            <>
+              <Check className="h-3.5 w-3.5" />
+              <span>Confirm & Create Customer</span>
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ToolResultRows({ tool, rows, asOf }) {
+  if (!rows || rows.length === 0) {
+    return <p className="text-sm text-neutral-600">No records found matching your query.</p>
+  }
+
+  return (
+    <div className="space-y-2">
+      <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white overflow-hidden shadow-sm">
+        {rows.map((r, idx) => {
+          if (ROUTE_TOOLS.has(tool)) {
+            return (
+              <li key={r.routeId ? `${r.routeId}-${r.customerId ?? idx}` : idx} className="p-3 text-sm hover:bg-neutral-50">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-neutral-900">{r.name}</p>
+                    <p className="text-xs text-neutral-600 mt-0.5">{routeRowDetail(tool, r)}</p>
+                  </div>
+                  {routeMapLink(r) && (
+                    <Link
+                      to={routeMapLink(r)}
+                      className="shrink-0 text-xs font-medium text-primary-700 hover:text-primary-800 underline"
+                    >
+                      Map pin &rarr;
+                    </Link>
+                  )}
+                </div>
+              </li>
+            )
+          }
+
+          if (tool === 'search_company_documents') {
+            return (
+              <li key={r.id || idx} className="p-3 text-sm hover:bg-neutral-50">
+                <p className="font-semibold text-neutral-900">
+                  {r.title} <span className="text-xs font-normal text-neutral-500">· v{r.version} · {r.location}</span>
+                </p>
+                <p className="mt-1 text-xs text-neutral-700 italic break-words">"{r.snippet}"</p>
+                <Link to="/documents" className="mt-1.5 inline-block text-xs text-primary-700 font-medium underline">
+                  Open document &rarr;
+                </Link>
+              </li>
+            )
+          }
+
+          if (tool === 'find_customers') {
+            return (
+              <li key={r.id || idx} className="p-3 text-sm hover:bg-neutral-50">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-neutral-900">{r.name}</p>
+                    <p className="text-xs text-neutral-600 mt-0.5">
+                      Phone: <span className="font-medium text-neutral-800">{r.phone || 'None'}</span>
+                      {r.balance != null && (
+                        <span className="ml-2 font-medium">
+                          Balance: <span className={Number(r.balance) > 0 ? 'text-amber-700' : 'text-neutral-800'}>{formatAED(r.balance)}</span>
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <Link
+                    to={`/customers/${r.id}`}
+                    className="shrink-0 text-xs font-medium text-primary-700 hover:text-primary-800 underline"
+                  >
+                    Profile &rarr;
+                  </Link>
+                </div>
+              </li>
+            )
+          }
+
+          // Default / product_stock
+          return (
+            <li key={r.id || idx} className="p-3 text-sm hover:bg-neutral-50">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-neutral-900">
+                    {r.name} {r.sku && <span className="text-xs text-neutral-500 font-mono">({r.sku})</span>}
+                  </p>
+                  <p className="text-xs text-neutral-600 mt-0.5">
+                    Stock: <strong className={r.lowStock ? 'text-rose-600' : 'text-neutral-900'}>{r.stockQty} {r.unit || 'pcs'}</strong>
+                    {r.lowStock && <span className="ml-1 text-[11px] font-semibold text-rose-600">(Low Stock)</span>}
+                    {' · '}Sell: <strong className="text-neutral-900">{formatAED(r.sellPrice)}</strong>
+                    {r.costPrice != null && <span className="text-neutral-500"> (Cost: {formatAED(r.costPrice)})</span>}
+                  </p>
+                </div>
+                <Link
+                  to={`/products/${r.id}`}
+                  className="shrink-0 text-xs font-medium text-primary-700 hover:text-primary-800 underline"
+                >
+                  View &rarr;
+                </Link>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+      <p className="text-[11px] text-neutral-400">
+        Records verified from PostgreSQL database{asOf ? ` as of ${new Date(asOf).toLocaleTimeString()}` : ''}.
+      </p>
+    </div>
+  )
+}
+
+// ==========================================
+// VOICE INPUT COMPONENT
+// ==========================================
+
+function VoiceMicButton({ onTranscript, language, onListeningChange }) {
   const [listening, setListening] = useState(false)
-  const [problem, setProblem] = useState('')
   const recognizer = useRef(null)
   const Ctor = recognitionCtor(globalThis)
 
-  const stop = () => { try { recognizer.current?.stop() } catch { /* already stopped */ } }
-  useEffect(() => () => { try { recognizer.current?.abort?.() } catch { /* nothing to abort */ } }, [])
-  if (!Ctor) return <p className="text-xs text-neutral-500" data-testid="voice-unsupported">Voice input is not available in this browser. You can type instead.</p>
+  const stop = () => {
+    try { recognizer.current?.stop() } catch {}
+  }
+
+  useEffect(() => () => {
+    try { recognizer.current?.abort?.() } catch {}
+  }, [])
+
+  if (!Ctor) {
+    return null
+  }
 
   const start = () => {
-    if (listening || recognizer.current) return
-    setProblem('')
+    if (listening || recognizer.current) {
+      stop()
+      return
+    }
     const rec = new Ctor()
     rec.lang = localeFor(language)
     rec.interimResults = false
     rec.continuous = false
     rec.maxAlternatives = 1
     let heard = ''
-    rec.onresult = (e) => { heard = Array.from(e.results).map((r) => r[0]?.transcript || '').join(' ') }
-    rec.onerror = (e) => { const text = describeVoiceError(e?.error); if (text) setProblem(text) }
-    rec.onend = () => { recognizer.current = null; setListening(false); if (heard.trim()) onText(heard) }
-    recognizer.current = rec
-    try { rec.start(); setListening(true) } catch { recognizer.current = null; setProblem(describeVoiceError('unknown')) }
-  }
 
-  const toggleOptOut = (e) => { setVoiceOptedOut(!e.target.checked); setOptedOut(!e.target.checked); if (!e.target.checked) stop() }
-
-  return (
-    <div className="space-y-2" data-testid="voice-input">
-      <label className="flex items-center gap-2 text-xs text-neutral-700">
-        <input type="checkbox" checked={!optedOut} onChange={toggleOptOut} /> Use voice input
-      </label>
-      {!optedOut && (
-        <>
-          <div className="flex items-center gap-2">
-            <select aria-label="Voice language" className={`${inputClass} flex-1`} value={language} onChange={(e) => setLanguage(e.target.value)}>
-              {VOICE_LANGUAGES.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
-            </select>
-            <button
-              type="button"
-              aria-pressed={listening}
-              aria-label="Hold to talk"
-              className={`inline-flex min-h-11 min-w-[8rem] select-none items-center justify-center gap-1 rounded-md border px-3 text-sm font-medium ${listening ? 'border-error bg-error-bg text-error-fg' : 'border-neutral-300 bg-white'}`}
-              style={{ touchAction: 'none' }}
-              onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); start() }}
-              onPointerUp={stop}
-              onPointerCancel={stop}
-              onKeyDown={(e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); start() } }}
-              onKeyUp={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); stop() } }}
-              onBlur={stop}
-            >
-              <Mic className="h-4 w-4" aria-hidden /> {listening ? 'Listening… let go' : 'Hold to talk'}
-            </button>
-          </div>
-          {problem && <p role="alert" className="text-xs text-error" data-testid="voice-problem">{problem}</p>}
-          <p className="text-xs text-neutral-500">{VOICE_PRIVACY_NOTE}</p>
-        </>
-      )}
-    </div>
-  )
-}
-
-/** Ask in plain words. The assistant only chooses a lookup; the numbers shown always come from your records. */
-function AskTab ({ onOpenForm }) {
-  const [message, setMessage] = useState('')
-  const [state, setState] = useState({ status: 'idle', view: null, error: '' })
-  const sending = useRef(false)
-
-  const ask = async (e) => {
-    e.preventDefault()
-    if (sending.current) return
-    const problem = chatMessageProblem(message)
-    if (problem) { setState({ status: 'error', view: null, error: problem }); return }
-    sending.current = true
-    setState({ status: 'loading', view: null, error: '' })
-    const res = await assistantApi.chat(message.trim())
-    sending.current = false
-    if (!res.ok) { setState({ status: 'error', view: null, error: res.message || 'The assistant could not answer. Use the Look up tab.' }); return }
-    setState({ status: 'done', view: describeChatReply(res.data), error: '' })
-  }
-
-  const view = state.view
-  const [language] = useState('en')
-  const sayAloud = () => {
-    if (!ttsSupported(globalThis) || !view) return
-    const utterance = new globalThis.SpeechSynthesisUtterance(readBackText(view.formKind, view.fields))
-    utterance.lang = localeFor(language)
-    globalThis.speechSynthesis.cancel()
-    globalThis.speechSynthesis.speak(utterance)
-  }
-  return (
-    <form onSubmit={ask} className="space-y-3">
-      <Field id="assistant-ask" label="Ask about a customer or a product">
-        <textarea id="assistant-ask" rows={3} className={inputClass} value={message} maxLength={CHAT_MAX_CHARS} onChange={(e) => setMessage(e.target.value)} placeholder="For example: how much stock of rice do we have?" />
-      </Field>
-      <VoiceInput onText={(text) => { setMessage((m) => appendTranscript(m, text, CHAT_MAX_CHARS)); setState({ status: 'idle', view: null, error: '' }) }} />
-      <p className="text-xs text-neutral-600">The assistant only picks a lookup or fills in a form for you to check. It never saves anything, and the figures come from your records.</p>
-      <button type="submit" disabled={state.status === 'loading'} className="btn btn-primary min-h-11 w-full">
-        <MessageSquare className="h-4 w-4" aria-hidden /> {state.status === 'loading' ? 'Thinking…' : 'Ask'}
-      </button>
-      {state.status === 'error' && <p role="alert" className="text-sm text-error">{state.error}</p>}
-      {state.status === 'done' && view && (
-        <div className="space-y-2" data-testid="assistant-answer">
-          {view.heading && <p className="text-sm font-medium text-neutral-900" data-testid="assistant-heading">{view.heading}</p>}
-          {view.kind === 'suggestion' && (
-            <div className="space-y-2" data-testid="assistant-suggestion">
-              <dl className="divide-y divide-neutral-200 rounded-md border border-neutral-200 text-sm">
-                {view.rows.map((r) => (
-                  <div key={r.key} className="flex gap-2 px-3 py-2"><dt className="w-24 shrink-0 text-neutral-600">{r.label}</dt><dd className="min-w-0 break-words text-neutral-900">{r.value}</dd></div>
-                ))}
-              </dl>
-              {view.dropped.length > 0 && <p className="text-xs text-warning-fg">Not filled in because it did not look right: {view.dropped.join(', ')}.</p>}
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className="btn btn-primary min-h-11 px-3" onClick={() => onOpenForm(view.formKind, view.fields)}>Open the form to check it</button>
-                {ttsSupported(globalThis) && (
-                  <button type="button" className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 px-3 text-sm" onClick={sayAloud}>
-                    <Volume2 className="h-4 w-4" aria-hidden /> Read it back
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-          {view.kind === 'tool' && view.rows.length === 0 && <p className="text-sm text-neutral-600">Nothing found.</p>}
-          {view.kind === 'tool' && view.rows.length > 0 && <ResultRows tool={view.tool} rows={view.rows} asOf={view.asOf} />}
-          {view.kind !== 'tool' && view.kind !== 'suggestion' && view.text && <p className="text-sm text-neutral-800" data-testid="assistant-text">{view.text}</p>}
-          {view.note && <p className="text-xs text-neutral-500">{view.note}</p>}
-        </div>
-      )}
-    </form>
-  )
-}
-
-function FindTab () {
-  const [tool, setTool] = useState('find_customers')
-  const [query, setQuery] = useState('')
-  const [state, setState] = useState({ status: 'idle', rows: [], message: '' })
-
-  const search = async (e) => {
-    e.preventDefault()
-    if (query.trim().length < 2) { setState({ status: 'error', rows: [], message: 'Type at least 2 characters.' }); return }
-    setState({ status: 'loading', rows: [], message: '' })
-    const res = await assistantApi.runTool(tool, { query: query.trim() })
-    if (!res.ok) { setState({ status: 'error', rows: [], message: res.message || 'The search could not run. Use the normal screens.' }); return }
-    setState({ status: 'done', rows: res.data?.data || [], message: '', asOf: res.data?.asOf })
-  }
-
-  return (
-    <form onSubmit={search} className="space-y-3">
-      <Field id="assistant-find-kind" label="Look up">
-        <select id="assistant-find-kind" className={inputClass} value={tool} onChange={(e) => { setTool(e.target.value); setState({ status: 'idle', rows: [], message: '' }) }}>
-          <option value="find_customers">Customers</option>
-          <option value="product_stock">Products and stock</option>
-          <option value="search_company_documents">Company documents</option>
-        </select>
-      </Field>
-      <Field id="assistant-find-query" label={tool === 'search_company_documents' ? 'Words to look for' : 'Name, phone or SKU'}>
-        <input id="assistant-find-query" className={inputClass} value={query} onChange={(e) => setQuery(e.target.value)} maxLength={60} />
-      </Field>
-      <button type="submit" disabled={state.status === 'loading'} className="btn btn-primary min-h-11 w-full">
-        <Search className="h-4 w-4" aria-hidden /> {state.status === 'loading' ? 'Searching…' : 'Search'}
-      </button>
-      {state.status === 'error' && <p role="alert" className="text-sm text-error">{state.message}</p>}
-      {state.status === 'done' && state.rows.length === 0 && <p className="text-sm text-neutral-600">Nothing found for “{query.trim()}”.</p>}
-      {state.status === 'done' && state.rows.length > 0 && <ResultRows tool={tool} rows={state.rows} asOf={state.asOf} />}
-    </form>
-  )
-}
-
-function NewCustomerTab ({ initial }) {
-  const [form, setForm] = useState(() => ({ ...emptyCustomerForm(), ...(initial || {}) }))
-  const [draft, setDraft] = useState(null) // the reviewed draft; any edit clears it so what is confirmed is what was shown
-  const [busy, setBusy] = useState(false)
-  const [failure, setFailure] = useState(null)
-  const [created, setCreated] = useState(null)
-  const keyRef = useRef(null)
-  const draftRef = useRef(null)
-  draftRef.current = draft
-
-  // A reviewed draft that the person walks away from is cancelled, so it does not sit against the open-draft limit.
-  const releaseDraft = (d) => { if (d && d.status === 'Draft' && d.id) assistantApi.cancelDraft(d.id) }
-  useEffect(() => () => releaseDraft(draftRef.current), [])
-
-  const set = (name) => (e) => { releaseDraft(draftRef.current); setForm((f) => ({ ...f, [name]: e.target.value })); setDraft(null); setFailure(null) }
-  const errors = fieldErrorMap(draft?.errors)
-
-  const review = async (e) => {
-    e.preventDefault()
-    releaseDraft(draftRef.current)
-    setBusy(true); setFailure(null); setCreated(null)
-    const res = await assistantApi.createCustomerDraft(toDraftRequest(form))
-    setBusy(false)
-    if (!res.ok) { setFailure({ text: res.message || 'The draft could not be prepared.' }); return }
-    keyRef.current = newIdempotencyKey()
-    setDraft(res.data)
-  }
-
-  const confirm = async () => {
-    if (!canConfirm(draft) || busy) return
-    setBusy(true); setFailure(null)
-    const res = await assistantApi.confirmDraft(draft.id, draft.payloadHash, keyRef.current)
-    setBusy(false)
-    if (res.ok) { setCreated(res.data?.result || {}); setDraft(null); setForm(emptyCustomerForm()); return }
-    setFailure(describeConfirmFailure(res.status, res.message))
-    if (res.status === 409 || res.status === 410 || res.status === 404) setDraft(null)
-  }
-
-  const startOver = () => { releaseDraft(draftRef.current); setDraft(null); setFailure(null) }
-
-  return (
-    <div className="space-y-4">
-      {created && (
-        <div role="status" className="rounded-sm border border-neutral-200 border-l-4 border-l-success bg-white p-3 text-sm text-neutral-800">
-          Customer created: <strong>{created.name}</strong>.{' '}
-          {created.customerId ? <Link className="underline" to={`/customers/${created.customerId}`}>Open customer</Link> : null}
-        </div>
-      )}
-      <form onSubmit={review} className="space-y-3" noValidate>
-        <Field id="assistant-cust-name" label="Customer name *" error={errors.name}>
-          <input id="assistant-cust-name" className={inputClass} value={form.name} onChange={set('name')} aria-invalid={Boolean(errors.name)} />
-        </Field>
-        <Field id="assistant-cust-phone" label="Phone" error={errors.phone}>
-          <input id="assistant-cust-phone" className={inputClass} inputMode="tel" value={form.phone} onChange={set('phone')} aria-invalid={Boolean(errors.phone)} />
-        </Field>
-        <Field id="assistant-cust-email" label="Email" error={errors.email}>
-          <input id="assistant-cust-email" className={inputClass} inputMode="email" value={form.email} onChange={set('email')} aria-invalid={Boolean(errors.email)} />
-        </Field>
-        <Field id="assistant-cust-trn" label="TRN" error={errors.trn}>
-          <input id="assistant-cust-trn" className={inputClass} value={form.trn} onChange={set('trn')} />
-        </Field>
-        <Field id="assistant-cust-address" label="Address" error={errors.address}>
-          <input id="assistant-cust-address" className={inputClass} value={form.address} onChange={set('address')} />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field id="assistant-cust-credit" label="Credit limit" error={errors.creditLimit}>
-            <input id="assistant-cust-credit" className={inputClass} inputMode="decimal" value={form.creditLimit} onChange={set('creditLimit')} aria-invalid={Boolean(errors.creditLimit)} />
-          </Field>
-          <Field id="assistant-cust-type" label="Type">
-            <select id="assistant-cust-type" className={inputClass} value={form.customerType} onChange={set('customerType')}>
-              <option value="Credit">Credit</option>
-              <option value="Cash">Cash</option>
-            </select>
-          </Field>
-        </div>
-        <button type="submit" disabled={busy} className="btn btn-secondary min-h-11 w-full">
-          <UserPlus className="h-4 w-4" aria-hidden /> {busy && !draft ? 'Checking…' : 'Review'}
-        </button>
-      </form>
-
-      {draft && (
-        <section aria-label="Review before creating" className="space-y-3 rounded-md border border-neutral-300 bg-neutral-50 p-3">
-          <h3 className="text-sm font-semibold text-neutral-900">Review before creating</h3>
-          <dl className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
-            <dt className="text-neutral-500">Name</dt><dd className="break-words">{draft.fields.name || '—'}</dd>
-            <dt className="text-neutral-500">Phone</dt><dd>{draft.fields.phone || '—'}</dd>
-            <dt className="text-neutral-500">Email</dt><dd className="break-words">{draft.fields.email || '—'}</dd>
-            <dt className="text-neutral-500">TRN</dt><dd>{draft.fields.trn || '—'}</dd>
-            <dt className="text-neutral-500">Address</dt><dd className="break-words">{draft.fields.address || '—'}</dd>
-            <dt className="text-neutral-500">Credit limit</dt><dd>{Number(draft.fields.creditLimit).toFixed(2)}</dd>
-            <dt className="text-neutral-500">Type</dt><dd>{draft.fields.customerType}</dd>
-          </dl>
-          {draft.warnings?.map((w) => <p key={w} className="text-xs text-amber-800">{w}</p>)}
-          {draft.errors?.length > 0
-            ? <p role="alert" className="text-sm text-error">Fix the highlighted fields, then review again.</p>
-            : <p className="text-xs text-neutral-600">Nothing is saved until you confirm. This draft expires in 15 minutes.</p>}
-          <div className="flex gap-2">
-            <button type="button" onClick={confirm} disabled={!canConfirm(draft) || busy} className="btn btn-primary min-h-11 flex-1">
-              {busy ? 'Creating…' : 'Confirm and create'}
-            </button>
-            <button type="button" onClick={startOver} disabled={busy} className="btn btn-secondary min-h-11">Edit</button>
-          </div>
-        </section>
-      )}
-
-      {failure && (
-        <div role="alert" className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white p-3 text-sm text-neutral-800">
-          <p>{failure.text}</p>
-          {failure.uncertain && <Link to="/customers" className="mt-1 inline-block underline">Open Customers</Link>}
-        </div>
-      )}
-    </div>
-  )
-}
-
-
-function NewExpenseTab ({ initial, initialCategoryName }) {
-  const [form, setForm] = useState(() => ({ ...emptyExpenseForm(), ...(initial || {}) }))
-  const [categories, setCategories] = useState([])
-  const [categoriesState, setCategoriesState] = useState('loading')
-  const [draft, setDraft] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const [failure, setFailure] = useState(null)
-  const [created, setCreated] = useState(null)
-  const keyRef = useRef(null)
-  const draftRef = useRef(null)
-  draftRef.current = draft
-
-  const releaseDraft = (d) => { if (d && d.status === 'Draft' && d.id) assistantApi.cancelDraft(d.id) }
-  useEffect(() => () => releaseDraft(draftRef.current), [])
-
-  useEffect(() => {
-    let cancelled = false
-    assistantApi.listExpenseCategories().then((res) => {
-      if (cancelled) return
-      if (res.ok && Array.isArray(res.data)) {
-        setCategories(res.data)
-        setCategoriesState('ready')
-        // A category the assistant suggested is matched by name to this company's own categories; no clear match leaves it for the person to choose.
-        if (initialCategoryName) {
-          const filled = prefillFor('new_expense', { categoryName: initialCategoryName }, res.data)
-          if (filled.categoryId) setForm((f) => (f.categoryId === '' ? { ...f, categoryId: filled.categoryId } : f))
-        }
-      } else setCategoriesState('error')
-    })
-    return () => { cancelled = true }
-  }, [])
-
-  const set = (name) => (e) => { releaseDraft(draftRef.current); setForm((f) => ({ ...f, [name]: e.target.value })); setDraft(null); setFailure(null) }
-  const errors = fieldErrorMap(draft?.errors)
-
-  const review = async (e) => {
-    e.preventDefault()
-    releaseDraft(draftRef.current)
-    setBusy(true); setFailure(null); setCreated(null)
-    const res = await assistantApi.createExpenseDraft(toExpenseDraftRequest(form))
-    setBusy(false)
-    if (!res.ok) { setFailure({ text: res.message || 'The draft could not be prepared.' }); return }
-    keyRef.current = newIdempotencyKey()
-    setDraft(res.data)
-  }
-
-  const confirm = async () => {
-    if (!canConfirm(draft) || busy) return
-    setBusy(true); setFailure(null)
-    const res = await assistantApi.confirmDraft(draft.id, draft.payloadHash, keyRef.current)
-    setBusy(false)
-    if (res.ok) { setCreated(res.data?.result || {}); setDraft(null); setForm(emptyExpenseForm()); return }
-    setFailure(describeConfirmFailure(res.status, res.message, 'Expenses', 'expense'))
-    if (res.status === 409 || res.status === 410 || res.status === 404) setDraft(null)
-  }
-
-  const startOver = () => { releaseDraft(draftRef.current); setDraft(null); setFailure(null) }
-
-  return (
-    <div className="space-y-4">
-      {created && (
-        <div role="status" className="rounded-sm border border-neutral-200 border-l-4 border-l-success bg-white p-3 text-sm text-neutral-800">
-          Expense recorded: <strong>{Number(created.amount).toFixed(2)}</strong>{created.status === 'Pending' ? ' (waiting for approval)' : ''}.{' '}
-          <Link className="underline" to="/expenses">Open Expenses</Link>
-        </div>
-      )}
-      {categoriesState === 'error' && <p role="alert" className="text-sm text-error">Expense categories could not be loaded. Use the Expenses screen.</p>}
-      <form onSubmit={review} className="space-y-3" noValidate>
-        <Field id="assistant-exp-category" label="Category *" error={errors.categoryId}>
-          <select id="assistant-exp-category" className={inputClass} value={form.categoryId} onChange={set('categoryId')} aria-invalid={Boolean(errors.categoryId)}>
-            <option value="">Choose a category</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field id="assistant-exp-amount" label="Amount *" error={errors.amount}>
-            <input id="assistant-exp-amount" className={inputClass} inputMode="decimal" value={form.amount} onChange={set('amount')} aria-invalid={Boolean(errors.amount)} />
-          </Field>
-          <Field id="assistant-exp-date" label="Date *" error={errors.date}>
-            <input id="assistant-exp-date" type="date" className={inputClass} value={form.date} onChange={set('date')} aria-invalid={Boolean(errors.date)} />
-          </Field>
-        </div>
-        <Field id="assistant-exp-note" label="Note" error={errors.note}>
-          <input id="assistant-exp-note" className={inputClass} value={form.note} onChange={set('note')} />
-        </Field>
-        <button type="submit" disabled={busy || categoriesState === 'loading'} className="btn btn-secondary min-h-11 w-full">
-          <Receipt className="h-4 w-4" aria-hidden /> {busy && !draft ? 'Checking…' : 'Review'}
-        </button>
-      </form>
-
-      {draft && (
-        <section aria-label="Review before recording" className="space-y-3 rounded-md border border-neutral-300 bg-neutral-50 p-3">
-          <h3 className="text-sm font-semibold text-neutral-900">Review before recording</h3>
-          <dl className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
-            <dt className="text-neutral-500">Category</dt><dd className="break-words">{draft.fields.categoryName || '—'}</dd>
-            <dt className="text-neutral-500">Amount</dt><dd>{Number(draft.fields.amount).toFixed(2)}</dd>
-            <dt className="text-neutral-500">Date</dt><dd>{draft.fields.date || '—'}</dd>
-            <dt className="text-neutral-500">Note</dt><dd className="break-words">{draft.fields.note || '—'}</dd>
-          </dl>
-          {draft.warnings?.map((w) => <p key={w} className="text-xs text-amber-800">{w}</p>)}
-          {draft.errors?.length > 0
-            ? <p role="alert" className="text-sm text-error">Fix the highlighted fields, then review again.</p>
-            : <p className="text-xs text-neutral-600">Nothing is saved until you confirm. This draft expires in 15 minutes.</p>}
-          <div className="flex gap-2">
-            <button type="button" onClick={confirm} disabled={!canConfirm(draft) || busy} className="btn btn-primary min-h-11 flex-1">
-              {busy ? 'Recording…' : 'Confirm and record'}
-            </button>
-            <button type="button" onClick={startOver} disabled={busy} className="btn btn-secondary min-h-11">Edit</button>
-          </div>
-        </section>
-      )}
-
-      {failure && (
-        <div role="alert" className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white p-3 text-sm text-neutral-800">
-          <p>{failure.text}</p>
-          {failure.uncertain && <Link to="/expenses" className="mt-1 inline-block underline">Open Expenses</Link>}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function AiPrivacy ({ onChanged }) {
-  const [consent, setConsent] = useState(null)
-  const [agreed, setAgreed] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  useEffect(() => {
-    let alive = true
-    assistantApi.consent().then((res) => {
-      if (!alive) return
-      if (res.ok) setConsent(res.data)
-      else setError(res.message || 'AI privacy settings could not be loaded. Use the Look up tab.')
-    })
-    return () => { alive = false }
-  }, [])
-  const save = async (enabled) => {
-    if (busy) return
-    setBusy(true)
-    setError('')
-    const res = await assistantApi.setConsent(enabled, consent?.policyFingerprint)
-    if (res.ok) { setConsent(res.data); setAgreed(false) }
-    else {
-      setError(res.message || 'Refresh privacy settings to check whether the change was saved.')
-      const fresh = await assistantApi.consent()
-      if (fresh.ok) setConsent(fresh.data)
-      setAgreed(false)
+    rec.onresult = (e) => {
+      heard = Array.from(e.results).map((r) => r[0]?.transcript || '').join(' ')
     }
-    setBusy(false)
-    onChanged()
+    rec.onerror = (e) => {
+      const err = describeVoiceError(e?.error)
+      if (err) toast.error(err)
+    }
+    rec.onend = () => {
+      recognizer.current = null
+      setListening(false)
+      onListeningChange && onListeningChange(false)
+      if (heard.trim()) onTranscript(heard)
+    }
+
+    recognizer.current = rec
+    try {
+      rec.start()
+      setListening(true)
+      onListeningChange && onListeningChange(true)
+    } catch {
+      recognizer.current = null
+      setListening(false)
+      onListeningChange && onListeningChange(false)
+    }
   }
+
   return (
-    <details className="mb-3 rounded-md border border-neutral-200 p-3 text-sm" data-testid="assistant-privacy">
-      <summary className="min-h-7 cursor-pointer font-medium">AI privacy {consent ? (consent.enabled ? '— allowed for this company' : '— off for this company') : ''}</summary>
-      <p className="mt-2 text-xs text-neutral-600">Typed messages go to the configured AI providers only after your company owner agrees. Never include passwords or API keys. Lookups remain available without AI.</p>
-      {consent && <p className="mt-2 whitespace-pre-line text-xs text-neutral-700">{consent.policyNotice}</p>}
-      {error && <p role="alert" className="mt-2 text-xs text-danger-fg">{error}</p>}
-      {consent?.canManage && (consent.enabled ? (
-        <button type="button" disabled={busy} className="mt-2 min-h-11 rounded-md border px-3 disabled:opacity-50" onClick={() => save(false)}>Turn off AI for this company</button>
-      ) : consent.policyFingerprint ? (
-        <>
-          <label className="mt-2 flex min-h-11 items-start gap-2 text-xs"><input type="checkbox" className="mt-1" checked={agreed} disabled={busy} onChange={(e) => setAgreed(e.target.checked)} />I have read this policy and approve sending typed messages to these providers for my company.</label>
-          <button type="button" disabled={busy || !agreed} className="mt-2 min-h-11 rounded-md border px-3 disabled:opacity-50" onClick={() => save(true)}>Allow AI for this company</button>
-        </>
-      ) : null)}
-      {consent && !consent.canManage && <p className="mt-2 text-xs text-neutral-600">Only your company owner can change this choice.</p>}
-    </details>
+    <button
+      type="button"
+      onClick={start}
+      aria-label={listening ? 'Stop listening' : 'Speak voice action'}
+      title={listening ? 'Listening... Tap to finish' : 'Tap to speak'}
+      className={`relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
+        listening
+          ? 'bg-rose-600 text-white animate-pulse shadow-md ring-4 ring-rose-200'
+          : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+      }`}
+    >
+      <Mic className={`h-5 w-5 ${listening ? 'text-white' : 'text-neutral-700'}`} />
+      {listening && (
+        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+        </span>
+      )}
+    </button>
   )
 }
 
-/** Tenant-scoped lookups, optional owner-approved model routing, and human-confirmed forms. */
-export default function AssistantPanel ({ open, onClose }) {
-  const [tab, setTab] = useState('find')
-  const [chatOn, setChatOn] = useState(false)
-  const [prefill, setPrefill] = useState(null) // { kind, fields, key } from an assistant suggestion; the form is still the person's to check and confirm
-  const openSuggestedForm = (kind, fields) => {
-    setPrefill({ kind, fields, key: Date.now() })
-    setTab(kind === 'new_customer' ? 'customer' : 'expense')
-  }
-  useEffect(() => {
-    if (!open) return undefined
-    let alive = true
-    setChatOn(false)
-    assistantApi.status().then((res) => { if (alive) setChatOn(!!res.data?.chat) })
-    return () => { alive = false }
-  }, [open])
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
+
+export default function AssistantPanel({ open, onClose }) {
   const [expanded, setExpanded] = useState(false)
+  const [language, setLanguage] = useState('en')
+  const [chatAvailable, setChatAvailable] = useState(false)
+  const [messages, setMessages] = useState([])
+  const [inputText, setInputText] = useState('')
+  const [sending, setSending] = useState(false)
+  const [showDrawer, setShowDrawer] = useState(false)
+  const [consentInfo, setConsentInfo] = useState(null)
+
+  const streamEndRef = useRef(null)
   const closeRef = useRef(null)
 
+  // Initial load
   useEffect(() => {
-    if (!open) return undefined
+    if (!open) return
+    let alive = true
+    assistantApi.status().then((res) => {
+      if (alive) setChatAvailable(!!res.data?.chat)
+    })
+    assistantApi.consent().then((res) => {
+      if (alive && res.ok) setConsentInfo(res.data)
+    })
+    return () => { alive = false }
+  }, [open])
+
+  // Key listeners
+  useEffect(() => {
+    if (!open) return
     closeRef.current?.focus()
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  // Scroll to bottom on new message
+  useEffect(() => {
+    streamEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, sending])
+
   if (!open) return null
-  const tabClass = (id) => `min-h-11 flex-1 border-b-2 px-3 text-sm font-medium ${tab === id ? 'border-primary-600 text-primary-700' : 'border-transparent text-neutral-600'}`
+
+  const handleSendMessage = async (rawMessage) => {
+    const text = (rawMessage || inputText).trim()
+    if (!text || sending) return
+
+    const problem = chatMessageProblem(text)
+    if (problem) {
+      toast.error(problem)
+      return
+    }
+
+    const userMsgId = `user-${Date.now()}`
+    const userMsg = {
+      id: userMsgId,
+      sender: 'user',
+      text,
+      timestamp: new Date()
+    }
+
+    setMessages((prev) => [...prev, userMsg])
+    if (!rawMessage) setInputText('')
+    setSending(true)
+
+    try {
+      const res = await assistantApi.chat(text)
+      if (!res.ok) {
+        const errorView = {
+          kind: 'refused',
+          text: res.message || 'The assistant could not complete this request.'
+        }
+        setMessages((prev) => [
+          ...prev,
+          { id: `assist-${Date.now()}`, sender: 'assistant', view: errorView, timestamp: new Date() }
+        ])
+      } else {
+        const view = describeChatReply(res.data)
+        setMessages((prev) => [
+          ...prev,
+          { id: `assist-${Date.now()}`, sender: 'assistant', view, timestamp: new Date() }
+        ])
+      }
+    } catch (err) {
+      const errorView = {
+        kind: 'unavailable',
+        text: err.message || 'Connection lost. Please try again.'
+      }
+      setMessages((prev) => [
+        ...prev,
+        { id: `assist-${Date.now()}`, sender: 'assistant', view: errorView, timestamp: new Date() }
+      ])
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleSaveConsent = async (enabled) => {
+    const res = await assistantApi.setConsent(enabled, consentInfo?.policyFingerprint)
+    if (res.ok) {
+      setConsentInfo(res.data)
+      assistantApi.status().then((r) => setChatAvailable(!!r.data?.chat))
+      toast.success(enabled ? 'AI enabled for this company.' : 'AI disabled.')
+    } else {
+      toast.error(res.message || 'Could not update AI privacy settings.')
+    }
+  }
+
   return (
     <aside
       role="dialog"
-      aria-label="Assistant"
+      aria-label="HexaBill ERP Copilot"
       data-shell-hides-nav
-      className={`fixed inset-0 z-[70] flex flex-col bg-white shadow-2xl md:left-auto md:right-0 ${expanded ? 'md:w-full' : 'md:w-[26rem]'}`}
+      className={`fixed inset-0 z-[70] flex flex-col bg-neutral-100 shadow-2xl transition-all md:left-auto md:right-0 ${
+        expanded ? 'md:w-full' : 'md:w-[28rem] lg:w-[32rem]'
+      }`}
     >
-      <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-2">
-        <h2 className="text-base font-semibold text-neutral-900">Assistant</h2>
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => setExpanded((v) => !v)} className="hidden min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-neutral-100 md:inline-flex" aria-label={expanded ? 'Use side panel' : 'Full screen'}>
-            {expanded ? <Minimize2 className="h-4 w-4" aria-hidden /> : <Maximize2 className="h-4 w-4" aria-hidden />}
+      {/* 1. Header */}
+      <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-neutral-900 leading-tight">HexaBill Copilot</h2>
+            <p className="text-[11px] text-neutral-500">Action ERP AI Agent</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {/* Language selector */}
+          <select
+            aria-label="Voice & Chat Language"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="h-8 rounded-md border border-neutral-300 bg-neutral-50 px-2 text-xs font-medium text-neutral-700 hover:bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+          >
+            {VOICE_LANGUAGES.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.id.toUpperCase()} · {l.label.split(' ')[0]}
+              </option>
+            ))}
+          </select>
+
+          {/* Expand toggle */}
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="hidden h-8 w-8 items-center justify-center rounded-md hover:bg-neutral-100 text-neutral-600 md:inline-flex"
+            aria-label={expanded ? 'Minimize side panel' : 'Full screen'}
+          >
+            {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
-          <button ref={closeRef} type="button" onClick={onClose} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-neutral-100" aria-label="Close assistant">
-            <X className="h-5 w-5" aria-hidden />
+
+          {/* Close */}
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-neutral-100 text-neutral-600"
+            aria-label="Close assistant"
+          >
+            <X className="h-5 w-5" />
           </button>
         </div>
       </header>
-      <div role="tablist" className="flex border-b border-neutral-200">
-        <button role="tab" aria-selected={tab === 'find'} type="button" className={tabClass('find')} onClick={() => setTab('find')}>Look up</button>
-        {chatOn && <button role="tab" aria-selected={tab === 'ask'} type="button" className={tabClass('ask')} onClick={() => setTab('ask')}>Ask</button>}
-        <button role="tab" aria-selected={tab === 'customer'} type="button" className={tabClass('customer')} onClick={() => setTab('customer')}>New customer</button>
-        <button role="tab" aria-selected={tab === 'expense'} type="button" className={tabClass('expense')} onClick={() => setTab('expense')}>New expense</button>
+
+      {/* 2. Quick Suggestion Chips */}
+      <div className="flex gap-1.5 overflow-x-auto border-b border-neutral-200 bg-white px-3 py-2 scrollbar-none">
+        <button
+          type="button"
+          onClick={() => handleSendMessage("Show today's business summary")}
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
+        >
+          <span>📊</span> Summary
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSendMessage("Which customers are overdue on routes?")}
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
+        >
+          <span>💸</span> Overdue
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSendMessage("Show low stock products")}
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
+        >
+          <span>⚠️</span> Low Stock
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSendMessage("Record payment received")}
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
+        >
+          <span>💰</span> Payment
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSendMessage("Create new sale invoice")}
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
+        >
+          <span>🧾</span> Invoice
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSendMessage("Record expense")}
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
+        >
+          <span>💸</span> Expense
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSendMessage("Add new customer")}
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
+        >
+          <span>🏢</span> Customer
+        </button>
       </div>
-      <div className={`flex-1 overflow-y-auto p-4 ${expanded ? 'md:mx-auto md:w-full md:max-w-2xl' : ''}`}>
-        <p className="mb-3 text-xs text-neutral-500">Lookups only read your records. Anything that creates data is shown to you first and needs your confirmation.</p>
-        <AiPrivacy onChanged={() => {
-          setChatOn(false)
-          setTab('find')
-          assistantApi.status().then((res) => setChatOn(!!res.data?.chat))
-        }} />
-        {tab === 'find' ? <FindTab /> : tab === 'ask' && chatOn ? <AskTab onOpenForm={openSuggestedForm} /> : tab === 'customer' ? (
-          <>
-            {prefill?.kind === 'new_customer' && <p className="mb-3 rounded-md border border-info-border bg-info-bg p-2 text-xs text-info-fg" data-testid="prefill-note">Filled in by the assistant from what you wrote. Nothing is saved. Check every field.</p>}
-            <NewCustomerTab key={prefill?.kind === 'new_customer' ? prefill.key : 'plain'} initial={prefill?.kind === 'new_customer' ? prefillFor('new_customer', prefill.fields) : undefined} />
-          </>
+
+      {/* 3. Action & Conversation Stream */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center text-center p-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 mb-3 shadow-inner">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <h3 className="text-base font-bold text-neutral-900">Talk & Do ERP Copilot</h3>
+            <p className="mt-1 text-xs text-neutral-600 max-w-sm">
+              Speak or type actions in English, മലയാളം, हिन्दी, or العربية.
+              Review calculated action cards with 1-tap confirmation.
+            </p>
+
+            <div className="mt-4 grid grid-cols-1 gap-2 w-full max-w-xs text-left">
+              <button
+                type="button"
+                onClick={() => handleSendMessage("Received 500 AED from Al Noor")}
+                className="rounded-lg border border-neutral-200 bg-white p-2 text-xs hover:border-primary-500 hover:bg-neutral-50"
+              >
+                <p className="font-semibold text-neutral-900">💰 "Received 500 AED from Al Noor"</p>
+                <p className="text-[11px] text-neutral-500">Prepares a payment receipt card</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSendMessage("Show today's business summary")}
+                className="rounded-lg border border-neutral-200 bg-white p-2 text-xs hover:border-primary-500 hover:bg-neutral-50"
+              >
+                <p className="font-semibold text-neutral-900">📊 "Show today's business summary"</p>
+                <p className="text-[11px] text-neutral-500">Live sales, collections, profit & receivables</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSendMessage("Record 80 AED fuel expense")}
+                className="rounded-lg border border-neutral-200 bg-white p-2 text-xs hover:border-primary-500 hover:bg-neutral-50"
+              >
+                <p className="font-semibold text-neutral-900">💸 "Record 80 AED fuel expense"</p>
+                <p className="text-[11px] text-neutral-500">Matches category and prepares expense</p>
+              </button>
+            </div>
+          </div>
         ) : (
-          <>
-            {prefill?.kind === 'new_expense' && <p className="mb-3 rounded-md border border-info-border bg-info-bg p-2 text-xs text-info-fg" data-testid="prefill-note">Filled in by the assistant from what you wrote. Nothing is saved. Check every field, especially the amount and the category.</p>}
-            <NewExpenseTab
-              key={prefill?.kind === 'new_expense' ? prefill.key : 'plain'}
-              initial={prefill?.kind === 'new_expense' ? (({ categoryId, ...rest }) => rest)(prefillFor('new_expense', prefill.fields, [])) : undefined}
-              initialCategoryName={prefill?.kind === 'new_expense' ? prefill.fields.categoryName : undefined}
-            />
-          </>
+          messages.map((m) => {
+            if (m.sender === 'user') {
+              return (
+                <div key={m.id} className="flex justify-end">
+                  <div className="max-w-[85%] rounded-2xl rounded-tr-none bg-primary-600 px-3.5 py-2 text-xs font-medium text-white shadow-sm">
+                    {m.text}
+                  </div>
+                </div>
+              )
+            }
+
+            const view = m.view
+            return (
+              <div key={m.id} className="flex justify-start">
+                <div className="w-full max-w-[95%] space-y-2">
+                  {view.heading && (
+                    <p className="text-xs font-semibold text-neutral-700 px-1">
+                      {view.heading}
+                    </p>
+                  )}
+
+                  {/* Summary Card */}
+                  {view.kind === 'dashboard_summary' && (
+                    <SummaryActionCard
+                      summary={view.summary}
+                      asOf={view.asOf}
+                      onAskPrompt={handleSendMessage}
+                    />
+                  )}
+
+                  {/* Suggestion Action Cards */}
+                  {view.kind === 'suggestion' && view.formKind === 'new_payment' && (
+                    <PaymentActionCard fields={view.fields} language={language} />
+                  )}
+
+                  {view.kind === 'suggestion' && view.formKind === 'new_sale' && (
+                    <InvoiceDraftActionCard fields={view.fields} language={language} />
+                  )}
+
+                  {view.kind === 'suggestion' && view.formKind === 'new_expense' && (
+                    <ExpenseActionCard fields={view.fields} language={language} />
+                  )}
+
+                  {view.kind === 'suggestion' && view.formKind === 'new_customer' && (
+                    <CustomerActionCard fields={view.fields} language={language} />
+                  )}
+
+                  {/* Tool Read Rows */}
+                  {view.kind === 'tool' && (
+                    <ToolResultRows tool={view.tool} rows={view.rows} asOf={view.asOf} />
+                  )}
+
+                  {/* Fallback text reply */}
+                  {view.text && (
+                    <div className="rounded-xl rounded-tl-none border border-neutral-200 bg-white p-3 text-xs text-neutral-800 shadow-sm leading-relaxed">
+                      {view.text}
+                    </div>
+                  )}
+
+                  {view.note && (
+                    <p className="text-[10px] text-neutral-400 px-1">
+                      {view.note}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )
+          })
+        )}
+
+        {sending && (
+          <div className="flex justify-start">
+            <div className="inline-flex items-center gap-2 rounded-xl rounded-tl-none border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-500 shadow-sm">
+              <Sparkles className="h-3.5 w-3.5 text-primary-600 animate-spin" />
+              <span>Thinking & checking books...</span>
+            </div>
+          </div>
+        )}
+
+        <div ref={streamEndRef} />
+      </div>
+
+      {/* 4. Manual Drawer / AI Privacy Collapsible */}
+      <div className="border-t border-neutral-200 bg-white">
+        <button
+          type="button"
+          onClick={() => setShowDrawer((v) => !v)}
+          className="flex w-full items-center justify-between px-3 py-1.5 text-[11px] font-medium text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700"
+        >
+          <span className="flex items-center gap-1.5">
+            <SlidersHorizontal className="h-3 w-3" />
+            AI Policy & Direct Tool Access
+          </span>
+          {showDrawer ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+        </button>
+
+        {showDrawer && (
+          <div className="border-t border-neutral-100 bg-neutral-50 p-3 text-xs space-y-2 max-h-48 overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-neutral-800">Company AI Consent</span>
+              {consentInfo?.canManage && (
+                <button
+                  type="button"
+                  onClick={() => handleSaveConsent(!consentInfo?.enabled)}
+                  className={`rounded px-2 py-0.5 text-[11px] font-semibold text-white ${
+                    consentInfo?.enabled ? 'bg-rose-600 hover:bg-rose-700' : 'bg-primary-600 hover:bg-primary-700'
+                  }`}
+                >
+                  {consentInfo?.enabled ? 'Disable AI' : 'Enable AI'}
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-neutral-500 leading-normal">
+              {consentInfo?.policyNotice || 'AI queries are tenant-isolated and strictly read-only for books. Human confirmation required for posting.'}
+            </p>
+          </div>
         )}
       </div>
+
+      {/* 5. Bottom Input & Voice Action Bar */}
+      <footer className="border-t border-neutral-200 bg-white p-3">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleSendMessage()
+          }}
+          className="flex items-center gap-2"
+        >
+          <VoiceMicButton
+            language={language}
+            onTranscript={(spokenText) => {
+              setInputText((cur) => appendTranscript(cur, spokenText, CHAT_MAX_CHARS))
+            }}
+          />
+
+          <input
+            type="text"
+            className="flex-1 min-h-10 rounded-full border border-neutral-300 bg-neutral-50 px-4 text-xs md:text-sm text-neutral-900 placeholder:text-neutral-400 focus:bg-white focus:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            placeholder={
+              language === 'ml'
+                ? "ചോദ്യമോ നിർദ്ദേശമോ പറയുക അല്ലെങ്കിൽ ടൈപ്പ് ചെയ്യുക..."
+                : language === 'ar'
+                ? "تحدث أو اكتب أمرك هنا..."
+                : language === 'hi'
+                ? "बोलें या लिखें (जैसे '500 AED payment received')..."
+                : "Speak or type an action (e.g. 'Received 500 AED from Al Noor')..."
+            }
+            value={inputText}
+            maxLength={CHAT_MAX_CHARS}
+            onChange={(e) => setInputText(e.target.value)}
+          />
+
+          <button
+            type="submit"
+            disabled={!inputText.trim() || sending}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm hover:bg-primary-700 disabled:opacity-40 disabled:hover:bg-primary-600"
+            aria-label="Send action"
+          >
+            <Send className="h-4 w-4" />
+          </button>
+        </form>
+      </footer>
     </aside>
   )
 }

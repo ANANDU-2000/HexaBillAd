@@ -303,6 +303,7 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 // Read-only assistant tools (no model, no writes). Add a tool by registering another IAssistantTool here.
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.FindCustomersTool>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.ProductStockTool>();
+builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.DashboardSummaryTool>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantToolRegistry>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantDraftService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantChatService>();

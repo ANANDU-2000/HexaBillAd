@@ -63,6 +63,7 @@ const DriverRoutesPage = lazy(() => import('../features/branches/DriverRoutePage
 const ReturnCreatePage = lazy(() => import('../features/returns/ReturnCreatePage'))
 const CustomersPage = lazy(() => import('../features/customers/CustomersPage'))
 const CustomerDetailPage = lazy(() => import('../features/customers/CustomerDetailPage'))
+const LegacyInvoicesPage = lazy(() => import('../features/legacy/LegacyInvoicesPage'))
 const MorePage = lazy(() => import('../pages/company/MorePage'))
 const DailyClosePage = lazy(() => import('../features/dailyClose/DailyClosePage'))
 const QuotationsPage = lazy(() => import('../features/documents/QuotationsPage'))
@@ -293,6 +294,7 @@ function App() {
               <Route path="/my-routes/:id" element={<DriverRoutePage />} />
               <Route path="/customers" element={<CustomersPage />} />
               <Route path="/customers/:id" element={<CustomerDetailPage />} />
+              <Route path="/legacy/invoices" element={<LegacyInvoicesPage />} />
               <Route path="/more" element={<MorePage />} />
               <Route path="/users" element={<UsersPage />} />
               <Route path="/settings" element={<SettingsPage />} />

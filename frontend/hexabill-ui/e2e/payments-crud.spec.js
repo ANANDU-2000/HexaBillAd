@@ -33,6 +33,12 @@ test('add customer payment -> persisted -> refresh -> void -> kept as a voided r
   const owing = customers.filter((c) => Number(c.balance) > 1).sort((a, b) => Number(b.balance) - Number(a.balance))
   expect(owing.length, 'a customer with an outstanding balance must exist on the local tenant').toBeGreaterThan(0)
   const customer = owing[0]
+  const initialBalance = Number(customer.balance ?? customer.Balance)
+  const currentBalance = async () => {
+    const latest = items((await api('/api/customers?page=1&pageSize=100')).json)
+      .find((c) => (c.id ?? c.Id) === (customer.id ?? customer.Id))
+    return latest ? Math.round(Number(latest.balance ?? latest.Balance) * 100) / 100 : null
+  }
   // Unique amount: 30-40% of the balance, in cents, varied per run so the test finds its own record.
   const balanceCents = Math.floor(Number(customer.balance) * 100)
   const amount = Math.floor(balanceCents * (0.3 + ((Date.now() % 1000) / 10000))) / 100
@@ -53,6 +59,7 @@ test('add customer payment -> persisted -> refresh -> void -> kept as a voided r
   // Persisted: the record exists in the API with the amount and customer entered.
   await expect.poll(async () => items((await api('/api/payments?page=1&pageSize=100')).json)
     .some((p) => Number(p.amount) === amount && p.customerId === customer.id)).toBe(true)
+  await expect.poll(currentBalance).toBe(Math.round((initialBalance - amount) * 100) / 100)
   const created = items((await api('/api/payments?page=1&pageSize=100')).json)
     .find((p) => Number(p.amount) === amount && p.customerId === customer.id)
 
@@ -80,6 +87,7 @@ test('add customer payment -> persisted -> refresh -> void -> kept as a voided r
     const p = items((await api('/api/payments?page=1&pageSize=100')).json).find((x) => x.id === created.id)
     return p ? [Number(p.amount), p.reference] : null
   }).toEqual([editedAmount, reference])
+  await expect.poll(currentBalance).toBe(Math.round((initialBalance - editedAmount) * 100) / 100)
   await page.reload({ waitUntil: 'networkidle' })
   await expect(page.locator('main').getByText(editedAmount.toFixed(2)).filter({ visible: true }).first()).toBeVisible()
 
@@ -95,4 +103,5 @@ test('add customer payment -> persisted -> refresh -> void -> kept as a voided r
     const p = items((await api('/api/payments?page=1&pageSize=100')).json).find((x) => x.id === created.id)
     return p ? String(p.status || '').toLowerCase() : 'missing'
   }).toMatch(/void/)
+  await expect.poll(currentBalance).toBe(Math.round(initialBalance * 100) / 100)
 })

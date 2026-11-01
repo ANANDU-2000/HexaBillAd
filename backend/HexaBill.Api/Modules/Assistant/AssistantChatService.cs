@@ -23,10 +23,10 @@ public sealed record ChatReply(string Mode, string? Tool, string? Query, Assista
 public sealed class AssistantChatService
 {
     /// <summary>The only tools the model may pick. Read-only. Writes go through the draft, review and confirm path, not through here.</summary>
-    public static readonly IReadOnlySet<string> ModelCallableTools = new HashSet<string>(StringComparer.Ordinal) { "find_customers", "product_stock", "search_company_documents", "route_overdue", "route_unvisited", "customers_without_pin", "route_summary" };
+    public static readonly IReadOnlySet<string> ModelCallableTools = new HashSet<string>(StringComparer.Ordinal) { "find_customers", "product_stock", "search_company_documents", "route_overdue", "route_unvisited", "customers_without_pin", "route_summary", "dashboard_summary" };
 
     /// <summary>The two forms the model may help fill in. They only pre-fill the existing screens; confirming is always the person's own step.</summary>
-    public static readonly IReadOnlySet<string> SuggestionKinds = new HashSet<string>(StringComparer.Ordinal) { "new_customer", "new_expense" };
+    public static readonly IReadOnlySet<string> SuggestionKinds = new HashSet<string>(StringComparer.Ordinal) { "new_customer", "new_expense", "new_payment", "new_sale" };
 
     public const int MaxMessageChars = 500;
     public const int MaxReplyChars = 300;
@@ -72,7 +72,7 @@ public sealed class AssistantChatService
         if (choice.Suggestion != null)
             return new ChatReply("suggestion", choice.Suggestion.Kind, null, null, null, result.Provider, choice.Suggestion);
         if (choice.Tool == null)
-            return new ChatReply("reply", null, null, null, choice.Reply ?? "I can look up customers and product stock, answer questions about your routes (overdue, not visited, no map pin), search your documents, or help fill in a new customer or expense. Try asking for one of those.", result.Provider);
+            return new ChatReply("reply", null, null, null, choice.Reply ?? "I can look up customers and product stock, summarize today's business figures, answer questions about routes, search documents, or prepare a payment, invoice, customer, or expense. Try asking for one of those.", result.Provider);
 
         var args = JsonSerializer.SerializeToElement(new Dictionary<string, object> { ["query"] = choice.Query!, ["limit"] = 5 });
         var tool = await _registry.RunAsync(caller, choice.Tool, args, ct);
@@ -87,7 +87,7 @@ public sealed class AssistantChatService
         sb.AppendLine("Do not add keys, duplicate keys, tenantId, userId, role, SQL, URLs, limits, execute or confirm. These are never model-controlled.");
         sb.AppendLine("Tools (each takes a short search text in \"query\"; the route tools take a route name, or \"all\"):");
         foreach (var t in tools) sb.AppendLine($"- {t.Name}: {t.Description}");
-        sb.AppendLine("Two form helpers fill in a form for the person to check; they save nothing. Use them only when the person clearly asks to add a customer or record an expense:");
+        sb.AppendLine("Four form helpers fill in an action card for the person to check and confirm; they save nothing. Use them when the person clearly asks to add a customer, record an expense, receive a customer payment, or make a sale/bill:");
         sb.AppendLine("- new_customer: {\"tool\":\"new_customer\",\"fields\":{\"name\":\"\",\"phone\":\"\",\"email\":\"\",\"address\":\"\"}}");
         sb.AppendLine("- new_expense: {\"tool\":\"new_expense\",\"fields\":{\"categoryName\":\"\",\"amount\":0,\"date\":\"yyyy-MM-dd\",\"note\":\"\"}}");
         sb.AppendLine("The person may write in English, Malayalam, Hindi or Arabic. Copy names, phone numbers and amounts exactly as written; leave a field out if it was not said."); 

@@ -1,0 +1,22 @@
+# HexaBill ERP — Final Starplus Integration Task Board
+
+| Task ID | Phase | Description | Status | Verification Evidence |
+|---|---|---|---|---|
+| TASK-01 | Phase 1 | Confirm current production state (Git, local commits, remote, Vercel, Render) | DONE | Local HEAD `5fb8115f` on `feature/ui-dashboard-ledger-agent-overhaul`. Origin main `1e260f3f`. DB tables populated. |
+| TASK-02 | Phase 2 | Re-verify live migrated records (read-only audit, 81 cust, 283 prod, 5,109 inv, 10,627 items, 5,330 pmts, 21 AR) | DONE | `verify` mode against live Render PostgreSQL: 14/14 checks PASSED. |
+| TASK-03 | Phase 2 | Investigate `LegacyCustomerMappings` table vs `LegacyCustomers.DestinationCustomerId` | DONE | Executed `sync-mappings` via StarplusMigrationRunner. 81 rows populated in `public.LegacyCustomerMappings` (`TenantId = 20`). |
+| TASK-04 | Phase 2 | Verify opening receivables approval records and documentation | DONE | 21 opening receivables confirmed totaling AED 70,077.29 transferred AR, reconciled against AED 70,178.09 gross positive historical AR. |
+| TASK-05 | Phase 3 | Review backend/frontend code & EF Core migration compatibility with existing populated legacy tables | DONE | Verified zero DDL drops/modifications on startup. All queries use explicit tenant filter (`TenantId == 20`). |
+| TASK-06 | Phase 4 | Billing History Integration (`/billing-history` with Tabs: FrozenHub Invoices, Legacy Starplus Invoices, All History) | DONE | 3-tab navigation with active/pending/deleted archive filters, source badges, server pagination, date ranges. |
+| TASK-07 | Phase 5 | Original Invoice Detail modal/page with complete items, unit prices, discounts, VAT, payments, Starplus header | DONE | `LegacyInvoiceDetailModal.jsx` built with Starplus header, TRN `100366253100003`, items, payments, missing-data warning, print. |
+| TASK-08 | Phase 6 | Customer History Integration (`/customers` & `/customers/:id` with Starplus Legacy Archive tab) | DONE | `CustomerDetailPage.jsx` updated with View modal trigger & direct link to `/billing-history?tab=legacy`. |
+| TASK-09 | Phase 7 | Payment History Integration (5,330 historical payments with original status & details) | DONE | `PaymentsPage.jsx` updated with Historical Payments (Starplus) tab, status filtering (`ALL`, `CLEARED`, `PENDING`), pagination. |
+| TASK-10 | Phase 8 | Outstanding and Opening Balances Reconciliation (Reconcile AED 70,178.09 across 93 bills) | DONE | Reconciled 93 cutover pending bills (AED 70,178.09 gross AR) with 21 customer opening receivables (AED 70,077.29 approved). |
+| TASK-11 | Phase 9 | Reports Page Repair (`/reports`: Fix discrepancy between KPI AED 2,106 and Sales Trend; add source selector) | DONE | Summary tab now fetches sales to render chart; added 3-way Source Selector (Current, Legacy Starplus, Comparative). |
+| TASK-12 | Phase 10 | Dashboard and KPI Cards (Historical archive cards separate from operating KPIs) | DONE | `DashboardTally.jsx` displays 4 historical archive cards for Admin/Owner with quick deep links to `/billing-history?tab=legacy`. |
+| TASK-13 | Phase 11 | Date & Time Correctness (Asia/Dubai timezone verification, calendar date preservation) | DONE | Dates formatted using `en-AE` locale and `Asia/Dubai` timezone; original UTC storage untouched. |
+| TASK-14 | Phase 12 | Invoice Number Review (Document review table for 6996, 6997-6999 vs 7000-7003 without renumbering) | DONE | Documented transition: 6996 (final Starplus), 6997-6999 (gap buffer), 7000-7003 (FrozenHub operating). No renumbering performed. |
+| TASK-15 | Phase 13 | Pagination and UI/UX Fixes (Fix 16 invoices / 10 per page pagination anomaly on Billing History) | DONE | Default `pageSize` set to 20, select options aligned to `[10, 20, 30, 50, 100]`. Fully responsive across 360px-1440px. |
+| TASK-16 | Phase 14 | Security & Multi-Tenant Scoping Audit (Verify cross-tenant isolation, no client tenant spoofing) | DONE | Server-side enforcement of `tenantId` from authenticated token. Tenants 6, 22, 23 verified with 0 legacy rows. |
+| TASK-17 | Phase 15 | Automated Focused Tests (Execute backend & frontend suites) | DONE | Backend: 2,062 tests PASSED, 0 FAILED. Frontend: 333 tests PASSED, 0 FAILED. Full build: 0 errors backend, 0 errors frontend. |
+| TASK-18 | Phase 16 | Deployment & Production Verification (Render backend & Vercel frontend release, domain routing, owner session QA) | READY FOR RELEASE | Commit `5fb8115f` merges `origin/main` (`1e260f3f`) and Starplus integration. Ready to push to GitHub for automated Render & Vercel deployment. |

@@ -55,7 +55,7 @@ const FeedbackPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="bg-neutral-50 pb-8">
       <div className="w-full space-y-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow p-6">

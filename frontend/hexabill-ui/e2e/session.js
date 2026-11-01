@@ -27,7 +27,8 @@ const cache = new Map()
 
 export async function apiLogin (slug) {
   if (cache.has(slug)) return cache.get(slug)
-  const email = process.env[`HEXABILL_E2E_EMAIL_${slug.toUpperCase()}`] || `${slug}@hexabill.company`
+  const emailKey = `HEXABILL_E2E_EMAIL_${slug.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`
+  const email = process.env[emailKey] || `${slug}@hexabill.company`
   // Local SQLite can report "database is locked" when workers sign in at once; retry 5xx with backoff.
   let res
   for (let attempt = 1; attempt <= 5; attempt++) {

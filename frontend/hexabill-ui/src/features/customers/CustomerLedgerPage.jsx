@@ -169,10 +169,9 @@ const CustomerLedgerPage = () => {
     const toParam = searchParams.get('to')
     if (fromParam && toParam) return { from: fromParam, to: toParam }
     const now = new Date()
-    const yearsAgo = new Date(now)
-    yearsAgo.setFullYear(now.getFullYear() - 5)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     return {
-      from: localDateString(yearsAgo),
+      from: localDateString(monthStart),
       to: localDateString(now)
     }
   })
@@ -188,10 +187,9 @@ const CustomerLedgerPage = () => {
   const [ledgerFiltersOpen, setLedgerFiltersOpen] = useState(false)
   const [filterDraft, setFilterDraft] = useState(() => {
     const now = new Date()
-    const yearsAgo = new Date(now)
-    yearsAgo.setFullYear(now.getFullYear() - 5)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     return {
-      from: searchParams.get('from') || localDateString(yearsAgo),
+      from: searchParams.get('from') || localDateString(monthStart),
       to: searchParams.get('to') || localDateString(now),
       branchId: searchParams.get('branchId') || '',
       routeId: searchParams.get('routeId') || '',
@@ -2267,9 +2265,9 @@ const CustomerLedgerPage = () => {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col overflow-hidden bg-white min-h-0">
-        {/* Customer picker (UX-L01/L03): search first; branch and route filters sit behind a Filters
-            toggle that shows how many are active, so they never push the list down by default. */}
-        <div className="shrink-0 border-b border-neutral-200 bg-neutral-50 px-3 py-2">
+        {/* Customer picker: only show full search bar when no customer is selected */}
+        {!selectedCustomer && (
+          <div className="shrink-0 border-b border-neutral-200 bg-neutral-50 px-3 py-2">
           <div className="flex items-center gap-2">
             {selectedCustomer && (
               <button
@@ -2373,10 +2371,11 @@ const CustomerLedgerPage = () => {
               <span className="hidden md:inline min-w-0 truncate font-semibold text-primary-800" title={selectedCustomer.name}>{selectedCustomer.name}</span>
             )}
             <span className="ml-auto whitespace-nowrap" aria-live="polite">
-              {searchDropdownLoading ? 'Searching…' : (searchTerm || !selectedCustomer ? `${searchDropdownTotal} customer(s)` : `Total: ${customers.length}`)}
+              {searchDropdownLoading ? 'Searching…' : (searchTerm ? `${searchDropdownTotal} customer(s)` : `Total: ${customers.length}`)}
             </span>
           </div>
         </div>
+        )}
 
         {/* CUSTOMER LIST — fills remaining viewport when no customer selected */}
         {(searchTerm || !selectedCustomer) && (
@@ -2465,9 +2464,28 @@ const CustomerLedgerPage = () => {
               {/* Compact customer + balance + actions */}
               <div className="sticky top-0 z-20 shrink-0 bg-white border-b border-neutral-200 px-3 py-2 sm:px-4">
                 <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 sm:items-center">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => clearSelectedCustomer({ keepSearch: false })}
+                      className="inline-flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-md border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
+                      title="Switch customer (F2)"
+                      aria-label="Back to customer list"
+                    >
+                      <ArrowLeft className="h-4 w-4" aria-hidden />
+                    </button>
                     <div className="min-w-0">
-                      <h2 className="text-sm sm:text-base font-bold text-neutral-900 truncate">{selectedCustomer.name}</h2>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-sm sm:text-base font-bold text-neutral-900 truncate">{selectedCustomer.name}</h2>
+                        <button
+                          type="button"
+                          onClick={() => clearSelectedCustomer({ keepSearch: true })}
+                          className="text-xs text-primary-700 font-medium hover:underline shrink-0"
+                          title="Switch customer (F2)"
+                        >
+                          Switch (F2)
+                        </button>
+                      </div>
                       <div className="flex items-center gap-2 text-micro sm:text-xs text-neutral-600 flex-wrap">
                         {selectedCustomer.id !== 'cash' && selectedCustomer.phone && <span>{selectedCustomer.phone}</span>}
                         {selectedCustomer.id !== 'cash' && selectedCustomer.trn && <span>TRN: {selectedCustomer.trn}</span>}
@@ -2690,7 +2708,7 @@ const CustomerLedgerPage = () => {
                 <div
                   ref={ledgerScrollRef}
                   onScroll={persistLedgerScroll}
-                  className="flex-1 min-h-0 overflow-auto w-full pb-24 lg:pb-2"
+                  className="flex-1 min-h-0 flex flex-col overflow-visible md:overflow-hidden w-full pb-24 lg:pb-0"
                 >
                   {activeTab === 'ledger' && (
                     showLedgerLoading ? (
@@ -3788,11 +3806,33 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
 
   return (
     <div className="w-full h-full flex flex-col bg-neutral-50 min-w-0 min-h-0">
-      {/* Compact metrics strip */}
-      <div className="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1 px-2 py-1.5 bg-white border-b border-neutral-200 text-xs">
-        <span className="text-neutral-500">Sales <strong className="text-neutral-900 tabular-nums">{formatCurrency(Number(totalDebit) || 0)}</strong></span>
-        <span className="text-neutral-500">Paid <strong className="text-neutral-900 tabular-nums">{formatCurrency(Number(totalCredit) || 0)}</strong></span>
-        <span className="text-neutral-500">Closing <strong className="tabular-nums text-neutral-900">{formatBalance(Number(closingBalance) || 0)}</strong></span>
+      {/* 5 Customer KPI Cards */}
+      <div className="shrink-0 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 px-3 py-2 bg-neutral-50 border-b border-neutral-200" aria-label="Customer summary">
+        <div className="rounded-md border border-neutral-200 border-l-4 border-l-primary-600 bg-white p-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Total Billed</p>
+          <p className="text-sm font-bold tabular-nums text-neutral-900 truncate">{formatCurrency(Number(totalDebit) || 0)}</p>
+          <p className="text-[10px] text-neutral-500 truncate">Debits in period</p>
+        </div>
+        <div className="rounded-md border border-neutral-200 border-l-4 border-l-emerald-600 bg-white p-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Total Received</p>
+          <p className="text-sm font-bold tabular-nums text-emerald-700 truncate">{formatCurrency(Number(totalCredit) || 0)}</p>
+          <p className="text-[10px] text-neutral-500 truncate">Payments & credits</p>
+        </div>
+        <div className="rounded-md border border-neutral-200 border-l-4 border-l-amber-600 bg-white p-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Period Net</p>
+          <p className="text-sm font-bold tabular-nums text-amber-800 truncate">{formatCurrency((Number(totalDebit) || 0) - (Number(totalCredit) || 0))}</p>
+          <p className="text-[10px] text-neutral-500 truncate">Billed minus paid</p>
+        </div>
+        <div className="rounded-md border border-neutral-200 border-l-4 border-l-violet-600 bg-white p-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Transactions</p>
+          <p className="text-sm font-bold tabular-nums text-neutral-900 truncate">{displayedEntries.length}</p>
+          <p className="text-[10px] text-neutral-500 truncate">Ledger rows</p>
+        </div>
+        <div className="rounded-md border border-neutral-200 border-l-4 border-l-rose-600 bg-white p-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Closing Balance</p>
+          <p className={`text-sm font-bold tabular-nums truncate ${(Number(closingBalance) || 0) > 0 ? 'text-red-700' : (Number(closingBalance) || 0) < 0 ? 'text-emerald-700' : 'text-neutral-900'}`}>{formatBalance(Number(closingBalance) || 0)}</p>
+          <p className="text-[10px] text-neutral-500 truncate">Current balance</p>
+        </div>
       </div>
 
       {/* Filters + statement actions (UX-L02): two selects and one menu instead of four coloured buttons. */}
@@ -3843,12 +3883,13 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                 <th className="px-3 py-2 text-right text-xs font-bold text-neutral-700">Debit</th>
                 <th className="px-3 py-2 text-right text-xs font-bold text-neutral-700">Credit</th>
                 <th className="px-3 py-2 text-right text-xs font-bold text-neutral-700">Balance</th>
+                <th className="px-3 py-2 text-right text-xs font-bold text-neutral-700">Actions</th>
                 </tr>
               </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
               {displayedEntries.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-4 py-8 text-center text-neutral-500">
+                  <td colSpan="6" className="px-4 py-8 text-center text-neutral-500">
                     No transactions found
                   </td>
                 </tr>
@@ -3883,41 +3924,20 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                         {dateStr}
                       </td>
                       <td className="px-3 py-2 align-top text-sm text-neutral-900">
-                        <p className="font-medium">{entry.type} · {invoiceNo}</p>
-                        <p className="text-xs text-neutral-600">{entry.paymentMode || entry.PaymentMode || ''}{entryStatus !== '-' ? ` · ${entryStatus}` : ''}</p>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {((entry.type === 'Sale' || entry.type === 'Invoice') && (entry.saleId ?? entry.SaleId)) ? (
-                            <button type="button" onClick={() => navigate(`/returns/create?saleId=${entry.saleId ?? entry.SaleId}`, { state: { returnTo: location.pathname + location.search } })} className="inline-flex min-h-9 items-center gap-1 rounded-md bg-amber-100 px-2 text-xs font-medium text-amber-800" aria-label="Create return">Return</button>
-                          ) : null}
-                          {entry.type === 'Payment' && (entry.paymentId ?? entry.PaymentId) && onViewReceipt ? (() => {
-                            const ledgerPay = paymentFromCustomerLedgerEntry(entry)
-                            if (ledgerPay && !canReceivePaymentReceipt(ledgerPay)) return null
-                            return (
-                            <button type="button" onClick={() => onViewReceipt(entry.paymentId ?? entry.PaymentId)} className="inline-flex min-h-9 items-center rounded-md bg-primary-100 px-2 text-xs font-medium text-primary-800" aria-label="Print payment receipt">Receipt</button>
-                            )
-                          })() : null}
-                          {entry.type === 'Sale Return' && (entry.returnId ?? entry.ReturnId) ? (
-                            <>
-                              <button type="button" onClick={async () => {
-                                try {
-                                  const blob = await returnsAPI.getReturnBillPdf(entry.returnId ?? entry.ReturnId)
-                                  const url = window.URL.createObjectURL(blob)
-                                  const a = document.createElement('a')
-                                  a.href = url
-                                  a.download = `Return_${entry.reference || entry.returnId || entry.ReturnId}_${localDateString(new Date())}.pdf`
-                                  document.body.appendChild(a)
-                                  a.click()
-                                  window.URL.revokeObjectURL(url)
-                                  document.body.removeChild(a)
-                                } catch (e) {
-                                  if (!e?._handledByInterceptor) toast.error('Failed to generate PDF')
-                                }
-                              }} className="inline-flex min-h-9 items-center rounded-md bg-primary-100 px-2 text-xs font-medium text-primary-800">PDF</button>
-                              {onDeleteReturn ? <button type="button" onClick={() => onDeleteReturn(entry.returnId ?? entry.ReturnId)} className="inline-flex min-h-9 items-center rounded-md bg-red-100 px-2 text-xs font-medium text-red-800">Delete</button> : null}
-                              {(entry.status === 'Credit Issued' || entry.status === 'CreditIssued') && onSettleCredit ? <button type="button" onClick={() => onSettleCredit(entry)} className="inline-flex min-h-9 items-center rounded-md bg-emerald-100 px-2 text-xs font-medium text-emerald-800">Settle</button> : null}
-                            </>
-                          ) : null}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-semibold text-neutral-900">{entry.type} · {invoiceNo}</p>
+                          {entryStatus !== '-' && (
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                              entryStatus === 'Paid' ? 'bg-emerald-100 text-emerald-800' :
+                              entryStatus === 'Unpaid' ? 'bg-amber-100 text-amber-800' :
+                              entryStatus === 'Partial' ? 'bg-blue-100 text-blue-800' :
+                              'bg-neutral-100 text-neutral-700'
+                            }`}>
+                              {entryStatus}
+                            </span>
+                          )}
                         </div>
+                        {entry.paymentMode && <p className="text-xs text-neutral-500 mt-0.5">{entry.paymentMode}</p>}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-neutral-900">
                         {(Number(entry.debit) || 0) > 0 ? formatCurrency(Number(entry.debit) || 0) : '-'}
@@ -3929,6 +3949,77 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                         }`}>
                         {formatBalance(Number(entry.balance) || 0)}
                       </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-right text-xs align-top">
+                        <div className="flex items-center justify-end gap-1">
+                          {((entry.type === 'Sale' || entry.type === 'Invoice') && (entry.saleId ?? entry.SaleId)) ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/returns/create?saleId=${entry.saleId ?? entry.SaleId}`, { state: { returnTo: location.pathname + location.search } })}
+                              className="inline-flex min-h-7 items-center rounded-md border border-amber-300 bg-amber-50 px-2 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                              title="Create return"
+                            >
+                              Return
+                            </button>
+                          ) : null}
+                          {entry.type === 'Payment' && (entry.paymentId ?? entry.PaymentId) && onViewReceipt ? (() => {
+                            const ledgerPay = paymentFromCustomerLedgerEntry(entry)
+                            if (ledgerPay && !canReceivePaymentReceipt(ledgerPay)) return null
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => onViewReceipt(entry.paymentId ?? entry.PaymentId)}
+                                className="inline-flex min-h-7 items-center rounded-md border border-primary-200 bg-primary-50 px-2 text-xs font-medium text-primary-800 hover:bg-primary-100"
+                                title="Print receipt"
+                              >
+                                Receipt
+                              </button>
+                            )
+                          })() : null}
+                          {entry.type === 'Sale Return' && (entry.returnId ?? entry.ReturnId) ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    const blob = await returnsAPI.getReturnBillPdf(entry.returnId ?? entry.ReturnId)
+                                    const url = window.URL.createObjectURL(blob)
+                                    const a = document.createElement('a')
+                                    a.href = url
+                                    a.download = `Return_${entry.reference || entry.returnId || entry.ReturnId}_${localDateString(new Date())}.pdf`
+                                    document.body.appendChild(a)
+                                    a.click()
+                                    window.URL.revokeObjectURL(url)
+                                    document.body.removeChild(a)
+                                  } catch (e) {
+                                    if (!e?._handledByInterceptor) toast.error('Failed to generate PDF')
+                                  }
+                                }}
+                                className="inline-flex min-h-7 items-center rounded-md border border-neutral-300 bg-neutral-100 px-2 text-xs font-medium text-neutral-800 hover:bg-neutral-200"
+                              >
+                                PDF
+                              </button>
+                              {onDeleteReturn ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onDeleteReturn(entry.returnId ?? entry.ReturnId)}
+                                  className="inline-flex min-h-7 items-center rounded-md border border-rose-300 bg-rose-50 px-2 text-xs font-medium text-rose-800 hover:bg-rose-100"
+                                >
+                                  Delete
+                                </button>
+                              ) : null}
+                              {(entry.status === 'Credit Issued' || entry.status === 'CreditIssued') && onSettleCredit ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onSettleCredit(entry)}
+                                  className="inline-flex min-h-7 items-center rounded-md border border-emerald-300 bg-emerald-50 px-2 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
+                                >
+                                  Settle
+                                </button>
+                              ) : null}
+                            </>
+                          ) : null}
+                        </div>
+                      </td>
                     </tr>
                   )
                 })
@@ -3937,7 +4028,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             {hasMore && (
               <tfoot className="bg-neutral-50 border-t border-neutral-200">
                 <tr>
-                  <td colSpan="5" className="px-4 py-3 text-center">
+                  <td colSpan="6" className="px-4 py-3 text-center">
                     <button
                       onClick={handleLoadMore}
                       className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors"

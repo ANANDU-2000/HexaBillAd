@@ -72,6 +72,17 @@ export function readBackText(kind, fields = {}) {
     if (fields.amount) parts.push(`Amount: ${String(fields.amount).split('.').map(spellDigits).join(' point ')}.`)
     if (fields.date) parts.push(`Date: ${String(fields.date).split('-').map(spellDigits).join(', ')}.`)
     if (fields.note) parts.push(`Note: ${fields.note}.`)
+  } else if (kind === 'new_payment') {
+    parts.push('Payment receipt.')
+    if (fields.customerName) parts.push(`Customer: ${fields.customerName}.`)
+    if (fields.amount) parts.push(`Amount: ${String(fields.amount).split('.').map(spellDigits).join(' point ')} AED.`)
+    if (fields.mode) parts.push(`Mode: ${fields.mode}.`)
+    if (fields.reference) parts.push(`Reference: ${fields.reference}.`)
+  } else if (kind === 'new_sale') {
+    parts.push('Sale invoice draft.')
+    if (fields.customerName) parts.push(`Customer: ${fields.customerName}.`)
+    if (fields.items) parts.push(`Items: ${fields.items}.`)
+    if (fields.amount) parts.push(`Amount: ${String(fields.amount).split('.').map(spellDigits).join(' point ')} AED.`)
   }
   parts.push('Check the form on screen before you confirm.')
   return parts.join(' ')

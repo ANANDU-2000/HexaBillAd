@@ -2,6 +2,7 @@ using System.Text.Json;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Modules.Products;
+using HexaBill.Api.Modules.Reports;
 
 namespace HexaBill.Api.Modules.Assistant;
 
@@ -150,3 +151,44 @@ public sealed class ProductStockTool : IAssistantTool
         return new AssistantToolResult(Name, rows, sources, asOf);
     }
 }
+
+/// <summary>Today's key business metrics: sales, collections, profit, pending, low stock.</summary>
+public sealed class DashboardSummaryTool : IAssistantTool
+{
+    private readonly IReportService _reports;
+    public DashboardSummaryTool(IReportService reports) => _reports = reports;
+
+    public string Name => "dashboard_summary";
+    public string Description => "Today's business summary: sales, cash collections, purchases, expenses, profit, pending receivables, and low stock count. Shows business performance.";
+    public IReadOnlyList<string> Arguments { get; } = new[] { "query", "limit" };
+    public bool AllowedFor(AssistantCaller caller) => caller.TenantId > 0;
+
+    public async Task<AssistantToolResult> RunAsync(AssistantCaller caller, JsonElement args, CancellationToken ct)
+    {
+        var asOf = DateTime.UtcNow;
+        var summary = await _reports.GetSummaryReportAsync(caller.TenantId, skipCache: true);
+        var row = new Dictionary<string, object?>
+        {
+            ["salesToday"] = summary.SalesToday,
+            ["netSalesToday"] = summary.NetSalesToday,
+            ["returnsToday"] = summary.ReturnsToday,
+            ["collectionsToday"] = summary.CashCollectionsTotal,
+            ["purchasesToday"] = summary.PurchasesToday,
+            ["expensesToday"] = summary.ExpensesToday,
+            ["profitToday"] = caller.IsOwnerOrAdmin ? summary.ProfitToday : null,
+            ["pendingBills"] = summary.PendingBills,
+            ["pendingBillsAmount"] = summary.PendingBillsAmount,
+            ["lowStockCount"] = summary.LowStockProducts?.Count ?? 0,
+            ["invoicesToday"] = summary.InvoicesToday,
+            ["overdueCustomersCount"] = summary.OverdueCustomersCount,
+            ["overdueAmountTotal"] = summary.OverdueAmountTotal,
+        };
+        var rows = new List<Dictionary<string, object?>> { row };
+        var sources = new List<AssistantSource>
+        {
+            new("report", "today_summary", "Today's Business Summary", asOf)
+        };
+        return new AssistantToolResult(Name, rows, sources, asOf);
+    }
+}
+

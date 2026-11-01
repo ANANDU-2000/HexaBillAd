@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
-import { ArrowLeft, Edit, Mail, Phone, MapPin, DollarSign, Calendar, FileText, TrendingUp, TrendingDown, RefreshCw, CreditCard } from 'lucide-react'
+import { ArrowLeft, Edit, Mail, Phone, MapPin, DollarSign, Calendar, FileText, TrendingUp, TrendingDown, RefreshCw, CreditCard, ShieldAlert } from 'lucide-react'
 import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
-import { customersAPI } from '../../services/index'
+import { customersAPI, legacyAPI } from '../../services/index'
 import { LoadingCard } from '../../components/Loading'
 import { localDateString } from '../../utils/dateFormat'
 import { navigationUrl } from '../../utils/shopLocation'
+import LegacyInvoiceDetailModal from '../../components/LegacyInvoiceDetailModal'
 
 const CustomerDetailPage = () => {
   const { id } = useParams()
@@ -25,11 +26,15 @@ const CustomerDetailPage = () => {
   })
   const [statementTo, setStatementTo] = useState(() => localDateString(new Date()))
   const [statementDownloading, setStatementDownloading] = useState(false)
+  const [legacyInvoices, setLegacyInvoices] = useState([])
+  const [legacyLoading, setLegacyLoading] = useState(false)
+  const [selectedLegacyInvoiceId, setSelectedLegacyInvoiceId] = useState(null)
 
   useEffect(() => {
     if (id) {
       loadCustomer()
       loadLedger()
+      loadLegacyInvoices()
     }
   }, [id])
 
@@ -66,6 +71,20 @@ const CustomerDetailPage = () => {
       setLedger([])
     } finally {
       setLedgerLoading(false)
+    }
+  }
+
+  const loadLegacyInvoices = async () => {
+    try {
+      setLegacyLoading(true)
+      const res = await legacyAPI.getInvoices({ customerId: id, pageSize: 50 })
+      if (res?.success && res.data) {
+        setLegacyInvoices(res.data.items || [])
+      }
+    } catch (err) {
+      console.warn('Could not load legacy invoices', err)
+    } finally {
+      setLegacyLoading(false)
     }
   }
 
@@ -396,6 +415,83 @@ const CustomerDetailPage = () => {
           </>
         )}
       </div>
+
+      {/* Historical Starplus Legacy Archive (If Customer Has Migrated Bills) */}
+      {legacyInvoices.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-amber-200 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-amber-600" />
+              <h2 className="text-lg font-semibold text-neutral-900">
+                Starplus Legacy Archive ({legacyInvoices.length} historical bills)
+              </h2>
+            </div>
+            <Link
+              to={`/billing-history?tab=legacy&search=${encodeURIComponent(customer?.name || '')}`}
+              className="text-xs font-medium text-primary-700 hover:underline"
+            >
+              View in full archive &rarr;
+            </Link>
+          </div>
+
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+            <strong>Historical Reference Only:</strong> These invoices were issued by Starplus Foodstuff Trading prior to cutover.
+            Approved opening balance was transferred to FrozenHub 1 without reissuing historical tax invoices.
+          </div>
+
+          <div className="overflow-x-auto border border-neutral-200 rounded-lg">
+            <table className="min-w-full divide-y divide-neutral-200 text-xs">
+              <thead className="bg-neutral-50 text-neutral-600 font-semibold">
+                <tr>
+                  <th className="px-3 py-2 text-left">Inv #</th>
+                  <th className="px-3 py-2 text-left">Date</th>
+                  <th className="px-3 py-2 text-right">Total</th>
+                  <th className="px-3 py-2 text-right">Historical Paid</th>
+                  <th className="px-3 py-2 text-right">Outstanding</th>
+                  <th className="px-3 py-2 text-center">Status</th>
+                  <th className="px-3 py-2 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-200">
+                {legacyInvoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-neutral-50">
+                    <td className="px-3 py-2 font-medium text-neutral-900">#{inv.legacyInvoiceNumber}</td>
+                    <td className="px-3 py-2 text-neutral-600">{new Date(inv.invoiceDate).toLocaleDateString()}</td>
+                    <td className="px-3 py-2 text-right font-medium text-neutral-900">{formatCurrency(inv.grandTotal)}</td>
+                    <td className="px-3 py-2 text-right text-emerald-600 font-medium">{formatCurrency(inv.paidAmount)}</td>
+                    <td className={`px-3 py-2 text-right font-bold ${inv.outstandingCalculated > 0.005 ? 'text-rose-600' : 'text-neutral-400'}`}>
+                      {inv.outstandingCalculated > 0.005 ? formatCurrency(inv.outstandingCalculated) : 'AED 0.00'}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        inv.outstandingCalculated <= 0.005 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {inv.outstandingCalculated <= 0.005 ? 'Paid' : 'Pending'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLegacyInvoiceId(inv.id)}
+                        className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition"
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {selectedLegacyInvoiceId && (
+        <LegacyInvoiceDetailModal
+          invoiceId={selectedLegacyInvoiceId}
+          isOpen={!!selectedLegacyInvoiceId}
+          onClose={() => setSelectedLegacyInvoiceId(null)}
+        />
+      )}
     </div>
   )
 }

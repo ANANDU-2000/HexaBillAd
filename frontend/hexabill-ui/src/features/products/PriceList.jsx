@@ -115,7 +115,7 @@ const PriceList = () => {
     : 0
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="bg-neutral-50 pb-8">
       {/* Top Bar */}
       <div className="bg-white border-b border-neutral-200 px-4 py-3">
         <div className="flex items-center justify-between">

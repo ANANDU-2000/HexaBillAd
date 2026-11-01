@@ -148,3 +148,17 @@ frontend/hexabill-ui/e2e/.results-*/
 backend/HexaBill.Api/App_Data/
 
 hexabill_al_uiuimages/
+
+# Private Starplus migration inputs and extracted PostgreSQL backup (never commit)
+/data/starplus_private/
+/frozhen/
+/tools/migration/__pycache__/
+/tests/migration/__pycache__/
+/migrations/starplus_billing_2025/
+/migrations/hexabill/
+/migrations/CODEX_STARPLUS_TO_FROZENHUB_STRICT_MIGRATION_2026-10-25.md
+/migrations/*.dir.tar.gz
+/migrations/*Private*Export*.zip
+
+/migrations/CURSOR_PRO_STARPLUS_TO_FROZENHUB_PRODUCTION_MIGRATION_MASTER_2026-10-25.md
+output/

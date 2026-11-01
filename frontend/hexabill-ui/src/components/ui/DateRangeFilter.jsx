@@ -33,7 +33,7 @@ export function DatePresetChips({ from, to, onChange, className = '', presets })
   const list = presets ? DATE_PRESETS.filter(p => presets.includes(p.key)) : DATE_PRESETS
   const active = DATE_PRESETS.find(p => { const r = p.range(); return r.from === (from || '') && r.to === (to || '') })?.key
   return (
-    <div role="group" aria-label="Quick date ranges" className={`flex flex-wrap gap-1.5 ${className}`}>
+    <div role="group" aria-label="Quick date ranges" className={`flex flex-wrap items-center gap-1.5 ${className}`}>
       {list.map(p => (
         <button key={p.key} type="button" aria-pressed={active === p.key} onClick={() => onChange(p.range())}
           className={`${chip} ${active === p.key ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-neutral-300 text-neutral-700 hover:bg-neutral-50'}`}>

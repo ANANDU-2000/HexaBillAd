@@ -48,8 +48,30 @@ namespace HexaBill.Api.Modules.Notifications
         {
             try
             {
-                // CRITICAL: Prevent duplicate alerts - check for similar alerts in last 5 minutes (same tenant)
                 var targetTenantId = tenantId ?? 0;
+
+                // CRITICAL: Deduplicate recurring alerts (LowStock, OverdueInvoice, ProductExpiring, BalanceMismatch, DBMismatch).
+                // If an unresolved alert exists for this tenant and type, update its message and timestamp instead of creating endless duplicate rows.
+                var existingUnresolved = await _context.Alerts
+                    .Where(a => a.Type == type.ToString() && 
+                               (a.TenantId ?? 0) == targetTenantId && 
+                               !a.IsResolved)
+                    .OrderByDescending(a => a.CreatedAt)
+                    .FirstOrDefaultAsync();
+
+                if (existingUnresolved != null && (type == AlertType.LowStock || type == AlertType.OverdueInvoice || type == AlertType.ProductExpiring || type == AlertType.BalanceMismatch || type == AlertType.DBMismatch))
+                {
+                    existingUnresolved.Title = Clip(title, TitleMax) ?? string.Empty;
+                    existingUnresolved.Message = Clip(message, MessageMax);
+                    existingUnresolved.Severity = severity.ToString();
+                    existingUnresolved.CreatedAt = DateTime.UtcNow;
+                    existingUnresolved.Metadata = ToMetadataJson(metadata);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Updated existing unresolved alert {Id}: {Type}", existingUnresolved.Id, type);
+                    return;
+                }
+
+                // For other alerts, prevent duplicates within 5 minutes
                 var cutoffTime = DateTime.UtcNow.AddMinutes(-5);
                 var similarAlert = await _context.Alerts
                     .Where(a => a.Type == type.ToString() && 
