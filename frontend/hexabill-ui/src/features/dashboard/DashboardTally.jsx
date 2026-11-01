@@ -462,6 +462,7 @@ const DashboardTally = () => {
     const canOpenProducts = canAccessPage(user, 'products')
     const canOpenPurchases = canAccessPage(user, 'purchases')
     const canOpenSalesLedger = canAccessPage(user, 'invoices')
+    const canOpenExpenses = canAccessPage(user, 'expenses')
     const canOpenCustomerLedger = canAccessPage(user, 'customers') || canAccessPage(user, 'invoices')
     const canBackup = isAdminOrOwner(user)
     const showSkeleton = !hasFigures && refreshing
