@@ -63,3 +63,32 @@ export function addInvoiceNumberWidthForUpdate(payload, data, initial) {
   }
   return payload
 }
+
+// Invoice bank block (A4/A5): bank name, account name and IBAN print together, so they are saved all-or-none.
+// The server re-validates (SettingsService.EnsureInvoiceBankDetailsCompleteAsync); this gives the owner the error early.
+export function isValidIban(value) {
+  const iban = String(value ?? '').replace(/\s+/g, '').toUpperCase()
+  if (iban.length < 15 || iban.length > 34 || !/^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(iban)) return false
+  if (iban.startsWith('AE') && !/^AE\d{21}$/.test(iban)) return false
+  let remainder = 0
+  for (const ch of iban.slice(4) + iban.slice(0, 4)) {
+    const digits = /\d/.test(ch) ? ch : String(ch.charCodeAt(0) - 55)
+    for (const d of digits) remainder = (remainder * 10 + Number(d)) % 97
+  }
+  return remainder === 1
+}
+
+const BANK_FIELDS = [['invoiceBankName', 'Bank name'], ['invoiceBankAccountName', 'Account name'], ['invoiceBankIban', 'IBAN']]
+
+export function invoiceBankReadiness(data) {
+  const missing = BANK_FIELDS.filter(([key]) => !String(data?.[key] ?? '').trim()).map(([, label]) => label)
+  return { ready: missing.length === 0, missing }
+}
+
+export function validateInvoiceBankIban(value, formValues) {
+  const { missing } = invoiceBankReadiness(formValues)
+  if (missing.length !== 0 && missing.length !== BANK_FIELDS.length)
+    return 'Bank name, account name and IBAN must all be filled in together (or all left empty)'
+  const iban = String(value ?? '').trim()
+  return iban === '' || isValidIban(iban) || 'IBAN is not valid. Check it against the bank document (UAE IBANs are AE + 21 digits)'
+}

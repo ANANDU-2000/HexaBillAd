@@ -402,6 +402,7 @@ namespace HexaBill.Api.Modules.Sales
             public bool InvoiceCompactHeader { get; set; }
             public string InvoicePrintAddress { get; set; } = "";
             public string InvoicePoBox { get; set; } = "";
+            public string InvoicePrintEmail { get; set; } = "";
             public string InvoiceBankAccountName { get; set; } = "";
             public string InvoiceBankName { get; set; } = "";
             public string InvoiceBankIban { get; set; } = "";

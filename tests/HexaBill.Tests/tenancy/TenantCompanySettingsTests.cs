@@ -40,7 +40,7 @@ public class TenantCompanySettingsTests
             await seed.SaveChangesAsync();
             await new SettingsService(seed).UpdateOwnerSettingsBulkAsync(tenantA, new() {
                 ["INVOICE_BANK_ACCOUNT_NAME"] = "A account", ["INVOICE_BANK_NAME"] = "A bank",
-                ["INVOICE_BANK_IBAN"] = "AE010123456789012345678", ["INVOICE_HEADER_PRESENTATION"] = "compact"
+                ["INVOICE_BANK_IBAN"] = "AE070331234567890123456", ["INVOICE_HEADER_PRESENTATION"] = "compact"
             });
         }
         await using (var scoped = new AppDbContext(options))
@@ -61,7 +61,7 @@ public class TenantCompanySettingsTests
         await service.UpdateOwnerSettingsBulkAsync(10, new() {
             ["INVOICE_HEADER_PRESENTATION"] = "compact", ["INVOICE_PRINT_ADDRESS"] = "Tenant A address",
             ["INVOICE_BANK_ACCOUNT_NAME"] = "Tenant A account", ["INVOICE_BANK_NAME"] = "Tenant A bank",
-            ["INVOICE_BANK_IBAN"] = "AE010123456789012345678"
+            ["INVOICE_BANK_IBAN"] = "AE070331234567890123456"
         });
         var a = await service.GetCompanySettingsAsync(10);
         var b = await service.GetCompanySettingsAsync(20);

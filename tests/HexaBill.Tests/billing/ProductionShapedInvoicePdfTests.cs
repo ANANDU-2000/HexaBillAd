@@ -54,7 +54,7 @@ public class ProductionShapedInvoicePdfTests
             var first = document.GetPage(1).Text;
             Assert.Contains("Abu Dhabi, Musaffah 17", first);
             Assert.Contains("971555298878", first); // P0-PRINT-005: saved tenant phone prints
-            Assert.DoesNotContain("frozenhubfoods@gmail.com", first, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("frozenhubfoods@gmail.com", first, StringComparison.OrdinalIgnoreCase); // 2026-11 client-approved: email prints in the left header
             Assert.DoesNotContain("International Transport", first, StringComparison.OrdinalIgnoreCase);
         }
 
@@ -76,7 +76,7 @@ public class ProductionShapedInvoicePdfTests
             Assert.InRange(name.BoundingBox.Bottom - sign.BoundingBox.Bottom, 30, 60);
             var writingLines = words.Where(w => w.Text.Length >= 20 && w.Text.All(c => c == '.')).ToList();
             Assert.True(writingLines.Count(l => l.BoundingBox.Bottom < name.BoundingBox.Bottom) >= 2, "Name and Sign need their own writing lines below each label.");
-            Assert.Contains(words, w => w.Text == "Pending:");
+            Assert.Contains(words, w => w.Text == "Bills:"); // "Pending Bills: n" ledger summary
             Assert.True(words.Min(w => w.BoundingBox.Bottom) >= 30, "Footer must sit above the page bottom margin.");
             Assert.True(sign.BoundingBox.Bottom > writingLines.Min(l => l.BoundingBox.Bottom), "Sign writing line must be below the Sign label.");
         }
@@ -124,7 +124,7 @@ public class ProductionShapedInvoicePdfTests
         var first = document.GetPage(1).Text;
         Assert.Contains("Abu Dhabi, Musaffah 17", first);
         Assert.Contains("971555298878", first); // P0-PRINT-005: saved tenant phone prints
-        Assert.DoesNotContain("frozenhubfoods@gmail.com", first, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("frozenhubfoods@gmail.com", first, StringComparison.OrdinalIgnoreCase); // 2026-11 client-approved: email prints in the left header
         Assert.DoesNotContain("International Transport", first, StringComparison.OrdinalIgnoreCase);
     }
 

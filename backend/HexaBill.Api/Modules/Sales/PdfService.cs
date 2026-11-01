@@ -38,16 +38,21 @@ namespace HexaBill.Api.Modules.Sales
             _logger = logger;
             _env = env;
             
-            QuestPDF.Settings.License = LicenseType.Community;
-            
+            // Assign QuestPDF globals only when they differ: re-assigning them while another request renders a PDF
+            // intermittently corrupts that PDF's text layer (searchable/copyable text extracts as blanks).
+            if (QuestPDF.Settings.License != LicenseType.Community)
+                QuestPDF.Settings.License = LicenseType.Community;
+
             // CRITICAL FIX FOR ARABIC PRINTING:
             // 1. Disable glyph checking - allows Arabic with fallback fonts
             // 2. Force font embedding in PDF output
             // 3. Register custom Arabic fonts from Fonts folder
-            QuestPDF.Settings.CheckIfAllTextGlyphsAreAvailable = false;
-            
+            if (QuestPDF.Settings.CheckIfAllTextGlyphsAreAvailable)
+                QuestPDF.Settings.CheckIfAllTextGlyphsAreAvailable = false;
+
             // Enable font embedding for print compatibility
-            QuestPDF.Settings.EnableCaching = true;
+            if (!QuestPDF.Settings.EnableCaching)
+                QuestPDF.Settings.EnableCaching = true;
             
             // Register custom fonts for Arabic support
             _fontService.RegisterFonts();
@@ -58,9 +63,9 @@ namespace HexaBill.Api.Modules.Sales
             
             // Disable debugging in production for better performance
             #if DEBUG
-            QuestPDF.Settings.EnableDebugging = true;
+            if (!QuestPDF.Settings.EnableDebugging) QuestPDF.Settings.EnableDebugging = true;
             #else
-            QuestPDF.Settings.EnableDebugging = false;
+            if (QuestPDF.Settings.EnableDebugging) QuestPDF.Settings.EnableDebugging = false;
             #endif
         }
 
@@ -206,7 +211,7 @@ namespace HexaBill.Api.Modules.Sales
                 // A5, 80mm, 58mm: use QuestPDF layouts directly (no HTML template path)
                 if (formatNormalized.Equals("A5", StringComparison.OrdinalIgnoreCase))
                 {
-                    return await Task.FromResult(GenerateInvoicePdfA5(sale, settings, trnDisplay));
+                    return await Task.FromResult(GenerateInvoicePdfA5(sale, settings, trnDisplay, customerPendingInfo));
                 }
                 if (formatNormalized.Equals("80mm", StringComparison.OrdinalIgnoreCase))
                 {
@@ -516,12 +521,8 @@ namespace HexaBill.Api.Modules.Sales
                                     
                                     // Row 3: Total Amount
                                     var amountInWords = ConvertToWords(sale.GrandTotal);
-                                    // Shorten amount in words if too long
-                                    if (amountInWords.Length > 80)
-                                    {
-                                        amountInWords = amountInWords.Substring(0, 77) + "...";
-                                    }
-                                    
+                                    // Never truncate the legal amount in words; the cell wraps instead.
+
                                     table.Cell().ColumnSpan(7).Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).Text(text => {
                                         text.Span("Total Amount ").FontSize(10);
                                         text.Span("............. ").FontSize(8);
@@ -584,14 +585,9 @@ namespace HexaBill.Api.Modules.Sales
                                         });
                                     }
                                     
-                                    // Pending / Balance — centered black (reference style; never red)
-                                    if (sale.CustomerId.HasValue && customerPendingInfo.TotalPendingBills > 0)
-                                    {
-                                        footerCol.Item().PaddingTop(4).LineHorizontal(0.5f).LineColor(Colors.Black);
-                                        footerCol.Item().PaddingTop(3).AlignCenter()
-                                            .Text($"Pending: {customerPendingInfo.TotalPendingBills} | Balance: {settings.Currency} {customerPendingInfo.TotalBalanceDue:N2}")
-                                            .FontSize(8).Bold().FontColor(Colors.Black);
-                                    }
+                                    // Bill + customer account summary from the Customer Ledger (shown even when zero).
+                                    if (sale.CustomerId.HasValue && customerPendingInfo.Available)
+                                        RenderCustomerBalanceSummary(footerCol, sale, settings, customerPendingInfo, 8f);
                                 });
                             });
                         });
@@ -875,16 +871,60 @@ namespace HexaBill.Api.Modules.Sales
             var iban = string.Concat(settings.InvoiceBankIban.Where(c => !char.IsWhiteSpace(c)));
             var groupedIban = string.Join(" ", Enumerable.Range(0, (iban.Length + 3) / 4)
                 .Select(i => iban.Substring(i * 4, Math.Min(4, iban.Length - i * 4))));
+            // Client-approved order: Bank Name -> Account Name -> IBAN. No separate account-number line.
             column.Item().PaddingTop(4).ShowEntire().Column(bank =>
             {
-                bank.Item().Text($"Account Name: {settings.InvoiceBankAccountName}").FontFamily(_englishFont).FontSize(fontSize);
-                bank.Item().Text($"Bank: {settings.InvoiceBankName}").FontFamily(_englishFont).FontSize(fontSize);
+                bank.Item().Text("Bank Details").FontFamily(_englishFont).FontSize(fontSize).Bold();
+                bank.Item().Text($"Bank Name: {settings.InvoiceBankName.Trim()}").FontFamily(_englishFont).FontSize(fontSize);
+                bank.Item().Text($"Account Name: {settings.InvoiceBankAccountName.Trim()}").FontFamily(_englishFont).FontSize(fontSize);
                 bank.Item().Text($"IBAN: {groupedIban}").FontFamily(_englishFont).FontSize(fontSize);
             });
         }
 
+        /// <summary>
+        /// Bill + customer account summary under the signature block. Bill figures come from the invoice itself;
+        /// pending count and customer balance come from the Customer Ledger as of the print time (labelled, so a
+        /// reprint is never read as the balance on the original invoice date).
+        /// </summary>
+        private void RenderCustomerBalanceSummary(ColumnDescriptor column, SaleDto sale, InvoiceTemplateService.CompanySettings settings, CustomerPendingBalanceInfo info, float fontSize)
+        {
+            var currency = string.IsNullOrWhiteSpace(settings.Currency) ? "AED" : settings.Currency;
+            var billPaid = Math.Max(0m, sale.PaidAmount);
+            var billDue = Math.Max(0m, sale.GrandTotal - sale.PaidAmount - sale.ReturnedAmount);
+            var balanceText = info.CustomerBalance < 0
+                ? $"{currency} {Math.Abs(info.CustomerBalance):N2} CR"
+                : $"{currency} {info.CustomerBalance:N2}";
+            var asOf = FormatDubaiAsOf(info.AsOfUtc);
+            // No explicit family: inherit the page font (same as the invoice body text), not system Arial.
+            column.Item().PaddingTop(4).ShowEntire().Column(summary =>
+            {
+                summary.Item().LineHorizontal(0.5f).LineColor(Colors.Black);
+                summary.Item().PaddingTop(2).Row(row =>
+                {
+                    row.RelativeItem().Text($"Bill Total: {currency} {sale.GrandTotal:N2}").FontSize(fontSize);
+                    row.RelativeItem().AlignCenter().Text($"Bill Paid: {currency} {billPaid:N2}").FontSize(fontSize);
+                    row.RelativeItem().AlignRight().Text($"Bill Due: {currency} {billDue:N2}").FontSize(fontSize).Bold();
+                });
+                summary.Item().PaddingTop(1).Row(row =>
+                {
+                    row.RelativeItem().Text($"Pending Bills: {info.TotalPendingBills}").FontSize(fontSize);
+                    row.RelativeItem().AlignCenter().Text($"Customer Balance: {balanceText}").FontSize(fontSize).Bold();
+                    row.RelativeItem().AlignRight().Text($"As of: {asOf}").FontSize(fontSize);
+                });
+                if (info.UnclearedPayments > 0)
+                    summary.Item().PaddingTop(1).AlignCenter().Text($"Uncleared cheques (not yet deducted): {currency} {info.UnclearedPayments:N2}")
+                        .FontSize(fontSize);
+                summary.Item().PaddingTop(1).Text("Customer balance and pending bills are current account figures as of the time shown, not part of the original invoice.")
+                    .FontSize(Math.Max(5f, fontSize - 1.5f));
+            });
+        }
+
+        /// <summary>UAE local time (UTC+4, no DST) for the footer as-of stamp.</summary>
+        internal static string FormatDubaiAsOf(DateTime utc) =>
+            DateTime.SpecifyKind(utc, DateTimeKind.Utc).AddHours(4).ToString("dd-MM-yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture) + " (UAE)";
+
         /// <summary>A5 (148x210mm) compact invoice - letterhead-only + stamp/sign when enabled.</summary>
-        private byte[] GenerateInvoicePdfA5(SaleDto sale, InvoiceTemplateService.CompanySettings settings, string trnDisplay)
+        private byte[] GenerateInvoicePdfA5(SaleDto sale, InvoiceTemplateService.CompanySettings settings, string trnDisplay, CustomerPendingBalanceInfo? customerPendingInfo = null)
         {
             var invoiceDateStr = FormatInvoiceDate(sale.InvoiceDate, settings);
             var letterheadOnly = settings.LetterheadOnlyPrint;
@@ -993,7 +1033,7 @@ namespace HexaBill.Api.Modules.Sales
                             });
                             inner.Item().PaddingTop(1).Text(ConvertToWords(sale.GrandTotal)).FontSize(6).Italic();
                             if (!letterheadOnly)
-                                RenderInvoiceBankDetails(inner, settings, 7);
+                                RenderInvoiceBankDetails(inner, settings, 6.5f);
                             if (!letterheadOnly && !useOrangeLetterhead)
                             {
                                 inner.Item().PaddingTop(2).ShowEntire().Column(f =>
@@ -1005,6 +1045,8 @@ namespace HexaBill.Api.Modules.Sales
                                         r.RelativeItem().Column(l => { l.Item().Text(new string('.', 30)).FontSize(6.5f); l.Item().Text("Receiver's Sign").FontSize(6f); });
                                         r.RelativeItem(2).Column(rc => { rc.Item().AlignRight().Text(new string('.', 30)).FontSize(6.5f); rc.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(6.5f); });
                                     });
+                                    if (sale.CustomerId.HasValue && customerPendingInfo is { Available: true })
+                                        RenderCustomerBalanceSummary(f, sale, settings, customerPendingInfo, 6.5f);
                                 });
                             }
                             if (useOrangeLetterhead)
@@ -1277,16 +1319,27 @@ namespace HexaBill.Api.Modules.Sales
         internal static byte[]? MonochromeLogo(byte[]? bytes)
         {
             if (bytes == null || bytes.Length == 0) return null;
-            using var image = SixLabors.ImageSharp.Image.Load(bytes);
-            image.Mutate(x => x.Grayscale());
-            using var output = new MemoryStream();
-            SixLabors.ImageSharp.ImageExtensions.SaveAsPng(image, output);
-            return output.ToArray();
+            try
+            {
+                using var image = SixLabors.ImageSharp.Image.Load(bytes);
+                image.Mutate(x => x.Grayscale());
+                using var output = new MemoryStream();
+                SixLabors.ImageSharp.ImageExtensions.SaveAsPng(image, output);
+                return output.ToArray();
+            }
+            catch (Exception ex) when (ex is SixLabors.ImageSharp.UnknownImageFormatException
+                or SixLabors.ImageSharp.InvalidImageContentException
+                or IOException
+                or ArgumentException)
+            {
+                // A malformed or unsupported tenant logo must not prevent an otherwise valid invoice from printing.
+                return null;
+            }
         }
 
         /// <summary>
         /// Honest VAT line for bilingual headers. Never prints Corporate Tax as VAT.
-        /// Empty → "To be provided"; sample → SAMPLE prefix; real → digits.
+        /// Empty → "To be provided" for legacy non-FrozenHub layouts; sample → SAMPLE prefix; real → digits.
         /// </summary>
         private static string VatTrnLineForHeader(string? vatTrn)
         {
@@ -1310,7 +1363,8 @@ namespace HexaBill.Api.Modules.Sales
 
         internal static (float Width, float Height, float Column) LetterheadLogoBox(bool a4Letterhead, float fontSize)
         {
-            if (a4Letterhead) return (172f, 62f, 180f);
+            // Client request (2026-11): the FH emblem should not overpower the header; ~12% smaller than before.
+            if (a4Letterhead) return (152f, 55f, 160f);
             return fontSize <= 9 ? (40f, 22f, 52f) : (90f, 52f, 106f);
         }
 
@@ -1337,6 +1391,8 @@ namespace HexaBill.Api.Modules.Sales
             {
                 column.Spacing(1);
                 var logo = MonochromeLogo(settings.LogoImageBytes);
+                if (settings.LogoImageBytes is { Length: > 0 } && logo == null)
+                    _logger.LogWarning("Company logo could not be decoded for invoice PDF; continuing with text-only header");
                 var nameSize = a4Letterhead ? 15.5f : Math.Max(8f, fontSize);
                 var detailSize = a4Letterhead ? 8f : Math.Max(5f, fontSize - 3f);
                 var taxSize = a4Letterhead ? 7.5f : Math.Max(5f, detailSize - 0.5f);
@@ -1356,11 +1412,15 @@ namespace HexaBill.Api.Modules.Sales
                 var (title, subtitle) = SplitBilingualCompanyNameLines(settings.CompanyNameEn);
                 if (string.IsNullOrWhiteSpace(title))
                     title = settings.CompanyNameEn ?? "";
-                // FrozenHub's approved printed address is intentionally minimal. Keep phone,
-                // email, and stored contact settings out of this invoice header only.
-                const string frozenHubPrintedAddress = "Abu Dhabi, Musaffah 17";
+                // FrozenHub's approved printed address is intentionally minimal (never the long premises address).
+                const string frozenHubPrintedAddress = "Abu Dhabi, Musaffah 17, UAE";
                 var compactInvoice = invoiceHeader && settings.InvoiceCompactHeader;
-                var printedAddress = compactInvoice && !string.IsNullOrWhiteSpace(settings.InvoicePrintAddress)
+                // FrozenHub A4/A5 invoice: client-approved left block is Mob -> P.O. Box -> Email -> Address -> TRN,
+                // with no standalone company title (the centred logo and Arabic legal name identify the company).
+                var frozenHubInvoice = invoiceHeader && settings.FrozenHubHeaderPolicy && (a4Letterhead || a5Letterhead);
+                var fullContact = compactInvoice || frozenHubInvoice;
+                var printEmail = !string.IsNullOrWhiteSpace(settings.InvoicePrintEmail) ? settings.InvoicePrintEmail.Trim() : settings.CompanyEmail?.Trim();
+                var printedAddress = fullContact && !string.IsNullOrWhiteSpace(settings.InvoicePrintAddress)
                     ? settings.InvoicePrintAddress : settings.FrozenHubHeaderPolicy ? frozenHubPrintedAddress : settings.CompanyAddress;
                 // Stacked (58mm/80mm) header: no-break spaces keep a short address such as "Abu Dhabi, Musaffah 17"
                 // on one line next to its Arabic label instead of breaking after "Abu Dhabi,".
@@ -1370,24 +1430,30 @@ namespace HexaBill.Api.Modules.Sales
                 Action<IContainer> composeEnglish = cell => cell.Column(en =>
                 {
                     en.Spacing(1);
-                    if (!compactInvoice || logo == null)
+                    // Logo present on a full-contact invoice: no standalone English title/subtitle (duplicate of the logo).
+                    // Without a logo the English name stays so the document still names the company.
+                    var showEnglishName = !fullContact || logo == null;
+                    if (showEnglishName)
                         en.Item().Text(title.ToUpperInvariant()).FontFamily(_englishFont).FontSize(nameSize).Bold();
-                    if (!string.IsNullOrWhiteSpace(subtitle))
+                    if (showEnglishName && !string.IsNullOrWhiteSpace(subtitle))
                         en.Item().Text(subtitle.ToUpperInvariant()).FontFamily(_englishFont).FontSize(a4Letterhead ? 8.5f : detailSize).SemiBold();
                     // P0-PRINT-005: every tenant prints its own saved phone (FrozenHub included); no line when unset.
                     if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
                         en.Item().PaddingTop(1).Text($"Mob: {settings.CompanyPhone.Trim()}").FontFamily(_englishFont).FontSize(detailSize);
-                    if ((!settings.FrozenHubHeaderPolicy || compactInvoice) && !string.IsNullOrWhiteSpace(settings.CompanyEmail))
-                        en.Item().Text(settings.CompanyEmail).FontFamily(_englishFont).FontSize(detailSize);
-                    if (compactInvoice && !string.IsNullOrWhiteSpace(settings.InvoicePoBox))
-                        en.Item().Text($"P.O. Box: {settings.InvoicePoBox}").FontFamily(_englishFont).FontSize(detailSize);
+                    if (fullContact && !string.IsNullOrWhiteSpace(settings.InvoicePoBox))
+                        en.Item().Text($"P.O. Box: {settings.InvoicePoBox.Trim()}").FontFamily(_englishFont).FontSize(detailSize);
+                    if ((!settings.FrozenHubHeaderPolicy || fullContact) && !string.IsNullOrWhiteSpace(printEmail))
+                        en.Item().Text($"{(fullContact ? "Email: " : "")}{printEmail}").FontFamily(_englishFont).FontSize(detailSize);
                     if (!string.IsNullOrWhiteSpace(printedAddress))
                         en.Item().Text(printedAddress).FontFamily(_englishFont).FontSize(detailSize);
                     if (!string.IsNullOrWhiteSpace(settings.CorporateTaxTrn))
                         en.Item().PaddingTop(2).Text($"CT Reg. No.: {settings.CorporateTaxTrn.Trim()}")
                             .FontFamily(_englishFont).FontSize(taxSize);
-                    en.Item().PaddingTop(2).Text(VatTrnLineForHeader(settings.CompanyTrn))
-                        .FontFamily(_englishFont).FontSize(taxSize);
+                    // FrozenHub policy leaves an unconfigured VAT TRN blank on the document; keep the existing
+                    // explicit missing-TRN label for other tenants' report/header layouts.
+                    if (!frozenHubInvoice || !string.IsNullOrWhiteSpace(settings.CompanyTrn))
+                        en.Item().PaddingTop(2).Text(VatTrnLineForHeader(settings.CompanyTrn))
+                            .FontFamily(_englishFont).FontSize(taxSize);
                 });
                 Action<IContainer> composeLogo = cell => cell.AlignMiddle().Row(row =>
                 {
@@ -1412,7 +1478,7 @@ namespace HexaBill.Api.Modules.Sales
                     if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
                         ar.Item().AlignRight().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
                             .FontSize(a4Letterhead ? (settings.CompanyNameAr.Length > 28 ? 12f : 14f) : stacked ? Math.Min(nameSize, 7f) : nameSize).Bold().DirectionFromRightToLeft();
-                    if ((!settings.FrozenHubHeaderPolicy || compactInvoice) && !string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                    if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(settings.CompanyPhone))
                         ar.Item().PaddingTop(1).AlignRight().Text(text =>
                         {
                             text.Span("الهاتف: ").FontFamily(_arabicFont).FontSize(detailSize).DirectionFromRightToLeft();
@@ -1420,8 +1486,8 @@ namespace HexaBill.Api.Modules.Sales
                             // does not reverse the digits or move the plus sign to the wrong edge.
                             text.Span($"\u2066{settings.CompanyPhone}\u2069").FontFamily(_englishFont).FontSize(detailSize).DirectionFromLeftToRight();
                         });
-                    if ((!settings.FrozenHubHeaderPolicy || compactInvoice) && !string.IsNullOrWhiteSpace(settings.CompanyEmail) && (a4Letterhead || a5Letterhead))
-                        ar.Item().AlignRight().Text($"البريد الإلكتروني: {settings.CompanyEmail}").FontFamily(_arabicFont)
+                    if (!settings.FrozenHubHeaderPolicy && !string.IsNullOrWhiteSpace(printEmail) && (a4Letterhead || a5Letterhead))
+                        ar.Item().AlignRight().Text($"البريد الإلكتروني: {printEmail}").FontFamily(_arabicFont)
                             .FontSize(detailSize).DirectionFromRightToLeft();
                     if (!string.IsNullOrWhiteSpace(printedAddress))
                         ar.Item().AlignRight().ContentFromRightToLeft().Text(text =>
@@ -1766,6 +1832,7 @@ if (hasLogo)
                 InvoiceCompactHeader = companySettings.InvoiceCompactHeader,
                 InvoicePrintAddress = companySettings.InvoicePrintAddress,
                 InvoicePoBox = companySettings.InvoicePoBox,
+                InvoicePrintEmail = companySettings.InvoicePrintEmail,
                 InvoiceBankAccountName = companySettings.InvoiceBankAccountName,
                 InvoiceBankName = companySettings.InvoiceBankName,
                 InvoiceBankIban = companySettings.InvoiceBankIban,
@@ -2233,84 +2300,54 @@ if (hasLogo)
         /// CRITICAL: Get customer's pending balance info for invoice footer
         /// This is calculated in REAL-TIME from the database to ensure accuracy
         /// </summary>
+        /// <summary>
+        /// Invoice footer balance. Uses the authoritative Customer Ledger (CustomerService.GetCustomerLedgerAsync) so the
+        /// printed figure always equals the ledger closing balance: approved opening receivable OR historical
+        /// (legacy) invoices/cleared payments - never both - plus operating sales, cleared payments, approved returns
+        /// and refunds. Pending bills = operating + historical invoices with an outstanding amount.
+        /// </summary>
         private async Task<CustomerPendingBalanceInfo> GetCustomerPendingBalanceInfoAsync(int? customerId, int tenantId)
         {
             if (!customerId.HasValue)
-            {
                 return new CustomerPendingBalanceInfo();
-            }
 
             try
             {
-                // VALIDATION: Get customer with owner check
                 var customer = await _context.Customers
                     .AsNoTracking()
                     .FirstOrDefaultAsync(c => c.Id == customerId.Value && c.TenantId == tenantId);
-
                 if (customer == null)
-                {
                     return new CustomerPendingBalanceInfo();
-                }
 
-                // CRITICAL: Calculate REAL pending balance from database (matches CustomerService/BalanceService)
-                // Formula: TotalSales - TotalPayments (cleared, excl refunds) - TotalSalesReturns + RefundsPaid
-                var totalSales = await _context.Sales
-                    .Where(s => s.CustomerId == customerId.Value 
-                               && s.TenantId == tenantId 
-                               && !s.IsDeleted)
-                    .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
-
-                // Cleared payments only; exclude refund payments (SaleReturnId != null)
-                var totalPayments = await _context.Payments
-                    .Where(p => p.CustomerId == customerId.Value 
-                               && p.TenantId == tenantId 
-                               && p.Status == PaymentStatus.CLEARED 
-                               && p.SaleReturnId == null)
+                var ledgerService = new HexaBill.Api.Modules.Customers.CustomerService(_context);
+                var ledger = await ledgerService.GetCustomerLedgerAsync(customerId.Value, tenantId);
+                var ledgerClosing = ledger.Count > 0 ? ledger[^1].Balance : 0m;
+                // The ledger credits every non-void payment, including cheques still PENDING (or RETURNED/bounced).
+                // The invoice must not treat those as collected, so add them back and print them separately.
+                var unclearedPayments = await _context.Payments.AsNoTracking()
+                    .Where(p => p.CustomerId == customerId.Value && p.TenantId == tenantId && p.SaleReturnId == null
+                                && (p.Status == PaymentStatus.PENDING || p.Status == PaymentStatus.RETURNED))
                     .SumAsync(p => (decimal?)p.Amount) ?? 0m;
-
-                var totalSalesReturns = await _context.SaleReturns
-                    .Where(sr => sr.CustomerId == customerId.Value && sr.TenantId == tenantId)
-                    .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0m;
-
-                var refundsPaid = await _context.Payments
-                    .Where(p => p.CustomerId == customerId.Value 
-                               && p.TenantId == tenantId 
-                               && p.SaleReturnId != null)
-                    .SumAsync(p => (decimal?)p.Amount) ?? 0m;
-
-                // Count of pending invoices
-                var totalPendingBills = await _context.Sales
-                    .Where(s => s.CustomerId == customerId.Value 
-                               && s.TenantId == tenantId 
-                               && !s.IsDeleted
-                               && (s.PaymentStatus == SalePaymentStatus.Pending || s.PaymentStatus == SalePaymentStatus.Partial))
-                    .CountAsync();
-
-                // Pending balance = TotalSales - TotalPayments - TotalSalesReturns + RefundsPaid
-                var totalBalanceDue = totalSales - totalPayments - totalSalesReturns + refundsPaid;
-
-                _logger.LogInformation($"\n?? Customer Balance Calculation for Invoice Footer:");
-                _logger.LogInformation($"   Customer ID: {customerId.Value}");
-                _logger.LogInformation($"   Total Sales: {totalSales:N2}");
-                _logger.LogInformation($"   Total Payments: {totalPayments:N2}");
-                _logger.LogInformation($"   Returns: {totalSalesReturns:N2}, RefundsPaid: {refundsPaid:N2}");
-                _logger.LogInformation($"   Pending Bills Count: {totalPendingBills}");
-                _logger.LogInformation($"   Total Balance Due: {totalBalanceDue:N2}\n");
+                var closingBalance = ledgerClosing + unclearedPayments;
+                var outstanding = await ledgerService.GetOutstandingInvoicesAsync(customerId.Value, tenantId);
 
                 return new CustomerPendingBalanceInfo
                 {
+                    Available = true,
                     CustomerId = customerId.Value,
                     CustomerName = customer.Name,
-                    TotalPendingBills = totalPendingBills,
-                    TotalSales = totalSales,
-                    TotalPayments = totalPayments,
-                    PreviousBalance = Math.Max(0, totalBalanceDue), // Show only if positive (owing)
-                    TotalBalanceDue = Math.Max(0, totalBalanceDue)  // Never show negative
+                    TotalPendingBills = outstanding.Count,
+                    CustomerBalance = closingBalance,
+                    UnclearedPayments = unclearedPayments,
+                    PreviousBalance = Math.Max(0, closingBalance),
+                    TotalBalanceDue = Math.Max(0, closingBalance),
+                    AsOfUtc = DateTime.UtcNow
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error calculating customer pending balance: {Message}", ex.Message);
+                // Never print a guessed balance: an unavailable ledger hides the summary instead of showing 0.00.
+                _logger.LogError(ex, "Error calculating customer ledger balance for invoice footer (customer {CustomerId})", customerId);
                 return new CustomerPendingBalanceInfo();
             }
         }
@@ -2320,13 +2357,18 @@ if (hasLogo)
         /// </summary>
         private class CustomerPendingBalanceInfo
         {
+            /// <summary>False when no customer or the ledger could not be read; the footer is then omitted.</summary>
+            public bool Available { get; set; }
             public int CustomerId { get; set; }
             public string CustomerName { get; set; } = string.Empty;
             public int TotalPendingBills { get; set; }
-            public decimal TotalSales { get; set; }
-            public decimal TotalPayments { get; set; }
+            /// <summary>Signed ledger closing balance (negative = customer credit).</summary>
+            public decimal CustomerBalance { get; set; }
+            /// <summary>Pending/returned cheques not yet counted as collected (already added back into CustomerBalance).</summary>
+            public decimal UnclearedPayments { get; set; }
             public decimal PreviousBalance { get; set; }
             public decimal TotalBalanceDue { get; set; }
+            public DateTime AsOfUtc { get; set; }
         }
 
         private async Task SavePdfToDiskAsync(SaleDto sale, byte[] pdfBytes)

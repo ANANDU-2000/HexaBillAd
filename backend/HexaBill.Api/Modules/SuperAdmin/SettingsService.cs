@@ -106,6 +106,45 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 throw new ArgumentException($"Invoices have already been issued from {start}. The invoice numbering start cannot be removed.");
         }
 
+        internal static readonly string[] InvoiceBankKeys = ["INVOICE_BANK_NAME", "INVOICE_BANK_ACCOUNT_NAME", "INVOICE_BANK_IBAN"];
+
+        /// <summary>
+        /// Invoice bank details print as one block, so they are saved all-or-none (checked against the tenant's
+        /// merged stored values) and the IBAN must pass the ISO 13616 mod-97 check. Prevents a half-configured
+        /// bank block from being treated as ready and stops typos reaching customer invoices.
+        /// </summary>
+        private async Task EnsureInvoiceBankDetailsCompleteAsync(int tenantId, Dictionary<string, string> incoming)
+        {
+            if (!InvoiceBankKeys.Any(incoming.ContainsKey)) return;
+            var stored = await _context.Settings.AsNoTracking()
+                .Where(s => s.TenantId == tenantId && InvoiceBankKeys.Contains(s.Key))
+                .ToDictionaryAsync(s => s.Key, s => s.Value ?? "");
+            var merged = InvoiceBankKeys.ToDictionary(k => k, k => (incoming.TryGetValue(k, out var v) ? v : stored.GetValueOrDefault(k, "")).Trim());
+            var filled = merged.Count(p => p.Value.Length > 0);
+            if (filled != 0 && filled != InvoiceBankKeys.Length)
+                throw new ArgumentException("Bank name, account name and IBAN must all be filled in together (or all left empty).");
+            if (merged["INVOICE_BANK_IBAN"].Length > 0 && !IsValidIban(merged["INVOICE_BANK_IBAN"]))
+                throw new ArgumentException("IBAN is not valid. Check it against the bank document (UAE IBANs are AE + 21 digits).");
+        }
+
+        /// <summary>ISO 13616 IBAN check: country letters, 2 check digits, BBAN, mod 97 == 1. UAE IBANs are exactly 23 characters.</summary>
+        internal static bool IsValidIban(string value)
+        {
+            var iban = string.Concat(value.Where(c => !char.IsWhiteSpace(c))).ToUpperInvariant();
+            if (iban.Length < 15 || iban.Length > 34 || !char.IsAsciiLetter(iban[0]) || !char.IsAsciiLetter(iban[1])
+                || !char.IsAsciiDigit(iban[2]) || !char.IsAsciiDigit(iban[3]) || !iban.All(char.IsAsciiLetterOrDigit))
+                return false;
+            if (iban.StartsWith("AE", StringComparison.Ordinal) && (iban.Length != 23 || !iban.Skip(2).All(char.IsAsciiDigit)))
+                return false;
+            var remainder = 0;
+            foreach (var c in iban[4..] + iban[..4])
+            {
+                var digits = char.IsAsciiDigit(c) ? (c - '0').ToString() : (c - 'A' + 10).ToString();
+                foreach (var d in digits) remainder = (remainder * 10 + (d - '0')) % 97;
+            }
+            return remainder == 1;
+        }
+
         private static string NormalizeKey(string key) => key.Trim() switch
         {
             "vat_trn" => "COMPANY_TRN",
@@ -205,6 +244,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             EnsureTenant(tenantId);
             if (settings == null || settings.Count == 0) return true;
             settings = ValidateSettings(settings);
+            await EnsureInvoiceBankDetailsCompleteAsync(tenantId, settings);
             if (settings.ContainsKey("INVOICE_HEADER_STYLE") && await RequiresFrozenHubMonochromeHeaderAsync(tenantId))
                 throw new ArgumentException("FrozenHub invoice headers use the required bilingual monochrome layout.");
             if (settings.TryGetValue(InvoiceSeriesStartKey, out var seriesValue))
@@ -294,6 +334,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 InvoiceCompactHeader = settingsDict.GetValueOrDefault("INVOICE_HEADER_PRESENTATION", "") == "compact",
                 InvoicePrintAddress = settingsDict.GetValueOrDefault("INVOICE_PRINT_ADDRESS", ""),
                 InvoicePoBox = settingsDict.GetValueOrDefault("INVOICE_PO_BOX", ""),
+                InvoicePrintEmail = settingsDict.GetValueOrDefault("INVOICE_PRINT_EMAIL", ""),
                 InvoiceBankAccountName = settingsDict.GetValueOrDefault("INVOICE_BANK_ACCOUNT_NAME", ""),
                 InvoiceBankName = settingsDict.GetValueOrDefault("INVOICE_BANK_NAME", ""),
                 InvoiceBankIban = settingsDict.GetValueOrDefault("INVOICE_BANK_IBAN", ""),

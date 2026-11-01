@@ -37,7 +37,7 @@ import { isAdminOrOwner } from '../../utils/roles'  // CRITICAL: Multi-tenant ro
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import StampSignaturePlacementPreview from '../../components/StampSignaturePlacementPreview'
-import { addInvoiceHeaderStyleForUpdate, addInvoiceSeriesStartForUpdate, validateInvoiceSeriesStart, addInvoiceNumberWidthForUpdate, validateInvoiceNumberWidth, autoWidthForStart, previewFirstInvoice } from './settingsUpdatePayload'
+import { addInvoiceHeaderStyleForUpdate, addInvoiceSeriesStartForUpdate, validateInvoiceSeriesStart, addInvoiceNumberWidthForUpdate, validateInvoiceNumberWidth, autoWidthForStart, previewFirstInvoice, validateInvoiceBankIban, invoiceBankReadiness } from './settingsUpdatePayload'
 
 const SettingsPage = () => {
   const { user } = useAuth()
@@ -87,6 +87,7 @@ const SettingsPage = () => {
     invoiceHeaderPresentation: '',
     invoicePrintAddress: '',
     invoicePoBox: '',
+    invoicePrintEmail: '',
     invoiceBankAccountName: '',
     invoiceBankName: '',
     invoiceBankIban: '',
@@ -146,6 +147,11 @@ const SettingsPage = () => {
   })
   const watchedSeriesStart = watch('invoiceSeriesStart')
   const watchedNumberWidth = watch('invoiceNumberWidth')
+  const bankReadiness = invoiceBankReadiness({
+    invoiceBankName: watch('invoiceBankName'),
+    invoiceBankAccountName: watch('invoiceBankAccountName'),
+    invoiceBankIban: watch('invoiceBankIban'),
+  })
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [initialSettings, setInitialSettings] = useState(null)
@@ -452,6 +458,7 @@ const SettingsPage = () => {
           invoiceHeaderPresentation: getSetting(d, 'INVOICE_HEADER_PRESENTATION') || '',
           invoicePrintAddress: getSetting(d, 'INVOICE_PRINT_ADDRESS') || '',
           invoicePoBox: getSetting(d, 'INVOICE_PO_BOX') || '',
+          invoicePrintEmail: getSetting(d, 'INVOICE_PRINT_EMAIL') || '',
           invoiceBankAccountName: getSetting(d, 'INVOICE_BANK_ACCOUNT_NAME') || '',
           invoiceBankName: getSetting(d, 'INVOICE_BANK_NAME') || '',
           invoiceBankIban: getSetting(d, 'INVOICE_BANK_IBAN') || '',
@@ -525,6 +532,7 @@ const SettingsPage = () => {
         INVOICE_HEADER_PRESENTATION: data.invoiceHeaderPresentation || '',
         INVOICE_PRINT_ADDRESS: data.invoicePrintAddress || '',
         INVOICE_PO_BOX: data.invoicePoBox || '',
+        INVOICE_PRINT_EMAIL: data.invoicePrintEmail || '',
         INVOICE_BANK_ACCOUNT_NAME: data.invoiceBankAccountName || '',
         INVOICE_BANK_NAME: data.invoiceBankName || '',
         INVOICE_BANK_IBAN: data.invoiceBankIban || '',
@@ -1066,7 +1074,12 @@ const SettingsPage = () => {
 
             <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <h2 className="text-lg font-semibold text-neutral-900 mb-2">Invoice print details</h2>
-              <p className="text-sm text-neutral-600 mb-4">Bank details appear on full A4 and A5 invoices when all three fields are filled. Verify them before saving.</p>
+              <p className="text-sm text-neutral-600 mb-4">Bank details appear on full A4 and A5 invoices when all three fields are filled. Verify them against the bank document before saving. The account number is never printed.</p>
+              {!bankReadiness.ready && (
+                <p role="status" data-testid="invoice-bank-readiness" className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  Bank details will not print on invoices until these are filled in: {bankReadiness.missing.join(', ')}.
+                </p>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Select label="Invoice header" {...register('invoiceHeaderPresentation')} options={[
                   { value: '', label: 'Existing layout' },
@@ -1074,9 +1087,10 @@ const SettingsPage = () => {
                 ]} />
                 <Input label="Invoice print address" maxLength={160} {...register('invoicePrintAddress')} />
                 <Input label="P.O. Box" maxLength={160} {...register('invoicePoBox')} />
-                <Input label="Bank account name" maxLength={160} {...register('invoiceBankAccountName')} />
+                <Input label="Invoice contact email" type="email" maxLength={160} placeholder="Leave blank to use the company email" {...register('invoicePrintEmail')} />
                 <Input label="Bank name" maxLength={160} {...register('invoiceBankName')} />
-                <Input label="IBAN" maxLength={42} {...register('invoiceBankIban')} />
+                <Input label="Bank account name" maxLength={160} {...register('invoiceBankAccountName')} />
+                <Input label="IBAN" maxLength={42} error={errors.invoiceBankIban?.message} {...register('invoiceBankIban', { validate: validateInvoiceBankIban })} />
               </div>
             </div>
 

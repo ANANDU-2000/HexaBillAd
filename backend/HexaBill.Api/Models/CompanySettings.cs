@@ -45,6 +45,8 @@ namespace HexaBill.Api.Models
         public bool InvoiceCompactHeader { get; set; }
         public string InvoicePrintAddress { get; set; } = "";
         public string InvoicePoBox { get; set; } = "";
+        /// <summary>Customer-facing invoice contact email (INVOICE_PRINT_EMAIL); falls back to COMPANY_EMAIL. Never the login email.</summary>
+        public string InvoicePrintEmail { get; set; } = "";
         public string InvoiceBankAccountName { get; set; } = "";
         public string InvoiceBankName { get; set; } = "";
         public string InvoiceBankIban { get; set; } = "";

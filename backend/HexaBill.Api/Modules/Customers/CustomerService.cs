@@ -60,7 +60,10 @@ namespace HexaBill.Api.Modules.Customers
         {
             _context = context;
             _logger = logger;
-            QuestPDF.Settings.License = LicenseType.Community;
+            // Assign the QuestPDF global only when unset: re-assigning it while another request renders a PDF
+            // intermittently corrupts that PDF's text layer (glyphs extract as blanks; the visual output is fine).
+            if (QuestPDF.Settings.License != LicenseType.Community)
+                QuestPDF.Settings.License = LicenseType.Community;
         }
 
         // Backwards-compatible constructor for existing manual instantiations

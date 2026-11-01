@@ -20,9 +20,9 @@ public class LetterheadLogoSizeTests
         var a4 = PdfService.LetterheadLogoBox(true, 14);
         var mid = PdfService.LetterheadLogoBox(false, 10);
         var small = PdfService.LetterheadLogoBox(false, 7);
-        Assert.InRange(a4.Height, 1f, 62.4f);
-        Assert.InRange(a4.Width, 170f, 174f);
-        Assert.InRange(a4.Column, 178f, 182f);
+        Assert.InRange(a4.Height, 50f, 56f); // 2026-11: emblem reduced so it does not overpower the header
+        Assert.InRange(a4.Width, 150f, 154f);
+        Assert.InRange(a4.Column, 158f, 162f);
         Assert.True(a4.Column >= a4.Width);
         Assert.True(a4.Height > mid.Height && mid.Height > small.Height);
     }
@@ -48,7 +48,7 @@ public class LetterheadLogoSizeTests
         await settings.UpdateOwnerSettingsBulkAsync(TenantId, new Dictionary<string, string> {
             ["INVOICE_HEADER_PRESENTATION"] = "compact", ["INVOICE_PRINT_ADDRESS"] = "Synthetic address 17, UAE",
             ["INVOICE_PO_BOX"] = "9999", ["INVOICE_BANK_ACCOUNT_NAME"] = "SYNTHETIC LONG ACCOUNT NAME FOR TESTING WRAPPING",
-            ["INVOICE_BANK_NAME"] = "SYNTHETIC BANK", ["INVOICE_BANK_IBAN"] = "AE010123456789012345678"
+            ["INVOICE_BANK_NAME"] = "SYNTHETIC BANK", ["INVOICE_BANK_IBAN"] = "AE070331234567890123456"
         });
         var fonts = new FontService(NullLogger<FontService>.Instance);
         fonts.RegisterFonts();
@@ -66,7 +66,7 @@ public class LetterheadLogoSizeTests
         Assert.Contains("frozenhubfoods@gmail.com", text, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("SYNTHETIC LONG ACCOUNT NAME", text);
         Assert.Contains("SYNTHETIC BANK", text);
-        Assert.Contains("AE01 0123 4567 8901 2345 678", text);
+        Assert.Contains("AE07 0331 2345 6789 0123 456", text);
         Assert.Contains("FH-QA-2026", text);
         Assert.Contains("21.00", text);
         Assert.DoesNotContain("International Transport", text);
@@ -83,7 +83,7 @@ public class LetterheadLogoSizeTests
         var settings = new SettingsService(db);
         await settings.UpdateOwnerSettingsBulkAsync(TenantId, new Dictionary<string, string> {
             ["INVOICE_BANK_ACCOUNT_NAME"] = "SYNTHETIC ACCOUNT", ["INVOICE_BANK_NAME"] = "SYNTHETIC BANK",
-            ["INVOICE_BANK_IBAN"] = "AE010123456789012345678", ["INVOICE_HEADER_PRESENTATION"] = "compact"
+            ["INVOICE_BANK_IBAN"] = "AE070331234567890123456", ["INVOICE_HEADER_PRESENTATION"] = "compact"
         });
         var fonts = new FontService(NullLogger<FontService>.Instance);
         fonts.RegisterFonts();
@@ -100,9 +100,13 @@ public class LetterheadLogoSizeTests
         logo.Value = "";
         await db.SaveChangesAsync();
         var settings = new SettingsService(db);
-        await settings.UpdateOwnerSettingsBulkAsync(TenantId, new Dictionary<string, string> {
+        // 2026-11: an incomplete bank block can no longer be saved; a legacy stored partial value still prints nothing.
+        await Assert.ThrowsAsync<ArgumentException>(() => settings.UpdateOwnerSettingsBulkAsync(TenantId, new Dictionary<string, string> {
             ["INVOICE_HEADER_PRESENTATION"] = "compact", ["INVOICE_BANK_NAME"] = "INCOMPLETE BANK"
-        });
+        }));
+        await settings.UpdateOwnerSettingsBulkAsync(TenantId, new Dictionary<string, string> { ["INVOICE_HEADER_PRESENTATION"] = "compact" });
+        db.Settings.Add(new Setting { TenantId = TenantId, OwnerId = TenantId, Key = "INVOICE_BANK_NAME", Value = "INCOMPLETE BANK" });
+        await db.SaveChangesAsync();
         var fonts = new FontService(NullLogger<FontService>.Instance);
         fonts.RegisterFonts();
         var pdf = new PdfService(db, null!, fonts, settings, null!, NullLogger<PdfService>.Instance, null!);
@@ -171,7 +175,7 @@ public class LetterheadLogoSizeTests
                 Assert.Contains("FROZENHUB", page.Text);
                 Assert.Contains("FOODSTUFF TRADING - L.L.C - S.P.C", page.Text);
                 Assert.Contains("Abu Dhabi, Musaffah 17", page.Text);
-                Assert.DoesNotContain("frozenhubfoods@gmail.com", page.Text, StringComparison.OrdinalIgnoreCase);
+                Assert.Contains("frozenhubfoods@gmail.com", page.Text, StringComparison.OrdinalIgnoreCase); // 2026-11 client-approved: email prints in the left header
                 Assert.Contains("+971 55 552 8878", page.Text); // P0-PRINT-005: saved tenant phone prints
                 Assert.DoesNotContain("International Transport", page.Text, StringComparison.OrdinalIgnoreCase);
                 var logo = Assert.Single(page.GetImages());
@@ -226,7 +230,9 @@ public class LetterheadLogoSizeTests
             Assert.Contains("Receiver's Sign", lastText);
             Assert.Contains("734.62", document.GetPage(1).Text);
         }
-        Assert.Contains("FROZENHUB", document.GetPage(1).Text);
+        // 2026-11: page 1 is identified by the centred logo (no duplicate English title); the legal name prints on the signatory line.
+        Assert.Single(document.GetPage(1).GetImages());
+        Assert.Contains("FROZENHUB", string.Concat(document.GetPages().Select(page => page.Text)));
         Assert.Contains("0.40", string.Concat(document.GetPages().Select(page => page.Text)));
         Assert.Contains((invoice.GrandTotal).ToString("0.00"), string.Concat(document.GetPages().Select(page => page.Text)));
     }

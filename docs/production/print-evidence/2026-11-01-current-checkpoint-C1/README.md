@@ -1,0 +1,5 @@
+# C-1 local synthetic print recheck — 2026-11-01
+
+Generated from `FrozenHubPrintFinalTests` using synthetic tenant settings and synthetic invoice/customer data. These files are not live customer invoices and do not establish live tenant configuration.
+
+Validated by `dotnet test tests/HexaBill.Tests/HexaBill.Tests.csproj --no-restore --filter "FullyQualifiedName~FrozenHubPrintFinalTests|FullyQualifiedName~TenantHeaderParityTests|FullyQualifiedName~TenantPhoneHeaderTests|FullyQualifiedName~ZayogyaRegressionSnapshotTests"` — exit 0; 90 passed, 0 failed, 0 skipped. This includes FrozenHub 1 A4/A5 contact order, omission of empty optional lines with address fallback and `INVOICE` title, company-email fallback, logo fallback/aspect ratio, and FrozenHub 2 A5 contact policy. The four PDFs and PNGs were regenerated from that run and visually reviewed at normal resolution; the A4 logo was additionally reviewed at 300 DPI. Gulf Harvest and Zayogya regressions are covered; Starplus print regression is not covered by this run. Tenant settings, owner-approved values, PostgreSQL behavior, and production PDF output remain unverified.
