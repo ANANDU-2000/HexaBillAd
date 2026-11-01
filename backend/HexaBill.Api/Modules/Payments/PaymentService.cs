@@ -1015,7 +1015,7 @@ namespace HexaBill.Api.Modules.Payments
                 })
                 .ToListAsync();
 
-            return rows
+            var list = rows
                 .Select(s => new Models.OutstandingInvoiceDto
                 {
                     Id = s.Id,
@@ -1025,11 +1025,42 @@ namespace HexaBill.Api.Modules.Payments
                     PaidAmount = s.PaidAmount,
                     BalanceAmount = InvoiceReceivables.Outstanding(s.GrandTotal, s.PaidAmount, s.Returned),
                     PaymentStatus = s.PaymentStatus.ToString(),
-                    DaysOverdue = (int)(DateTime.UtcNow - s.InvoiceDate).TotalDays
+                    DaysOverdue = (int)(DateTime.UtcNow - s.InvoiceDate).TotalDays,
+                    IsLegacy = false
                 })
                 .Where(s => s.BalanceAmount > SalePaymentHelpers.SettlementToleranceAed)
-                .OrderBy(s => s.InvoiceDate)
                 .ToList();
+
+            // Include pending legacy invoices for mapped customer
+            var legacyPending = await _context.LegacyInvoices
+                .AsNoTracking()
+                .Where(i => i.TenantId == tenantId && !i.IsDeleted &&
+                           (i.DestinationCustomerId == customerId || i.SourceCustomerId == customerId) &&
+                           i.OutstandingCalculated > SalePaymentHelpers.SettlementToleranceAed)
+                .OrderBy(i => i.InvoiceDate)
+                .ToListAsync();
+
+            foreach (var leg in legacyPending)
+            {
+                var dueDate = leg.DueDate ?? leg.InvoiceDate.AddDays(30);
+                var daysOverdue = dueDate < DateTime.Today ? (DateTime.Today - dueDate).Days : 0;
+                list.Add(new Models.OutstandingInvoiceDto
+                {
+                    Id = leg.Id,
+                    CustomerId = customerId,
+                    InvoiceNo = leg.LegacyInvoiceNumber,
+                    InvoiceDate = leg.InvoiceDate,
+                    GrandTotal = leg.GrandTotal,
+                    PaidAmount = leg.PaidAmount,
+                    BalanceAmount = leg.OutstandingCalculated,
+                    PaymentStatus = leg.PaidAmount > 0 ? "Partial" : "Pending",
+                    DaysOverdue = daysOverdue,
+                    IsLegacy = true,
+                    LegacyInvoiceId = leg.Id
+                });
+            }
+
+            return list.OrderBy(s => s.InvoiceDate).ToList();
         }
 
         public async Task<InvoiceAmountDto> GetInvoiceAmountAsync(int invoiceId, int tenantId)

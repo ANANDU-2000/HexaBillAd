@@ -47,7 +47,7 @@ namespace HexaBill.Api.Modules.Legacy
                 if (tenantId <= 0) return Forbid();
 
                 page = Math.Max(1, page);
-                pageSize = Math.Clamp(pageSize, 1, 100);
+                pageSize = Math.Clamp(pageSize, 1, 1000);
 
                 var query = _context.LegacyInvoices.AsNoTracking().Where(i => i.TenantId == tenantId);
 
@@ -459,7 +459,7 @@ namespace HexaBill.Api.Modules.Legacy
                 if (tenantId <= 0) return Forbid();
 
                 page = Math.Max(1, page);
-                pageSize = Math.Clamp(pageSize, 1, 100);
+                pageSize = Math.Clamp(pageSize, 1, 1000);
 
                 var query = from p in _context.LegacyPayments.AsNoTracking().Where(p => p.TenantId == tenantId)
                             join i in _context.LegacyInvoices.AsNoTracking().Where(i => i.TenantId == tenantId)
@@ -564,6 +564,7 @@ namespace HexaBill.Api.Modules.Legacy
             [FromQuery] int pageSize = 25,
             [FromQuery] string? search = null,
             [FromQuery] string? company = null,
+            [FromQuery] int? customerId = null,
             [FromQuery] DateTime? fromDate = null,
             [FromQuery] DateTime? toDate = null)
         {
@@ -573,7 +574,7 @@ namespace HexaBill.Api.Modules.Legacy
                 if (tenantId <= 0) return Forbid();
 
                 page = Math.Max(1, page);
-                pageSize = Math.Clamp(pageSize, 1, 100);
+                pageSize = Math.Clamp(pageSize, 1, 1000);
 
                 var includeFrozenHub = string.IsNullOrWhiteSpace(company) || company.Equals("FROZENHUB", StringComparison.OrdinalIgnoreCase);
                 var includeStarplus = string.IsNullOrWhiteSpace(company) || company.Equals("STARPLUS", StringComparison.OrdinalIgnoreCase);
@@ -591,6 +592,10 @@ namespace HexaBill.Api.Modules.Legacy
                     {
                         var toUtc = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
                         baseFh = baseFh.Where(s => s.InvoiceDate <= toUtc);
+                    }
+                    if (customerId.HasValue && customerId.Value > 0)
+                    {
+                        baseFh = baseFh.Where(s => s.CustomerId == customerId.Value);
                     }
                     if (!string.IsNullOrWhiteSpace(search))
                     {
@@ -637,6 +642,10 @@ namespace HexaBill.Api.Modules.Legacy
                     {
                         var toUtc = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
                         baseLegacy = baseLegacy.Where(i => i.InvoiceDate <= toUtc);
+                    }
+                    if (customerId.HasValue && customerId.Value > 0)
+                    {
+                        baseLegacy = baseLegacy.Where(i => i.DestinationCustomerId == customerId.Value || i.SourceCustomerId == customerId.Value);
                     }
                     if (!string.IsNullOrWhiteSpace(search))
                     {

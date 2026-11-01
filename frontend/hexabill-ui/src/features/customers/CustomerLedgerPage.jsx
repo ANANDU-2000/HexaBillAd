@@ -1212,7 +1212,33 @@ const CustomerLedgerPage = () => {
       // CRITICAL: Do NOT pass branchId/routeId/staffId - always fetch full ledger.
       // Passing them filters out sales with different/null branch - causes "No transactions found"
       // when customer has data under multiple branches or legacy null BranchId.
-      const [ledgerRes, invoicesRes, outstandingRes, customerRes] = await Promise.all([
+      // Tenant 20 (FrozenHub 1) Starplus continuity: load legacy invoices and payments
+      const isTenant20 = user?.tenantId === 20 || !user?.tenantId
+      const legacyInvoicesPromise = isTenant20
+        ? legacyAPI.getInvoices({
+            customerId,
+            pageSize: 1000,
+            fromDate: dateRange.from,
+            toDate: dateRange.to
+          }).catch(err => {
+            console.warn('Could not fetch legacy invoices for customer ledger:', err)
+            return null
+          })
+        : Promise.resolve(null)
+
+      const legacyPaymentsPromise = isTenant20
+        ? legacyAPI.getPayments({
+            customerId,
+            pageSize: 1000,
+            fromDate: dateRange.from,
+            toDate: dateRange.to
+          }).catch(err => {
+            console.warn('Could not fetch legacy payments for customer ledger:', err)
+            return null
+          })
+        : Promise.resolve(null)
+
+      const [ledgerRes, invoicesRes, outstandingRes, customerRes, legacyInvoicesRes, legacyPaymentsRes] = await Promise.all([
         customersAPI.getCustomerLedger(customerId, {
           fromDate: dateRange.from,
           toDate: dateRange.to
@@ -1226,7 +1252,9 @@ const CustomerLedgerPage = () => {
           toDate: dateRange.to
         }),
         customersAPI.getOutstandingInvoices(customerId),
-        customersAPI.getCustomer(customerId)
+        customersAPI.getCustomer(customerId),
+        legacyInvoicesPromise,
+        legacyPaymentsPromise
       ])
 
       if (isStale()) return
@@ -1247,17 +1275,45 @@ const CustomerLedgerPage = () => {
         setCustomerLedger(validLedgerData)
       }
 
-      if (invoicesRes.success && invoicesRes.data) {
-        const sales = invoicesRes.data.items || []
-        // CRITICAL: Validate all invoices belong to this customer
-        const validSales = sales.filter(sale => {
-          // Ensure sale belongs to this customer
-          return sale.customerId === customerId || sale.customerId === parseInt(customerId)
-        })
-        // Backend already filters by date range, so use validSales directly
-        invoicesData = validSales
-        setCustomerInvoices(invoicesData)
-      }
+      const sales = (invoicesRes.success && invoicesRes.data?.items) ? invoicesRes.data.items : []
+      const validSales = sales.filter(sale => sale.customerId === customerId || sale.customerId === parseInt(customerId))
+
+      const legacyInvoices = (legacyInvoicesRes?.success && legacyInvoicesRes.data?.items)
+        ? legacyInvoicesRes.data.items.map(inv => ({
+            id: inv.id,
+            legacyInvoiceId: inv.id,
+            sourceInvoiceId: inv.sourceInvoiceId,
+            invoiceNo: inv.legacyInvoiceNumber,
+            invoiceDate: inv.invoiceDate,
+            date: inv.invoiceDate,
+            dueDate: inv.dueDate,
+            customerId: customerId,
+            customerName: inv.customerName,
+            subtotal: Number(inv.subtotal) || 0,
+            taxAmount: Number(inv.vatTotal) || 0,
+            vatTotal: Number(inv.vatTotal) || 0,
+            discount: Number(inv.discount) || 0,
+            grandTotal: Number(inv.grandTotal) || 0,
+            total: Number(inv.grandTotal) || 0,
+            paidAmount: Number(inv.paidAmount) || 0,
+            outstandingCalculated: Number(inv.outstandingCalculated) || 0,
+            paymentStatus: Number(inv.outstandingCalculated) <= 0.005 ? 'Paid' : (Number(inv.paidAmount) > 0 ? 'Partial' : 'Pending'),
+            paymentMethod: 'Legacy',
+            itemCount: inv.itemCount,
+            notes: inv.notes,
+            isLegacy: true,
+            sourceCompany: inv.legacyIssuer || 'Starplus Foodstuff Trading'
+          }))
+        : []
+
+      const combinedInvoices = [...validSales, ...legacyInvoices].sort((a, b) => {
+        const dA = new Date(a.invoiceDate || a.date || 0).getTime()
+        const dB = new Date(b.invoiceDate || b.date || 0).getTime()
+        if (dB !== dA) return dB - dA
+        return (b.id ?? 0) - (a.id ?? 0)
+      })
+      invoicesData = combinedInvoices
+      setCustomerInvoices(invoicesData)
 
       if (outstandingRes.success && outstandingRes.data) {
         outstandingData = Array.isArray(outstandingRes.data) ? outstandingRes.data : []
@@ -1317,25 +1373,49 @@ const CustomerLedgerPage = () => {
 
       if (isStale()) return
 
-      if (paymentsRes.success && paymentsRes.data) {
-        const allPayments = paymentsRes.data.items || []
-        // CRITICAL: Strictly filter payments by customerId to prevent mismatches
-        const customerPayments = allPayments
-          .filter(p => {
-            // Ensure payment belongs to this customer (check both string and number)
-            const paymentCustomerId = p.customerId || p.customerID
-            return paymentCustomerId === customerId ||
-              paymentCustomerId === parseInt(customerId) ||
-              parseInt(paymentCustomerId) === parseInt(customerId)
-          })
-          .filter(p => {
-            const paymentDate = new Date(p.paymentDate)
-            const fromDate = new Date(dateRange.from)
-            const toDate = new Date(dateRange.to)
-            toDate.setHours(23, 59, 59, 999)
-            return paymentDate >= fromDate && paymentDate <= toDate
-          })
-        setCustomerPayments(customerPayments)
+      const allPayments = (paymentsRes.success && paymentsRes.data?.items) ? paymentsRes.data.items : []
+      const customerPayments = allPayments
+        .filter(p => {
+          const paymentCustomerId = p.customerId || p.customerID
+          return paymentCustomerId === customerId ||
+            paymentCustomerId === parseInt(customerId) ||
+            parseInt(paymentCustomerId) === parseInt(customerId)
+        })
+        .filter(p => {
+          const paymentDate = new Date(p.paymentDate)
+          const fromDate = new Date(dateRange.from)
+          const toDate = new Date(dateRange.to)
+          toDate.setHours(23, 59, 59, 999)
+          return paymentDate >= fromDate && paymentDate <= toDate
+        })
+
+      const legacyPayments = (legacyPaymentsRes?.success && legacyPaymentsRes.data?.items)
+        ? legacyPaymentsRes.data.items.map(p => ({
+            id: p.id,
+            legacyPaymentId: p.id,
+            sourcePaymentId: p.sourcePaymentId,
+            paymentNumber: p.reference || `LP-${p.sourcePaymentId}`,
+            reference: p.reference || p.legacyInvoiceNumber || `LP-${p.sourcePaymentId}`,
+            invoiceNo: p.legacyInvoiceNumber,
+            paymentDate: p.paymentDate,
+            date: p.paymentDate,
+            amount: Number(p.amount) || 0,
+            mode: p.mode || 'Cash',
+            paymentMethod: p.mode || 'Cash',
+            status: p.status || 'Cleared',
+            customerId: customerId,
+            customerName: p.customerName,
+            isLegacy: true
+          }))
+        : []
+
+      const combinedPayments = [...customerPayments, ...legacyPayments].sort((a, b) => {
+        const dA = new Date(a.paymentDate || a.date || 0).getTime()
+        const dB = new Date(b.paymentDate || b.date || 0).getTime()
+        if (dB !== dA) return dB - dA
+        return (b.id ?? 0) - (a.id ?? 0)
+      })
+      setCustomerPayments(combinedPayments)
 
         // SILENT VALIDATION: Only log errors, don't show toast floods
         // Only validate and show errors during manual reconciliation or critical operations
@@ -1366,7 +1446,6 @@ const CustomerLedgerPage = () => {
           // Don't show toast - this message is confusing and floods on every load
           // User can manually reconcile if needed using the Reconcile button
         }
-      }
 
       if (!isStale()) {
         setLoadedForCustomerId(normalizedId)
@@ -2814,9 +2893,15 @@ const CustomerLedgerPage = () => {
                       invoices={customerInvoices}
                       outstandingInvoices={outstandingInvoices}
                       user={user}
-                      onViewInvoice={(invoiceId) => {
-                        setSelectedInvoiceForView(invoiceId)
-                        setShowInvoiceModal(true)
+                      onViewInvoice={(invoiceId, inv) => {
+                        const target = inv || customerInvoices.find(i => i.id === invoiceId)
+                        if (target?.isLegacy) {
+                          setSelectedLegacyInvoiceId(target.legacyInvoiceId || target.id)
+                          setShowLegacyInvoiceModal(true)
+                        } else {
+                          setSelectedInvoiceForView(invoiceId)
+                          setShowInvoiceModal(true)
+                        }
                       }}
                       onViewPDF={async (invoiceId) => {
                         try {
@@ -4332,6 +4417,11 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                       <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-neutral-900">
                         <div className="flex items-center gap-1.5">
                           <span>{invoice.invoiceNo || `INV-${invoice.id}`}</span>
+                          {invoice.isLegacy && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200" title="Starplus Historical Bill">
+                              Historical
+                            </span>
+                          )}
                           {invoice.isLocked && (
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800" title="Invoice locked after 48 hours">
                               <Lock className="h-3 w-3 mr-0.5" />
@@ -4371,13 +4461,13 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                             </button>
                           )}
                           <button
-                            onClick={() => onViewInvoice(invoice.id)}
+                            onClick={() => onViewInvoice(invoice.id, invoice)}
                             className="text-primary-600 hover:text-primary-900 hover:bg-primary-50 p-1 rounded transition-colors"
                             title="View Invoice"
                           >
                             <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </button>
-                          {canEdit && onEditInvoice && !invoice.isLocked && (
+                          {canEdit && onEditInvoice && !invoice.isLegacy && !invoice.isLocked && (
                             <button
                               onClick={() => onEditInvoice(invoice.id)}
                               className="text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 p-1 rounded transition-colors"
@@ -4395,7 +4485,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                               <Unlock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
                           )}
-                          {isAdmin && onDeleteInvoice && (
+                          {isAdmin && onDeleteInvoice && !invoice.isLegacy && (
                             <button
                               onClick={() => onDeleteInvoice(invoice.id)}
                               className="bg-error-bg text-error hover:text-white hover:bg-error border border-red-300 p-1.5 rounded transition-colors shadow-sm"
@@ -4404,7 +4494,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                               <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
                           )}
-                          {onReturnInvoice && (
+                          {onReturnInvoice && !invoice.isLegacy && (
                             <button
                               onClick={() => onReturnInvoice(invoice.id)}
                               className="text-warning hover:text-amber-900 hover:bg-warning-bg p-1 rounded transition-colors"
@@ -4498,13 +4588,13 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                     </button>
                   )}
                   <button
-                    onClick={() => onViewInvoice(invoice.id)}
+                    onClick={() => onViewInvoice(invoice.id, invoice)}
                     className="px-3 py-2 text-primary-600 hover:bg-primary-50 rounded-md text-xs font-medium flex items-center gap-1"
                     aria-label="View invoice"
                   >
                     <Eye className="h-3.5 w-3.5" /> View
                   </button>
-                  {canEdit && onEditInvoice && !invoice.isLocked && (
+                  {canEdit && onEditInvoice && !invoice.isLegacy && !invoice.isLocked && (
                     <button
                       onClick={() => onEditInvoice(invoice.id)}
                       className="px-3 py-2 text-indigo-600 hover:bg-indigo-50 rounded-md text-xs font-medium flex items-center gap-1"

@@ -645,6 +645,9 @@ namespace HexaBill.Api.Models
         /// <summary>When Type is Sale Return: Pending, Approved, Rejected, Reversed (workflow; distinct from refund Status).</summary>
         public string? ReturnWorkflowStatus { get; set; }
         public decimal PaidAmount { get; set; } // Amount paid for invoice
+        public bool IsLegacy { get; set; }
+        public int? LegacyInvoiceId { get; set; }
+        public int? LegacyPaymentId { get; set; }
     }
 
     // Expense DTOs
@@ -933,6 +936,7 @@ namespace HexaBill.Api.Models
         public decimal BalanceAmount { get; set; }
         public string PaymentStatus { get; set; } = string.Empty;
         public int DaysOverdue { get; set; }
+        public bool IsLegacy { get; set; }
     }
 
     public class ExpenseAggregateDto
@@ -1510,6 +1514,8 @@ namespace HexaBill.Api.Models
         public decimal BalanceAmount { get; set; }
         public string PaymentStatus { get; set; } = string.Empty;
         public int DaysOverdue { get; set; }
+        public bool IsLegacy { get; set; }
+        public int? LegacyInvoiceId { get; set; }
     }
 
     // Delete Customer Summary DTO
