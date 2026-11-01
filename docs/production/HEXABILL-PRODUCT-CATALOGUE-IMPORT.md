@@ -66,3 +66,18 @@ Apply safety: refuses without the exact per-tenant token; writes through a DbCon
 3. Deploy the branch containing the sale guard first (so imported items cannot be sold at 0.00 even after activation).
 4. `apply` for tenant 23, then tenant 22; keep the results CSV and rollback SQL.
 5. Verify counts in SQL and in the Products → Inactive tab for each tenant; confirm no stock movements.
+
+## Production import: DONE 2026-11-02 (owner-approved; Dubai 03:23)
+
+Owner decision: all review items are real products. SKU clashes got new SKUs: `MUTTON-CUBE-ALWAHA-SP`, `CKN-GIZZARD-OSUL-SP` (both tenants), `VEAL-LEG-18KG-ALBAB` (tenant 22).
+
+| Tenant | Before | Imported | After | New rows inactive | New rows with stock/price/cost ≠ 0 | Stock movements for new rows |
+|---|---|---|---|---|---|---|
+| 23 FrozenHub 2 | 1 | 287 | 288 | 287 | 0 | 0 |
+| 22 Gulf Harvest | 69 | 285 | 354 | 285 | 0 | 0 |
+
+Unchanged (md5 fingerprint before = after): the 70 pre-existing tenant 22/23 products; all 92 other-tenant products; total InventoryTransactions 7,596. Pre-image CSV, results CSVs and guarded rollback SQL are kept privately in `C:\Users\anand\.hexabill-ro\product-import\prod-20261102\`.
+
+Pre-existing Gulf Harvest data issue (not from this import): two SKU pairs that differ only by letter case (#93/#94 `CKN-1100-SADIA`, #112/#113 `CHICKEN`).
+
+Next for the owner: Products → Inactive → select → Activate the items to sell. Prices are typed at POS. The AED 0.00 sale guard goes live when this branch is deployed.
