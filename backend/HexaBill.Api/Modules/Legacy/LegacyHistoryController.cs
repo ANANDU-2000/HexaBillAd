@@ -68,13 +68,13 @@ namespace HexaBill.Api.Modules.Legacy
 
                 if (fromDate.HasValue)
                 {
-                    var fromUtc = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+                    var fromUtc = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
                     query = query.Where(i => i.InvoiceDate >= fromUtc);
                 }
 
                 if (toDate.HasValue)
                 {
-                    var toUtc = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+                    var toUtc = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
                     query = query.Where(i => i.InvoiceDate <= toUtc);
                 }
 
@@ -483,13 +483,13 @@ namespace HexaBill.Api.Modules.Legacy
 
                 if (fromDate.HasValue)
                 {
-                    var fromUtc = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+                    var fromUtc = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
                     query = query.Where(x => x.p.PaymentDate >= fromUtc);
                 }
 
                 if (toDate.HasValue)
                 {
-                    var toUtc = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+                    var toUtc = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
                     query = query.Where(x => x.p.PaymentDate <= toUtc);
                 }
 
@@ -635,12 +635,12 @@ namespace HexaBill.Api.Modules.Legacy
                     var baseLegacy = _context.LegacyInvoices.AsNoTracking().Where(i => i.TenantId == tenantId && !i.IsDeleted);
                     if (fromDate.HasValue)
                     {
-                        var fromUtc = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+                        var fromUtc = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
                         baseLegacy = baseLegacy.Where(i => i.InvoiceDate >= fromUtc);
                     }
                     if (toDate.HasValue)
                     {
-                        var toUtc = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+                        var toUtc = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
                         baseLegacy = baseLegacy.Where(i => i.InvoiceDate <= toUtc);
                     }
                     if (customerId.HasValue && customerId.Value > 0)
@@ -767,13 +767,13 @@ namespace HexaBill.Api.Modules.Legacy
 
                 if (fromDate.HasValue)
                 {
-                    var fromUtc = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+                    var fromUtc = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
                     query = query.Where(p => p.PurchaseDate >= fromUtc);
                 }
 
                 if (toDate.HasValue)
                 {
-                    var toUtc = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+                    var toUtc = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
                     query = query.Where(p => p.PurchaseDate <= toUtc);
                 }
 
@@ -949,13 +949,13 @@ namespace HexaBill.Api.Modules.Legacy
 
                 if (fromDate.HasValue)
                 {
-                    var fromUtc = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+                    var fromUtc = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
                     query = query.Where(e => e.Date >= fromUtc);
                 }
 
                 if (toDate.HasValue)
                 {
-                    var toUtc = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+                    var toUtc = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
                     query = query.Where(e => e.Date <= toUtc);
                 }
 

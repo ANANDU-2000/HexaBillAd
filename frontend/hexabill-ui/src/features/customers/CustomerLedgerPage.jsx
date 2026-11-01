@@ -28,7 +28,10 @@ import {
   Wallet,
   AlertTriangle,
   ArrowLeft,
-  RotateCcw
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  AlertCircle
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { readApiErrorReason, saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
@@ -377,11 +380,18 @@ const CustomerLedgerPage = () => {
     try {
       // Filter by date range
       const filteredEntries = customerLedger.filter(entry => {
+        if (!dateRange.from && !dateRange.to) return true
         const entryDate = new Date(entry.date)
-        const fromDate = new Date(dateRange.from)
-        const toDate = new Date(dateRange.to)
-        toDate.setHours(23, 59, 59, 999)
-        return entryDate >= fromDate && entryDate <= toDate
+        if (dateRange.from) {
+          const fromDate = new Date(dateRange.from)
+          if (entryDate < fromDate) return false
+        }
+        if (dateRange.to) {
+          const toDate = new Date(dateRange.to)
+          toDate.setHours(23, 59, 59, 999)
+          if (entryDate > toDate) return false
+        }
+        return true
       })
 
       // Create CSV content
@@ -1166,11 +1176,18 @@ const CustomerLedgerPage = () => {
             return !paymentCustomerId || paymentCustomerId === null || paymentCustomerId === 0
           }).filter(p => {
             // Also filter by date range
+            if (!dateRange.from && !dateRange.to) return true
             const paymentDate = new Date(p.paymentDate)
-            const fromDate = new Date(dateRange.from)
-            const toDate = new Date(dateRange.to)
-            toDate.setHours(23, 59, 59, 999)
-            return paymentDate >= fromDate && paymentDate <= toDate
+            if (dateRange.from) {
+              const fromDate = new Date(dateRange.from)
+              if (paymentDate < fromDate) return false
+            }
+            if (dateRange.to) {
+              const toDate = new Date(dateRange.to)
+              toDate.setHours(23, 59, 59, 999)
+              if (paymentDate > toDate) return false
+            }
+            return true
           })
           setCustomerPayments(cashPayments)
         }
@@ -1213,7 +1230,7 @@ const CustomerLedgerPage = () => {
       // Passing them filters out sales with different/null branch - causes "No transactions found"
       // when customer has data under multiple branches or legacy null BranchId.
       // Tenant 20 (FrozenHub 1) Starplus continuity: load legacy invoices and payments
-      const isTenant20 = user?.tenantId === 20 || !user?.tenantId
+      const isTenant20 = Number(user?.tenantId) === 20 || !user?.tenantId || (typeof window !== 'undefined' && window.location.hostname.includes('frozenhub') && !window.location.hostname.includes('frozenhub2'))
       const legacyInvoicesPromise = isTenant20
         ? legacyAPI.getInvoices({
             customerId,
@@ -1329,11 +1346,18 @@ const CustomerLedgerPage = () => {
         // Calculate summary using FRESH data filtered by date range (matching what's shown in tabs)
         // Filter ledger data by date range for accurate calculations
         const filteredLedgerData = ledgerData.filter(entry => {
+          if (!dateRange.from && !dateRange.to) return true
           const entryDate = new Date(entry.date)
-          const fromDate = new Date(dateRange.from)
-          const toDate = new Date(dateRange.to)
-          toDate.setHours(23, 59, 59, 999)
-          return entryDate >= fromDate && entryDate <= toDate
+          if (dateRange.from) {
+            const fromDate = new Date(dateRange.from)
+            if (entryDate < fromDate) return false
+          }
+          if (dateRange.to) {
+            const toDate = new Date(dateRange.to)
+            toDate.setHours(23, 59, 59, 999)
+            if (entryDate > toDate) return false
+          }
+          return true
         })
 
         // Calculate totals from filtered ledger data (matching LedgerStatementTab logic)
@@ -1382,11 +1406,18 @@ const CustomerLedgerPage = () => {
             parseInt(paymentCustomerId) === parseInt(customerId)
         })
         .filter(p => {
+          if (!dateRange.from && !dateRange.to) return true
           const paymentDate = new Date(p.paymentDate)
-          const fromDate = new Date(dateRange.from)
-          const toDate = new Date(dateRange.to)
-          toDate.setHours(23, 59, 59, 999)
-          return paymentDate >= fromDate && paymentDate <= toDate
+          if (dateRange.from) {
+            const fromDate = new Date(dateRange.from)
+            if (paymentDate < fromDate) return false
+          }
+          if (dateRange.to) {
+            const toDate = new Date(dateRange.to)
+            toDate.setHours(23, 59, 59, 999)
+            if (paymentDate > toDate) return false
+          }
+          return true
         })
 
       const legacyPayments = (legacyPaymentsRes?.success && legacyPaymentsRes.data?.items)
@@ -2026,11 +2057,18 @@ const CustomerLedgerPage = () => {
 
       // Prepare WhatsApp message
       const filteredEntries = customerLedger.filter(entry => {
+        if (!dateRange.from && !dateRange.to) return true
         const entryDate = new Date(entry.date)
-        const fromDate = new Date(dateRange.from)
-        const toDate = new Date(dateRange.to)
-        toDate.setHours(23, 59, 59, 999)
-        return entryDate >= fromDate && entryDate <= toDate
+        if (dateRange.from) {
+          const fromDate = new Date(dateRange.from)
+          if (entryDate < fromDate) return false
+        }
+        if (dateRange.to) {
+          const toDate = new Date(dateRange.to)
+          toDate.setHours(23, 59, 59, 999)
+          if (entryDate > toDate) return false
+        }
+        return true
       })
 
       const totalDebit = filteredEntries.reduce((sum, e) => sum + (Number(e.debit) || 0), 0)
@@ -2080,11 +2118,18 @@ const CustomerLedgerPage = () => {
     // Create print window
     const printWindow = window.open('', '_blank')
     const filteredEntries = customerLedger.filter(entry => {
+      if (!dateRange.from && !dateRange.to) return true
       const entryDate = new Date(entry.date)
-      const fromDate = new Date(dateRange.from)
-      const toDate = new Date(dateRange.to)
-      toDate.setHours(23, 59, 59, 999)
-      return entryDate >= fromDate && entryDate <= toDate
+      if (dateRange.from) {
+        const fromDate = new Date(dateRange.from)
+        if (entryDate < fromDate) return false
+      }
+      if (dateRange.to) {
+        const toDate = new Date(dateRange.to)
+        toDate.setHours(23, 59, 59, 999)
+        if (entryDate > toDate) return false
+      }
+      return true
     })
 
     const totalDebit = filteredEntries.reduce((sum, e) => sum + (Number(e.debit) || 0), 0)
@@ -2581,10 +2626,27 @@ const CustomerLedgerPage = () => {
                     {balanceRefreshSkeleton ? (
                       <p className="text-sm text-neutral-500 animate-pulse">Refreshing…</p>
                     ) : (
-                      <p className="text-base sm:text-lg font-semibold tabular-nums text-text-primary">
-                        {formatCurrency(Math.abs(selectedCustomer.balance ?? 0))}
-                        <span className="text-micro font-medium text-neutral-500 ml-1">{(selectedCustomer.balance ?? 0) < 0 ? 'Cr' : (selectedCustomer.balance ?? 0) > 0 ? 'Dr' : ''}</span>
-                      </p>
+                      <div>
+                        <p className="text-base sm:text-lg font-semibold tabular-nums text-text-primary">
+                          {formatCurrency(Math.abs(selectedCustomer.balance ?? 0))}
+                          <span className="text-micro font-medium text-neutral-500 ml-1">{(selectedCustomer.balance ?? 0) < 0 ? 'Cr' : (selectedCustomer.balance ?? 0) > 0 ? 'Dr' : ''}</span>
+                        </p>
+                        {outstandingInvoices.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveTab('invoices')
+                              setDateRange({ from: '', to: '' })
+                              setFilterDraft(prev => ({ ...prev, from: '', to: '' }))
+                            }}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded px-1.5 py-0.5 mt-0.5 cursor-pointer transition-colors"
+                            title="Click to view all unpaid invoices"
+                          >
+                            <AlertCircle className="h-3 w-3 text-amber-600" />
+                            <span>{outstandingInvoices.length} Unpaid Invoice{outstandingInvoices.length > 1 ? 's' : ''}</span>
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -2673,11 +2735,18 @@ const CustomerLedgerPage = () => {
                         onClick={async () => {
                           try {
                             const filteredEntries = customerLedger.filter(entry => {
+                              if (!dateRange.from && !dateRange.to) return true
                               const entryDate = new Date(entry.date)
-                              const fromDate = new Date(dateRange.from)
-                              const toDate = new Date(dateRange.to)
-                              toDate.setHours(23, 59, 59, 999)
-                              return entryDate >= fromDate && entryDate <= toDate
+                              if (dateRange.from) {
+                                const fromDate = new Date(dateRange.from)
+                                if (entryDate < fromDate) return false
+                              }
+                              if (dateRange.to) {
+                                const toDate = new Date(dateRange.to)
+                                toDate.setHours(23, 59, 59, 999)
+                                if (entryDate > toDate) return false
+                              }
+                              return true
                             })
                             const totalDebit = filteredEntries.reduce((sum, e) => sum + (Number(e.debit) || 0), 0)
                             const totalCredit = filteredEntries.reduce((sum, e) => sum + (Number(e.credit) || 0), 0)
@@ -2804,12 +2873,18 @@ const CustomerLedgerPage = () => {
                             // CRITICAL: Validate entry belongs to selected customer (extra safety check)
                             if (!selectedCustomer) return false
 
-                            const entryDate = new Date(entry.date)
-                            const fromDate = new Date(dateRange.from)
-                            const toDate = new Date(dateRange.to)
-                            toDate.setHours(23, 59, 59, 999)
-                            const inDateRange = entryDate >= fromDate && entryDate <= toDate
-                            if (!inDateRange) return false
+                            if (dateRange.from || dateRange.to) {
+                              const entryDate = new Date(entry.date)
+                              if (dateRange.from) {
+                                const fromDate = new Date(dateRange.from)
+                                if (entryDate < fromDate) return false
+                              }
+                              if (dateRange.to) {
+                                const toDate = new Date(dateRange.to)
+                                toDate.setHours(23, 59, 59, 999)
+                                if (entryDate > toDate) return false
+                              }
+                            }
 
                             // Ledger entries from API don't have branchId/routeId - only date/type/amount.
                             // Do NOT filter by branch/route here - it would exclude all (undefined != null).
@@ -2892,6 +2967,11 @@ const CustomerLedgerPage = () => {
                     <InvoicesTab
                       invoices={customerInvoices}
                       outstandingInvoices={outstandingInvoices}
+                      dateRange={dateRange}
+                      onShowAllDates={() => {
+                        setDateRange({ from: '', to: '' })
+                        setFilterDraft(prev => ({ ...prev, from: '', to: '' }))
+                      }}
                       user={user}
                       onViewInvoice={(invoiceId, inv) => {
                         const target = inv || customerInvoices.find(i => i.id === invoiceId)
@@ -4314,7 +4394,13 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
 }
 
 // Invoices Tab Component
-const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onViewPDF, onEditInvoice, onPayInvoice, onUnlockInvoice, onDeleteInvoice, onReturnInvoice }) => {
+const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates, user, onViewInvoice, onViewPDF, onEditInvoice, onPayInvoice, onUnlockInvoice, onDeleteInvoice, onReturnInvoice }) => {
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [pageSize, setPageSize] = React.useState(20)
+
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [invoices?.length, dateRange?.from, dateRange?.to])
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'owner'
   const canEdit = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'owner' // Admin and Owner can edit
 
@@ -4327,6 +4413,13 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
       return (b.id ?? 0) - (a.id ?? 0)
     })
   }, [invoices])
+
+  const totalCount = sortedInvoices.length
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const paginatedInvoices = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return sortedInvoices.slice(start, start + pageSize)
+  }, [sortedInvoices, currentPage, pageSize])
 
   const getStatusColor = (status) => statusTone(status, 'invoice')
 
@@ -4395,11 +4488,24 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
               {sortedInvoices.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-4 py-8 text-center text-neutral-500">
-                    No invoices found
+                    <p className="text-sm">
+                      {dateRange?.from || dateRange?.to
+                        ? `No invoices dated ${dateRange.from && dateRange.to ? (dateRange.from === dateRange.to ? new Date(dateRange.from).toLocaleDateString('en-GB') : `${new Date(dateRange.from).toLocaleDateString('en-GB')} – ${new Date(dateRange.to).toLocaleDateString('en-GB')}`) : 'in selected period'}.`
+                        : 'No invoices found'}
+                    </p>
+                    {outstandingInvoices && outstandingInvoices.length > 0 && onShowAllDates && (
+                      <button
+                        type="button"
+                        onClick={onShowAllDates}
+                        className="mt-2 inline-flex items-center text-sm font-semibold text-primary-600 hover:text-primary-800 underline cursor-pointer"
+                      >
+                        View {outstandingInvoices.length} outstanding invoice{outstandingInvoices.length > 1 ? 's' : ''} from earlier dates →
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
-                sortedInvoices.map((invoice) => {
+                paginatedInvoices.map((invoice) => {
                   // CRITICAL: Initialize all variables at top to prevent TDZ errors
                   // Use the actual paidAmount from backend, or calculate from grandTotal
                   const paidAmount = invoice.paidAmount ?? 0
@@ -4536,6 +4642,51 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
         </div>
       </div>
 
+      {/* Pagination Controls */}
+      {totalCount > 10 && (
+        <div className="bg-neutral-50 px-3 py-2 flex items-center justify-between border-t border-neutral-200 flex-wrap gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-neutral-600">Rows per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value))
+                setCurrentPage(1)
+              }}
+              className="border border-neutral-300 rounded px-2 py-1 text-xs bg-white"
+            >
+              {[10, 20, 50, 100, 250].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+          <div className="text-neutral-700">
+            Page <span className="font-semibold">{currentPage}</span> of{' '}
+            <span className="font-semibold">{totalPages}</span> ({totalCount} total)
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="inline-flex items-center px-2.5 py-1.5 border border-neutral-300 rounded-md text-xs font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-3.5 w-3.5 mr-0.5" />
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="inline-flex items-center px-2.5 py-1.5 border border-neutral-300 rounded-md text-xs font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+              <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Invoices Cards - Mobile */}
       <div className="md:hidden flex-1 overflow-y-auto space-y-3 pb-4">
         <div className="sticky top-0 z-10 bg-neutral-50 border-b border-neutral-200 px-3 py-2 text-xs flex flex-wrap gap-x-4 gap-y-1">
@@ -4545,10 +4696,23 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
         </div>
         {sortedInvoices.length === 0 ? (
           <div className="bg-white rounded-lg border border-neutral-200 p-6 text-center text-neutral-500 text-sm">
-            No invoices found
+            <p>
+              {dateRange?.from || dateRange?.to
+                ? `No invoices dated ${dateRange.from && dateRange.to ? (dateRange.from === dateRange.to ? new Date(dateRange.from).toLocaleDateString('en-GB') : `${new Date(dateRange.from).toLocaleDateString('en-GB')} – ${new Date(dateRange.to).toLocaleDateString('en-GB')}`) : 'in selected period'}.`
+                : 'No invoices found'}
+            </p>
+            {outstandingInvoices && outstandingInvoices.length > 0 && onShowAllDates && (
+              <button
+                type="button"
+                onClick={onShowAllDates}
+                className="mt-2 inline-flex items-center text-sm font-semibold text-primary-600 hover:text-primary-800 underline cursor-pointer"
+              >
+                View {outstandingInvoices.length} outstanding invoice{outstandingInvoices.length > 1 ? 's' : ''} from earlier dates →
+              </button>
+            )}
           </div>
         ) : (
-          sortedInvoices.map((invoice) => {
+          paginatedInvoices.map((invoice) => {
             // CRITICAL: Initialize all variables at top to prevent TDZ errors
             const paidAmount = invoice.paidAmount ?? 0
             const grandTotal = invoice.grandTotal || invoice.total || 0

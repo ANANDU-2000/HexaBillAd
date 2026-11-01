@@ -2499,7 +2499,7 @@ namespace HexaBill.Api.Modules.Reports
 
         public async Task<SalesLedgerReportDto> GetComprehensiveSalesLedgerAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null, int? staffId = null, int? userIdForStaff = null, string? roleForStaff = null, string? entryType = null)
         {
-            var from = (fromDate ?? DateTime.UtcNow.Date.AddDays(-365)).ToUtcKind();
+            var from = (fromDate ?? new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc)).ToUtcKind();
             var to = (toDate ?? DateTime.UtcNow.Date).AddDays(1).AddTicks(-1).ToUtcKind();
             // PRODUCTION FIX: On PostgreSQL use raw SQL for sales list so we never reference BranchId (column may not exist).
             List<(int Id, string InvoiceNo, DateTime InvoiceDate, int? CustomerId, decimal GrandTotal, decimal Subtotal, decimal VatTotal)> sales;
@@ -2756,6 +2756,106 @@ namespace HexaBill.Api.Modules.Reports
                 });
             }
 
+            // Tenant 20 (FrozenHub 1) Starplus historical business continuity:
+            // Include legacy invoices and cleared payments when date range covers before cutover
+            var cutoverLimit = new DateTime(2026, 10, 31, 23, 59, 59, DateTimeKind.Utc);
+            if (tenantId == 20 && from <= cutoverLimit && !branchId.HasValue && !routeId.HasValue && !staffId.HasValue)
+            {
+                var legacyInvoices = await _context.LegacyInvoices.AsNoTracking()
+                    .Where(i => i.TenantId == tenantId && !i.IsDeleted && i.InvoiceDate >= from && i.InvoiceDate <= to)
+                    .OrderBy(i => i.InvoiceDate)
+                    .ToListAsync();
+
+                foreach (var leg in legacyInvoices)
+                {
+                    var legCustId = leg.DestinationCustomerId;
+                    var custName = !string.IsNullOrWhiteSpace(leg.CustomerName) 
+                        ? leg.CustomerName 
+                        : (legCustId.HasValue && customers.ContainsKey(legCustId.Value) ? customers[legCustId.Value] : "Cash Customer");
+                    
+                    var realPending = leg.OutstandingCalculated > SalePaymentHelpers.SettlementToleranceAed ? leg.OutstandingCalculated : 0m;
+                    var paidAmount = leg.PaidAmount;
+                    var status = realPending <= SalePaymentHelpers.SettlementToleranceAed ? "Paid" : (paidAmount > 0 ? "Partial" : "Unpaid");
+                    var mode = status == "Paid" ? "CASH" : (status == "Partial" ? "PARTIAL" : "NOT PAID");
+
+                    var customerKey = legCustId ?? 0;
+                    if (!customerBalances.ContainsKey(customerKey))
+                    {
+                        customerBalances[customerKey] = 0m;
+                    }
+                    customerBalances[customerKey] += leg.GrandTotal;
+
+                    ledgerEntries.Add(new SalesLedgerEntryDto
+                    {
+                        Date = leg.InvoiceDate,
+                        Type = "Sale",
+                        InvoiceNo = leg.LegacyInvoiceNumber,
+                        CustomerId = legCustId,
+                        CustomerName = custName,
+                        PaymentMode = mode,
+                        GrandTotal = leg.GrandTotal,
+                        PaidAmount = paidAmount,
+                        RealPending = realPending,
+                        RealGotPayment = paidAmount,
+                        Status = status,
+                        CustomerBalance = customerBalances[customerKey],
+                        PlanDate = leg.DueDate ?? leg.InvoiceDate.AddDays(30),
+                        SaleId = null,
+                        Subtotal = leg.Subtotal,
+                        VatTotal = leg.VatTotal
+                    });
+                }
+
+                var legacyPayments = await _context.LegacyPayments.AsNoTracking()
+                    .Where(p => p.TenantId == tenantId && p.Status == "Cleared" && p.PaymentDate >= from && p.PaymentDate <= to)
+                    .OrderBy(p => p.PaymentDate)
+                    .Select(p => new {
+                        p.Id,
+                        p.PaymentDate,
+                        p.Amount,
+                        p.Mode,
+                        p.DestinationCustomerId,
+                        InvoiceNo = p.LegacyInvoice != null ? p.LegacyInvoice.LegacyInvoiceNumber : null
+                    })
+                    .ToListAsync();
+
+                foreach (var legPay in legacyPayments)
+                {
+                    var legCustId = legPay.DestinationCustomerId;
+                    var custName = legCustId.HasValue && customers.ContainsKey(legCustId.Value) ? customers[legCustId.Value] : "Cash Customer";
+                    
+                    var customerKey = legCustId ?? 0;
+                    if (!customerBalances.ContainsKey(customerKey))
+                    {
+                        customerBalances[customerKey] = 0m;
+                    }
+                    customerBalances[customerKey] -= legPay.Amount;
+
+                    ledgerEntries.Add(new SalesLedgerEntryDto
+                    {
+                        Date = legPay.PaymentDate,
+                        Type = "Payment",
+                        InvoiceNo = legPay.InvoiceNo ?? "-",
+                        CustomerId = legCustId,
+                        CustomerName = custName,
+                        PaymentMode = (legPay.Mode ?? "CASH").ToUpper(),
+                        GrandTotal = legPay.Amount,
+                        PaidAmount = 0m,
+                        RealPending = 0m,
+                        RealGotPayment = legPay.Amount,
+                        Status = "Paid",
+                        PaymentLineStatus = "CLEARED",
+                        IsSettlementAdjustment = false,
+                        CustomerBalance = customerBalances[customerKey],
+                        PlanDate = null,
+                        PaymentId = legPay.Id,
+                        SaleId = null,
+                        Subtotal = 0m,
+                        VatTotal = 0m
+                    });
+                }
+            }
+
             // Sort by date, then by type (Sale=0, Return=1, Payment=2)
             ledgerEntries = ledgerEntries
                 .OrderBy(e => e.Date)
@@ -2774,28 +2874,17 @@ namespace HexaBill.Api.Modules.Reports
                     ledgerEntries = ledgerEntries.Where(e => e.Type.Equals("Return", StringComparison.OrdinalIgnoreCase)).ToList();
             }
 
-            // Calculate summary totals - CORRECTED CALCULATIONS
-            // 1. Total Sales = Sum of GrandTotal from all sales in date range
-            var totalSales = sales.Sum(s => s.GrandTotal);
+            // Calculate summary totals - CORRECTED CALCULATIONS (operating + historical)
+            // 1. Total Sales = Sum of GrandTotal from all sales entries in date range
+            var totalSales = ledgerEntries.Where(e => e.Type == "Sale").Sum(e => e.GrandTotal);
             
-            // 2. Total Payments = Sum of payments linked to sales in this period ONLY
-            // CRITICAL: Only count payments that are linked to sales in the date range
-            // This ensures: Total Payments <= Total Sales (logically correct)
-            // We use salePayments dictionary which already has the correct totals per sale
-            var saleIdsInPeriod = sales.Select(s => s.Id).ToHashSet();
-            var totalPayments = salePayments
-                .Where(kvp => saleIdsInPeriod.Contains(kvp.Key))
-                .Sum(kvp => kvp.Value);
-            
-            // Alternative: Sum from payments directly (for verification)
-            var totalPaymentsFromPayments = payments
-                .Where(p => p.SaleId.HasValue && saleIdsInPeriod.Contains(p.SaleId.Value))
-                .Sum(p => p.Amount);
-            
-            // Use the higher value to ensure accuracy (should be same, but handle edge cases)
-            totalPayments = Math.Max(totalPayments, totalPaymentsFromPayments);
-            
-            // CRITICAL: Ensure payments never exceed sales (logically impossible)
+            // 2. Total Payments = Sum of paidAmount across sales entries in this period
+            var totalPayments = ledgerEntries.Where(e => e.Type == "Sale").Sum(e => e.PaidAmount);
+            var directPaymentsSum = ledgerEntries.Where(e => e.Type == "Payment").Sum(e => e.GrandTotal);
+            if (totalPayments <= 0 && directPaymentsSum > 0)
+            {
+                totalPayments = directPaymentsSum;
+            }
             totalPayments = Math.Min(totalPayments, totalSales);
             
             // 3. Real Pending = Sum of unpaid amounts (GrandTotal - PaidAmount) from sales only
@@ -2803,7 +2892,7 @@ namespace HexaBill.Api.Modules.Reports
                 .Where(e => e.Type == "Sale")
                 .Sum(e => e.RealPending);
             
-            // 4. Total Real Got Payment = Total Payments (same value, different name)
+            // 4. Total Real Got Payment = Total Payments
             var totalRealGotPayment = totalPayments;
             
             // 5. Total Returns and Net Sales (ERP)
@@ -2815,8 +2904,8 @@ namespace HexaBill.Api.Modules.Reports
                 .Where(p => p.TenantId == tenantId && p.SaleReturnId != null && p.PaymentDate >= from && p.PaymentDate <= to)
                 .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
-            // 6. Pending Balance = Total Sales - Total Payments - Total Returns + RefundsPaid (never treat returns as unpaid)
-            var pendingBalance = totalSales - totalPayments - totalReturns + refundsPaid;
+            // 6. Pending Balance = Total Sales - Total Payments - Total Returns + RefundsPaid
+            var pendingBalance = totalRealPending;
             var netCashIn = totalPayments - refundsPaid;
 
             return new SalesLedgerReportDto
@@ -2833,9 +2922,9 @@ namespace HexaBill.Api.Modules.Reports
                     NetSales = netSales,
                     RefundsPaid = refundsPaid,
                     NetCashIn = netCashIn,
-                    TotalSalesVat = sales.Sum(s => s.VatTotal),
+                    TotalSalesVat = ledgerEntries.Where(e => e.Type == "Sale").Sum(e => e.VatTotal),
                     TotalReturnsVat = returns.Sum(r => r.VatTotal),
-                    TotalVat = sales.Sum(s => s.VatTotal) - returns.Sum(r => r.VatTotal)
+                    TotalVat = ledgerEntries.Where(e => e.Type == "Sale").Sum(e => e.VatTotal) - returns.Sum(r => r.VatTotal)
                 }
             };
         }

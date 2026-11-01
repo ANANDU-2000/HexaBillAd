@@ -962,7 +962,7 @@ const DashboardTally = () => {
                     <div className="h-[140px] animate-pulse rounded bg-[var(--bg-elevated)] md:h-[160px]" aria-hidden />
                 ) : trendHasSales ? (
                     <div className="h-[140px] md:h-[160px]" role="img" aria-label={`Sales trend, ${rangeLabel}, ${formatCurrency(trendSales)}`}>
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={150} minWidth={0}>
                             <BarChart data={dailySalesTrend}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                                 <XAxis
