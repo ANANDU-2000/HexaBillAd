@@ -828,6 +828,9 @@ namespace HexaBill.Api.Modules.Sales
                     }
                 }
 
+                // Catalogue-only (inactive / unpriced) products cannot reach a normal invoice.
+                validationErrors.AddRange(await SaleLineSellability.CheckAsync(_context, tenantId, request.Items, isZeroInvoice));
+
                 if (validationErrors.Any())
                 {
                     throw new InvalidOperationException(string.Join("\n", validationErrors));
@@ -1333,7 +1336,13 @@ namespace HexaBill.Api.Modules.Sales
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Similar to CreateSaleAsync but without stock validation
+                // Similar to CreateSaleAsync but without stock validation (price and activation still enforced)
+                var sellabilityErrors = await SaleLineSellability.CheckAsync(_context, tenantId, request.Items, request.IsZeroInvoice);
+                if (sellabilityErrors.Count > 0)
+                {
+                    await transaction.RollbackAsync();
+                    throw new InvalidOperationException(string.Join("\n", sellabilityErrors));
+                }
                 var invoiceNo = await GenerateInvoiceNumberAsync(tenantId);
                 var documentCompany = await _settingsService.GetCompanySettingsAsync(tenantId);
                 var vatPercent = await GetVatPercentAsync(tenantId);
@@ -1925,6 +1934,9 @@ namespace HexaBill.Api.Modules.Sales
                         additionalValidationErrors.AddRange(priceResult.Errors.Select(e => $"Item {item.ProductId}: {e}"));
                     }
                 }
+
+                var productsAlreadyOnSale = (saleForUpdate.Items ?? new List<SaleItem>()).Select(i => i.ProductId).ToHashSet();
+                additionalValidationErrors.AddRange(await SaleLineSellability.CheckAsync(_context, tenantId, request.Items, isZeroInvoice, productsAlreadyOnSale));
 
                 if (additionalValidationErrors.Any())
                 {

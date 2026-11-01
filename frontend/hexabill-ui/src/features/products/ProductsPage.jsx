@@ -82,6 +82,8 @@ const ProductsPage = () => {
   const [movementsPage, setMovementsPage] = useState(1)
   const [movementsTotalPages, setMovementsTotalPages] = useState(1)
   const [movementsTotalCount, setMovementsTotalCount] = useState(0)
+  // Server count of inactive products (catalogue-only items awaiting price/activation). null = unknown.
+  const [inactiveCount, setInactiveCount] = useState(null)
   const [movementsFilter, setMovementsFilter] = useState({ fromDate: '', toDate: '', transactionType: '' })
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
@@ -138,6 +140,13 @@ const ProductsPage = () => {
         setProducts(response.data.items || [])
         setTotalPages(response.data.totalPages || 1)
         setTotalCount(response.data.totalCount || 0)
+        if (activeTab === 'inactive' && !debouncedSearchTerm && !activeFilters.unitType && !activeFilters.categoryId) {
+          setInactiveCount(response.data.totalCount || 0)
+        } else {
+          productsAPI.getProducts({ page: 1, pageSize: 1, inactiveOnly: true })
+            .then((r) => setInactiveCount(r?.success ? (r.data?.totalCount ?? 0) : null))
+            .catch(() => setInactiveCount(null))
+        }
       } else {
         setProducts([])
         setTotalPages(1)
@@ -620,7 +629,7 @@ const ProductsPage = () => {
     { id: 'all', label: 'All Products', icon: Package },
     { id: 'lowStock', label: 'Low Stock', icon: AlertTriangle, badge: products.filter(p => p.stockQty <= (p.reorderLevel || 0)).length },
     { id: 'missingBarcode', label: 'Missing Barcode', icon: ScanBarcode, badge: activeTab === 'missingBarcode' ? totalCount : null },
-    { id: 'inactive', label: 'Inactive', icon: Trash2, badge: products.filter(p => !p.isActive).length },
+    { id: 'inactive', label: 'Inactive', icon: Trash2, badge: inactiveCount },
     { id: 'movements', label: 'Stock Movement', icon: History, badge: movementsTotalCount || null }
   ]
 

@@ -52,3 +52,14 @@ Customer Ledger continuity (Section 8): remove OPEN-01, verify customers 136 (AE
 
 - Live read-only probe: set `HEXABILL_LIVE_READONLY_PG` to a connection string that includes `Options=-c default_transaction_read_only=on`, then `dotnet test --filter UnifiedBillingHistoryLiveReadOnlyTests`.
 - Browser: disposable cluster `%TEMP%\hexabill-unified-pg-20261101` port 55481, DB `hexabill_codex_browser_unified_20261101` (synthetic tenants `frozenhub1-test`, `frozenhub2-test`; 30 synthetic historical rows + 1 deleted on `frozenhub1-test`).
+
+## Slice 2 (2026-11-02): product catalogue + sale price/activation guard
+
+| ID | Sev | Problem | State |
+|----|-----|---------|-------|
+| PC-01 | P0 | Normal invoices accepted AED 0.00 lines; inactive products could be sold via API | FIXED_LOCALLY (`SaleLineSellability`, create / override / update; 0 live rows affected) |
+| PC-02 | P1 | Products "Inactive" badge counted the current active page (always 0) | FIXED_LOCALLY (server count) |
+| PC-03 | P0 | FrozenHub 2 / Gulf Harvest catalogue missing | Plan + rehearsal done; production apply BLOCKED (approval, backup). See `HEXABILL-PRODUCT-CATALOGUE-IMPORT.md` |
+| OPEN-08 | P3 | `PrintQaMatrixTests` cell (gulfharvest/Legacy/full/A5) failed once under full-suite load; 608/608 x3 in isolation | Flaky; not related to this branch |
+
+Tests: planner 21/21; sale guard 8 new (13/13 in class); full backend with local PostgreSQL 2,262 passed / 2 failed (OPEN-06 pre-existing, OPEN-08 flaky) / 1 skipped (OPEN-07); frontend 351/351; browser catalogue spec 2/2.

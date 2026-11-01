@@ -56,6 +56,82 @@ public class InvoiceEditStockTests
     }
 
     [Fact]
+    public async Task CreateSale_ZeroPriceLineOnNormalInvoice_IsRejectedWithoutSideEffects()
+    {
+        await using var db = await CreateDatabaseAsync(10);
+        var request = new CreateSaleRequest
+        {
+            InvoiceNo = "ZERO-PRICE-1",
+            Items = [new SaleItemRequest { ProductId = 1, Qty = 1, UnitPrice = 0 }]
+        };
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateService(db).CreateSaleAsync(request, 1, 10));
+        Assert.Contains("no selling price", error.Message);
+        db.ChangeTracker.Clear();
+        Assert.Equal(10m, (await db.Products.AsNoTracking().SingleAsync()).StockQty);
+        Assert.Empty(await db.Sales.AsNoTracking().ToListAsync());
+        Assert.Empty(await db.InventoryTransactions.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task CreateSale_InactiveCatalogueProduct_IsRejectedEvenWithPrice()
+    {
+        await using var db = await CreateDatabaseAsync(10);
+        var product = await db.Products.SingleAsync();
+        product.IsActive = false;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        var request = new CreateSaleRequest
+        {
+            InvoiceNo = "INACTIVE-1",
+            Items = [new SaleItemRequest { ProductId = 1, Qty = 1, UnitPrice = 10 }]
+        };
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateService(db).CreateSaleAsync(request, 1, 10));
+        Assert.Contains("is inactive", error.Message);
+        Assert.Empty(await db.Sales.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task UpdateSale_LineOfProductDeactivatedLater_RemainsEditable_ButZeroPriceIsRejected()
+    {
+        await using var db = await DatabaseAsync(stockQty: 7, oldLineQty: 3);
+        var product = await db.Products.SingleAsync();
+        product.IsActive = false;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var zero = new CreateSaleRequest { Items = [new SaleItemRequest { ProductId = 1, Qty = 3, UnitPrice = 0 }] };
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateService(db).UpdateSaleAsync(1, zero, 1, 10));
+        Assert.Contains("no selling price", error.Message);
+        Assert.DoesNotContain("is inactive", error.Message);
+        db.ChangeTracker.Clear();
+        Assert.Equal(3m, (await db.SaleItems.AsNoTracking().SingleAsync()).Qty);
+    }
+
+    [Theory]
+    [InlineData(true, 0, false, null)]                  // zero invoice may carry 0.00 lines
+    [InlineData(false, 0, false, "no selling price")]
+    [InlineData(false, -1, false, "no selling price")]
+    [InlineData(false, 12.5, false, null)]
+    [InlineData(false, 12.5, true, "is inactive")]
+    public void SellabilityRules(bool zeroInvoice, double price, bool inactive, string? expected)
+    {
+        var products = new Dictionary<int, SaleLineSellability.ProductState> { [1] = new("Chicken 1kg", !inactive) };
+        var errors = SaleLineSellability.Check([new SaleItemRequest { ProductId = 1, Qty = 1, UnitPrice = (decimal)price }], products, zeroInvoice);
+        if (expected == null) Assert.Empty(errors);
+        else Assert.Contains(errors, e => e.Contains(expected));
+    }
+
+    [Fact]
+    public void SellabilityRules_UnknownOrForeignProduct_IsRejected()
+    {
+        var errors = SaleLineSellability.Check([new SaleItemRequest { ProductId = 99, Qty = 1, UnitPrice = 5 }],
+            new Dictionary<int, SaleLineSellability.ProductState>(), isZeroInvoice: false);
+        Assert.Contains(errors, e => e.Contains("not found"));
+    }
+
+    [Fact]
     public async Task UpdateSale_DuplicateLinesExceedingStock_IsRejectedWithoutChangingStock()
     {
         await using var db = await DatabaseAsync(stockQty: 7, oldLineQty: 3);
