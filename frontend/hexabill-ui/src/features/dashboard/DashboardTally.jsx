@@ -140,7 +140,7 @@ const DashboardTally = () => {
     const [hasFigures, setHasFigures] = useState(false)
     const [summaryError, setSummaryError] = useState(false)
     const periodKey = user?.id ? `hb_dash_period_${user.id}` : null
-    const allowedPeriod = ['today', 'week', 'month', 'custom']
+    const allowedPeriod = ['today', 'week', 'month', 'lastMonth', 'custom']
     const urlPeriod = searchParams.get('period')
     const readStoredPeriod = () => {
         if (!periodKey || typeof sessionStorage === 'undefined') return null
