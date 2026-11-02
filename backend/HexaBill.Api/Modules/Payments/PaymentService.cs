@@ -205,7 +205,9 @@ namespace HexaBill.Api.Modules.Payments
 
         public async Task<bool> CheckDuplicatePaymentAsync(int tenantId, int customerId, decimal amount, DateTime paymentDate)
         {
-            var dayStart = paymentDate.Date;
+            // PostgreSQL timestamptz columns reject DateTime with Kind=Unspecified. The controller parses
+            // the query param with DateTime.TryParse (Unspecified), so normalize to UTC before querying.
+            var dayStart = paymentDate.Date.ToUtcKind();
             var dayEnd = dayStart.AddDays(1);
             var exists = await _context.Payments
                 .AnyAsync(p =>

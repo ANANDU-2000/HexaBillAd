@@ -617,8 +617,10 @@ namespace HexaBill.Api.Data
                 entity.HasOne(e => e.CreatedByUser).WithMany().HasForeignKey(e => e.CreatedBy);
                 entity.HasOne<Payment>().WithMany().HasForeignKey(e => e.ParentPaymentId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
                 entity.HasIndex(e => e.ParentPaymentId);
-                // Historical Starplus invoice link - never a Sales FK
-                entity.HasOne<HexaBill.Api.Models.Legacy.LegacyInvoice>().WithMany().HasForeignKey(e => e.LegacyInvoiceId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+                // Historical Starplus invoice link - never a Sales FK.
+                // Reference the e.LegacyInvoice navigation so EF merges this relationship instead of
+                // creating a second shadow FK (LegacyInvoiceId1) that does not exist in Payments.
+                entity.HasOne(e => e.LegacyInvoice).WithMany().HasForeignKey(e => e.LegacyInvoiceId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
                 entity.HasIndex(e => e.LegacyInvoiceId);
             });
             

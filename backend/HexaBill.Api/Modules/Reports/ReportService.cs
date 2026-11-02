@@ -1050,7 +1050,19 @@ namespace HexaBill.Api.Modules.Reports
                                                         UnitType = g.Key.Unit
                                                     }).ToListAsync();
 
-                        var mergedP = topProducts.ToDictionary(p => p.ProductName, p => p);
+                        var mergedP = new Dictionary<string, TopProductDto>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var p in topProducts)
+                        {
+                            if (mergedP.TryGetValue(p.ProductName, out var existing))
+                            {
+                                existing.TotalSales += p.TotalSales;
+                                existing.TotalQty += p.TotalQty;
+                            }
+                            else
+                            {
+                                mergedP[p.ProductName] = p;
+                            }
+                        }
                         foreach (var lp in legacyProdList)
                         {
                             if (mergedP.TryGetValue(lp.ProductName, out var exProd))
@@ -1638,7 +1650,20 @@ namespace HexaBill.Api.Modules.Reports
                                                     TotalSales = g.Count()
                                                 }).ToListAsync();
 
-                    var mergedMap = productSales.ToDictionary(p => p.ProductName, p => p);
+                    var mergedMap = new Dictionary<string, ProductSalesDto>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var p in productSales)
+                    {
+                        if (mergedMap.TryGetValue(p.ProductName, out var existing))
+                        {
+                            existing.TotalAmount += p.TotalAmount;
+                            existing.TotalQty += p.TotalQty;
+                            existing.TotalSales += p.TotalSales;
+                        }
+                        else
+                        {
+                            mergedMap[p.ProductName] = p;
+                        }
+                    }
                     foreach (var lp in legacyProdData)
                     {
                         if (mergedMap.TryGetValue(lp.ProductName, out var exP))
