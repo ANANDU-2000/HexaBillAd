@@ -32,7 +32,13 @@ if (string.IsNullOrWhiteSpace(conn)) { Console.Error.WriteLine("HEXABILL_CATALOG
 
 var target = int.Parse(opts["target-tenant"], CultureInfo.InvariantCulture);
 var sourceTenant = int.Parse(opts.GetValueOrDefault("source-tenant", "20"), CultureInfo.InvariantCulture);
-if (target <= 0 || target == sourceTenant) { Console.Error.WriteLine("Target tenant must differ from the source tenant."); return 2; }
+if (target <= 0) { Console.Error.WriteLine("Invalid target tenant."); return 2; }
+// Same tenant: copy that tenant's own historical (migrated) product masters into its live catalogue.
+// The tenant's operating products are then the destination, never a source.
+var historicalOnly = target == sourceTenant;
+// --active true: create the products active (sellable). Safe because sales refuse AED 0.00 lines and
+// inactive products server-side; prices are entered at POS. Default stays catalogue-only (inactive).
+var createActive = string.Equals(opts.GetValueOrDefault("active"), "true", StringComparison.OrdinalIgnoreCase);
 var outDir = Directory.CreateDirectory(opts["out"]).FullName;
 
 if (mode == "plan")
@@ -41,7 +47,7 @@ if (mode == "plan")
     await using var src = await OpenAsync(ro, sourceTenant, requireReadOnly: true);
     await using var dst = await OpenAsync(ro, target, requireReadOnly: true);
 
-    var (source, audit) = await ReadSourceAsync(src, sourceTenant);
+    var (source, audit) = await ReadSourceAsync(src, sourceTenant, historicalOnly);
     var destination = await ReadDestinationAsync(dst, target);
     var plan = Plan(source, destination);
 
@@ -77,7 +83,7 @@ var manifest = FromCsv(await File.ReadAllTextAsync(manifestPath));
 var wanted = manifest.Where(r => r.Decision == DecisionImport).ToList();
 
 await using var source2 = await OpenAsync(conn, sourceTenant, requireReadOnly: false);
-var (sourceRows, _) = await ReadSourceAsync(source2, sourceTenant);
+var (sourceRows, _) = await ReadSourceAsync(source2, sourceTenant, historicalOnly);
 var sourceIndex = sourceRows.ToDictionary(s => (s.Origin, s.SourceId));
 
 await using var db = await OpenAsync(conn, target, requireReadOnly: false);
@@ -119,7 +125,7 @@ foreach (var row in wanted)
                 StockQty = 0,
                 ReorderLevel = 0,
                 Barcode = null,
-                IsActive = false,
+                IsActive = createActive,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -140,7 +146,7 @@ var ids = added.Select(a => a.Product.Id).ToList();
 var check = await db.Products.AsNoTracking().Where(p => p.TenantId == target && ids.Contains(p.Id))
     .Select(p => new { p.StockQty, p.SellPrice, p.CostPrice, p.IsActive }).ToListAsync();
 var movements = await db.InventoryTransactions.AsNoTracking().CountAsync(t => ids.Contains(t.ProductId));
-if (check.Count != ids.Count || check.Any(p => p.StockQty != 0 || p.SellPrice != 0 || p.CostPrice != 0 || p.IsActive) || movements != 0)
+if (check.Count != ids.Count || check.Any(p => p.StockQty != 0 || p.SellPrice != 0 || p.CostPrice != 0 || p.IsActive != createActive) || movements != 0)
 {
     await tx.RollbackAsync();
     Console.Error.WriteLine($"Post-condition failed (rows {check.Count}/{ids.Count}, movements {movements}); rolled back, nothing written.");
@@ -172,7 +178,7 @@ static async Task<AppDbContext> OpenAsync(string connectionString, int tenantId,
     return db;
 }
 
-static async Task<(List<SourceProduct> Rows, string AuditCsv)> ReadSourceAsync(AppDbContext db, int tenantId)
+static async Task<(List<SourceProduct> Rows, string AuditCsv)> ReadSourceAsync(AppDbContext db, int tenantId, bool historicalOnly)
 {
     var legacy = await db.LegacyProducts.AsNoTracking().Where(p => p.TenantId == tenantId).OrderBy(p => p.SourceProductId)
         .Select(p => new SourceProduct("STARPLUS", p.SourceProductId, p.Sku, p.NameEn, p.NameAr, p.UnitType, p.ConversionToBase, p.Barcode, true))
@@ -180,7 +186,7 @@ static async Task<(List<SourceProduct> Rows, string AuditCsv)> ReadSourceAsync(A
     var operating = await db.Products.AsNoTracking().Where(p => p.TenantId == tenantId).OrderBy(p => p.Id)
         .Select(p => new SourceProduct("FH1", p.Id, p.Sku, p.NameEn, p.NameAr, p.UnitType, p.ConversionToBase, p.Barcode, p.IsActive))
         .ToListAsync();
-    var rows = operating.Concat(legacy).ToList();
+    var rows = historicalOnly ? legacy : operating.Concat(legacy).ToList();
     var audit = new StringBuilder("Origin,SourceId,Sku,NameEn,NameAr,UnitType,ConversionToBase,Barcode,IsActive,NormalizedName,LooksLikeTest\n");
     foreach (var r in rows)
         audit.AppendLine(Csv(r.Origin, r.SourceId.ToString(CultureInfo.InvariantCulture), r.Sku, r.NameEn, r.NameAr ?? "", r.UnitType,

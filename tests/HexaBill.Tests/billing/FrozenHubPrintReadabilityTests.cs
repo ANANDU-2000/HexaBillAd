@@ -131,6 +131,19 @@ public class FrozenHubPrintReadabilityTests
         Assert.DoesNotContain(Squash(other), text);
     }
 
+    [Fact]
+    public async Task A4_Header_MobilePoBoxAndTrn_AreEnlarged()
+    {
+        await using var db = await SeedAsync();
+        using var doc = PdfDocument.Open(await Pdf(db).GenerateInvoicePdfAsync(await Sale7013Async(db, Fh1), "A4", "full"));
+        var words = doc.GetPage(1).GetWords().ToList();
+        double Size(string text) => words.First(w => w.Text == text).Letters.Max(l => l.PointSize);
+        Assert.InRange(Size("8316"), PdfService.FrozenHubA4HeaderDetailSize - 0.3, PdfService.FrozenHubA4HeaderDetailSize + 0.3);
+        Assert.InRange(Size(Fh1Phone), PdfService.FrozenHubA4HeaderDetailSize - 0.3, PdfService.FrozenHubA4HeaderDetailSize + 0.3);
+        Assert.True(words.Where(w => w.Text.Contains("105607243000003")).All(w => w.Letters.Max(l => l.PointSize) >= PdfService.FrozenHubA4HeaderDetailSize - 0.3),
+            "TRN must print at the enlarged header size on both sides");
+    }
+
     [Theory]
     [InlineData("A4", 1)]
     [InlineData("A4", 10)]

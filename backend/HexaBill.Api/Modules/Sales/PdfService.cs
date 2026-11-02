@@ -882,6 +882,7 @@ namespace HexaBill.Api.Modules.Sales
 
         // P0-PRINT-007 item table sizing (points). Constants so tests can assert them.
         internal const float A4ItemDescriptionFontSize = 11f;
+        internal const float FrozenHubA4HeaderDetailSize = 9.5f;
         internal const float A4ItemNumberFontSize = 10.5f;
         internal const float A4HeaderFontSize = 10f;
         internal const float A4ItemCellPadding = 6f;
@@ -1454,6 +1455,12 @@ namespace HexaBill.Api.Modules.Sales
                 // with no standalone company title (the centred logo and Arabic legal name identify the company).
                 var frozenHubInvoice = invoiceHeader && settings.FrozenHubHeaderPolicy && (a4Letterhead || a5Letterhead);
                 var fullContact = compactInvoice || frozenHubInvoice;
+                // P0-PRINT-007 (client): Mobile, P.O. Box and TRN must be clearly readable on the printed FrozenHub bill.
+                if (frozenHubInvoice)
+                {
+                    detailSize = a4Letterhead ? FrozenHubA4HeaderDetailSize : detailSize + 1f;
+                    taxSize = a4Letterhead ? FrozenHubA4HeaderDetailSize : taxSize + 1.5f;
+                }
                 var printEmail = !string.IsNullOrWhiteSpace(settings.InvoicePrintEmail) ? settings.InvoicePrintEmail.Trim() : settings.CompanyEmail?.Trim();
                 var printedAddress = fullContact && !string.IsNullOrWhiteSpace(settings.InvoicePrintAddress)
                     ? settings.InvoicePrintAddress : settings.FrozenHubHeaderPolicy ? frozenHubPrintedAddress : settings.CompanyAddress;
@@ -1486,7 +1493,10 @@ namespace HexaBill.Api.Modules.Sales
                             .FontFamily(_englishFont).FontSize(taxSize);
                     // FrozenHub policy leaves an unconfigured VAT TRN blank on the document; keep the existing
                     // explicit missing-TRN label for other tenants' report/header layouts.
-                    if (!frozenHubInvoice || !string.IsNullOrWhiteSpace(settings.CompanyTrn))
+                    if (frozenHubInvoice && !string.IsNullOrWhiteSpace(settings.CompanyTrn))
+                        en.Item().PaddingTop(2).Text(VatTrnLineForHeader(settings.CompanyTrn))
+                            .FontFamily(_englishFont).FontSize(taxSize).SemiBold();
+                    else if (!frozenHubInvoice)
                         en.Item().PaddingTop(2).Text(VatTrnLineForHeader(settings.CompanyTrn))
                             .FontFamily(_englishFont).FontSize(taxSize);
                 });
@@ -1536,7 +1546,8 @@ namespace HexaBill.Api.Modules.Sales
                         ar.Item().AlignRight().ContentFromRightToLeft().Text(text =>
                         {
                             text.Span("الرقم الضريبي: ").FontFamily(_arabicFont).FontSize(taxSize);
-                            text.Span($"\u2066{vatTrn}\u2069").FontFamily(_englishFont).FontSize(taxSize);
+                            var trnSpan = text.Span($"\u2066{vatTrn}\u2069").FontFamily(_englishFont).FontSize(taxSize);
+                            if (frozenHubInvoice) trnSpan.SemiBold();
                         });
                 });
 
