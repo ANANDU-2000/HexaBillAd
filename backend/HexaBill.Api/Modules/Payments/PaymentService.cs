@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Models.Legacy;
 using HexaBill.Api.Modules.Notifications;
 using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Modules.Sales;
@@ -292,6 +293,8 @@ namespace HexaBill.Api.Modules.Payments
                 {
                     Id = p.Id,
                     SaleId = p.SaleId,
+                    LegacyInvoiceId = p.LegacyInvoiceId,
+                    LegacyInvoiceNumber = p.LegacyInvoice != null ? p.LegacyInvoice.LegacyInvoiceNumber : null,
                     SaleReturnId = p.SaleReturnId,
                     InvoiceNo = p.Sale != null ? p.Sale.InvoiceNo : null,
                     CustomerId = p.CustomerId,
@@ -324,6 +327,7 @@ namespace HexaBill.Api.Modules.Payments
                 .Where(p => p.Id == id && p.TenantId == tenantId) // CRITICAL: Multi-tenant filter
                 .Include(p => p.Sale)
                 .Include(p => p.Customer)
+                .Include(p => p.LegacyInvoice)
                 .Include(p => p.CreatedByUser)
                 .FirstOrDefaultAsync();
 
@@ -333,6 +337,8 @@ namespace HexaBill.Api.Modules.Payments
             {
                 Id = payment.Id,
                 SaleId = payment.SaleId,
+                LegacyInvoiceId = payment.LegacyInvoiceId,
+                LegacyInvoiceNumber = payment.LegacyInvoice?.LegacyInvoiceNumber,
                 SaleReturnId = payment.SaleReturnId,
                 InvoiceNo = payment.Sale?.InvoiceNo,
                 CustomerId = payment.CustomerId,
@@ -386,7 +392,46 @@ namespace HexaBill.Api.Modules.Payments
                     var replay = await ReplayPaymentAsync(storedIdempotencyKey, idempotencyKey, requestHash, tenantId);
                     if (replay != null) return replay;
                     Sale? invoiceSale = null;
-                    if (request.SaleId.HasValue)
+                    LegacyInvoice? legacyInvoice = null;
+                    var requestedLegacyInvoiceId = request.SaleId.HasValue && request.SaleId.Value < 0
+                        ? (int?)-request.SaleId.Value
+                        : null;
+                    if (requestedLegacyInvoiceId.HasValue)
+                    {
+                        // HISTORICAL INVOICE CONVENTION: negative SaleId signals a legacy Starplus invoice.
+                        // We never treat a legacy history id as an ordinary SaleId (ID collisions are possible).
+                        if (!request.CustomerId.HasValue)
+                            throw new ArgumentException("Please select a customer before recording a payment against a historical invoice.");
+
+                        legacyInvoice = await _context.LegacyInvoices
+                            .FirstOrDefaultAsync(i => i.Id == requestedLegacyInvoiceId.Value && i.TenantId == tenantId && !i.IsDeleted);
+                        if (legacyInvoice == null)
+                            throw new ArgumentException($"Historical invoice with ID {requestedLegacyInvoiceId.Value} not found.");
+
+                        var legacyCustomerId = legacyInvoice.DestinationCustomerId ?? legacyInvoice.SourceCustomerId;
+                        if (legacyCustomerId.HasValue && legacyCustomerId.Value != request.CustomerId.Value)
+                            throw new ArgumentException($"Historical invoice {legacyInvoice.LegacyInvoiceNumber} belongs to a different customer. Expected customer ID: {legacyCustomerId.Value}, got: {request.CustomerId.Value}.");
+
+                        var legacyOutstanding = Math.Max(0m, legacyInvoice.OutstandingCalculated);
+                        if (legacyOutstanding <= SalePaymentHelpers.SettlementToleranceAed)
+                            throw new ArgumentException($"Historical invoice {legacyInvoice.LegacyInvoiceNumber} is already fully paid. No more payments allowed.");
+
+                        var legacyIncoming = request.Amount + adjustmentAmount;
+                        if (legacyIncoming > legacyOutstanding + 0.01m)
+                            throw new ArgumentException($"Cash plus adjustment ({legacyIncoming:F2} AED) exceeds outstanding balance ({legacyOutstanding:F2} AED).");
+
+                        var recentDuplicatePayment = await _context.Payments
+                            .Where(p => p.LegacyInvoiceId == requestedLegacyInvoiceId.Value && p.Amount == request.Amount && p.TenantId == tenantId
+                                && p.Status != PaymentStatus.VOID && p.CreatedAt >= DateTime.UtcNow.AddMinutes(-2))
+                            .FirstOrDefaultAsync();
+                        if (recentDuplicatePayment != null)
+                            throw new ArgumentException($"A payment of {request.Amount:F2} AED was already recorded for historical invoice {legacyInvoice.LegacyInvoiceNumber} just now. Please refresh and verify before trying again.");
+
+                        var validationResult = await _validationService.ValidatePaymentAmountAsync(null, request.CustomerId, request.Amount, tenantId);
+                        if (!validationResult.IsValid)
+                            throw new ArgumentException(string.Join(" ", validationResult.Errors));
+                    }
+                    else if (request.SaleId.HasValue)
                     {
                         // Fix 1: Lock Sale row so two concurrent payments cannot both pass outstanding check (FOR UPDATE).
                         if (_context.Database.IsNpgsql())
@@ -464,20 +509,26 @@ namespace HexaBill.Api.Modules.Payments
                     {
                         OwnerId = tenantId,
                         TenantId = tenantId,
-                        SaleId = request.SaleId,
+                        SaleId = requestedLegacyInvoiceId.HasValue ? null : request.SaleId,
+                        LegacyInvoiceId = requestedLegacyInvoiceId,
                         CustomerId = request.CustomerId,
                         Amount = request.Amount,
                         Mode = paymentMode,
-                        Reference = request.Reference,
+                        Reference = requestedLegacyInvoiceId.HasValue
+                            ? (string.IsNullOrWhiteSpace(request.Reference)
+                                ? $"Starplus invoice {legacyInvoice!.LegacyInvoiceNumber}"
+                                : $"{request.Reference.Trim()} (Starplus invoice {legacyInvoice!.LegacyInvoiceNumber})")
+                            : request.Reference,
                         Status = paymentStatus,
                         PaymentDate = paymentDate,
                         CreatedBy = userId,
                         CreatedAt = recordedAt,
                         UpdatedAt = recordedAt
                     };
+                    if (payment.Reference?.Length > 200) payment.Reference = payment.Reference[..200];
                     _context.Payments.Add(payment);
                     Payment? adjustmentPayment = null;
-                    if (adjustmentAmount > 0 && request.SaleId.HasValue)
+                    if (adjustmentAmount > 0 && request.SaleId.HasValue && !requestedLegacyInvoiceId.HasValue)
                     {
                         await _context.SaveChangesAsync();
                         adjustmentPayment = new Payment
@@ -506,6 +557,12 @@ namespace HexaBill.Api.Modules.Payments
                         if (adjustmentPayment != null) pending.Add(adjustmentPayment);
                         await RefreshSalePaymentStateAsync(invoiceSale, tenantId, pending);
                     }
+                    else if (requestedLegacyInvoiceId.HasValue && legacyInvoice != null && paymentStatus == PaymentStatus.CLEARED)
+                    {
+                        // Historical invoices are read-only history; only their outstanding/paid caches change.
+                        legacyInvoice.PaidAmount = Math.Round(legacyInvoice.PaidAmount + request.Amount, 2, MidpointRounding.AwayFromZero);
+                        legacyInvoice.OutstandingCalculated = Math.Max(0m, legacyInvoice.GrandTotal - legacyInvoice.PaidAmount);
+                    }
 
                     Customer? updatedCustomer = null;
                     if (paymentStatus == PaymentStatus.CLEARED && request.CustomerId.HasValue)
@@ -533,13 +590,14 @@ namespace HexaBill.Api.Modules.Payments
                         Details = System.Text.Json.JsonSerializer.Serialize(new
                         {
                             PaymentId = payment.Id,
-                            InvoiceId = request.SaleId,
+                            InvoiceId = requestedLegacyInvoiceId.HasValue ? requestedLegacyInvoiceId.Value : request.SaleId,
+                            LegacyInvoiceId = requestedLegacyInvoiceId,
                             CustomerId = request.CustomerId,
                             Amount = request.Amount,
                             SettlementAdjustmentAmount = adjustmentAmount,
                             Mode = request.Mode,
                             Status = paymentStatus.ToString(),
-                            Reference = request.Reference,
+                            Reference = payment.Reference,
                             SettlementAdjustmentReason = adjustmentAmount > 0 ? request.SettlementAdjustmentReason : null
                         }),
                         CreatedAt = DateTime.UtcNow
@@ -561,7 +619,15 @@ namespace HexaBill.Api.Modules.Payments
                             PaidAmount = invoiceSale.PaidAmount,
                             OutstandingAmount = InvoiceReceivables.Outstanding(invoiceSale.GrandTotal, invoiceSale.PaidAmount, await ApprovedReturnsForSaleAsync(invoiceSale.Id, tenantId)),
                             Status = invoiceSale.PaymentStatus.ToString()
-                        } : null,
+                        } : (legacyInvoice != null ? new InvoiceSummaryDto
+                        {
+                            Id = legacyInvoice.Id,
+                            InvoiceNo = legacyInvoice.LegacyInvoiceNumber,
+                            TotalAmount = legacyInvoice.GrandTotal,
+                            PaidAmount = legacyInvoice.PaidAmount,
+                            OutstandingAmount = Math.Max(0m, legacyInvoice.OutstandingCalculated),
+                            Status = legacyInvoice.OutstandingCalculated <= SalePaymentHelpers.SettlementToleranceAed ? "Paid" : "Partial"
+                        } : null),
                         Customer = updatedCustomer != null ? new CustomerSummaryDto
                         {
                             Id = updatedCustomer.Id,
@@ -1044,9 +1110,10 @@ namespace HexaBill.Api.Modules.Payments
             {
                 var dueDate = leg.DueDate ?? leg.InvoiceDate.AddDays(30);
                 var daysOverdue = dueDate < DateTime.Today ? (DateTime.Today - dueDate).Days : 0;
+                // IMPORTANT: negative Id signals legacy invoice to callers (avoids Sale/LegacyInvoice ID collision)
                 list.Add(new Models.OutstandingInvoiceDto
                 {
-                    Id = leg.Id,
+                    Id = -leg.Id,
                     CustomerId = customerId,
                     InvoiceNo = leg.LegacyInvoiceNumber,
                     InvoiceDate = leg.InvoiceDate,
@@ -1101,7 +1168,7 @@ namespace HexaBill.Api.Modules.Payments
 
             if (request.Allocations == null || request.Allocations.Count == 0 || request.Allocations.Count > 500)
                 throw new ArgumentException("Select between 1 and 500 invoice allocations.");
-            if (request.Allocations.Any(a => a.InvoiceId <= 0 || a.Amount <= 0))
+            if (request.Allocations.Any(a => a.InvoiceId == 0 || a.Amount <= 0))
                 throw new ArgumentException("Every allocation requires an invoice and a positive amount.");
             if (request.Allocations.Any(a => a.Amount != Math.Round(a.Amount, 2, MidpointRounding.AwayFromZero)))
                 throw new ArgumentException("Invoice allocation amounts must have no more than two decimal places.");
@@ -1128,7 +1195,8 @@ namespace HexaBill.Api.Modules.Payments
                 // Stable ID order prevents two multi-invoice allocations taking opposite locks.
                 if (_context.Database.IsNpgsql())
                 {
-                    foreach (var invoiceId in request.Allocations.Select(a => a.InvoiceId).OrderBy(id => id))
+                        // Only lock live Sales rows; legacy invoices (negative IDs) are read-only history.
+                foreach (var invoiceId in request.Allocations.Select(a => a.InvoiceId).Where(id => id > 0).OrderBy(id => id))
                     {
                         await _context.Database.ExecuteSqlInterpolatedAsync(
                             $"SELECT \"Id\" FROM \"Sales\" WHERE \"Id\" = {invoiceId} AND \"TenantId\" = {tenantId} AND \"CustomerId\" = {request.CustomerId.Value} AND NOT \"IsDeleted\" FOR UPDATE");
@@ -1140,7 +1208,7 @@ namespace HexaBill.Api.Modules.Payments
                 outstandingInvoices = outstandingInvoices.OrderBy(i => i.InvoiceDate).ToList();
                 var paymentDate = (request.PaymentDate ?? DateTime.UtcNow).ToUtcKind();
                 var allocationInvoiceIds = (request.Allocations ?? new List<AllocationItem>())
-                    .Where(a => a.Amount > 0 && outstandingInvoices.Any(i => i.Id == a.InvoiceId))
+                    .Where(a => a.Amount > 0 && a.InvoiceId > 0 && outstandingInvoices.Any(i => i.Id == a.InvoiceId))
                     .Select(a => a.InvoiceId).Distinct().ToList();
                 var allocationSales = allocationInvoiceIds.Count == 0
                     ? new List<Sale>()
@@ -1185,16 +1253,27 @@ namespace HexaBill.Api.Modules.Payments
                         _ => "Pending"
                     };
 
+                    // HISTORICAL INVOICE CONVENTION: negative InvoiceId means legacy Starplus invoice.
+                    // For legacy: SaleId = null, LegacyInvoiceId = abs(id). For live: SaleId = id, LegacyInvoiceId = null.
+                    var isLegacyInvoice = allocation.InvoiceId < 0;
+                    var legacyInvoiceRef = isLegacyInvoice ? (int?)-allocation.InvoiceId : null;
+                    var saleInvoiceRef = isLegacyInvoice ? null : (int?)allocation.InvoiceId;
+                    var paymentRef = isLegacyInvoice
+                        ? (string.IsNullOrWhiteSpace(request.Reference)
+                            ? $"Starplus invoice {invoice.InvoiceNo}"
+                            : $"{request.Reference.Trim()} (Starplus invoice {invoice.InvoiceNo})")
+                        : request.Reference;
                     // Create payment using EF Core (will handle Mode/Status columns)
                     var payment = new Payment
                     {
                         OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
                         TenantId = tenantId, // CRITICAL: Set new TenantId
-                        SaleId = allocation.InvoiceId,
+                        SaleId = saleInvoiceRef,
+                        LegacyInvoiceId = legacyInvoiceRef,
                         CustomerId = request.CustomerId.Value,
                         Amount = Math.Round(allocationAmount, 2, MidpointRounding.AwayFromZero),
                         Mode = Enum.Parse<PaymentMode>(modeValue),
-                        Reference = request.Reference,
+                        Reference = paymentRef?.Length > 200 ? paymentRef[..200] : paymentRef,
                         Status = paymentStatus,
                         PaymentDate = paymentDate,
                         CreatedBy = userId,
@@ -1206,14 +1285,24 @@ namespace HexaBill.Api.Modules.Payments
                     
                     allocatedPayments.Add(payment);
 
-                    // Update invoice if payment is cleared
-                    if (paymentStatus == PaymentStatus.CLEARED)
+                    // Update invoice if payment is cleared (skip for legacy invoices — they are read-only history)
+                    if (paymentStatus == PaymentStatus.CLEARED && !isLegacyInvoice)
                     {
                         var sale = await _context.Sales
                             .FirstOrDefaultAsync(s => s.Id == allocation.InvoiceId && s.TenantId == tenantId);
                         if (sale != null)
                         {
                             await RefreshSalePaymentStateAsync(sale, tenantId);
+                        }
+                    }
+                    else if (paymentStatus == PaymentStatus.CLEARED && isLegacyInvoice && legacyInvoiceRef.HasValue)
+                    {
+                        // Update the legacy invoice's OutstandingCalculated to reflect this payment
+                        var legInv = await _context.LegacyInvoices.FirstOrDefaultAsync(i => i.Id == legacyInvoiceRef.Value && i.TenantId == tenantId);
+                        if (legInv != null)
+                        {
+                            legInv.PaidAmount = legInv.PaidAmount + Math.Round(allocationAmount, 2, MidpointRounding.AwayFromZero);
+                            legInv.OutstandingCalculated = Math.Max(0, legInv.GrandTotal - legInv.PaidAmount);
                         }
                     }
 
@@ -1295,6 +1384,8 @@ namespace HexaBill.Api.Modules.Payments
     {
         public int Id { get; set; }
         public int? SaleId { get; set; }
+        public int? LegacyInvoiceId { get; set; }
+        public string? LegacyInvoiceNumber { get; set; }
         public int? SaleReturnId { get; set; }
         public string? InvoiceNo { get; set; }
         public int? CustomerId { get; set; }

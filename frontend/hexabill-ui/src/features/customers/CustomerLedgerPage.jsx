@@ -4553,7 +4553,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                           {/* Pay Button - Only show if invoice has outstanding balance */}
                           {balance > 0 && onPayInvoice && (
                             <button
-                              onClick={() => onPayInvoice(invoice.id)}
+                              onClick={() => onPayInvoice(invoice.isLegacy ? -invoice.id : invoice.id)}
                               className="bg-success hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1 transition-colors shadow-sm"
                               title="Pay Invoice"
                             >
@@ -4740,7 +4740,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                 <div className="flex flex-wrap gap-2">
                   {balance > 0 && onPayInvoice && (
                     <button
-                      onClick={() => onPayInvoice(invoice.id)}
+                      onClick={() => onPayInvoice(invoice.isLegacy ? -invoice.id : invoice.id)}
                       className="flex-1 min-w-0 px-3 py-2 bg-success hover:bg-green-700 text-white rounded-md text-xs font-medium flex items-center justify-center gap-1"
                     >
                       <Wallet className="h-3.5 w-3.5" /> Pay

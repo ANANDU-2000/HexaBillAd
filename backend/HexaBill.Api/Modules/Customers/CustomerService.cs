@@ -2903,7 +2903,10 @@ namespace HexaBill.Api.Modules.Customers
                 var daysOverdue = dueDate < DateTime.Today ? (DateTime.Today - dueDate).Days : 0;
                 outstandingInvoices.Add(new Models.OutstandingInvoiceDto
                 {
-                    Id = leg.Id,
+                    // HISTORICAL INVOICE CONVENTION: negative Id signals a legacy Starplus invoice
+                    // to all payment endpoints, preventing collision with a live Sales row that
+                    // happens to share the same numeric Id. LegacyInvoiceId keeps the positive id.
+                    Id = -leg.Id,
                     CustomerId = customerId,
                     InvoiceNo = leg.LegacyInvoiceNumber,
                     InvoiceDate = leg.InvoiceDate,

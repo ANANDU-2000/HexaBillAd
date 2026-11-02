@@ -617,6 +617,9 @@ namespace HexaBill.Api.Data
                 entity.HasOne(e => e.CreatedByUser).WithMany().HasForeignKey(e => e.CreatedBy);
                 entity.HasOne<Payment>().WithMany().HasForeignKey(e => e.ParentPaymentId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
                 entity.HasIndex(e => e.ParentPaymentId);
+                // Historical Starplus invoice link - never a Sales FK
+                entity.HasOne<HexaBill.Api.Models.Legacy.LegacyInvoice>().WithMany().HasForeignKey(e => e.LegacyInvoiceId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(e => e.LegacyInvoiceId);
             });
             
             // PaymentIdempotency configuration (idempotency)
