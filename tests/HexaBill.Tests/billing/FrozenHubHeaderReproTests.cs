@@ -84,8 +84,11 @@ public class FrozenHubHeaderReproTests
         for (var i = 1; i <= items; i++)
             Assert.Contains($"product{i:00}", all);
 
-        if (format == "A5" && items <= 20)
+        // P0-PRINT-007: larger A5 rows. Short invoices stay on one page; 20 rows may use two.
+        if (format == "A5" && items <= 5)
             Assert.Equal(1, document.NumberOfPages);
+        if (format == "A5" && items == 20)
+            Assert.InRange(document.NumberOfPages, 1, 2);
         if (format == "A5" && items == 50)
         {
             Assert.True(document.NumberOfPages >= 2);

@@ -23,13 +23,14 @@ public class PrintPageFitTests
         "SYNTHETIC LAMB LEG BONE-IN NZ 15KG CARTON", "MIXED VEGETABLES 1KG X 10", "SHRIMP PEELED DEVEINED 26/30 1KG", "BURGER PATTY 100G X 60",
     ];
 
+    // P0-PRINT-007 (client, 2026-11-02): larger, taller item rows. Short invoices stay on one page;
+    // longer ones paginate cleanly instead of shrinking the text.
     [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
     [InlineData(10)]
     [InlineData(12)]
-    [InlineData(15)]
-    [InlineData(18)]
-    [InlineData(20)]
-    public async Task A4_TenToTwentyItems_ReceiverBlockStaysOnPageOne(int items)
+    public async Task A4_UpToTwelveItems_WholeInvoiceStaysOnPageOne(int items)
     {
         await using var db = await SeedAsync();
         var bytes = await CreatePdfService(db).GenerateInvoicePdfAsync(CreateSale(items, 10m), "A4", "full");
@@ -38,6 +39,27 @@ public class PrintPageFitTests
         Assert.Equal(1, document.NumberOfPages);
         var text = new string(document.GetPage(1).Text.Where(c => !char.IsWhiteSpace(c)).ToArray());
         Assert.Contains("Receiver'sSign", text);
+    }
+
+    [Theory]
+    [InlineData(15)]
+    [InlineData(20)]
+    [InlineData(30)]
+    public async Task A4_LongInvoices_PaginateWithEveryItemHeaderOnEachPageAndWholeReceiverBlockLast(int items)
+    {
+        await using var db = await SeedAsync();
+        var bytes = await CreatePdfService(db).GenerateInvoicePdfAsync(CreateSale(items, 10m), "A4", "full");
+        await SaveAsync(bytes, $"a4-{items:00}-items.pdf");
+        using var document = PdfDocument.Open(bytes);
+        var pages = document.GetPages().Select(p => new string(p.Text.Where(c => !char.IsWhiteSpace(c)).ToArray())).ToList();
+        Assert.True(pages.Count <= (items + 11) / 12 + 1, $"{items} items used {pages.Count} pages");
+        for (var i = 0; i < pages.Count - 1; i++) Assert.Contains("UnitPrice", pages[i]); // table header repeats on item pages
+        var last = pages[^1];
+        foreach (var marker in new[] { "Receivedtheabovegoods", "Receiver'sName", "Receiver'sSign" })
+        {
+            Assert.Contains(marker, last);
+            for (var i = 0; i < pages.Count - 1; i++) Assert.DoesNotContain(marker, pages[i]);
+        }
     }
 
     [Fact]

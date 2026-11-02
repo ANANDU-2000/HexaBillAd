@@ -220,15 +220,16 @@ public class LetterheadLogoSizeTests
         using var document = PdfDocument.Open(bytes);
 
         Assert.True(document.NumberOfPages >= 1);
-        // P0-PRINT-004: A5 has its own widths and padding, so 20 rows plus the whole receiver block fit on page 1.
+        // P0-PRINT-007: larger A5 rows; 20 long-name rows may take a second page, but the receiver block
+        // is whole on the last page and the totals print.
         if (format == "A5" && itemCount == 20)
         {
-            Assert.Equal(1, document.NumberOfPages);
-            var lastText = document.GetPage(1).Text;
+            Assert.InRange(document.NumberOfPages, 1, 2);
+            var lastText = document.GetPage(document.NumberOfPages).Text;
             Assert.Contains("Received the above goods", lastText);
             Assert.Contains("Receiver's Name", lastText);
             Assert.Contains("Receiver's Sign", lastText);
-            Assert.Contains("734.62", document.GetPage(1).Text);
+            Assert.Contains("734.62", string.Concat(document.GetPages().Select(page => page.Text)));
         }
         // 2026-11: page 1 is identified by the centred logo (no duplicate English title); the legal name prints on the signatory line.
         Assert.Single(document.GetPage(1).GetImages());

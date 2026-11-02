@@ -387,18 +387,19 @@ namespace HexaBill.Api.Modules.Sales
                                         custRow.RelativeItem(35);
                                 });
 
-                                // P0-PRINT-006: item rows use a tight line height (the default Arabic-capable font has a tall line box),
-                                // so 10-20 lines plus totals and the receiver block fit on page 1.
-                                innerColumn.Item().Border(0.5f).DefaultTextStyle(x => x.LineHeight(1.0f)).Table(table =>
+                                // P0-PRINT-007 (client, 2026-11-02): product rows must read on paper like the Starplus bills:
+                                // larger text, taller rows, readable line height. Long invoices paginate (the header repeats);
+                                // text is never shrunk to force a single page.
+                                innerColumn.Item().Border(0.5f).DefaultTextStyle(x => x.LineHeight(A4ItemLineHeight)).Table(table =>
                                 {
-                                    // Column widths matching RAFCO 11: balanced equal widths
+                                    // Full printable width; Description gets the largest share so product names rarely wrap.
                                     table.ColumnsDefinition(columns =>
                                     {
                                         columns.RelativeColumn(6);   // SL.No
-                                        columns.RelativeColumn(35);  // Description
-                                        columns.RelativeColumn(8);   // Unit
+                                        columns.RelativeColumn(37);  // Description
+                                        columns.RelativeColumn(7);   // Unit
                                         columns.RelativeColumn(8);   // Qty
-                                        columns.RelativeColumn(12);  // Unit Price
+                                        columns.RelativeColumn(11);  // Unit Price
                                         columns.RelativeColumn(11);  // Total
                                         columns.RelativeColumn(9);   // VAT 5%
                                         columns.RelativeColumn(11);  // Amount
@@ -408,17 +409,17 @@ namespace HexaBill.Api.Modules.Sales
                                     {
                                         void AddHeader(string arabic, string eng)
                                         {
-                                            header.Cell().Border(0.5f).PaddingVertical(3).PaddingHorizontal(2).Column(col =>
+                                            header.Cell().Border(0.5f).PaddingVertical(A4HeaderCellPadding).PaddingHorizontal(2).Column(col =>
                                             {
                                                 if (!string.IsNullOrEmpty(arabic))
                                                 {
                                                     col.Item().AlignCenter()
                                                         .Text(arabic)
-                                                        .FontSize(9)
+                                                        .FontSize(A4HeaderFontSize)
                                                         .FontFamily(_arabicFont)
                                                         .DirectionFromRightToLeft();
                                                 }
-                                                col.Item().AlignCenter().Text(eng).FontSize(9);
+                                                col.Item().AlignCenter().Text(eng).FontSize(A4HeaderFontSize).SemiBold();
                                             });
                                         }
 
@@ -440,20 +441,19 @@ namespace HexaBill.Api.Modules.Sales
                                         {
                                             var item = sale.Items[i];
                                             
-                                            // Add vertical borders between columns, no horizontal borders between rows
-                                            table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(1).AlignCenter().Text((i + 1).ToString()).FontSize(9);
-                                            table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(2).AlignLeft().Text(item.ProductName ?? "").FontSize(9);
+                                            // Vertical borders between columns, no horizontal rules between rows (Starplus style).
+                                            IContainer Cell(float hPad) => table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(A4ItemCellPadding).PaddingHorizontal(hPad);
+                                            Cell(1).AlignCenter().Text((i + 1).ToString()).FontSize(A4ItemNumberFontSize);
+                                            Cell(3).AlignLeft().Text(item.ProductName ?? "").FontSize(A4ItemDescriptionFontSize);
                                             var unitTypeText = string.IsNullOrWhiteSpace(item.UnitType) ? "CRTN" : item.UnitType.ToUpper();
-                                            table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(1).AlignCenter().Text(unitTypeText).FontSize(9);
-                                            table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(1).AlignCenter().Text(item.Qty.ToString("0.##")).FontSize(9);
-                                            
-                                            // CRITICAL FIX: Right-align all monetary columns for professional invoice format
-                                            table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(1).AlignRight().Text(item.UnitPrice.ToString("0.00")).FontSize(9);
-                                            
+                                            Cell(1).AlignCenter().Text(unitTypeText).FontSize(A4ItemNumberFontSize);
+                                            Cell(1).AlignCenter().Text(item.Qty.ToString("0.##")).FontSize(A4ItemNumberFontSize);
+                                            // Monetary columns right-aligned.
+                                            Cell(2).AlignRight().Text(item.UnitPrice.ToString("0.00")).FontSize(A4ItemNumberFontSize);
                                             var lineNet = item.Qty * item.UnitPrice;
-                                            table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(1).AlignRight().Text(lineNet.ToString("0.00")).FontSize(9);
-                                            table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(1).AlignRight().Text(item.VatAmount.ToString("0.00")).FontSize(9);
-                                            table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(1).AlignRight().Text(item.LineTotal.ToString("0.00")).FontSize(9);
+                                            Cell(2).AlignRight().Text(lineNet.ToString("0.00")).FontSize(A4ItemNumberFontSize);
+                                            Cell(2).AlignRight().Text(item.VatAmount.ToString("0.00")).FontSize(A4ItemNumberFontSize);
+                                            Cell(2).AlignRight().Text(item.LineTotal.ToString("0.00")).FontSize(A4ItemNumberFontSize);
                                         }
                                     }
 
@@ -462,7 +462,7 @@ namespace HexaBill.Api.Modules.Sales
                                     if (!settings.LetterheadOnlyPrint)
                                     {
                                         int minRowsForHeight = useOrangeLetterhead ? 5 : 7;
-                                        float rowHeight = 18f;
+                                        float rowHeight = 26f; // matches the taller P0-PRINT-007 item rows
                                         float totalItemsHeight = itemCount * rowHeight;
                                         float minTableHeight = minRowsForHeight * rowHeight;
                                         if (itemCount < minRowsForHeight)
@@ -479,6 +479,23 @@ namespace HexaBill.Api.Modules.Sales
                                             }
                                         }
                                     }
+                                });
+
+                                // P0-PRINT-007: totals are their own block, kept whole (never split across pages on long
+                                // invoices). Same column widths as the item table so the Amount column lines up.
+                                innerColumn.Item().ShowEntire().DefaultTextStyle(x => x.LineHeight(A4ItemLineHeight)).Table(table =>
+                                {
+                                    table.ColumnsDefinition(columns =>
+                                    {
+                                        columns.RelativeColumn(6);
+                                        columns.RelativeColumn(37);
+                                        columns.RelativeColumn(7);
+                                        columns.RelativeColumn(8);
+                                        columns.RelativeColumn(11);
+                                        columns.RelativeColumn(11);
+                                        columns.RelativeColumn(9);
+                                        columns.RelativeColumn(11);
+                                    });
 
                                     // Summary rows - ALL totals in rightmost Amount column
                                     // Row 1: INV. Amount (Subtotal)
@@ -533,8 +550,6 @@ namespace HexaBill.Api.Modules.Sales
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(10);
                                 });
 
-                                if (!settings.LetterheadOnlyPrint)
-                                    RenderInvoiceBankDetails(innerColumn, settings, 8);
                                 // Pin signature / Pending near A4 page bottom after short tables, lifted slightly off the
                                 // margin (client request). ShowEntire keeps the block on one page instead of splitting it.
                                 // P0-PRINT-003: receiver block follows the totals (old-bill style) instead of being pushed to the page bottom,
@@ -585,6 +600,10 @@ namespace HexaBill.Api.Modules.Sales
                                         });
                                     }
                                     
+                                    // P0-PRINT-007: bank details sit below both signature areas, above the balance footer.
+                                    if (!settings.LetterheadOnlyPrint)
+                                        RenderInvoiceBankDetails(footerCol, settings, 9f, paddingTop: 10);
+
                                     // Bill + customer account summary from the Customer Ledger (shown even when zero).
                                     if (sale.CustomerId.HasValue && customerPendingInfo.Available)
                                         RenderCustomerBalanceSummary(footerCol, sale, settings, customerPendingInfo, 8f);
@@ -861,7 +880,19 @@ namespace HexaBill.Api.Modules.Sales
             }
         }
 
-        private void RenderInvoiceBankDetails(ColumnDescriptor column, InvoiceTemplateService.CompanySettings settings, float fontSize)
+        // P0-PRINT-007 item table sizing (points). Constants so tests can assert them.
+        internal const float A4ItemDescriptionFontSize = 11f;
+        internal const float A4ItemNumberFontSize = 10.5f;
+        internal const float A4HeaderFontSize = 10f;
+        internal const float A4ItemCellPadding = 6f;
+        internal const float A4HeaderCellPadding = 4f;
+        internal const float A4ItemLineHeight = 1.15f;
+        // A5 is half of A4: same proportions, smaller absolute sizes.
+        internal const float A5ItemDescriptionFontSize = 8f;
+        internal const float A5ItemNumberFontSize = 7.5f;
+        internal const float A5ItemCellPadding = 2f;
+
+        private void RenderInvoiceBankDetails(ColumnDescriptor column, InvoiceTemplateService.CompanySettings settings, float fontSize, float paddingTop = 4)
         {
             if (string.IsNullOrWhiteSpace(settings.InvoiceBankAccountName) ||
                 string.IsNullOrWhiteSpace(settings.InvoiceBankName) ||
@@ -872,7 +903,7 @@ namespace HexaBill.Api.Modules.Sales
             var groupedIban = string.Join(" ", Enumerable.Range(0, (iban.Length + 3) / 4)
                 .Select(i => iban.Substring(i * 4, Math.Min(4, iban.Length - i * 4))));
             // Client-approved order: Bank Name -> Account Name -> IBAN. No separate account-number line.
-            column.Item().PaddingTop(4).ShowEntire().Column(bank =>
+            column.Item().PaddingTop(paddingTop).ShowEntire().Column(bank =>
             {
                 bank.Item().Text("Bank Details").FontFamily(_englishFont).FontSize(fontSize).Bold();
                 bank.Item().Text($"Bank Name: {settings.InvoiceBankName.Trim()}").FontFamily(_englishFont).FontSize(fontSize);
@@ -982,58 +1013,56 @@ namespace HexaBill.Api.Modules.Sales
                                 table.ColumnsDefinition(c =>
                                 {
                                     // A5 has its own widths: narrow numeric columns, the Item column takes the rest.
-                                    c.ConstantColumn(11);     // #
+                                    c.ConstantColumn(13);     // #
                                     c.RelativeColumn();       // Item
-                                    c.ConstantColumn(19);     // Unit
-                                    c.ConstantColumn(25);     // Qty (P0-PRINT-006: fits 1234.5 / 129.5 / 12.44 on one line)
-                                    c.ConstantColumn(29);     // Unit Price
-                                    c.ConstantColumn(24);     // VAT
-                                    c.ConstantColumn(40);     // Amount (wide enough for a bold 6-digit total)
+                                    c.ConstantColumn(28);     // Unit (fits CRTN at the P0-PRINT-007 size)
+                                    c.ConstantColumn(30);     // Qty (P0-PRINT-006: fits 1234.5 / 129.5 / 12.44 on one line)
+                                    c.ConstantColumn(34);     // Unit Price
+                                    c.ConstantColumn(28);     // VAT
+                                    c.ConstantColumn(44);     // Amount (wide enough for a bold 6-digit total)
                                 });
                                 table.Header(h =>
                                 {
-                                    h.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(1.5f).AlignCenter().Text("#").FontSize(6);
-                                    h.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(1.5f).AlignLeft().Text("Item").FontSize(6);
-                                    h.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(1.5f).AlignCenter().Text("Unit").FontSize(6);
-                                    h.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(1.5f).AlignCenter().Text("Qty").FontSize(6);
-                                    h.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(1.5f).AlignRight().Text("Unit Price").FontSize(6);
-                                    h.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(1.5f).AlignRight().Text("VAT 5%").FontSize(6);
-                                    h.Cell().Border(0.5f).PaddingVertical(1).PaddingHorizontal(1.5f).AlignRight().Text("Amount").FontSize(6);
+                                    h.Cell().Border(0.5f).PaddingVertical(1.5f).PaddingHorizontal(1.5f).AlignCenter().Text("#").FontSize(7).SemiBold();
+                                    h.Cell().Border(0.5f).PaddingVertical(1.5f).PaddingHorizontal(1.5f).AlignLeft().Text("Item").FontSize(7).SemiBold();
+                                    h.Cell().Border(0.5f).PaddingVertical(1.5f).PaddingHorizontal(1.5f).AlignCenter().Text("Unit").FontSize(7).SemiBold();
+                                    h.Cell().Border(0.5f).PaddingVertical(1.5f).PaddingHorizontal(1.5f).AlignCenter().Text("Qty").FontSize(7).SemiBold();
+                                    h.Cell().Border(0.5f).PaddingVertical(1.5f).PaddingHorizontal(1.5f).AlignRight().Text("Unit Price").FontSize(7).SemiBold();
+                                    h.Cell().Border(0.5f).PaddingVertical(1.5f).PaddingHorizontal(1.5f).AlignRight().Text("VAT 5%").FontSize(7).SemiBold();
+                                    h.Cell().Border(0.5f).PaddingVertical(1.5f).PaddingHorizontal(1.5f).AlignRight().Text("Amount").FontSize(7).SemiBold();
                                 });
                                 if (sale.Items != null)
                                 {
                                     for (int i = 0; i < sale.Items.Count; i++)
                                     {
                                         var item = sale.Items[i];
-                                        table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignCenter().Text((i + 1).ToString()).FontSize(6);
-                                        table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignLeft().Text(item.ProductName ?? "").FontSize(6);
-                                        table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignCenter().Text(item.UnitType ?? "").FontSize(6);
-                                        table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignCenter().Text(item.Qty.ToString("0.##")).FontSize(6);
-                                        table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text(item.UnitPrice.ToString("0.00")).FontSize(6);
-                                        table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text(item.VatAmount.ToString("0.00")).FontSize(6);
-                                        table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text(item.LineTotal.ToString("0.00")).FontSize(6);
+                                        table.Cell().Border(0.5f).PaddingVertical(A5ItemCellPadding).PaddingHorizontal(1.5f).AlignCenter().Text((i + 1).ToString()).FontSize(A5ItemNumberFontSize);
+                                        table.Cell().Border(0.5f).PaddingVertical(A5ItemCellPadding).PaddingHorizontal(1.5f).AlignLeft().Text(item.ProductName ?? "").FontSize(A5ItemDescriptionFontSize);
+                                        table.Cell().Border(0.5f).PaddingVertical(A5ItemCellPadding).PaddingHorizontal(1.5f).AlignCenter().Text(item.UnitType ?? "").FontSize(A5ItemNumberFontSize);
+                                        table.Cell().Border(0.5f).PaddingVertical(A5ItemCellPadding).PaddingHorizontal(1.5f).AlignCenter().Text(item.Qty.ToString("0.##")).FontSize(A5ItemNumberFontSize);
+                                        table.Cell().Border(0.5f).PaddingVertical(A5ItemCellPadding).PaddingHorizontal(1.5f).AlignRight().Text(item.UnitPrice.ToString("0.00")).FontSize(A5ItemNumberFontSize);
+                                        table.Cell().Border(0.5f).PaddingVertical(A5ItemCellPadding).PaddingHorizontal(1.5f).AlignRight().Text(item.VatAmount.ToString("0.00")).FontSize(A5ItemNumberFontSize);
+                                        table.Cell().Border(0.5f).PaddingVertical(A5ItemCellPadding).PaddingHorizontal(1.5f).AlignRight().Text(item.LineTotal.ToString("0.00")).FontSize(A5ItemNumberFontSize);
                                     }
                                 }
-                                table.Cell().ColumnSpan(a5Span).Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text("Subtotal").FontSize(6);
-                                table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text(sale.Subtotal.ToString("0.00")).FontSize(6);
+                                table.Cell().ColumnSpan(a5Span).Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text("Subtotal").FontSize(A5ItemNumberFontSize);
+                                table.Cell().Border(0.5f).PaddingVertical(A5ItemCellPadding).PaddingHorizontal(1.5f).AlignRight().Text(sale.Subtotal.ToString("0.00")).FontSize(A5ItemNumberFontSize);
                                 if (sale.Discount != 0)
                                 {
-                                    table.Cell().ColumnSpan(a5Span).Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text("Discount").FontSize(6);
-                                    table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text(sale.Discount.ToString("0.00")).FontSize(6);
+                                    table.Cell().ColumnSpan(a5Span).Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text("Discount").FontSize(A5ItemNumberFontSize);
+                                    table.Cell().Border(0.5f).PaddingVertical(A5ItemCellPadding).PaddingHorizontal(1.5f).AlignRight().Text(sale.Discount.ToString("0.00")).FontSize(A5ItemNumberFontSize);
                                 }
-                                table.Cell().ColumnSpan(a5Span).Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text("VAT 5%").FontSize(6);
-                                table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text(sale.VatTotal.ToString("0.00")).FontSize(6);
+                                table.Cell().ColumnSpan(a5Span).Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text("VAT 5%").FontSize(A5ItemNumberFontSize);
+                                table.Cell().Border(0.5f).PaddingVertical(A5ItemCellPadding).PaddingHorizontal(1.5f).AlignRight().Text(sale.VatTotal.ToString("0.00")).FontSize(A5ItemNumberFontSize);
                                 if (sale.RoundOff != 0)
                                 {
-                                    table.Cell().ColumnSpan(a5Span).Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text("Round Off").FontSize(6);
-                                    table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text(sale.RoundOff.ToString("0.00")).FontSize(6);
+                                    table.Cell().ColumnSpan(a5Span).Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text("Round Off").FontSize(A5ItemNumberFontSize);
+                                    table.Cell().Border(0.5f).PaddingVertical(A5ItemCellPadding).PaddingHorizontal(1.5f).AlignRight().Text(sale.RoundOff.ToString("0.00")).FontSize(A5ItemNumberFontSize);
                                 }
-                                table.Cell().ColumnSpan(a5Span).Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text("Total (" + (settings.Currency ?? "AED") + ")").FontSize(7).Bold();
-                                table.Cell().Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(7).Bold();
+                                table.Cell().ColumnSpan(a5Span).Border(0.5f).PaddingVertical(0.5f).PaddingHorizontal(1.5f).AlignRight().Text("Total (" + (settings.Currency ?? "AED") + ")").FontSize(8.5f).Bold();
+                                table.Cell().Border(0.5f).PaddingVertical(A5ItemCellPadding).PaddingHorizontal(1.5f).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(8.5f).Bold();
                             });
-                            inner.Item().PaddingTop(1).Text(ConvertToWords(sale.GrandTotal)).FontSize(6).Italic();
-                            if (!letterheadOnly)
-                                RenderInvoiceBankDetails(inner, settings, 6.5f);
+                            inner.Item().PaddingTop(1).Text(ConvertToWords(sale.GrandTotal)).FontSize(7).Italic();
                             if (!letterheadOnly && !useOrangeLetterhead)
                             {
                                 inner.Item().PaddingTop(2).ShowEntire().Column(f =>
@@ -1045,12 +1074,18 @@ namespace HexaBill.Api.Modules.Sales
                                         r.RelativeItem().Column(l => { l.Item().Text(new string('.', 30)).FontSize(6.5f); l.Item().Text("Receiver's Sign").FontSize(6f); });
                                         r.RelativeItem(2).Column(rc => { rc.Item().AlignRight().Text(new string('.', 30)).FontSize(6.5f); rc.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(6.5f); });
                                     });
+                                    // P0-PRINT-007: bank details below the signature areas, above the balance footer.
+                                    RenderInvoiceBankDetails(f, settings, 7f, paddingTop: 6);
                                     if (sale.CustomerId.HasValue && customerPendingInfo is { Available: true })
                                         RenderCustomerBalanceSummary(f, sale, settings, customerPendingInfo, 6.5f);
                                 });
                             }
                             if (useOrangeLetterhead)
+                            {
                                 RenderStampNearSignatory(inner, settings);
+                                if (!letterheadOnly)
+                                    RenderInvoiceBankDetails(inner, settings, 7f, paddingTop: 6);
+                            }
                             else if (!letterheadOnly && !settings.FrozenHubHeaderPolicy)
                                 inner.Item().PaddingTop(2).AlignCenter().Text("Thank you").FontSize(6);
                             else if (HasStampOrSignature(settings))
