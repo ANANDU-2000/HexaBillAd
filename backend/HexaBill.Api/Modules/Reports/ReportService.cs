@@ -2075,7 +2075,7 @@ namespace HexaBill.Api.Modules.Reports
             }
 
             if (customerId.HasValue)
-                legBase = legBase.Where(i => i.DestinationCustomerId == customerId.Value || i.SourceCustomerId == customerId.Value);
+                legBase = legBase.Where(i => i.DestinationCustomerId == customerId.Value);
 
             if (!string.IsNullOrEmpty(status))
             {

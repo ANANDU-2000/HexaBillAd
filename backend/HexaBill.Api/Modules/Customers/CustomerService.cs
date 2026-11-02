@@ -1122,14 +1122,14 @@ namespace HexaBill.Api.Modules.Customers
             // Query legacy Starplus invoices and payments for customer continuity (Tenant 20)
             var legacyInvoices = await _context.LegacyInvoices.AsNoTracking()
                 .Where(i => i.TenantId == tenantId && !i.IsDeleted &&
-                           (i.DestinationCustomerId == customerId || i.SourceCustomerId == customerId))
+                           i.DestinationCustomerId == customerId)
                 .OrderBy(i => i.InvoiceDate)
                 .ThenBy(i => i.Id)
                 .ToListAsync();
 
             var legacyPayments = await _context.LegacyPayments.AsNoTracking()
                 .Where(p => p.TenantId == tenantId &&
-                           (p.DestinationCustomerId == customerId || p.SourceCustomerId == customerId))
+                           p.DestinationCustomerId == customerId)
                 .OrderBy(p => p.PaymentDate)
                 .ThenBy(p => p.Id)
                 .ToListAsync();
@@ -1617,14 +1617,14 @@ namespace HexaBill.Api.Modules.Customers
             // Query legacy Starplus invoices and payments for customer continuity (Tenant 20)
             var legacyInvoices = await _context.LegacyInvoices.AsNoTracking()
                 .Where(i => i.TenantId == tenantId && !i.IsDeleted &&
-                           (i.DestinationCustomerId == customerId || i.SourceCustomerId == customerId))
+                           i.DestinationCustomerId == customerId)
                 .OrderBy(i => i.InvoiceDate)
                 .ThenBy(i => i.Id)
                 .ToListAsync();
 
             var legacyPayments = await _context.LegacyPayments.AsNoTracking()
                 .Where(p => p.TenantId == tenantId &&
-                           (p.DestinationCustomerId == customerId || p.SourceCustomerId == customerId))
+                           p.DestinationCustomerId == customerId)
                 .OrderBy(p => p.PaymentDate)
                 .ThenBy(p => p.Id)
                 .ToListAsync();
@@ -2892,7 +2892,7 @@ namespace HexaBill.Api.Modules.Customers
             var legacyPending = await _context.LegacyInvoices
                 .AsNoTracking()
                 .Where(i => i.TenantId == tenantId && !i.IsDeleted &&
-                           (i.DestinationCustomerId == customerId || i.SourceCustomerId == customerId) &&
+                           i.DestinationCustomerId == customerId &&
                            i.OutstandingCalculated > SalePaymentHelpers.SettlementToleranceAed)
                 .OrderByDescending(i => i.InvoiceDate)
                 .ToListAsync();

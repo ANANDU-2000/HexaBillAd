@@ -427,7 +427,7 @@ const CustomerDetailPage = () => {
               </h2>
             </div>
             <Link
-              to={`/billing-history?tab=legacy&search=${encodeURIComponent(customer?.name || '')}`}
+              to={`/billing-history?search=${encodeURIComponent(customer?.name || '')}`}
               className="text-xs font-medium text-primary-700 hover:underline"
             >
               View in full archive &rarr;

@@ -144,6 +144,12 @@ namespace HexaBill.Api.Modules.Legacy
         public string OriginalStatus { get; set; } = string.Empty;
         public bool IsDeleted { get; set; }
         public bool IsLegacy { get; set; }
+        /// <summary>True for read-only rows (all historical invoices, and operating invoices locked after posting).</summary>
+        public bool IsLocked { get; set; }
+        /// <summary>Original legal issuer of a historical invoice (provenance; never rewritten).</summary>
+        public string? LegacyIssuer { get; set; }
+        /// <summary>First cleared payment mode for operating invoices.</summary>
+        public string? PrimaryPaymentMode { get; set; }
         public string? Notes { get; set; }
     }
 
