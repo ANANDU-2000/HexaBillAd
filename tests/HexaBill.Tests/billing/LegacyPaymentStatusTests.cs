@@ -76,5 +76,34 @@ namespace HexaBill.Tests.Billing
             Assert.Equal(0m, paid.OutstandingCalculated);
             Assert.Equal("Paid", paid.Status);
         }
+
+        // Live: STICK MAGIC (customer 140) paid Starplus invoice 6715 (1,202.00) while owing 585.00 on live bills; the cached
+        // balance became -617.00 (a false credit) because the historical payment was subtracted from live sales.
+        [Fact]
+        public async Task HistoricalInvoicePayment_DoesNotReduceLiveCustomerBalance()
+        {
+            await using var db = await DatabaseAsync();
+            db.Customers.Add(new Customer { Id = 3, TenantId = 10, OwnerId = 10, Name = "Stick fixture", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+            db.Sales.Add(new Sale { Id = 9003, TenantId = 10, OwnerId = 10, CustomerId = 3, InvoiceNo = "LIVE-585", InvoiceDate = DateTime.UtcNow, Subtotal = 557.14m, VatTotal = 27.86m, GrandTotal = 585m, TotalAmount = 585m, PaymentStatus = SalePaymentStatus.Pending, CreatedBy = 1, CreatedAt = DateTime.UtcNow });
+            db.LegacyInvoices.Add(new LegacyInvoice
+            {
+                Id = 703, TenantId = 10, SourceInvoiceId = 7703, SourceSystem = "Starplus", LegacyInvoiceNumber = "6715",
+                LegacyIssuer = "Starplus Foodstuff Trading", InvoiceDate = new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
+                DestinationCustomerId = 3, GrandTotal = 1202m, TotalAmount = 1202m, PaidAmount = 0m,
+                OutstandingCalculated = 1202m, Status = "Pending", IsDeleted = false
+            });
+            await db.SaveChangesAsync();
+            db.ChangeTracker.Clear();
+            var service = new PaymentService(db, NullLogger<PaymentService>.Instance, new ValidationService(db), null!, null!);
+
+            await service.CreatePaymentAsync(new CreatePaymentRequest { SaleId = -703, CustomerId = 3, Amount = 1202m, Mode = "CASH" }, 1, 10);
+            await new HexaBill.Api.Modules.Customers.CustomerService(db).RecalculateCustomerBalanceAsync(3, 10);
+
+            db.ChangeTracker.Clear();
+            var customer = await db.Customers.AsNoTracking().SingleAsync(c => c.Id == 3);
+            Assert.Equal(585m, customer.Balance);
+            Assert.Equal(585m, customer.PendingBalance);
+            Assert.Equal("Paid", (await db.LegacyInvoices.AsNoTracking().SingleAsync(i => i.Id == 703)).Status);
+        }
     }
 }

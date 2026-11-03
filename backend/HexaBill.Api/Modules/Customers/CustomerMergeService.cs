@@ -184,7 +184,7 @@ namespace HexaBill.Api.Modules.Customers
                 .SumAsync(s => (decimal?)s.GrandTotal, ct) ?? 0m;
             var paySum = await _context.Payments
                 .Where(p => p.TenantId == tenantId && p.CustomerId != null && allIds.Contains(p.CustomerId.Value)
-                    && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
+                    && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null && p.LegacyInvoiceId == null)
                 .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
             var retSum = await _context.SaleReturns
                 .Where(r => r.TenantId == tenantId && r.CustomerId != null && allIds.Contains(r.CustomerId.Value)

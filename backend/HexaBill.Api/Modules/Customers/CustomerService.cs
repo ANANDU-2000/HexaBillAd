@@ -2747,7 +2747,7 @@ namespace HexaBill.Api.Modules.Customers
 
             // CLEARED only; exclude refund payments (SaleReturnId != null) - they are money out, not in
             var totalPayments = await _context.Payments
-                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
+                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null && p.LegacyInvoiceId == null)
                 .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
             var totalSalesReturns = await _context.SaleReturns
@@ -2798,7 +2798,7 @@ namespace HexaBill.Api.Modules.Customers
                     .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
 
                 var totalPayments = await _context.Payments
-                    .Where(p => p.CustomerId == customer.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
+                    .Where(p => p.CustomerId == customer.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null && p.LegacyInvoiceId == null)
                     .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
                 var totalSalesReturns = await _context.SaleReturns

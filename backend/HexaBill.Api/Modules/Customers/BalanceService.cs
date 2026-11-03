@@ -99,7 +99,7 @@ namespace HexaBill.Api.Modules.Customers
                         .Where(s => s.CustomerId == customerId && s.TenantId == tenantId && !s.IsDeleted)
                         .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
                     totalPayments = await _context.Payments
-                        .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
+                        .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null && p.LegacyInvoiceId == null)
                         .SumAsync(p => (decimal?)p.Amount) ?? 0m;
                     totalSalesReturns = await _context.SaleReturns
                         .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId && sr.Status == ReturnStatus.Approved)
@@ -230,7 +230,7 @@ namespace HexaBill.Api.Modules.Customers
                 .Where(s => s.CustomerId == customerId && s.TenantId == tenantId && !s.IsDeleted)
                 .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
             var actualTotalPayments = await _context.Payments
-                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
+                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null && p.LegacyInvoiceId == null)
                 .SumAsync(p => (decimal?)p.Amount) ?? 0m;
             var totalSalesReturns = await _context.SaleReturns
                 .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId && sr.Status == ReturnStatus.Approved)

@@ -980,7 +980,22 @@ namespace HexaBill.Api.Modules.Payments
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return await GetPaymentByIdAsync(paymentId, tenantId);
+                // PAY-1: the edit is committed. A failing read-back must never turn a saved edit into an error
+                // (the browser would show "failed" and the user would re-enter it).
+                try
+                {
+                    return await GetPaymentByIdAsync(paymentId, tenantId);
+                }
+                catch (Exception readEx)
+                {
+                    _logger.LogWarning(readEx, "Payment {PaymentId} updated and committed; read-back failed, returning the saved values", paymentId);
+                    return new PaymentDto
+                    {
+                        Id = payment.Id, SaleId = payment.SaleId, CustomerId = payment.CustomerId, Amount = payment.Amount,
+                        Mode = payment.Mode.ToString(), Reference = payment.Reference, Status = payment.Status.ToString(),
+                        PaymentDate = payment.PaymentDate
+                    };
+                }
             }
             catch (ArgumentException)
             {
