@@ -15,7 +15,7 @@ import {
 import { formatCurrency } from '../utils/currency'
 import { useBranding } from '../tenant/TenantBrandingContext'
 import { useAuth } from '../hooks/useAuth'
-import { createLedgerPaymentJournal, isDefinitivePaymentRejection, ledgerPaymentForm, ledgerPaymentScope } from '../utils/ledgerPaymentIntent'
+import { createLedgerPaymentJournal, isDefinitivePaymentRejection, ledgerPaymentForm, ledgerPaymentScope, settlePendingPayment, reconcilePaymentKey } from '../utils/ledgerPaymentIntent'
 
 const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess, onReceiptPreview }) => {
   const { user } = useAuth()
@@ -236,6 +236,13 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
           paymentData.settlementAdjustmentReason = settlementAdjustmentReason.trim()
         }
       
+        const pending = paymentJournal.read(scope)
+        if (pending && pending.form !== currentPaymentForm()) {
+          // Settle the earlier payment with the server instead of refusing this one (live 2026-11-03: stale entries blocked new payments).
+          const settled = await settlePendingPayment(paymentJournal, scope, (key) => reconcilePaymentKey(paymentsAPI.findPaymentByIdempotencyKey, key))
+          if (settled.state === 'unknown') throw new Error('The previous payment for this customer could not be confirmed yet. Check your connection and try again.')
+          setUnconfirmedPayment(null)
+        }
         intent = paymentJournal.begin(scope, {
           kind: 'create', form: currentPaymentForm(), request: paymentData,
         })

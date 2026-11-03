@@ -1,4 +1,5 @@
 import React from 'react'
+import { invalidatesCache, isCacheableGet } from './responseCachePolicy.js'
 import axios from 'axios'
 import camelcaseKeys from 'camelcase-keys'
 import toast from 'react-hot-toast'
@@ -327,7 +328,7 @@ api.request = function(configOrUrl, config) {
   const method = (finalConfig.method && typeof finalConfig.method === 'string')
     ? String(finalConfig.method).toUpperCase() : 'GET'
   // Never serve PDF/blob from JSON cache — JSON.stringify destroys Blob (breaks repeat exports/prints)
-  if (method === 'GET' && !finalConfig._bypassCache && finalConfig.responseType !== 'blob') {
+  if (method === 'GET' && !finalConfig._bypassCache && finalConfig.responseType !== 'blob' && isCacheableGet(finalConfig.url)) {
     const cacheKey = getRequestKey(finalConfig)
     const cached = responseCache.get(cacheKey)
     if (cached) {
@@ -706,7 +707,10 @@ api.interceptors.response.use(
     const respMethod = response.config?.method != null ? String(response.config.method).toUpperCase() : ''
     const isBlobBody =
       response.config?.responseType === 'blob' || (response.data != null && response.data instanceof Blob)
+    // A successful write makes every cached read stale (payments, invoices, balances): drop them all.
+    if (invalidatesCache(respMethod, response.status)) responseCache.clear()
     if (respMethod === 'GET' &&
+        isCacheableGet(response.config?.url) &&
         !response.config?._bypassCache &&
         !isBlobBody &&
         response.status >= 200 &&

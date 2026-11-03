@@ -37,7 +37,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { readApiErrorReason, saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import { formatCurrency, formatBalance, roundMoney } from '../../utils/currency'
-import { createLedgerPaymentJournal, isDefinitivePaymentRejection, ledgerPaymentForm, ledgerPaymentScope, PAYMENT_RECONCILE_DELAYS_MS, summarizeReconcileLookups } from '../../utils/ledgerPaymentIntent'
+import { createLedgerPaymentJournal, isDefinitivePaymentRejection, ledgerPaymentForm, ledgerPaymentScope, PAYMENT_RECONCILE_DELAYS_MS, settlePendingPayment, summarizeReconcileLookups } from '../../utils/ledgerPaymentIntent'
 import { invoiceBillTotals } from '../../utils/invoiceBillTotals'
 import { billingDateWindow, canonicalOutstandingBalance, mergeCustomerBillRows, salePdfId } from '../../utils/customerBillRows'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
@@ -1847,12 +1847,20 @@ const CustomerLedgerPage = () => {
     try {
       const previous = paymentJournal.read(paymentScope)
       if (previous) {
-        if (previous.form !== ledgerPaymentForm(data, payAllOutstandingMode)) {
-          toast.error('Retry the previous payment before recording a different payment.')
+        if (previous.form === ledgerPaymentForm(data, payAllOutstandingMode)) {
+          await executePaymentApi({ savedIntent: previous })
           return
         }
-        await executePaymentApi({ savedIntent: previous })
-        return
+        // A different payment: settle the pending one with the server first instead of refusing the new one.
+        const settled = await settlePendingPayment(paymentJournal, paymentScope, reconcileSavedPayment)
+        if (settled.state === 'unknown') {
+          toast.error('The previous payment for this customer could not be confirmed yet. Check your connection and try again.')
+          return
+        }
+        setUnconfirmedPayment(null)
+        if (settled.state === 'saved') {
+          toast(`Previous payment of ${formatCurrency(settled.pending.request.amount)} was already saved.`, { id: 'payment-previous-saved', duration: 4000 })
+        }
       }
     } catch (error) { toast.error(error.message); return }
 

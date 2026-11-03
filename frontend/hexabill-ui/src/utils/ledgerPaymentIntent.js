@@ -213,3 +213,45 @@ export function summarizeReconcileLookups(lookups = []) {
   if (lookups.length > 0 && lookups.every((lookup) => lookup?.state === 'not_saved')) return { state: 'not_saved' }
   return { state: 'unknown' }
 }
+
+/**
+ * Before a DIFFERENT payment is recorded for a customer, settle the payment still pending in this browser with the server
+ * instead of refusing ("Retry the previous payment before recording a different payment."). Live 2026-11-03: entries from
+ * payments saved hours earlier stayed pending in a tablet tab and blocked new payments for that customer.
+ * - saved on the server: it is done; the entry is cleared and `saved` carries the server's answer.
+ * - every lookup says not saved: nothing was booked; the entry is released.
+ * - no clear answer: the entry is kept and the new payment must wait (it may still be in flight).
+ * @param {{ read: Function, complete: Function }} journal
+ * @param {string} scope
+ * @param {(idempotencyKey: string) => Promise<{ state: string, response?: any }>} reconcile
+ */
+export async function settlePendingPayment(journal, scope, reconcile) {
+  const pending = journal.read(scope)
+  if (!pending) return { state: 'none' }
+  const outcome = await reconcile(pending.idempotencyKey)
+  if (outcome?.state === 'saved') {
+    journal.complete(scope, pending.idempotencyKey)
+    return { state: 'saved', pending, response: outcome.response }
+  }
+  if (outcome?.state === 'not_saved') {
+    journal.complete(scope, pending.idempotencyKey)
+    return { state: 'not_saved', pending }
+  }
+  return { state: 'unknown', pending }
+}
+
+/** Asks the server, a few times, whether the payment sent with this key was saved (see summarizeReconcileLookups). */
+export async function reconcilePaymentKey(lookup, idempotencyKey, delays = PAYMENT_RECONCILE_DELAYS_MS, wait = (ms) => new Promise((r) => setTimeout(r, ms))) {
+  const lookups = []
+  for (const delay of delays) {
+    if (delay) await wait(delay)
+    try {
+      const res = await lookup(idempotencyKey)
+      if (res?.success && res.data) { lookups.push({ state: 'saved', response: res.data }); break }
+      lookups.push(res?.success ? { state: 'not_saved' } : { state: 'unknown' })
+    } catch {
+      lookups.push({ state: 'unknown' })
+    }
+  }
+  return summarizeReconcileLookups(lookups)
+}
