@@ -30,3 +30,33 @@ export function totalOutstanding(rows) {
   const total = (Array.isArray(rows) ? rows : []).reduce((sum, row) => sum + (Number(row.totalOutstanding) || 0), 0)
   return Math.round(total * 100) / 100
 }
+
+/** Stable key for one bill in a customer's list (live id or legacy id), used for selection. */
+export function billKey(bill) {
+  if (!bill) return ''
+  if (bill.source === 'Historical') return `legacy-${bill.legacyInvoiceId ?? bill.saleId}`
+  return `live-${bill.saleId}`
+}
+
+/** True when this bill can be paid through the ledger's invoice-payment flow (a live sale id, not a historical id). */
+export function isLiveBill(bill) {
+  const saleId = Number(bill?.saleId)
+  return (bill?.source === 'Live' || bill?.source === undefined) && Number.isInteger(saleId) && saleId > 0
+}
+
+/** Sum of the current balances of the selected bills (2-decimal rounding). selectedKeys: Set of billKey(). */
+export function selectedBillsTotal(bills, selectedKeys) {
+  const list = Array.isArray(bills) ? bills : []
+  const keys = selectedKeys instanceof Set ? selectedKeys : new Set(selectedKeys || [])
+  const total = list.reduce((sum, bill) => (keys.has(billKey(bill)) ? sum + (Number(bill.balanceDue) || 0) : sum), 0)
+  return Math.round(total * 100) / 100
+}
+
+/** Deep link to pay the selected bills: one live bill -> that invoice; several -> the Payments tab with entry open. */
+export function paySelectedPath(customerId, selectedBills) {
+  const id = Number(customerId)
+  if (!Number.isInteger(id) || id <= 0) return '/ledger'
+  const live = (Array.isArray(selectedBills) ? selectedBills : []).filter(isLiveBill)
+  if (live.length === 1) return buildCustomerLedgerHref({ customerId: id, tab: 'payments', recordPaymentSaleId: live[0].saleId })
+  return buildCustomerLedgerHref({ customerId: id, tab: 'payments', openPayment: true })
+}

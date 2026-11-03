@@ -1,13 +1,23 @@
 import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../utils/currency'
-import { filterPendingRows, overdueLabel, receivePaymentPath, totalOutstanding } from '../utils/pendingBills'
+import { billKey, filterPendingRows, isLiveBill, overdueLabel, paySelectedPath, receivePaymentPath, selectedBillsTotal, totalOutstanding } from '../utils/pendingBills'
 
 // Customers with open bills. Touch-first: 44px targets, numbers right-aligned, no wrapping of amounts.
 // "Receive Payment" opens the customer ledger, which runs the existing idempotent payment flow (partial, full, Pay All).
 const CustomerPendingBillsTable = ({ rows = [], loading = false, error = null, onRetry }) => {
   const [query, setQuery] = useState('')
   const [openId, setOpenId] = useState(null)
+  // customerId -> Set of billKey() of selected LIVE bills (historical/Starplus rows are not individually selectable here).
+  const [selected, setSelected] = useState({})
+  const toggleBill = (customerId, key) => {
+    setSelected((prev) => {
+      const set = new Set(prev[customerId] || [])
+      if (set.has(key)) set.delete(key); else set.add(key)
+      return { ...prev, [customerId]: set }
+    })
+  }
+  const clearCustomer = (customerId) => setSelected((prev) => (prev[customerId] ? { ...prev, [customerId]: new Set() } : prev))
   const visible = useMemo(() => filterPendingRows(rows, query), [rows, query])
 
   if (loading) return <p className="p-4 text-sm text-neutral-500">Loading pending bills…</p>
@@ -77,6 +87,7 @@ const CustomerPendingBillsTable = ({ rows = [], loading = false, error = null, o
                         <table className="min-w-full text-xs">
                           <thead className="text-neutral-500">
                             <tr>
+                              <th className="px-2 py-1 text-left"><span className="sr-only">Select</span></th>
                               <th className="px-2 py-1 text-left">Invoice</th>
                               <th className="px-2 py-1 text-left">Source</th>
                               <th className="px-2 py-1 text-left">Invoice date</th>
@@ -89,6 +100,17 @@ const CustomerPendingBillsTable = ({ rows = [], loading = false, error = null, o
                           <tbody>
                             {(row.bills || []).map((bill) => (
                               <tr key={`${bill.source}-${bill.saleId ?? bill.legacyInvoiceId}`} className="border-t border-neutral-200">
+                                <td className="px-2 py-1">
+                                  {isLiveBill(bill) ? (
+                                    <input
+                                      type="checkbox"
+                                      aria-label={`Select ${bill.invoiceNo || 'bill'}`}
+                                      checked={Boolean(selected[row.customerId]?.has(billKey(bill)))}
+                                      onChange={() => toggleBill(row.customerId, billKey(bill))}
+                                      className="h-4 w-4 accent-primary-600"
+                                    />
+                                  ) : null}
+                                </td>
                                 <td className="px-2 py-1">{bill.invoiceNo || '—'}</td>
                                 <td className="px-2 py-1">{bill.source === 'Historical' ? 'Historical (Starplus)' : 'Live'}</td>
                                 <td className="px-2 py-1 whitespace-nowrap">{new Date(bill.invoiceDate).toLocaleDateString('en-GB')}</td>
@@ -100,6 +122,22 @@ const CustomerPendingBillsTable = ({ rows = [], loading = false, error = null, o
                             ))}
                           </tbody>
                         </table>
+                        {(() => {
+                          const sel = selected[row.customerId] || new Set()
+                          const selBills = (row.bills || []).filter((bill) => sel.has(billKey(bill)))
+                          if (!selBills.length) return null
+                          return (
+                            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1">
+                              <p className="text-xs font-semibold tabular-nums">
+                                {selBills.length} selected · Total {formatCurrency(selectedBillsTotal(row.bills, sel))}
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                <button type="button" onClick={() => clearCustomer(row.customerId)} className="min-h-[44px] px-3 rounded border border-neutral-300 text-neutral-700">Clear</button>
+                                <Link to={paySelectedPath(row.customerId, selBills)} className="min-h-[44px] inline-flex items-center px-3 rounded bg-primary text-white">Pay selected</Link>
+                              </div>
+                            </div>
+                          )
+                        })()}
                       </td>
                     </tr>
                   )}
