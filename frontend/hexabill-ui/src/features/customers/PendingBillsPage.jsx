@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Wallet, RefreshCw } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Wallet, Layers, RefreshCw } from 'lucide-react'
 import { customersAPI } from '../../services/index'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
 import CustomerPendingBillsTable from '../../components/CustomerPendingBillsTable'
@@ -58,14 +59,24 @@ const PendingBillsPage = () => {
           <Wallet className="h-5 w-5 text-primary-600" aria-hidden />
           <h1 className="text-xl font-bold text-neutral-900">Pending Bills</h1>
         </div>
-        <button
-          type="button"
-          onClick={() => load()}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50"
-        >
-          <RefreshCw className="h-4 w-4" aria-hidden />
-          Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to="/payments?bulk=1"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50"
+            title="Record payments for several customers in one batch"
+          >
+            <Layers className="h-4 w-4" aria-hidden />
+            Bulk payment
+          </Link>
+          <button
+            type="button"
+            onClick={() => load()}
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50"
+          >
+            <RefreshCw className="h-4 w-4" aria-hidden />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <p className="text-sm text-neutral-600">

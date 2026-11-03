@@ -182,10 +182,12 @@ const PaymentsPage = () => {
     refreshRecovery()
   }, [refreshRecovery])
 
-  // Live 2026-11-03: entries for payments saved hours earlier stayed as "unconfirmed" banners forever on this page,
-  // even after the server had saved them, because the page only listed the saved intents and never asked the server.
-  // Reconcile each saved intent by its idempotency key on open: a definite answer ('saved', or every lookup
-  // 'not_saved') clears the entry; an unclear answer keeps the banner and its Retry button for manual action.
+  // A stale pending entry is no longer a blocker (see above). Deep link from the Pending Bills page: open the group
+  // (bulk) payment entry directly so several customers can be paid in one batch once the account scope is ready.
+  const bulkParam = searchParams.get('bulk')
+  useEffect(() => {
+    if (bulkParam === '1' && accountPrefix && listScope === accountPrefix) setShowBulkPaymentModal(true)
+  }, [bulkParam, accountPrefix, listScope])
   useEffect(() => {
     if (!accountPrefix || user?.supportReadOnly) return
     let cancelled = false
