@@ -32,6 +32,7 @@ import { isAdminOrOwner } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import toast from 'react-hot-toast'
 import { saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
+import { loadAllProductPages } from '../../utils/loadAllProductPages'
 import { showToast } from '../../utils/toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import PrintOptionsModal from '../../components/PrintOptionsModal'
@@ -170,9 +171,11 @@ const PosPage = () => {
   const loadProducts = useCallback(async () => {
     try {
       setLoadingProducts(true)
-      const response = await productsAPI.getProducts({ pageSize: 200 })
-      if (response.success) {
-        setProducts(response.data.items || [])
+      // Every active product, not just the first 200 by name (search and barcode scan read only this list).
+      const { items, complete, totalCount } = await loadAllProductPages((params) => productsAPI.getProducts(params))
+      setProducts(items)
+      if (!complete) {
+        toast(`POS loaded ${items.length} of ${totalCount} products. Search cannot reach the rest.`, { icon: '⚠️' })
       }
     } catch (error) {
       if (!error?._handledByInterceptor) toast.error('Failed to load products')

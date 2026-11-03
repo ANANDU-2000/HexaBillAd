@@ -137,6 +137,7 @@ namespace HexaBill.Api.Modules.Products
             {
                 products = await query
                     .OrderBy(p => p.NameEn)
+                    .ThenBy(p => p.Id) // Stable paging: equal names must not swap places between pages
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .Select(p => new ProductDto
@@ -167,6 +168,7 @@ namespace HexaBill.Api.Modules.Products
                 // Fallback if CategoryId or Category navigation doesn't exist
                 products = await query
                     .OrderBy(p => p.NameEn)
+                    .ThenBy(p => p.Id) // Stable paging: equal names must not swap places between pages
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .Select(p => new ProductDto

@@ -63,6 +63,7 @@ import { SETTLEMENT_TOLERANCE_AED, isInvoiceFullySettled, getInvoicePaymentBadge
 import { buildCustomerLedgerHref } from '../../../utils/customerLedgerUrl'
 import { getReturnLabel } from '../../../utils/returnNavigation'
 import { localDateString } from '../../../utils/dateFormat'
+import { loadAllProductPages } from '../../../utils/loadAllProductPages'
 const API_BASE_URL = getApiBaseUrl()
 
 /** Product picker list page size (client-side only). */
@@ -206,9 +207,11 @@ const PosEnterprisePage = () => {
   const loadProducts = useCallback(async () => {
     try {
       setLoadingProducts(true)
-      const response = await productsAPI.getProducts({ pageSize: 200 })
-      if (response.success) {
-        setProducts(response.data.items || [])
+      // Every active product, not just the first 200 by name: picker search and barcode scan read only this list.
+      const { items, complete, totalCount } = await loadAllProductPages((params) => productsAPI.getProducts(params))
+      setProducts(items)
+      if (!complete) {
+        toast(`POS loaded ${items.length} of ${totalCount} products. Search cannot reach the rest.`, { icon: '⚠️' })
       }
     } catch (error) {
       if (!error?._handledByInterceptor) toast.error('Failed to load products')
