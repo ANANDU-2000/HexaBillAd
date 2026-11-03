@@ -30,6 +30,18 @@ import { isAdminOrOwner, canManagePayments } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { readSalesLedgerStateFromParams, syncSalesLedgerSearchParams } from '../../utils/salesLedgerUrl'
 import { canReceivePaymentReceipt, receiptIneligibilityReason } from '../../utils/receiptEligibility'
+import { buildSalesLedgerKpis } from '../../utils/salesLedgerKpis'
+
+// Literal class names so Tailwind keeps them in the build.
+const SALES_KPI_ACCENT = {
+  primary: 'border-l-primary-600',
+  emerald: 'border-l-emerald-600',
+  rose: 'border-l-rose-600',
+  amber: 'border-l-amber-500',
+  teal: 'border-l-teal-600',
+  violet: 'border-l-violet-600',
+  slate: 'border-l-slate-600',
+}
 
 const SHOW_FILTERS_KEY = 'hexabill_sales_ledger_show_filters'
 const NARROW_QUERY = '(max-width: 639.98px)'
@@ -1037,6 +1049,7 @@ const SalesLedgerPage = () => {
               <button
                 type="button"
                 onClick={() => setSortOrderPersist('newest')}
+                title="Sorted by latest customer activity"
                 className={`min-h-10 md:min-h-8 px-2.5 ${sortOrder === 'newest' ? 'bg-primary-600 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
               >
                 Newest
@@ -1081,21 +1094,9 @@ const SalesLedgerPage = () => {
         </MobileActionStrip>
       </div>
 
-      {filters.type === 'Sale' && (
-        <div className="flex-shrink-0 px-2 md:px-4 py-1.5 text-xs text-neutral-600 bg-success-bg/90 border-b border-emerald-100">
-          <span className="font-medium text-emerald-900">Sales only:</span> one invoice list for all customers, sorted by date and id ({sortOrder === 'newest' ? 'newest at top' : 'oldest at top'}). Per-customer subtotals are hidden; use footer totals or set Type to All for grouped subtotals.
-        </div>
-      )}
-      {sortOrder === 'newest' && filters.type !== 'Sale' && (
-        <details className="flex-shrink-0 px-2 md:px-4 py-1.5 text-xs text-neutral-600 bg-warning-bg/90 border-b border-amber-100">
-          <summary className="cursor-pointer select-none font-medium text-amber-900">Sorted newest-first per customer</summary>
-          Newest-first within each customer (latest activity at top). Customer blocks are ordered by latest date, then by highest transaction id when dates tie. Balance column is per transaction, not a running total down the list.
-        </details>
-      )}
-
       {/* Filters - Collapsible */}
       {showFilters && (
-        <div className="flex-shrink-0 bg-gradient-to-r from-primary-50 to-indigo-50 border-b border-primary-200 px-3 py-2 md:overflow-y-auto md:max-h-56">
+        <div className="flex-shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-2 md:overflow-y-auto md:max-h-56">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center">
               <Filter className="h-4 w-4 text-primary-600 mr-2" />
@@ -1251,28 +1252,26 @@ const SalesLedgerPage = () => {
         </div>
       )}
 
-      <div className="flex-shrink-0 px-2 md:px-4 py-1.5 bg-white border-b border-neutral-200 text-xs text-neutral-700" aria-label="Ledger totals">
-        <dl className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px] min-[360px]:text-xs md:flex md:flex-wrap md:items-center md:gap-x-0">
-          <dt className="col-span-2 font-medium text-neutral-500 md:mr-2">Totals:</dt>
-          {[
-            ['Sales', formatCurrency(filteredSummary.totalSales)],
-            ['Returns', formatCurrency(filteredSummary.totalReturns ?? 0)],
-            ['Net', formatCurrency(filteredSummary.netSales ?? filteredSummary.totalSales)],
-            ['Received', formatCurrency(filteredSummary.totalPayments)],
-            ['Unpaid', formatCurrency(filteredSummary.totalRealPending)],
-            ['Balance', formatBalance(filteredSummary.pendingBalance)],
-            ['VAT', formatCurrency(filteredSummary.totalVat ?? 0)],
-            [null, `${filteredSummary.totalInvoices || 0} invoices`],
-            [null, `${filteredLedger.length} rows`]
-          ].map(([label, value], i) => (
-            <dd key={label || value} className="flex justify-between gap-1 min-w-0 whitespace-nowrap md:block">
-              {i > 0 && <span className="hidden md:inline mx-1.5 text-neutral-300">|</span>}
-              {label && <span className="text-neutral-500 md:text-inherit">{label} </span>}
-              <span className="font-medium md:font-normal tabular-nums whitespace-nowrap">{value}</span>
-            </dd>
+      {/* KPI strip: same filtered figures as the table footer. Phones scroll it sideways to keep the table high on screen. */}
+      <section className="flex-shrink-0 bg-white border-b border-neutral-200" aria-label="Ledger totals">
+        <div className="flex gap-2 overflow-x-auto px-2 py-1.5 md:grid md:grid-cols-4 md:overflow-visible md:px-4 xl:grid-cols-8">
+          {buildSalesLedgerKpis(filteredSummary, {
+            rowCount: filteredLedger.length,
+            returnCount: returnEntries.length
+          }).map((card) => (
+            <div
+              key={card.key}
+              className={`shrink-0 min-w-[7.5rem] md:min-w-0 rounded-md border border-neutral-200 border-l-4 bg-white px-2.5 py-1.5 ${SALES_KPI_ACCENT[card.accent]}`}
+            >
+              <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-neutral-500">{card.label}</p>
+              <p className="truncate text-sm font-bold tabular-nums text-neutral-900">
+                {card.format === 'balance' ? formatBalance(card.value) : card.format === 'count' ? card.value.toLocaleString() : formatCurrency(card.value)}
+              </p>
+              {card.helper ? <p className="hidden truncate text-[11px] text-neutral-500 md:block">{card.helper}</p> : null}
+            </div>
           ))}
-        </dl>
-      </div>
+        </div>
+      </section>
 
       {/* Table - Scrollable (fills remaining viewport height) */}
       {loading ? (

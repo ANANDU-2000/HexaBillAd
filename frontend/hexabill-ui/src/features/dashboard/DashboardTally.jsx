@@ -568,7 +568,7 @@ const DashboardTally = () => {
     )
     // Neutral, not a warning: it explains how the profit figure is built, it is not something to act on.
     const profitNote = hasFigures && showProfit && stats.estimatedCostLineCount > 0
-        ? `Profit uses current product cost for ${stats.estimatedCostLineCount} invoice lines that have no saved historical cost, so it can change when product costs change.`
+        ? `Includes ${stats.estimatedCostLineCount} ${stats.estimatedCostLineCount === 1 ? 'line' : 'lines'} using current product cost.`
         : null
 
     const setupSteps = [
