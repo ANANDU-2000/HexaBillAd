@@ -564,6 +564,8 @@ namespace HexaBill.Api.Modules.Payments
                         // Historical invoices are read-only history; only their outstanding/paid caches change.
                         legacyInvoice.PaidAmount = Math.Round(legacyInvoice.PaidAmount + request.Amount, 2, MidpointRounding.AwayFromZero);
                         legacyInvoice.OutstandingCalculated = Math.Max(0m, legacyInvoice.GrandTotal - legacyInvoice.PaidAmount);
+                        // Keep the stored status in step with the balance (it was left at "Pending" after full payment).
+                        legacyInvoice.Status = legacyInvoice.OutstandingCalculated <= SalePaymentHelpers.SettlementToleranceAed ? "Paid" : "Partial";
                     }
 
                     Customer? updatedCustomer = null;
@@ -1305,6 +1307,7 @@ namespace HexaBill.Api.Modules.Payments
                         {
                             legInv.PaidAmount = legInv.PaidAmount + Math.Round(allocationAmount, 2, MidpointRounding.AwayFromZero);
                             legInv.OutstandingCalculated = Math.Max(0, legInv.GrandTotal - legInv.PaidAmount);
+                            legInv.Status = legInv.OutstandingCalculated <= SalePaymentHelpers.SettlementToleranceAed ? "Paid" : "Partial";
                         }
                     }
 

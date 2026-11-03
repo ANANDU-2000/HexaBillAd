@@ -4799,7 +4799,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                       <Unlock className="h-3.5 w-3.5" />
                     </button>
                   )}
-                  {isAdmin && onDeleteInvoice && (
+                  {isAdmin && onDeleteInvoice && !invoice.isLegacy && (
                     <button
                       onClick={() => onDeleteInvoice(invoice.id)}
                       className="px-3 py-2 text-error hover:bg-error-bg rounded-md"
@@ -4808,7 +4808,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   )}
-                  {onReturnInvoice && (
+                  {onReturnInvoice && !invoice.isLegacy && (
                     <button
                       onClick={() => onReturnInvoice(invoice.id)}
                       className="px-3 py-2 text-warning hover:bg-warning-bg rounded-md text-xs font-medium flex items-center gap-1"
