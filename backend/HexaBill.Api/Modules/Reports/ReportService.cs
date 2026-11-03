@@ -18,7 +18,7 @@ namespace HexaBill.Api.Modules.Reports
     public interface IReportService
     {
         Task<SummaryReportDto> GetSummaryReportAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null, int? userIdForStaff = null, string? roleForStaff = null, bool skipCache = false);
-        Task<PagedResponse<SaleDto>> GetSalesReportAsync(int tenantId, DateTime fromDate, DateTime toDate, int? customerId = null, string? status = null, int page = 1, int pageSize = 10, int? branchId = null, int? routeId = null, int? userIdForStaff = null, string? roleForStaff = null, string? search = null);
+        Task<PagedResponse<SaleDto>> GetSalesReportAsync(int tenantId, DateTime fromDate, DateTime toDate, int? customerId = null, string? status = null, int page = 1, int pageSize = 10, int? branchId = null, int? routeId = null, int? userIdForStaff = null, string? roleForStaff = null, string? search = null, bool includeLegacy = true);
         Task<EnhancedSalesReportDto> GetEnhancedSalesReportAsync(int tenantId, DateTime fromDate, DateTime toDate, string granularity = "day", int? productId = null, int? customerId = null, string? status = null, int page = 1, int pageSize = 50);
         Task<List<ProductSalesDto>> GetProductSalesReportAsync(int tenantId, DateTime fromDate, DateTime toDate, int top = 20);
         Task<List<ProductSalesDto>> GetEnhancedProductSalesReportAsync(int tenantId, DateTime fromDate, DateTime toDate, int? productId = null, string? unitType = null, bool lowStockOnly = false);
@@ -1293,7 +1293,8 @@ namespace HexaBill.Api.Modules.Reports
             int? routeId = null,
             int? userIdForStaff = null,
             string? roleForStaff = null,
-            string? search = null)
+            string? search = null,
+            bool includeLegacy = true)
         {
             // CRITICAL FIX: Use < instead of <= for toDate comparison
             var query = _context.Sales
@@ -1375,7 +1376,7 @@ namespace HexaBill.Api.Modules.Reports
 
             // Tenant 20 (FrozenHub 1) Starplus continuity: Merge legacy invoices into Sales Report
             var cutoverUtc = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
-            if (tenantId == 20 && fromDate < cutoverUtc && !branchId.HasValue && !routeId.HasValue && !string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
+            if (includeLegacy && tenantId == 20 && fromDate < cutoverUtc && !branchId.HasValue && !routeId.HasValue && !string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
             {
                 var legacyQ = _context.LegacyInvoices.AsNoTracking()
                     .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.InvoiceDate >= fromDate && li.InvoiceDate < toDate);
@@ -1415,10 +1416,16 @@ namespace HexaBill.Api.Modules.Reports
                 var legacyCount = await legacyQ.CountAsync();
                 var combinedTotal = totalCount + legacyCount;
 
+                // Top-k merge: every page is built from the first page*pageSize rows of EACH source, read in that
+                // source's own stable order (date desc, id desc). The same order is then applied to the merged set,
+                // so consecutive pages neither repeat nor skip rows. Each historical invoice comes from LegacyInvoices
+                // only; it is never also emitted as a Sales row.
+                var take = page * pageSize;
+
                 var opSalesDtos = await (from s in query
                                          join c in _context.Customers on s.CustomerId equals c.Id into customerGroup
                                          from c in customerGroup.DefaultIfEmpty()
-                                         orderby s.InvoiceDate descending
+                                         orderby s.InvoiceDate descending, s.Id descending
                                          select new SaleDto
                                          {
                                              Id = s.Id,
@@ -1437,13 +1444,17 @@ namespace HexaBill.Api.Modules.Reports
                                              PaymentStatus = s.PaymentStatus.ToString(),
                                              Notes = s.Notes,
                                              Items = new List<SaleItemDto>()
-                                         }).ToListAsync();
+                                         })
+                                         .Take(take)
+                                         .ToListAsync();
 
                 var legSalesDtos = await (from li in legacyQ
-                                          orderby li.InvoiceDate descending
+                                          orderby li.InvoiceDate descending, li.Id descending
                                           select new SaleDto
                                           {
-                                              Id = -(int)li.Id,
+                                              Id = -li.Id,
+                                              IsLegacy = true,
+                                              LegacyInvoiceId = li.Id,
                                               InvoiceNo = li.LegacyInvoiceNumber,
                                               InvoiceDate = li.InvoiceDate,
                                               CustomerId = li.DestinationCustomerId,
@@ -1460,13 +1471,13 @@ namespace HexaBill.Api.Modules.Reports
                                               Notes = "Historical Starplus invoice",
                                               Items = new List<SaleItemDto>()
                                           })
-                                          .Skip(Math.Max(0, (page - 1) * pageSize - opSalesDtos.Count))
-                                          .Take(pageSize)
+                                          .Take(take)
                                           .ToListAsync();
 
                 var mergedSales = opSalesDtos.Concat(legSalesDtos)
                     .OrderByDescending(s => s.InvoiceDate)
-                    .ThenByDescending(s => s.Id)
+                    .ThenBy(s => s.IsLegacy)
+                    .ThenByDescending(s => s.LegacyInvoiceId ?? s.Id)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();

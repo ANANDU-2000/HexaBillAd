@@ -361,6 +361,10 @@ namespace HexaBill.Api.Models
         public int Id { get; set; }
         /// <summary>Source/idempotency reference; imported Starplus sales start with "starplus:" (P0-PRINT-007 reprint label).</summary>
         public string? ExternalReference { get; set; }
+        /// <summary>True for a read-only historical (Starplus) invoice merged from LegacyInvoices. Id is then negative.</summary>
+        public bool IsLegacy { get; set; }
+        /// <summary>Source LegacyInvoices.Id when IsLegacy is true.</summary>
+        public int? LegacyInvoiceId { get; set; }
         public int OwnerId { get; set; } // MULTI-TENANT: Owner identification
         public string InvoiceNo { get; set; } = string.Empty;
         public DateTime InvoiceDate { get; set; }

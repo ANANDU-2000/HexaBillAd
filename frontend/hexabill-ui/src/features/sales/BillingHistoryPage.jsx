@@ -23,6 +23,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { salesAPI, paymentsAPI, legacyAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
 import { getInvoicePaymentBadge, isInvoiceFullySettled } from '../../utils/salePaymentSettlement'
+import { historicalCollectionId } from '../../utils/customerBillRows'
 import { useDebounce } from '../../hooks/useDebounce'
 import toast from 'react-hot-toast'
 import InvoicePreviewModal from '../../components/InvoicePreviewModal'
@@ -43,6 +44,13 @@ const STATUS_OPTIONS = [
 ]
 
 const VOIDED_BADGE = { label: 'Voided', colorClass: 'bg-neutral-200 text-neutral-700 ring-1 ring-inset ring-neutral-300' }
+
+// Where a Collect or Customer ledger action lands: a live sale id, or the negative id of a historical invoice.
+const collectionTargetFor = (inv) => {
+  if (inv.isLegacy) return historicalCollectionId(inv)
+  if (inv.isDeleted || !inv.customerId) return undefined
+  return isInvoiceFullySettled(toSale(inv)) ? undefined : inv.operatingSaleId
+}
 
 /** Shape an operating row so the existing sale helpers (badge, ledger, receipt) work unchanged. */
 const toSale = (inv) => ({
@@ -248,11 +256,11 @@ const BillingHistoryPage = () => {
       toast.error('This invoice has no customer ledger')
       return
     }
-    const needsPayment = !inv.isLegacy && !inv.isDeleted && !isInvoiceFullySettled(toSale(inv))
+    const paymentTarget = collectionTargetFor(inv)
     navigate(
       buildCustomerLedgerHref({
         customerId: inv.customerId,
-        recordPaymentSaleId: needsPayment ? inv.operatingSaleId : undefined
+        recordPaymentSaleId: paymentTarget
       }),
       { state: { returnTo: billingReturnTo } }
     )
@@ -597,7 +605,7 @@ const BillingHistoryPage = () => {
               {rows.map((inv) => {
                 const badge = rowBadge(inv)
                 const outstanding = Number(inv.outstandingBalance) || 0
-                const collectable = !inv.isLegacy && !inv.isDeleted && inv.customerId && !isInvoiceFullySettled(toSale(inv))
+                const collectable = collectionTargetFor(inv) !== undefined
                 return (
                   <li key={inv.id} className="flex items-center gap-2 px-3 py-2">
                     <button type="button" onClick={() => openInvoice(inv)} className="min-w-0 flex-1 text-start">

@@ -39,6 +39,7 @@ import { useBranding } from '../../tenant/TenantBrandingContext'
 import { formatCurrency, formatBalance, roundMoney } from '../../utils/currency'
 import { createLedgerPaymentJournal, isDefinitivePaymentRejection, ledgerPaymentForm, ledgerPaymentScope } from '../../utils/ledgerPaymentIntent'
 import { invoiceBillTotals } from '../../utils/invoiceBillTotals'
+import { billingDateWindow, canonicalOutstandingBalance, mergeCustomerBillRows, salePdfId } from '../../utils/customerBillRows'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
 import Modal from '../../components/Modal'
@@ -1226,12 +1227,14 @@ const CustomerLedgerPage = () => {
       // when customer has data under multiple branches or legacy null BranchId.
       // Tenant 20 (FrozenHub 1) Starplus continuity: load legacy invoices and payments
       const isTenant20 = Number(user?.tenantId) === 20 || !user?.tenantId || (typeof window !== 'undefined' && window.location.hostname.includes('frozenhub') && !window.location.hostname.includes('frozenhub2'))
+      // One explicit window for the report and the legacy list (see utils/customerBillRows.js).
+      const billWindow = billingDateWindow(dateRange)
       const legacyInvoicesPromise = isTenant20
         ? legacyAPI.getInvoices({
             customerId,
             pageSize: 1000,
-            fromDate: dateRange.from,
-            toDate: dateRange.to
+            fromDate: billWindow.fromDate,
+            toDate: billWindow.toDate
           }).catch(err => {
             console.warn('Could not fetch legacy invoices for customer ledger:', err)
             return null
@@ -1242,8 +1245,8 @@ const CustomerLedgerPage = () => {
         ? legacyAPI.getPayments({
             customerId,
             pageSize: 1000,
-            fromDate: dateRange.from,
-            toDate: dateRange.to
+            fromDate: billWindow.fromDate,
+            toDate: billWindow.toDate
           }).catch(err => {
             console.warn('Could not fetch legacy payments for customer ledger:', err)
             return null
@@ -1256,12 +1259,14 @@ const CustomerLedgerPage = () => {
           toDate: dateRange.to
           // branchId, routeId, staffId intentionally omitted - full ledger
         }),
+        // includeLegacy=false: historical invoices come only from the legacy list below (no second copy).
         reportsAPI.getSalesReport({
           page: 1,
           pageSize: 1000,
           customerId,
-          fromDate: dateRange.from,
-          toDate: dateRange.to
+          fromDate: billWindow.fromDate,
+          toDate: billWindow.toDate,
+          includeLegacy: false
         }),
         customersAPI.getOutstandingInvoices(customerId),
         customersAPI.getCustomer(customerId),
@@ -1318,7 +1323,11 @@ const CustomerLedgerPage = () => {
           }))
         : []
 
-      const combinedInvoices = [...validSales, ...legacyInvoices].sort((a, b) => {
+      const { rows: mergedBillRows, duplicatesDropped, historicalRowsInOperatingSource } = mergeCustomerBillRows(validSales, legacyInvoices)
+      if (duplicatesDropped > 0 || historicalRowsInOperatingSource > 0) {
+        console.warn('Customer ledger: repeated invoice records were collapsed to one row each', { duplicatesDropped, historicalRowsInOperatingSource })
+      }
+      const combinedInvoices = [...mergedBillRows].sort((a, b) => {
         const dA = new Date(a.invoiceDate || a.date || 0).getTime()
         const dB = new Date(b.invoiceDate || b.date || 0).getTime()
         if (dB !== dA) return dB - dA
@@ -1327,6 +1336,8 @@ const CustomerLedgerPage = () => {
       invoicesData = combinedInvoices
       setCustomerInvoices(invoicesData)
 
+      // Canonical all-history outstanding (current + historical). Feeds the header balance.
+      let canonicalOutstanding = null
       if (outstandingRes.success && outstandingRes.data) {
         outstandingData = Array.isArray(outstandingRes.data) ? outstandingRes.data : []
         // Validate outstanding invoices belong to this customer
@@ -1334,6 +1345,7 @@ const CustomerLedgerPage = () => {
           return inv.customerId === customerId || inv.customerId === parseInt(customerId)
         })
         setOutstandingInvoices(validOutstanding)
+        canonicalOutstanding = canonicalOutstandingBalance(validOutstanding)
       }
 
       if (customerRes.success && customerRes.data) {
@@ -1369,7 +1381,9 @@ const CustomerLedgerPage = () => {
         if (isNaN(outstanding)) outstanding = 0
 
         // Also store the customer's overall balance for reference
-        let customerBalance = Number(customer.balance) || 0
+        // Header balance: canonical outstanding when available. The cached Customers.Balance excludes historical
+        // pending invoices (customer 139 showed 1,475 instead of 5,880).
+        let customerBalance = canonicalOutstanding ?? (Number(customer.balance) || 0)
         if (isNaN(customerBalance)) customerBalance = 0
 
         setCustomerSummary({
@@ -2978,9 +2992,23 @@ const CustomerLedgerPage = () => {
                           setShowInvoiceModal(true)
                         }
                       }}
-                      onViewPDF={async (invoiceId) => {
+                      onViewPDF={async (invoiceId, invoiceRow) => {
+                        const target = invoiceRow || customerInvoices.find(i => i.id === invoiceId)
+                        // Historical rows never reach the Sales PDF endpoint: their id is a legacy id and can equal a live sale id
+                        // in the same tenant. They open as the read-only record until a historical PDF renderer exists.
+                        if (target?.isLegacy) {
+                          toast('Historical invoices open as a read-only record. A historical PDF is not available yet.')
+                          setSelectedLegacyInvoiceId(target.legacyInvoiceId || target.id)
+                          setShowLegacyInvoiceModal(true)
+                          return
+                        }
+                        const saleId = salePdfId(target)
+                        if (saleId === undefined) {
+                          toast.error('This invoice has no printable sale record')
+                          return
+                        }
                         try {
-                          const pdfBlob = await salesAPI.getInvoicePdf(invoiceId, { layout: 'full' })
+                          const pdfBlob = await salesAPI.getInvoicePdf(saleId, { layout: 'full' })
                           const url = window.URL.createObjectURL(pdfBlob)
                           window.open(url, '_blank')
                           setTimeout(() => window.URL.revokeObjectURL(url), 100)
@@ -4605,7 +4633,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                             </button>
                           )}
                           <button
-                            onClick={() => onViewPDF(invoice.id)}
+                            onClick={() => onViewPDF(invoice.id, invoice)}
                             className="text-success hover:text-green-900 hover:bg-success-bg p-1 rounded transition-colors"
                             title="PDF"
                           >
@@ -4790,7 +4818,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                     </button>
                   )}
                   <button
-                    onClick={() => onViewPDF(invoice.id)}
+                    onClick={() => onViewPDF(invoice.id, invoice)}
                     className="px-3 py-2 text-success hover:bg-success-bg rounded-md text-xs font-medium flex items-center gap-1"
                     aria-label="View PDF"
                   >

@@ -1427,7 +1427,8 @@ namespace HexaBill.Api.Modules.Reports
             [FromQuery] int pageSize = 10,
             [FromQuery] int? branchId = null,
             [FromQuery] int? routeId = null,
-            [FromQuery] string? search = null) // BUG #2.5 FIX: Add search parameter
+            [FromQuery] string? search = null,
+            [FromQuery] bool includeLegacy = true) // BUG #2.5 FIX: Add search parameter; includeLegacy=false returns operating rows only
         {
             try
             {
@@ -1438,7 +1439,7 @@ namespace HexaBill.Api.Modules.Reports
                 var to = ((toDate ?? gstNow).AddDays(1)).ToUtcKind();
                 var userId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : (int?)null;
                 var role = User.FindFirst(ClaimTypes.Role)?.Value;
-                var result = await _reportService.GetSalesReportAsync(tenantId, from, to, customerId, status, page, pageSize, branchId, routeId, userId, role, search);
+                var result = await _reportService.GetSalesReportAsync(tenantId, from, to, customerId, status, page, pageSize, branchId, routeId, userId, role, search, includeLegacy);
                 return Ok(new ApiResponse<PagedResponse<SaleDto>>
                 {
                     Success = true,
