@@ -7,6 +7,7 @@ using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Sales;
+using HexaBill.Api.Modules.Reports;
 using System.Security.Claims;
 
 namespace HexaBill.Api.Modules.Branches
@@ -486,12 +487,16 @@ namespace HexaBill.Api.Modules.Branches
             var from = fromDate ?? DateTime.UtcNow.AddYears(-1);
             var to = (toDate ?? DateTime.UtcNow).Date.AddDays(1).AddTicks(-1);
             decimal totalSales = 0m;
+            decimal totalSalesVat = 0m;
             List<int> saleIds = new List<int>();
             if (await _salesSchema.SalesHasBranchIdAndRouteIdAsync())
             {
                 totalSales = await _context.Sales
                     .Where(s => s.RouteId == routeId && (tenantId <= 0 || s.TenantId == tenantId) && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
                     .SumAsync(s => s.GrandTotal);
+                totalSalesVat = await _context.Sales
+                    .Where(s => s.RouteId == routeId && (tenantId <= 0 || s.TenantId == tenantId) && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
+                    .SumAsync(s => s.VatTotal);
                 saleIds = await _context.Sales
                     .Where(s => s.RouteId == routeId && (tenantId <= 0 || s.TenantId == tenantId) && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
                     .Select(s => s.Id)
@@ -504,6 +509,7 @@ namespace HexaBill.Api.Modules.Branches
 
             // Route-level returns and net sales
             decimal totalReturns = 0m;
+            decimal totalReturnsVat = 0m;
             try
             {
                 var returnsQuery = _context.SaleReturns.AsQueryable();
@@ -512,6 +518,7 @@ namespace HexaBill.Api.Modules.Branches
                     (tenantId <= 0 || r.TenantId == tenantId) &&
                     r.Status == ReturnStatus.Approved && r.Sale.RouteId == routeId);
                 totalReturns = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0m;
+                totalReturnsVat = await returnsQuery.SumAsync(r => (decimal?)r.VatTotal) ?? 0m;
             }
             catch (Exception ex)
             {
@@ -580,7 +587,7 @@ namespace HexaBill.Api.Modules.Branches
                 TotalExpenses = totalExpenses,
                 CostOfGoodsSold = costOfGoodsSold,
                 EstimatedCostLineCount = estimatedCostLineCount,
-                Profit = netSales - costOfGoodsSold - totalExpenses,
+                Profit = ProfitMath.GrossProfit(totalSales, totalSalesVat, totalReturns, totalReturnsVat, costOfGoodsSold) - totalExpenses,
                 InvoiceCount = invoiceCount,
                 VisitCount = visitCount,
                 TotalPayments = totalPayments,

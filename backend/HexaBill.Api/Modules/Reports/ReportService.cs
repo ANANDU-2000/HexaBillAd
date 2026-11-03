@@ -141,6 +141,8 @@ namespace HexaBill.Api.Modules.Reports
                 var hasSalesBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync();
 
                 decimal salesToday = 0;
+                // Output VAT inside salesToday. Collected for the FTA, never profit (PROFIT-2, 2026-11-03).
+                decimal salesVatToday = 0;
                 decimal purchasesToday = 0;
                 decimal expensesToday = 0;
 
@@ -177,12 +179,14 @@ namespace HexaBill.Api.Modules.Reports
                     var salesCount = await salesQuery.CountAsync();
                     _logger.LogDebug("Found {SalesCount} sales records in date range (SuperAdmin: {IsSuperAdmin})", salesCount, tenantId == 0);
                     salesToday = await salesQuery.SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
+                    salesVatToday = await salesQuery.SumAsync(s => (decimal?)s.VatTotal) ?? 0;
                     if (tenantId == 20 && startDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
                     {
-                        var legacySales = await _context.LegacyInvoices
-                            .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.InvoiceDate >= startDate && li.InvoiceDate < endDate)
-                            .SumAsync(li => (decimal?)li.TotalAmount) ?? 0m;
+                        var legacyInRange = _context.LegacyInvoices
+                            .Where(li => li.TenantId == tenantId && !li.IsDeleted && li.InvoiceDate >= startDate && li.InvoiceDate < endDate);
+                        var legacySales = await legacyInRange.SumAsync(li => (decimal?)li.TotalAmount) ?? 0m;
                         salesToday += legacySales;
+                        salesVatToday += await legacyInRange.SumAsync(li => (decimal?)li.VatTotal) ?? 0m;
                     }
                     _logger.LogDebug("Total sales today: {SalesToday}", salesToday);
                 }
@@ -193,6 +197,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
 
                 decimal returnsToday = 0;
+                decimal returnsVatToday = 0;
                 int returnsCountToday = 0;
                 try
                 {
@@ -225,12 +230,14 @@ namespace HexaBill.Api.Modules.Reports
                     }
                     returnsCountToday = await returnsQuery.CountAsync();
                     returnsToday = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0;
+                    returnsVatToday = await returnsQuery.SumAsync(r => (decimal?)r.VatTotal) ?? 0;
                     _logger.LogDebug("Returns today: count={Count}, total={Total}", returnsCountToday, returnsToday);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error calculating returnsToday: {Message}", ex.Message);
                     returnsToday = 0;
+                    returnsVatToday = 0;
                     returnsCountToday = 0;
                 }
 
@@ -386,12 +393,14 @@ namespace HexaBill.Api.Modules.Reports
                 // Profit = Net Sales (Sales - Returns) - COGS - Expenses. VendorDiscounts are not included in P&L.
                 if (tenantId == 20 && startDate < new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc))
                 {
+                    // Historical purchases stand in for cost; their input VAT is not a cost either.
                     var legacyPurchasesCost = await _context.LegacyPurchases
                         .Where(lp => lp.TenantId == tenantId && lp.PurchaseDate >= startDate && lp.PurchaseDate < endDate)
-                        .SumAsync(lp => (decimal?)lp.TotalAmount) ?? 0m;
+                        .SumAsync(lp => (decimal?)(lp.TotalAmount - (lp.VatTotal ?? 0m))) ?? 0m;
                     cogsToday += legacyPurchasesCost;
                 }
-                var grossProfit = netSalesToday - cogsToday;
+                // Gross profit is earned on sales EXCLUDING output VAT (net of discount, incl. round-off), less returns excl. VAT.
+                var grossProfit = ProfitMath.GrossProfit(salesToday, salesVatToday, returnsToday, returnsVatToday, cogsToday);
                 var profitToday = grossProfit - expensesToday;
                 
                 _logger.LogDebug("Report profit: Sales={Sales}, Returns={Returns}, NetSales={NetSales}, COGS={Cogs}, GrossProfit={GrossProfit}, Expenses={Expenses}, Profit={Profit}",
@@ -2599,6 +2608,7 @@ namespace HexaBill.Api.Modules.Reports
                     Product = g.First().p,
                     TotalQty = g.Sum(x => x.si.Qty),
                     TotalAmount = g.Sum(x => x.si.LineTotal),
+                    TotalVat = g.Sum(x => x.si.VatAmount),
                     TotalSales = g.Count(),
                     Estimated = g.Count(x => !x.si.CostCapturedAt.HasValue),
                     CostValue = g.Sum(x => x.si.CostCapturedAt.HasValue
@@ -2617,8 +2627,8 @@ namespace HexaBill.Api.Modules.Reports
                 TotalAmount = g.TotalAmount,
                 CostValue = g.CostValue,
                 EstimatedCostLineCount = g.Estimated,
-                GrossProfit = g.TotalAmount - g.CostValue,
-                MarginPercent = g.TotalAmount > 0 ? ((g.TotalAmount - g.CostValue) / g.TotalAmount) * 100 : 0,
+                GrossProfit = (g.TotalAmount - g.TotalVat) - g.CostValue,
+                MarginPercent = (g.TotalAmount - g.TotalVat) > 0 ? (((g.TotalAmount - g.TotalVat) - g.CostValue) / (g.TotalAmount - g.TotalVat)) * 100 : 0,
                 TotalSales = g.TotalSales,
                 StockOnHand = g.Product.StockQty,
                 ReorderLevel = g.Product.ReorderLevel,

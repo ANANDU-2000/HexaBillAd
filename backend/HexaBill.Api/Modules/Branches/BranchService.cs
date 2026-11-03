@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Sales;
+using HexaBill.Api.Modules.Reports;
 
 namespace HexaBill.Api.Modules.Branches
 {
@@ -226,7 +227,7 @@ namespace HexaBill.Api.Modules.Branches
             var salesByRoute = await salesInBranchFilter
                 .Where(s => s.RouteId != null && routeIds.Contains(s.RouteId!.Value))
                 .GroupBy(s => s.RouteId)
-                .Select(g => new { RouteId = g.Key!.Value, Total = g.Sum(s => s.GrandTotal), Count = g.Count() })
+                .Select(g => new { RouteId = g.Key!.Value, Total = g.Sum(s => s.GrandTotal), Vat = g.Sum(s => s.VatTotal), Count = g.Count() })
                 .ToListAsync();
 
             var saleIdsInBranch = await salesInBranchFilter.Select(s => s.Id).ToListAsync();
@@ -291,6 +292,7 @@ namespace HexaBill.Api.Modules.Branches
 
             // Branch-level returns: include returns tagged with this branch or with routes in this branch
             decimal branchReturnsTotal = 0m;
+            decimal branchReturnsVat = 0m;
             try
             {
                 var returnsQuery = _context.SaleReturns.AsQueryable();
@@ -301,6 +303,7 @@ namespace HexaBill.Api.Modules.Branches
                         || (r.RouteId != null && routeIds.Contains(r.RouteId.Value))
                         || (r.Sale.RouteId != null && routeIds.Contains(r.Sale.RouteId.Value))));
                 branchReturnsTotal = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0m;
+                branchReturnsVat = await returnsQuery.SumAsync(r => (decimal?)r.VatTotal) ?? 0m;
             }
             catch (Exception ex)
             {
@@ -310,15 +313,18 @@ namespace HexaBill.Api.Modules.Branches
 
             // Approved returns per route, attributed through the original invoice so legacy returns without RouteId still count.
             var returnsByRoute = new Dictionary<int, decimal>();
+            var returnsVatByRoute = new Dictionary<int, decimal>();
             try
             {
-                returnsByRoute = (await _context.SaleReturns
+                var returnsByRouteRows = (await _context.SaleReturns
                     .Where(r => r.Status == ReturnStatus.Approved && r.ReturnDate >= from && r.ReturnDate <= to
                         && (tenantId <= 0 || r.TenantId == tenantId)
                         && r.Sale.RouteId != null && routeIds.Contains(r.Sale.RouteId!.Value))
                     .GroupBy(r => r.Sale.RouteId!.Value)
-                    .Select(g => new { RouteId = g.Key, Total = g.Sum(r => r.GrandTotal) })
-                    .ToListAsync()).ToDictionary(x => x.RouteId, x => x.Total);
+                    .Select(g => new { RouteId = g.Key, Total = g.Sum(r => r.GrandTotal), Vat = g.Sum(r => r.VatTotal) })
+                    .ToListAsync());
+                returnsByRoute = returnsByRouteRows.ToDictionary(x => x.RouteId, x => x.Total);
+                returnsVatByRoute = returnsByRouteRows.ToDictionary(x => x.RouteId, x => x.Vat);
             }
             catch (Exception ex)
             {
@@ -392,7 +398,7 @@ namespace HexaBill.Api.Modules.Branches
                     TotalExpenses = expenses,
                     CostOfGoodsSold = cogs,
                     EstimatedCostLineCount = cogsEntry.Estimated,
-                    Profit = routeNetSales - cogs - expenses,
+                    Profit = ProfitMath.GrossProfit(sales, routeSales?.Vat ?? 0m, routeReturns, returnsVatByRoute.GetValueOrDefault(r.Id), cogs) - expenses,
                     InvoiceCount = routeSales?.Count ?? 0,
                     TotalPayments = routePayments,
                     UnpaidAmount = routeUnpaid
@@ -405,6 +411,9 @@ namespace HexaBill.Api.Modules.Branches
             var totalSales = saleIdsInBranch.Count > 0
                 ? await _context.Sales.Where(s => saleIdsInBranch.Contains(s.Id)).SumAsync(s => s.GrandTotal)
                 : routes.Sum(r => r.TotalSales);
+            var totalSalesVat = saleIdsInBranch.Count > 0
+                ? await _context.Sales.Where(s => saleIdsInBranch.Contains(s.Id)).SumAsync(s => s.VatTotal)
+                : salesByRoute.Sum(r => r.Vat);
             var totalCogs = cogsByRouteList.Sum(r => r.Cogs);
             var netSales = totalSales - branchReturnsTotal;
 
@@ -463,7 +472,7 @@ namespace HexaBill.Api.Modules.Branches
                 TotalExpenses = totalExpenses,
                 CostOfGoodsSold = totalCogs,
                 EstimatedCostLineCount = cogsByRouteList.Sum(r => r.Estimated),
-                Profit = netSales - totalCogs - totalExpenses,
+                Profit = ProfitMath.GrossProfit(totalSales, totalSalesVat, branchReturnsTotal, branchReturnsVat, totalCogs) - totalExpenses,
                 Routes = routes,
                 GrowthPercent = growthPercent,
                 CollectionsRatio = collectionsRatio,
@@ -492,6 +501,7 @@ namespace HexaBill.Api.Modules.Branches
             if (saleIds.Count == 0) return null;
 
             var totalSales = await _context.Sales.Where(s => saleIds.Contains(s.Id)).SumAsync(s => s.GrandTotal);
+            var totalSalesVat = await _context.Sales.Where(s => saleIds.Contains(s.Id)).SumAsync(s => s.VatTotal);
             var invoiceCount = saleIds.Count;
             var averageInvoiceSize = invoiceCount > 0 ? totalSales / invoiceCount : 0m;
             var items = await _context.SaleItems.AsNoTracking().Include(i => i.Product)
@@ -506,7 +516,7 @@ namespace HexaBill.Api.Modules.Branches
                 TotalExpenses = 0,
                 CostOfGoodsSold = cogs,
                 EstimatedCostLineCount = items.Count(i => !SaleCostBasis.HasSnapshot(i)),
-                Profit = totalSales - cogs,
+                Profit = ProfitMath.GrossProfit(totalSales, totalSalesVat, 0m, 0m, cogs),
                 Routes = new List<RouteSummaryDto>(),
                 GrowthPercent = null,
                 CollectionsRatio = null,

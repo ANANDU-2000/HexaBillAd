@@ -1,6 +1,7 @@
 /*
  * Purpose: Profit calculation service - Gross & Net Profit, COGS
- * SINGLE DEFINITION (PRODUCTION_MASTER_TODO #6, #38): Profit = GrandTotal(Sales) - COGS - Expenses.
+ * SINGLE DEFINITION (PROFIT-2, 2026-11-03): Gross profit = (Sales excl. VAT - Returns excl. VAT) - COGS; Net = Gross - Expenses.
+ * Sales excl. VAT = GrandTotal - VatTotal (net of discount, incl. round-off). Output VAT is owed to the FTA, never profit.
  * COGS = from SaleItems (Qty × ConversionToBase × CostPrice). Use same in ReportService dashboard and P&L.
  */
 using Microsoft.EntityFrameworkCore;
@@ -107,8 +108,11 @@ namespace HexaBill.Api.Modules.Reports
                 var legacyPurchases = await _context.LegacyPurchases
                     .Where(lp => lp.TenantId == tenantId && lp.PurchaseDate >= from && lp.PurchaseDate <= to)
                     .SumAsync(lp => (decimal?)lp.TotalAmount) ?? 0m;
+                var legacyPurchasesVat = await _context.LegacyPurchases
+                    .Where(lp => lp.TenantId == tenantId && lp.PurchaseDate >= from && lp.PurchaseDate <= to)
+                    .SumAsync(lp => (decimal?)(lp.VatTotal ?? 0m)) ?? 0m;
                 totalPurchases += legacyPurchases;
-                cogs += legacyPurchases;
+                cogs += legacyPurchases - legacyPurchasesVat;
 
                 var legacyExpenses = await _context.LegacyExpenses
                     .Where(le => le.TenantId == tenantId && le.Date >= from && le.Date <= to)
@@ -116,12 +120,13 @@ namespace HexaBill.Api.Modules.Reports
                 totalExpenses += legacyExpenses;
             }
 
-            var grossProfit = totalSales - cogs;
+            var salesExVat = totalSales - totalSalesVat;
+            var grossProfit = ProfitMath.GrossProfit(totalSales, totalSalesVat, 0m, 0m, cogs);
             var netProfit = grossProfit - totalExpenses;
-            
-            // Margins calculated against total revenue
-            var grossProfitMargin = totalSales > 0 ? (grossProfit / totalSales) * 100 : 0;
-            var netProfitMargin = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
+
+            // Margins against revenue excl. VAT
+            var grossProfitMargin = salesExVat > 0 ? (grossProfit / salesExVat) * 100 : 0;
+            var netProfitMargin = salesExVat > 0 ? (netProfit / salesExVat) * 100 : 0;
 
             // CRITICAL: Calculate daily profit array for chart
             var dailyProfit = new List<DailyProfitDto>();
@@ -139,6 +144,7 @@ namespace HexaBill.Api.Modules.Reports
                     daySalesQuery = daySalesQuery.Where(s => s.TenantId == tenantId);
                 }
                 var daySales = await daySalesQuery.SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
+                var daySalesVat = await daySalesQuery.SumAsync(s => (decimal?)s.VatTotal) ?? 0;
                 
                 var daySaleItemsQuery = _context.SaleItems
                     .Include(si => si.Sale)
@@ -162,7 +168,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 var dayExpenses = await dayExpensesQuery.SumAsync(e => (decimal?)e.Amount) ?? 0;
                 
-                var dayProfit = daySales - dayCogs - dayExpenses;
+                var dayProfit = ProfitMath.GrossProfit(daySales, daySalesVat, 0m, 0m, dayCogs) - dayExpenses;
                 
                 dailyProfit.Add(new DailyProfitDto
                 {
@@ -188,7 +194,7 @@ namespace HexaBill.Api.Modules.Reports
                 TotalSalesWithVat = totalSales, // Same as TotalSales (GrandTotal includes VAT)
                 EstimatedCostLineCount = saleItems.Count(si => !SaleCostBasis.HasSnapshot(si)),
                 CostOfGoodsSold = cogs, // UNIFIED: COGS from sale items (same as ReportService dashboard)
-                GrossProfit = grossProfit, // Sales (GrandTotal) - COGS
+                GrossProfit = grossProfit, // Sales excl. VAT - COGS
                 GrossProfitMargin = grossProfitMargin,
                 TotalExpenses = totalExpenses,
                 NetProfit = netProfit,
@@ -218,7 +224,7 @@ namespace HexaBill.Api.Modules.Reports
                 .GroupBy(si => new { si.ProductId, si.Product.NameEn })
                 .Select(g =>
                 {
-                    var sales = g.Sum(si => si.LineTotal);
+                    var sales = g.Sum(si => si.LineTotal - si.VatAmount);
                     var cost = g.Sum(SaleCostBasis.Calculate);
                     return new ProductProfitDto
                     {
@@ -246,10 +252,10 @@ namespace HexaBill.Api.Modules.Reports
                                                    ProductId = g.Key.DestinationProductId ?? 0,
                                                    ProductName = g.Key.Name,
                                                    QuantitySold = g.Sum(x => x.Quantity),
-                                                   TotalSales = g.Sum(x => x.LineTotal),
+                                                   TotalSales = g.Sum(x => x.LineTotal - x.VatAmount),
                                                    TotalCost = 0,
                                                    EstimatedCostLineCount = 0,
-                                                   Profit = g.Sum(x => x.LineTotal),
+                                                   Profit = g.Sum(x => x.LineTotal - x.VatAmount),
                                                    ProfitMargin = 100
                                                }).ToListAsync();
 
@@ -317,6 +323,7 @@ namespace HexaBill.Api.Modules.Reports
                     .Where(s => !s.IsDeleted && s.TenantId == tenantId && s.BranchId == branch.Id
                         && s.InvoiceDate >= from && s.InvoiceDate <= to);
                 var branchSales = await salesQuery.SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
+                var branchSalesVat = await salesQuery.SumAsync(s => (decimal?)s.VatTotal) ?? 0m;
                 var invoiceCount = await salesQuery.CountAsync();
 
                 var saleIdsQuery = _context.Sales
@@ -333,10 +340,11 @@ namespace HexaBill.Api.Modules.Reports
                     .Where(e => e.TenantId == tenantId && e.BranchId == branch.Id && e.Date >= from && e.Date <= to);
                 var branchExpenses = await expensesQuery.SumAsync(e => (decimal?)e.Amount) ?? 0m;
 
-                var grossProfit = branchSales - cogs;
+                var grossProfit = ProfitMath.GrossProfit(branchSales, branchSalesVat, 0m, 0m, cogs);
                 var netProfit = grossProfit - branchExpenses;
-                var grossMargin = branchSales > 0 ? (grossProfit / branchSales) * 100 : 0;
-                var netMargin = branchSales > 0 ? (netProfit / branchSales) * 100 : 0;
+                var branchSalesExVat = branchSales - branchSalesVat;
+                var grossMargin = branchSalesExVat > 0 ? (grossProfit / branchSalesExVat) * 100 : 0;
+                var netMargin = branchSalesExVat > 0 ? (netProfit / branchSalesExVat) * 100 : 0;
 
                 result.Add(new BranchProfitDto
                 {
