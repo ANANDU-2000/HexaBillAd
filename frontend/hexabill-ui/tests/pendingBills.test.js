@@ -15,8 +15,11 @@ test('search matches name, phone or TRN, case-insensitively; blank keeps everyth
   assert.deepEqual(filterPendingRows(null, 'x'), [])
 })
 
-test('Receive Payment opens the ledger on that customer; an invalid id falls back to the ledger', () => {
-  assert.equal(receivePaymentPath(1), '/ledger?customerId=1')
+test('Receive Payment opens the ledger Payments tab (with the payment modal) for that customer; an invalid id falls back to the ledger', () => {
+  const href = receivePaymentPath(1)
+  assert.ok(href.startsWith('/ledger?customerId=1'), href)
+  assert.match(href, /(^|&)tab=payments(?:&|$)/, 'opens the Payments tab')
+  assert.match(href, /(^|&)openPayment=1(?:&|$)/, 'opens the payment entry directly')
   assert.equal(receivePaymentPath('abc'), '/ledger')
   assert.equal(receivePaymentPath(0), '/ledger')
 })

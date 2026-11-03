@@ -1,4 +1,5 @@
 // Helpers for the customer pending-bills table. Pure functions so they can be tested without rendering.
+import { buildCustomerLedgerHref } from './customerLedgerUrl.js'
 
 /** Filters pending-summary rows by customer name, phone or TRN (case-insensitive). Empty query keeps every row. */
 export function filterPendingRows(rows, query) {
@@ -9,10 +10,12 @@ export function filterPendingRows(rows, query) {
     [row.customerName, row.phone, row.trn].some((value) => String(value || '').toLowerCase().includes(q)))
 }
 
-/** The customer ledger opens on this customer, where Receive Payment / Pay All run the existing, idempotent payment flow. */
+/** The customer ledger opens on the Payments tab with Receive Payment open, so a partial or full payment can be
+ *  recorded for this customer's open bills through the existing idempotent flow. Invalid ids fall back to the ledger. */
 export function receivePaymentPath(customerId) {
   const id = Number(customerId)
-  return Number.isInteger(id) && id > 0 ? `/ledger?customerId=${id}` : '/ledger'
+  if (!Number.isInteger(id) || id <= 0) return '/ledger'
+  return buildCustomerLedgerHref({ customerId: id, tab: 'payments', openPayment: true })
 }
 
 /** "3 days overdue", "Due today", or "Not yet due" from the server's overdueDays. */

@@ -62,6 +62,7 @@ const DriverRoutePage = lazy(() => import('../features/branches/DriverRoutePage'
 const DriverRoutesPage = lazy(() => import('../features/branches/DriverRoutePage').then((m) => ({ default: m.DriverRoutesPage })))
 const ReturnCreatePage = lazy(() => import('../features/returns/ReturnCreatePage'))
 const CustomersPage = lazy(() => import('../features/customers/CustomersPage'))
+const PendingBillsPage = lazy(() => import('../features/customers/PendingBillsPage'))
 const CustomerDetailPage = lazy(() => import('../features/customers/CustomerDetailPage'))
 const LegacyInvoicesPage = lazy(() => import('../features/legacy/LegacyInvoicesPage'))
 const MorePage = lazy(() => import('../pages/company/MorePage'))
@@ -260,6 +261,7 @@ function App() {
               <Route path="/suppliers/:name" element={<SupplierDetailPage />} />
               <Route path="/pos" element={<PosPage />} />
               <Route path="/ledger" element={<CustomerLedgerPage />} />
+              <Route path="/pending-bills" element={<PendingBillsPage />} />
               <Route path="/payments" element={canManagePayments(user) ? <PaymentsPage /> : <Navigate to="/dashboard" replace />} />
               <Route path="/expenses" element={<ExpensesPage />} />
               <Route path="/sales-ledger" element={<SalesLedgerPage />} />

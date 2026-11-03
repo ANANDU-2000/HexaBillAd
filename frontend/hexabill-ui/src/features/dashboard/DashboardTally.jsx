@@ -858,7 +858,7 @@ const DashboardTally = () => {
                 </div>
 
                 <div
-                    onClick={canOpenReports ? () => navigate('/reports?tab=outstanding') : undefined}
+                    onClick={canOpenReports ? () => navigate('/pending-bills') : undefined}
                     className={`p-3 rounded-lg border ${stats.pendingBills > 0 ? 'border-amber-300 bg-amber-50/80 hover:bg-amber-100/80' : 'border-[var(--border)] bg-[var(--bg-base)] hover:bg-[var(--bg-raised)]'} flex items-center justify-between cursor-pointer transition-colors`}
                 >
                     <div className="flex items-center gap-2.5 min-w-0">
