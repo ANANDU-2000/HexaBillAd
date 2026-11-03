@@ -53,9 +53,19 @@ public class FrozenHubPrintReadabilityTests
         var bankHeading = words.First(w => w.Text == "Bank" && words.Any(d => d.Text == "Details" && Math.Abs(d.BoundingBox.Bottom - w.BoundingBox.Bottom) < 1)).BoundingBox.Top;
         var footer = Top("Bills:");
 
-        Assert.True(bankHeading < receiverSign, $"bank ({bankHeading}) must be below Receiver's Sign ({receiverSign})");
-        Assert.True(bankHeading < companySign, $"bank ({bankHeading}) must be below the company signature ({companySign})");
-        Assert.True(footer < bankHeading, $"balance footer ({footer}) must stay below the bank block ({bankHeading})");
+        if (format == "A4")
+        {
+            // Owner decision 2026-11-03: bilingual A4 shows bank details beside the signatures, above the balance footer.
+            var receiverName = words.First(w => w.Text.StartsWith("Receiver", StringComparison.Ordinal)).BoundingBox.Top;
+            Assert.True(Math.Abs(bankHeading - receiverName) < 30, $"bank ({bankHeading}) should sit beside Receiver's Name ({receiverName})");
+            Assert.True(footer < bankHeading, $"balance footer ({footer}) must stay below the bank block ({bankHeading})");
+        }
+        else
+        {
+            Assert.True(bankHeading < receiverSign, $"bank ({bankHeading}) must be below Receiver's Sign ({receiverSign})");
+            Assert.True(bankHeading < companySign, $"bank ({bankHeading}) must be below the company signature ({companySign})");
+            Assert.True(footer < bankHeading, $"balance footer ({footer}) must stay below the bank block ({bankHeading})");
+        }
 
         var text = Squash(string.Concat(doc.GetPages().Select(p => p.Text)));
         var iBank = text.IndexOf("BankName:ADCBIslamic", StringComparison.Ordinal);
@@ -66,7 +76,7 @@ public class FrozenHubPrintReadabilityTests
     }
 
     [Fact]
-    public async Task A4_ProductRows_AreLargerAndTaller_ThanTheOldNinePointLayout()
+    public async Task A4_ProductRows_AreCompact_BilingualOwnerSpec()
     {
         await using var db = await SeedAsync();
         var bytes = await Pdf(db).GenerateInvoicePdfAsync(await Sale7013Async(db, Fh1), "A4", "full");
@@ -75,14 +85,15 @@ public class FrozenHubPrintReadabilityTests
 
         var description = words.First(w => w.Text == "QUALIKO");
         var price = words.First(w => w.Text == "124.00");
-        Assert.InRange(description.Letters.Max(l => l.PointSize), PdfService.A4ItemDescriptionFontSize - 0.3, PdfService.A4ItemDescriptionFontSize + 0.3);
-        Assert.InRange(price.Letters.Max(l => l.PointSize), PdfService.A4ItemNumberFontSize - 0.3, PdfService.A4ItemNumberFontSize + 0.3);
+        // Owner decision 2026-11-03: bilingual A4 item text is 7pt (was 11pt; supersedes P0-PRINT-007 for this layout).
+        Assert.InRange(description.Letters.Max(l => l.PointSize), PdfService.FrozenHubA4ItemFontSize - 0.3, PdfService.FrozenHubA4ItemFontSize + 0.3);
+        Assert.InRange(price.Letters.Max(l => l.PointSize), PdfService.FrozenHubA4ItemFontSize - 0.3, PdfService.FrozenHubA4ItemFontSize + 0.3);
 
         // Row pitch: baseline distance between consecutive product rows (was ~15pt at 9pt / 3pt padding).
         var rows = new[] { "QUALIKO", "6", "ARAURA", "DORRY(HAMOOR)", "EVERYDAY" }
             .Select(t => words.First(w => w.Text == t && w.BoundingBox.Left < 300).BoundingBox.Bottom).ToList();
         for (var i = 1; i < rows.Count; i++)
-            Assert.True(rows[i - 1] - rows[i] >= 24, $"row pitch {rows[i - 1] - rows[i]:0.0}pt between rows {i} and {i + 1}");
+            Assert.True(rows[i - 1] - rows[i] >= 8 && rows[i - 1] - rows[i] <= 14, $"row pitch {rows[i - 1] - rows[i]:0.0}pt between rows {i} and {i + 1}");
     }
 
     [Fact]
@@ -138,9 +149,9 @@ public class FrozenHubPrintReadabilityTests
         using var doc = PdfDocument.Open(await Pdf(db).GenerateInvoicePdfAsync(await Sale7013Async(db, Fh1), "A4", "full"));
         var words = doc.GetPage(1).GetWords().ToList();
         double Size(string text) => words.First(w => w.Text == text).Letters.Max(l => l.PointSize);
-        Assert.InRange(Size("8316"), PdfService.FrozenHubA4HeaderDetailSize - 0.3, PdfService.FrozenHubA4HeaderDetailSize + 0.3);
-        Assert.InRange(Size(Fh1Phone), PdfService.FrozenHubA4HeaderDetailSize - 0.3, PdfService.FrozenHubA4HeaderDetailSize + 0.3);
-        Assert.True(words.Where(w => w.Text.Contains("105607243000003")).All(w => w.Letters.Max(l => l.PointSize) >= PdfService.FrozenHubA4HeaderDetailSize - 0.3),
+        Assert.InRange(Size("8316"), PdfService.FrozenHubA4InvoiceHeaderDetailSize - 0.3, PdfService.FrozenHubA4InvoiceHeaderDetailSize + 0.3);
+        Assert.InRange(Size(Fh1Phone), PdfService.FrozenHubA4InvoiceHeaderDetailSize - 0.3, PdfService.FrozenHubA4InvoiceHeaderDetailSize + 0.3);
+        Assert.True(words.Where(w => w.Text.Contains("105607243000003")).All(w => w.Letters.Max(l => l.PointSize) >= PdfService.FrozenHubA4InvoiceHeaderDetailSize - 0.3),
             "TRN must print at the enlarged header size on both sides");
     }
 
