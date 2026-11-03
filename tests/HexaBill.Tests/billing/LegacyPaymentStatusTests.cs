@@ -50,5 +50,31 @@ namespace HexaBill.Tests.Billing
             Assert.Equal(0m, paid.OutstandingCalculated);
             Assert.Equal("Paid", paid.Status);
         }
+
+        // Ledger "Pay" on a Starplus row sends the negative legacy id. A customer whose only debt is historical has no live
+        // Sales balance, so the payment must be judged by the legacy invoice alone, not refused as "no outstanding invoices".
+        [Fact]
+        public async Task HistoricalOnlyCustomer_CanPayHistoricalInvoice_WithoutLiveSales()
+        {
+            await using var db = await DatabaseAsync();
+            db.Customers.Add(new Customer { Id = 2, TenantId = 10, OwnerId = 10, Name = "Historical-only buyer", Balance = 118m, PendingBalance = 118m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+            db.LegacyInvoices.Add(new LegacyInvoice
+            {
+                Id = 702, TenantId = 10, SourceInvoiceId = 7702, SourceSystem = "Starplus", LegacyInvoiceNumber = "6971",
+                LegacyIssuer = "Starplus Foodstuff Trading", InvoiceDate = new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+                DestinationCustomerId = 2, GrandTotal = 118m, TotalAmount = 118m, PaidAmount = 0m,
+                OutstandingCalculated = 118m, Status = "Pending", IsDeleted = false
+            });
+            await db.SaveChangesAsync();
+            db.ChangeTracker.Clear();
+            var service = new PaymentService(db, NullLogger<PaymentService>.Instance, new ValidationService(db), null!, null!);
+
+            await service.CreatePaymentAsync(new CreatePaymentRequest { SaleId = -702, CustomerId = 2, Amount = 118m, Mode = "CASH" }, 1, 10);
+
+            db.ChangeTracker.Clear();
+            var paid = await db.LegacyInvoices.AsNoTracking().SingleAsync(i => i.Id == 702);
+            Assert.Equal(0m, paid.OutstandingCalculated);
+            Assert.Equal("Paid", paid.Status);
+        }
     }
 }

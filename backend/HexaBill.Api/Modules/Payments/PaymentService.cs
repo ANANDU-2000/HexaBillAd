@@ -447,7 +447,9 @@ namespace HexaBill.Api.Modules.Payments
                         if (recentDuplicatePayment != null)
                             throw new ArgumentException($"A payment of {request.Amount:F2} AED was already recorded for historical invoice {legacyInvoice.LegacyInvoiceNumber} just now. Please refresh and verify before trying again.");
 
-                        var validationResult = await _validationService.ValidatePaymentAmountAsync(null, request.CustomerId, request.Amount, tenantId);
+                        // Amount limits only. Passing the customer here would run the live-Sales "no outstanding invoices"
+                        // check, which ignores historical balances; the legacy checks above already cover ownership and balance.
+                        var validationResult = await _validationService.ValidatePaymentAmountAsync(null, null, request.Amount, tenantId);
                         if (!validationResult.IsValid)
                             throw new ArgumentException(string.Join(" ", validationResult.Errors));
                     }
