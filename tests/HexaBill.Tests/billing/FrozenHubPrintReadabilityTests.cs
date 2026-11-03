@@ -227,6 +227,43 @@ public class FrozenHubPrintReadabilityTests
         };
     }
 
+    [Fact]
+    public async Task A4_DateSitsOnTheInvoiceLine_AndPrintsOnlyOnce()
+    {
+        await using var db = await SeedAsync();
+        var bytes = await Pdf(db).GenerateInvoicePdfAsync(await Sale7013Async(db, Fh1), "A4", "full");
+        using var doc = PdfDocument.Open(bytes);
+        var words = doc.GetPage(1).GetWords().ToList();
+
+        var dates = words.Where(w => w.Text.StartsWith("DATE", StringComparison.Ordinal)).ToList();
+        Assert.Single(dates);
+        // Anchor on the invoice number (the "TAX INVOICE" title is a different line above the meta row).
+        var invoiceNo = words.First(w => w.Text == "7013");
+        Assert.True(Math.Abs(dates[0].BoundingBox.Bottom - invoiceNo.BoundingBox.Bottom) < 4,
+            $"DATE baseline {dates[0].BoundingBox.Bottom:0.0} should match the invoice number line {invoiceNo.BoundingBox.Bottom:0.0}");
+    }
+
+    [Fact]
+    public async Task A4_TwelveItems_FitOnOnePage_WithTheWholeFooter()
+    {
+        await using var db = await SeedAsync();
+        var sale = await Sale7013Async(db, Fh1);
+        sale.Items = Enumerable.Range(1, 12).Select(i => new SaleItemDto
+        {
+            ProductId = i, ProductName = $"FROZEN PRODUCT row{i:00} 1300GM", Qty = 1, UnitType = "CRTN", UnitPrice = 100m, VatAmount = 5m, LineTotal = 105m
+        }).ToList();
+        sale.Subtotal = 1200m; sale.VatTotal = 60m; sale.Discount = 0; sale.GrandTotal = 1260m;
+        var bytes = await Pdf(db).GenerateInvoicePdfAsync(sale, "A4", "full");
+        await SaveAsync(bytes, "fh1-A4-12-items.pdf");
+        using var doc = PdfDocument.Open(bytes);
+        Assert.Equal(1, doc.NumberOfPages);
+        var text = Squash(Text(bytes));
+        for (var i = 1; i <= 12; i++) Assert.Contains($"row{i:00}", text);
+        Assert.Contains("Receiver'sName", text);
+        Assert.Contains("BankDetails", text);
+        Assert.Contains("Bills:", text);
+    }
+
     private static PdfService Pdf(AppDbContext db)
     {
         var fonts = new FontService(NullLogger<FontService>.Instance);

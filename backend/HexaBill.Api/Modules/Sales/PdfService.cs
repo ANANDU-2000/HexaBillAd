@@ -306,7 +306,8 @@ namespace HexaBill.Api.Modules.Sales
 
                                 if (settings.BilingualMonochromeHeader && !settings.LetterheadOnlyPrint)
                                 {
-                                    RenderCompanyHeader(innerColumn.Item(), settings, 14, a4Letterhead: true, dateLine: $"DATE: {invoiceDateStr}", drawBottomRule: false, invoiceHeader: true);
+                                    // DATE now prints on the INVOICE row below (no separate line under the header).
+                                    RenderCompanyHeader(innerColumn.Item(), settings, 14, a4Letterhead: true, dateLine: null, drawBottomRule: false, invoiceHeader: true);
                                 }
                                 else if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                 {
@@ -353,22 +354,24 @@ namespace HexaBill.Api.Modules.Sales
                                     innerColumn.Item().AlignRight().Text($"DATE: {invoiceDateStr}").FontSize(10).Bold();
                                 }
 
+                                // Bilingual (FrozenHub/StarPlus): TAX INVOICE is boxed top and bottom with tight padding.
                                 var invoiceTitle = innerColumn.Item()
-                                    .PaddingTop(settings.BilingualMonochromeHeader ? 8 : 2)
-                                    .PaddingBottom(2);
+                                    .PaddingTop(2)
+                                    .PaddingBottom(settings.BilingualMonochromeHeader ? 1 : 2);
                                 invoiceTitle = settings.BilingualMonochromeHeader
-                                    ? invoiceTitle.BorderBottom(1f)
+                                    ? invoiceTitle.BorderTop(0.75f).BorderBottom(0.75f)
                                     : invoiceTitle.BorderTop(1f).BorderBottom(1f);
-                                invoiceTitle.PaddingVertical(2)
+                                invoiceTitle.PaddingVertical(settings.BilingualMonochromeHeader ? 1.5f : 2)
                                     .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn, sale.InvoiceDate, settings.VatEffectiveDate, sale.ExternalReference))
                                     .FontSize(12)
                                     .Bold()
                                     .AlignCenter();
 
-                                // Customer Info - Invoice No and Customer Name on separate lines (left), TRN inline (right)
-                                innerColumn.Item().PaddingTop(settings.BilingualMonochromeHeader ? 12 : 1).PaddingBottom(1).Row(custRow => {
+                                // Customer Info - Invoice No and Customer Name on separate lines (left).
+                                // Bilingual: DATE on the invoice line and customer TRN on the customer line (right).
+                                innerColumn.Item().PaddingTop(settings.BilingualMonochromeHeader ? 2 : 1).PaddingBottom(settings.BilingualMonochromeHeader ? 2 : 1).Row(custRow => {
                                     custRow.RelativeItem(65).Column(col => {
-                                        col.Spacing(settings.BilingualMonochromeHeader ? 8 : 0);
+                                        col.Spacing(settings.BilingualMonochromeHeader ? 1 : 0);
                                         col.Item().Text(text => {
                                             text.Span("INVOICE : NO : ").FontSize(10).Bold();
                                             text.Span(sale.InvoiceNo ?? "").FontSize(10).Bold();
@@ -378,8 +381,24 @@ namespace HexaBill.Api.Modules.Sales
                                             text.Span(string.IsNullOrWhiteSpace(sale.CustomerName) ? "Cash Customer" : sale.CustomerName).FontSize(10).Bold();
                                         });
                                     });
+                                    if (settings.BilingualMonochromeHeader)
+                                    {
+                                        custRow.RelativeItem(35).AlignRight().Column(rightCol => {
+                                            rightCol.Spacing(1);
+                                            rightCol.Item().AlignRight().Text(text => {
+                                                text.Span("DATE : ").FontSize(10).Bold();
+                                                text.Span(invoiceDateStr).FontSize(10).Bold();
+                                            });
+                                            // Unregistered customers: no empty "CUSTOMER TRN" label.
+                                            if (!string.IsNullOrWhiteSpace(trnDisplay))
+                                                rightCol.Item().AlignRight().Text(text => {
+                                                    text.Span("CUSTOMER TRN : NO : ").FontSize(10).Bold();
+                                                    text.Span(trnDisplay).FontSize(10).Bold();
+                                                });
+                                        });
+                                    }
                                     // Unregistered customers: no empty "CUSTOMER TRN" label.
-                                    if (!string.IsNullOrWhiteSpace(trnDisplay))
+                                    else if (!string.IsNullOrWhiteSpace(trnDisplay))
                                         custRow.RelativeItem(35).AlignRight().Text(text => {
                                             text.Span("CUSTOMER TRN : NO : ").FontSize(10).Bold();
                                             text.Span(trnDisplay).FontSize(10).Bold();
@@ -1619,7 +1638,7 @@ namespace HexaBill.Api.Modules.Sales
                         settings,
                         14,
                         a4Letterhead: true,
-                        dateLine: $"DATE: {FormatInvoiceDate(sale.InvoiceDate, settings)}",
+                        dateLine: null, // DATE prints on the invoice meta line below
                         drawBottomRule: false);
                 }
                 else
@@ -1666,10 +1685,10 @@ if (hasLogo)
                 }
 
                 var titleContainer = innerColumn.Item()
-                    .PaddingTop(settings.BilingualMonochromeHeader ? 8 : 4)
-                    .PaddingVertical(3);
+                    .PaddingTop(settings.BilingualMonochromeHeader ? 2 : 4)
+                    .PaddingVertical(settings.BilingualMonochromeHeader ? 1.5f : 3);
                 titleContainer = settings.BilingualMonochromeHeader
-                    ? titleContainer.BorderBottom(1)
+                    ? titleContainer.BorderTop(0.75f).BorderBottom(0.75f)
                     : titleContainer.BorderTop(1).BorderBottom(1);
                 titleContainer
                     .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn, sale.InvoiceDate, settings.VatEffectiveDate, sale.ExternalReference))
@@ -1677,20 +1696,27 @@ if (hasLogo)
                     .Bold()
                     .AlignCenter();
 
-                // Meta: invoice + customer TRN on one baseline; DATE already in letterhead for bilingual.
+                // Meta (bilingual): invoice + DATE on the first line; customer name + customer TRN on the second.
                 if (settings.BilingualMonochromeHeader)
                 {
-                    innerColumn.Item().PaddingTop(12).Row(meta =>
-                    {
-                        meta.RelativeItem().AlignLeft().Text($"INVOICE : NO : {sale.InvoiceNo}").FontSize(8.5f).Bold();
-                        // Omit the customer TRN label for unregistered customers instead of printing an empty value.
-                        if (!string.IsNullOrWhiteSpace(trnDisplay))
-                            meta.RelativeItem().AlignRight().Text($"CUSTOMER TRN : NO : {trnDisplay}").FontSize(8.5f).Bold();
-                        else
-                            meta.RelativeItem();
-                    });
                     var customerDisplayName = string.IsNullOrWhiteSpace(sale.CustomerName) ? "Cash Customer" : sale.CustomerName;
-                    innerColumn.Item().PaddingTop(10).AlignLeft().Text($"Customer Name : {customerDisplayName}").FontSize(8.5f).Bold();
+                    innerColumn.Item().PaddingTop(2).Row(meta =>
+                    {
+                        meta.RelativeItem().Column(left =>
+                        {
+                            left.Spacing(1);
+                            left.Item().Text($"INVOICE : NO : {sale.InvoiceNo}").FontSize(8.5f).Bold();
+                            left.Item().Text($"Customer Name : {customerDisplayName}").FontSize(8.5f).Bold();
+                        });
+                        meta.RelativeItem().AlignRight().Column(right =>
+                        {
+                            right.Spacing(1);
+                            right.Item().AlignRight().Text($"DATE : {FormatInvoiceDate(sale.InvoiceDate, settings)}").FontSize(8.5f).Bold();
+                            // Omit the customer TRN label for unregistered customers instead of printing an empty value.
+                            if (!string.IsNullOrWhiteSpace(trnDisplay))
+                                right.Item().AlignRight().Text($"CUSTOMER TRN : NO : {trnDisplay}").FontSize(8.5f).Bold();
+                        });
+                    });
                 }
                 else
                 {
