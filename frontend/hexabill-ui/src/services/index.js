@@ -822,8 +822,12 @@ export const paymentsAPI = {
   },
 
   // Reconciliation: was the payment sent with this Idempotency-Key saved? data = saved response, or null when not saved.
+  // Bypasses the disconnected read-gate (and retry/toast noise) so a payment whose response was lost can always be
+  // confirmed on the server; the caller retries with the reconcile loop if this one is unclear.
   findPaymentByIdempotencyKey: async (idempotencyKey) => {
-    const response = await api.get(`/payments/idempotency/${encodeURIComponent(idempotencyKey)}`)
+    const response = await api.get(`/payments/idempotency/${encodeURIComponent(idempotencyKey)}`, {
+      silent: true, _skipRetry: true, _skipConnectionGate: true,
+    })
     return response.data
   },
 

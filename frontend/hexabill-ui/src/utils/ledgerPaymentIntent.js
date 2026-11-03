@@ -199,8 +199,10 @@ export function createPaymentBatchJournal(storage, newKey = () => crypto.randomU
   }
 }
 
-/** Pause between reconciliation lookups: a payment that is still being saved on the server gets time to finish. */
-export const PAYMENT_RECONCILE_DELAYS_MS = [0, 1500, 3000]
+/** Pause between reconciliation lookups: a payment that is still being saved on the server gets time to finish.
+ *  Four spaced lookups (~12 s total) cover a slow/first-after-idle server that saved the payment long after the
+ *  client gave up on the response; the server's idempotency key makes every lookup a no-op if nothing saved. */
+export const PAYMENT_RECONCILE_DELAYS_MS = [0, 1500, 3000, 8000]
 
 /**
  * Decides what a set of reconciliation lookups proves. Lookups are { state: 'saved' | 'not_saved' | 'unknown', response? }.

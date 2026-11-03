@@ -22,6 +22,6 @@ test('a single error or no answer keeps the payment uncertain', () => {
 })
 
 test('the reconciliation waits give an in-flight save time to finish', () => {
-  assert.equal(PAYMENT_RECONCILE_DELAYS_MS.length, 3)
+  assert.equal(PAYMENT_RECONCILE_DELAYS_MS.length, 4)
   assert.ok(PAYMENT_RECONCILE_DELAYS_MS.slice(1).every((ms) => ms >= 1000))
 })

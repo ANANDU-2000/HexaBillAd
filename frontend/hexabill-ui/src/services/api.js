@@ -560,7 +560,10 @@ api.interceptors.request.use(
     config._sessionScope = requestSession.current()
 
     // Check if we should allow this request
-    if (!connectionManager.shouldAllowRequest() && shouldBlockWhileDisconnected(config.method)) {
+    // Money-confirmation reads (and a few other explicitly opted-in requests) bypass the disconnected gate: a payment
+    // whose response was lost must still be looked up by its idempotency key, otherwise a saved payment shows as
+    // "confirmation was not received" even though the server booked it (live 2026-11-04, 599.00 pending-bill case).
+    if (!config._skipConnectionGate && !connectionManager.shouldAllowRequest() && shouldBlockWhileDisconnected(config.method)) {
       const error = new Error('Server connection unavailable. Please wait...')
       error.config = config
       error.isConnectionBlocked = true
