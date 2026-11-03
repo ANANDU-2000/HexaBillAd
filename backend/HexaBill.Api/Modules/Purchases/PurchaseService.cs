@@ -43,6 +43,34 @@ namespace HexaBill.Api.Modules.Purchases
                 await _context.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.FeaturesJson).SingleOrDefaultAsync(),
                 TenantFeatureFlags.PurchaseCostSnapshots);
 
+        /// <summary>Supplier master id for a purchase's supplier name; creates the supplier on first use. Tenant-scoped.</summary>
+        internal async Task<int?> ResolveSupplierIdAsync(int tenantId, string? supplierName)
+        {
+            var name = supplierName?.Trim();
+            if (tenantId <= 0 || string.IsNullOrEmpty(name)) return null;
+            var normalized = name.ToLowerInvariant();
+            var existing = await _context.Suppliers
+                .Where(s => s.TenantId == tenantId && s.NormalizedName == normalized)
+                .OrderByDescending(s => s.IsActive).ThenBy(s => s.Id)
+                .Select(s => (int?)s.Id)
+                .FirstOrDefaultAsync();
+            if (existing.HasValue) return existing;
+            var pending = _context.Suppliers.Local.FirstOrDefault(s => s.TenantId == tenantId && s.NormalizedName == normalized);
+            if (pending != null)
+            {
+                await _context.SaveChangesAsync();
+                return pending.Id;
+            }
+            var supplier = new Supplier
+            {
+                TenantId = tenantId, Name = name, NormalizedName = normalized, IsActive = true,
+                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+            };
+            _context.Suppliers.Add(supplier);
+            await _context.SaveChangesAsync();
+            return supplier.Id;
+        }
+
         private static string NormalizePurchasePaymentType(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -514,6 +542,9 @@ namespace HexaBill.Api.Modules.Purchases
                     CreatedAt = DateTime.UtcNow
                 };
 
+                // CAT-1: link the purchase to the supplier master (created on first use) so supplier pages, merges and
+                // vendor discounts see every purchase. Matching is by trimmed, case-insensitive name, as suppliers are keyed.
+                purchase.SupplierId = await ResolveSupplierIdAsync(tenantId, request.SupplierName);
                 _context.Purchases.Add(purchase);
                 await _context.SaveChangesAsync();
 
@@ -636,6 +667,7 @@ namespace HexaBill.Api.Modules.Purchases
 
                 // Update purchase details
                 purchase.SupplierName = request.SupplierName;
+                purchase.SupplierId = await ResolveSupplierIdAsync(tenantId, request.SupplierName);
                 purchase.InvoiceNo = request.InvoiceNo ?? purchase.InvoiceNo;
                 purchase.PurchaseDate = targetPurchaseDate;
                 purchase.ExpenseCategory = request.ExpenseCategory;

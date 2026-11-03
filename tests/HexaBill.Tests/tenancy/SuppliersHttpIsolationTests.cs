@@ -43,9 +43,11 @@ public class SuppliersHttpIsolationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await response.Content.ReadFromJsonAsync<ApiEnvelope<List<SupplierSummaryStub>>>();
         Assert.True(json?.Success);
-        Assert.Single(json!.Data!);
-        Assert.Equal("Sup A", json.Data![0].SupplierName);
-        Assert.True(json.Data[0].NetPayable >= 0m);
+        // Purchases now register their supplier in the directory (CAT-1), so other tests in this collection may add
+        // tenant A suppliers. Isolation is what matters: tenant B's supplier never appears.
+        var supA = Assert.Single(json!.Data!, s => s.SupplierName == "Sup A");
+        Assert.DoesNotContain(json.Data!, s => s.SupplierName == "Sup B");
+        Assert.True(supA.NetPayable >= 0m);
     }
 
     [Fact]

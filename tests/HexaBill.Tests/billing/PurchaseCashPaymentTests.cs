@@ -209,6 +209,37 @@ public class PurchaseCashPaymentTests
         Assert.Equal("BEFORE-CLOSE", retainedPayment.Reference);
     }
 
+    [Fact]
+    public async Task CreatePurchase_LinksExistingSupplier_CaseInsensitive_AndCreatesMissingOnce()
+    {
+        // CAT-1: live purchases had SupplierId NULL for every row (tenants 20, 22, 23).
+        await using var db = await DatabaseAsync();
+        db.Suppliers.Add(new Supplier { Id = 5, TenantId = 10, Name = "SILVER LINE FOODS TRADING LLC", NormalizedName = "silver line foods trading llc", IsActive = true });
+        await db.SaveChangesAsync();
+        // Another tenant's supplier with the same name (raw insert: the tenant write guard rightly blocks it through EF).
+        await db.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = OFF");
+        await db.Database.ExecuteSqlRawAsync("INSERT INTO \"Suppliers\" (\"Id\", \"TenantId\", \"Name\", \"NormalizedName\", \"IsActive\", \"CreditLimit\", \"CreatedAt\", \"UpdatedAt\") VALUES (6, 11, 'NEW FROZEN SUPPLIER', 'new frozen supplier', 1, 0, '2026-11-03', '2026-11-03')");
+        db.ChangeTracker.Clear();
+        var service = new PurchaseService(db, new VatStub().Object);
+        async Task<int?> Buy(string supplier, string invoice)
+        {
+            await service.CreatePurchaseAsync(new CreatePurchaseRequest
+            {
+                SupplierName = supplier, InvoiceNo = invoice, PurchaseDate = DateTime.UtcNow,
+                Items = [new PurchaseItemRequest { ProductId = 1, UnitType = "PIECE", Qty = 1m, UnitCost = 10m }]
+            }, userId: 1, tenantId: 10);
+            db.ChangeTracker.Clear();
+            return (await db.Purchases.SingleAsync(p => p.InvoiceNo == invoice)).SupplierId;
+        }
+
+        Assert.Equal(5, await Buy(" silver line foods trading llc ", "SL-1"));
+        var created = await Buy("NEW FROZEN SUPPLIER", "NF-1");
+        Assert.NotNull(created);
+        Assert.NotEqual(6, created); // another tenant's supplier is never reused
+        Assert.Equal(created, await Buy("new frozen supplier", "NF-2"));
+        Assert.Equal(1, await db.Suppliers.CountAsync(s => s.TenantId == 10 && s.NormalizedName == "new frozen supplier"));
+    }
+
     private static async Task<AppDbContext> DatabaseAsync(bool enableDailyClose = false)
     {
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite("Data Source=:memory:").Options);
