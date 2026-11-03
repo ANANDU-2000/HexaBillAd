@@ -64,6 +64,7 @@ import { buildCustomerLedgerHref } from '../../../utils/customerLedgerUrl'
 import { getReturnLabel } from '../../../utils/returnNavigation'
 import { localDateString } from '../../../utils/dateFormat'
 import { loadAllProductPages } from '../../../utils/loadAllProductPages'
+import { findPricelessCartRows } from '../../../utils/posCartRows'
 const API_BASE_URL = getApiBaseUrl()
 
 /** Product picker list page size (client-side only). */
@@ -1572,6 +1573,14 @@ const PosEnterprisePage = () => {
 
     if (cart.length === 0) {
       toast.error('Cart is empty')
+      return
+    }
+
+    // A row with a product and qty but no price must not be dropped silently: the sale would save without it.
+    const pricelessRows = findPricelessCartRows(cart, isZeroInvoice)
+    if (pricelessRows.length > 0) {
+      const names = pricelessRows.slice(0, 3).map(row => row.productName || `product ${row.productId}`).join(', ')
+      toast.error(`${names} ${pricelessRows.length === 1 ? 'has' : 'have'} no selling price. Enter a price, or check "Free sample / Zero invoice".`)
       return
     }
 
