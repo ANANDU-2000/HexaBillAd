@@ -198,3 +198,18 @@ export function createPaymentBatchJournal(storage, newKey = () => crypto.randomU
     },
   }
 }
+
+/** Pause between reconciliation lookups: a payment that is still being saved on the server gets time to finish. */
+export const PAYMENT_RECONCILE_DELAYS_MS = [0, 1500, 3000]
+
+/**
+ * Decides what a set of reconciliation lookups proves. Lookups are { state: 'saved' | 'not_saved' | 'unknown', response? }.
+ * - Any 'saved' answer wins: the payment exists on the server, so it is confirmed and must not be submitted again.
+ * - Only when EVERY lookup answered 'not_saved' is the saved request released. A single error keeps it uncertain.
+ */
+export function summarizeReconcileLookups(lookups = []) {
+  const saved = lookups.find((lookup) => lookup?.state === 'saved' && lookup.response)
+  if (saved) return { state: 'saved', response: saved.response }
+  if (lookups.length > 0 && lookups.every((lookup) => lookup?.state === 'not_saved')) return { state: 'not_saved' }
+  return { state: 'unknown' }
+}

@@ -28,6 +28,7 @@ namespace HexaBill.Api.Modules.Payments
             DateTime? fromDate = null, DateTime? toDate = null, string? search = null, string? method = null, string? status = null);
         Task<PaymentDto?> GetPaymentByIdAsync(int id, int tenantId);
         Task<CreatePaymentResponse> CreatePaymentAsync(CreatePaymentRequest request, int userId, int tenantId, string? idempotencyKey = null);
+        Task<CreatePaymentResponse?> FindSavedPaymentByIdempotencyKeyAsync(string idempotencyKey, int tenantId);
         Task<bool> UpdatePaymentStatusAsync(int paymentId, PaymentStatus status, int userId, int tenantId);
         Task<PaymentDto?> UpdatePaymentAsync(int paymentId, UpdatePaymentRequest request, int userId, int tenantId);
         Task<bool> DeletePaymentAsync(int paymentId, int userId, int tenantId);
@@ -166,6 +167,23 @@ namespace HexaBill.Api.Modules.Payments
                 },
                 Customer = customer == null ? null : new CustomerSummaryDto { Id = customer.Id, Name = customer.Name, Balance = customer.Balance }
             };
+        }
+
+        /// <summary>
+        /// Reconciliation for a client that lost its response. Returns the saved response for this key, or null.
+        /// Tenant-scoped through the payment's own TenantId, so another tenant's key never resolves.
+        /// </summary>
+        public async Task<CreatePaymentResponse?> FindSavedPaymentByIdempotencyKeyAsync(string idempotencyKey, int tenantId)
+        {
+            if (string.IsNullOrWhiteSpace(idempotencyKey) || tenantId <= 0) return null;
+            var storedKey = ScopedPaymentKey(idempotencyKey, tenantId);
+            var row = await _context.PaymentIdempotencies.AsNoTracking()
+                .Where(p => p.Payment.TenantId == tenantId && (p.IdempotencyKey == storedKey || p.IdempotencyKey == idempotencyKey))
+                .OrderByDescending(p => p.IdempotencyKey == storedKey)
+                .FirstOrDefaultAsync();
+            if (row == null) return null;
+            var snapshot = JsonSerializer.Deserialize<PaymentReplaySnapshot>(row.ResponseSnapshot ?? "null");
+            return snapshot?.Response?.Payment != null && snapshot.Response.Payment.Id == row.PaymentId ? snapshot.Response : null;
         }
 
         private void RememberPaymentResponse(string? storedKey, string requestHash, CreatePaymentResponse response, int userId)

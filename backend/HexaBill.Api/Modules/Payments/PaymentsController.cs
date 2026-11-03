@@ -146,6 +146,25 @@ namespace HexaBill.Api.Modules.Payments
             }
         }
 
+        /// <summary>
+        /// Reconciliation: did the payment sent with this Idempotency-Key get saved? Data is the saved response, or null
+        /// (message "not_saved"). Tenant-scoped: another tenant's key always reports not_saved.
+        /// </summary>
+        [HttpGet("idempotency/{key}")]
+        public async Task<ActionResult<ApiResponse<CreatePaymentResponse>>> GetPaymentByIdempotencyKey(string key)
+        {
+            var clientKey = (key ?? string.Empty).Trim();
+            if (clientKey.Length == 0 || clientKey.Length > 100)
+                return BadRequest(new ApiResponse<CreatePaymentResponse> { Success = false, Message = "Invalid idempotency key." });
+            var saved = await _paymentService.FindSavedPaymentByIdempotencyKeyAsync(clientKey, CurrentTenantId);
+            return Ok(new ApiResponse<CreatePaymentResponse>
+            {
+                Success = true,
+                Message = saved == null ? "not_saved" : "saved",
+                Data = saved
+            });
+        }
+
         [HttpPost]
         public async Task<ActionResult<ApiResponse<CreatePaymentResponse>>> CreatePayment(
             [FromBody] CreatePaymentRequest request,

@@ -816,6 +816,12 @@ export const paymentsAPI = {
     return response.data
   },
 
+  // Reconciliation: was the payment sent with this Idempotency-Key saved? data = saved response, or null when not saved.
+  findPaymentByIdempotencyKey: async (idempotencyKey) => {
+    const response = await api.get(`/payments/idempotency/${encodeURIComponent(idempotencyKey)}`)
+    return response.data
+  },
+
   allocatePayment: async (allocation, idempotencyKey = null) => {
     const key = idempotencyKey || crypto.randomUUID()
     const response = await api.post('/payments/allocate', allocation, { headers: { 'Idempotency-Key': key } })

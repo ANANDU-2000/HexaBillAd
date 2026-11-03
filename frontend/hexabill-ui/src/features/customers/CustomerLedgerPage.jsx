@@ -37,7 +37,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { readApiErrorReason, saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import { formatCurrency, formatBalance, roundMoney } from '../../utils/currency'
-import { createLedgerPaymentJournal, isDefinitivePaymentRejection, ledgerPaymentForm, ledgerPaymentScope } from '../../utils/ledgerPaymentIntent'
+import { createLedgerPaymentJournal, isDefinitivePaymentRejection, ledgerPaymentForm, ledgerPaymentScope, PAYMENT_RECONCILE_DELAYS_MS, summarizeReconcileLookups } from '../../utils/ledgerPaymentIntent'
 import { invoiceBillTotals } from '../../utils/invoiceBillTotals'
 import { billingDateWindow, canonicalOutstandingBalance, mergeCustomerBillRows, salePdfId } from '../../utils/customerBillRows'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
@@ -1895,6 +1895,37 @@ const CustomerLedgerPage = () => {
     }
   }
 
+  // Asks the server whether a payment with this key was saved. Several lookups, spaced out, so a save still in flight is seen.
+  const reconcileSavedPayment = async (idempotencyKey) => {
+    const lookups = []
+    for (const delay of PAYMENT_RECONCILE_DELAYS_MS) {
+      if (delay) await new Promise(resolve => setTimeout(resolve, delay))
+      try {
+        const res = await paymentsAPI.findPaymentByIdempotencyKey(idempotencyKey)
+        if (res?.success && res.data) { lookups.push({ state: 'saved', response: res.data }); break }
+        lookups.push(res?.success ? { state: 'not_saved' } : { state: 'unknown' })
+      } catch {
+        lookups.push({ state: 'unknown' })
+      }
+    }
+    return summarizeReconcileLookups(lookups)
+  }
+
+  // A lost response is not a failed payment. If the server saved it, it is confirmed (never re-sent). If the server never
+  // stored it, it is released. Otherwise the original error is kept and the request stays uncertain.
+  const settleUnknownPaymentOutcome = async ({ idempotencyKey, scope, sendError }) => {
+    const outcome = await reconcileSavedPayment(idempotencyKey)
+    if (outcome.state === 'saved') return { success: true, data: outcome.response }
+    if (outcome.state === 'not_saved') {
+      paymentJournal.complete(scope, idempotencyKey)
+      if (scope === paymentScopeRef.current) setUnconfirmedPayment(null)
+      const notSaved = new Error('This payment was not recorded. Nothing was saved, so you can enter it again.')
+      notSaved.notSaved = true
+      throw notSaved
+    }
+    throw sendError
+  }
+
   const executePaymentApi = async ({ savedIntent, scope = savedIntent?.scope, draft }) => {
     if (scope !== paymentScopeRef.current) return
     paymentLoadingRef.current = true
@@ -1909,7 +1940,13 @@ const CustomerLedgerPage = () => {
       const timeout = new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error('Payment confirmation timed out. Retry the previous payment.')), 30000)
       })
-      const response = await Promise.race([send(request, idempotencyKey), timeout])
+      let response
+      try {
+        response = await Promise.race([send(request, idempotencyKey), timeout])
+      } catch (sendError) {
+        if (isDefinitivePaymentRejection(sendError)) throw sendError
+        response = await settleUnknownPaymentOutcome({ idempotencyKey, scope, sendError })
+      }
       if (!response?.success) {
         if (scope === paymentScopeRef.current) toast.error(response?.message || 'Payment is unconfirmed. Retry the previous payment.')
         return
