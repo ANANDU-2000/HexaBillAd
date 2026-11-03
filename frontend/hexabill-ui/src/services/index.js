@@ -526,6 +526,11 @@ export const purchasesAPI = {
 }
 
 export const customersAPI = {
+  /** Customers with open bills (live + historical), largest balance first. */
+  getPendingSummary: async () => {
+    const response = await api.get('/customers/pending-summary')
+    return response.data
+  },
   getCustomers: async (params = {}) => {
     const response = await api.get('/customers', { params })
     return response.data

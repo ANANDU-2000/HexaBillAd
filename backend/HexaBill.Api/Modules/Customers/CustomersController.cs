@@ -477,6 +477,22 @@ namespace HexaBill.Api.Modules.Customers
             }
         }
 
+        /// <summary>Every customer with open bills (live + historical), largest balance first. Tenant-scoped.</summary>
+        [HttpGet("pending-summary")]
+        public async Task<ActionResult<ApiResponse<List<PendingCustomerDto>>>> GetPendingSummary()
+        {
+            try
+            {
+                var rows = await PendingBillsSummary.BuildAsync(_context, CurrentTenantId, DateTime.UtcNow);
+                return Ok(new ApiResponse<List<PendingCustomerDto>> { Success = true, Message = "Pending bills retrieved", Data = rows });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetPendingSummary failed");
+                return StatusCode(500, new ApiResponse<List<PendingCustomerDto>> { Success = false, Message = "Pending bills could not be loaded. Please retry." });
+            }
+        }
+
         [HttpGet("{id}/outstanding-invoices")]
         public async Task<ActionResult<ApiResponse<List<Models.OutstandingInvoiceDto>>>> GetOutstandingInvoices(int id)
         {
