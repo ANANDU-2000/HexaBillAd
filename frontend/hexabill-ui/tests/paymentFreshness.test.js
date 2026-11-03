@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { invalidatesCache, isCacheableGet } from '../src/services/responseCachePolicy.js'
-import { createLedgerPaymentJournal, reconcilePaymentKey, settlePendingPayment } from '../src/utils/ledgerPaymentIntent.js'
+import { createLedgerPaymentJournal, reconcilePaymentKey, settleAllPendingPayments, settlePendingPayment } from '../src/utils/ledgerPaymentIntent.js'
 
 // Live 2026-11-03 (FrozenHub, user 34): GETs were cached 30 s and payment writes never cleared the cache, so the ledger
 // showed pre-payment status/balance right after a save; stale pending entries in a tablet tab blocked new payments.
@@ -34,6 +34,7 @@ function memoryJournal() {
   let n = 0
   const storage = {
     getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k),
+    get length() { return store.size }, key: (i) => Array.from(store.keys())[i] ?? null,
   }
   const journal = createLedgerPaymentJournal(storage, () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`)
   return { journal, store }
@@ -75,4 +76,39 @@ test('reconcilePaymentKey stops at the first saved answer and treats errors as u
   assert.equal(unknown.state, 'unknown')
   const notSaved = await reconcilePaymentKey(async () => ({ success: true, data: null }), 'k3', [0, 1, 1], async () => {})
   assert.equal(notSaved.state, 'not_saved')
+})
+
+const otherScope = scope.slice(0, scope.lastIndexOf(':')) + ':213'
+const pageIdentity = { origin: 'https://frozenhub.hexabill.company', tenantId: 20, userId: 34 }
+
+test('settleAllPendingPayments clears a saved payment on open and keeps an unclear one', async () => {
+  const { journal } = memoryJournal()
+  const saved = journal.begin(scope, draft(500))
+  const unclear = journal.begin(otherScope, draft(300))
+  const outcomes = await settleAllPendingPayments(journal, pageIdentity, async (key) => {
+    if (key === saved.idempotencyKey) return { state: 'saved', response: { payment: { id: 99 } } }
+    return { state: 'unknown' }
+  })
+  const byScope = Object.fromEntries(outcomes.map((o) => [o.scope, o.state]))
+  assert.equal(byScope[scope], 'saved')
+  assert.equal(byScope[otherScope], 'unknown')
+  assert.equal(journal.read(scope), null, 'the saved payment is no longer a pending banner')
+  assert.ok(journal.read(otherScope), 'the unclear payment keeps its Retry banner')
+})
+
+test('settleAllPendingPayments releases only payments the server proves were never stored', async () => {
+  const { journal } = memoryJournal()
+  journal.begin(scope, draft(355))
+  const outcomes = await settleAllPendingPayments(journal, pageIdentity, async () => ({ state: 'not_saved' }))
+  assert.equal(outcomes[0].state, 'not_saved')
+  assert.equal(journal.read(scope), null)
+  assert.equal((await settleAllPendingPayments(journal, pageIdentity, async () => ({ state: 'saved' }))).length, 0)
+})
+
+test('settleAllPendingPayments keeps an entry when the server cannot be reached', async () => {
+  const { journal } = memoryJournal()
+  journal.begin(scope, draft(120))
+  const outcomes = await settleAllPendingPayments(journal, pageIdentity, async () => { throw new Error('offline') })
+  assert.equal(outcomes[0].state, 'unknown')
+  assert.ok(journal.read(scope), 'an unreachable server never clears a pending payment')
 })

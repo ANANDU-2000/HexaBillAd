@@ -47,7 +47,7 @@ import { offerReceiptPreviewAfterPayment } from '../../utils/offerReceiptPreview
 import { canReceivePaymentReceipt, currentReceiptSelection, receiptIneligibilityReason, paymentStatusLabel, receiptSelectionSummary, toggleVisibleReceiptSelection, mergeSelectedPaymentRecords } from '../../utils/receiptEligibility'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import Alert from '../../components/ui/Alert'
-import { bulkRowFromSaved, createLedgerPaymentJournal, createPaymentBatchJournal, isDefinitivePaymentRejection, ledgerPaymentAccountPrefix, ledgerPaymentForm, ledgerPaymentScope, paymentBatchScope, paymentRejectionMessage } from '../../utils/ledgerPaymentIntent'
+import { bulkRowFromSaved, createLedgerPaymentJournal, createPaymentBatchJournal, isDefinitivePaymentRejection, ledgerPaymentAccountPrefix, ledgerPaymentForm, ledgerPaymentScope, paymentBatchScope, paymentRejectionMessage, reconcilePaymentKey, settleAllPendingPayments } from '../../utils/ledgerPaymentIntent'
 
 const PaymentsPage = () => {
   const { user } = useAuth()
@@ -181,6 +181,22 @@ const PaymentsPage = () => {
     setSavedBatch(null)
     refreshRecovery()
   }, [refreshRecovery])
+
+  // Live 2026-11-03: entries for payments saved hours earlier stayed as "unconfirmed" banners forever on this page,
+  // even after the server had saved them, because the page only listed the saved intents and never asked the server.
+  // Reconcile each saved intent by its idempotency key on open: a definite answer ('saved', or every lookup
+  // 'not_saved') clears the entry; an unclear answer keeps the banner and its Retry button for manual action.
+  useEffect(() => {
+    if (!accountPrefix || user?.supportReadOnly) return
+    let cancelled = false
+    settleAllPendingPayments(paymentJournal, recoveryIdentity, (key) => reconcilePaymentKey(paymentsAPI.findPaymentByIdempotencyKey, key))
+      .then((outcomes) => {
+        if (cancelled) return
+        if (outcomes.some((outcome) => outcome.state === 'saved' || outcome.state === 'not_saved')) refreshRecovery()
+      })
+      .catch(() => { /* The server could not be reached: keep the banners for the Retry button. */ })
+    return () => { cancelled = true }
+  }, [accountPrefix, paymentJournal, recoveryIdentity, refreshRecovery, unconfirmedPayments, user?.supportReadOnly])
 
   // The name when the customer is in the loaded list; otherwise the id, never a bare number pretending to be a name.
   const customerLabel = (id) => {

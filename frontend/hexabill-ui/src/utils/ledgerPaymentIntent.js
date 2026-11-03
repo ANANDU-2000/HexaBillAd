@@ -240,6 +240,29 @@ export async function settlePendingPayment(journal, scope, reconcile) {
   return { state: 'unknown', pending }
 }
 
+/**
+ * Reconcile EVERY pending payment of this account with the server at once (used when the Payments page opens).
+ * Live 2026-11-03: entries for payments saved hours earlier stayed "unconfirmed" in a tab and the banner never
+ * cleared, because the page listed the saved intents but never asked the server. A definite answer settles each
+ * entry ('saved', or every lookup 'not_saved'); an unclear answer keeps the entry and its Retry button.
+ * @param {{ list: Function }} journal
+ * @param {{ origin: string, tenantId: number, userId: number }} identity
+ * @param {(idempotencyKey: string) => Promise<{ state: string, response?: any }>} reconcile
+ * @returns {Promise<Array<{ scope: string, idempotencyKey: string, state: 'saved' | 'not_saved' | 'unknown' | 'none' }>>}
+ */
+export async function settleAllPendingPayments(journal, identity, reconcile) {
+  const intents = journal.list(identity)
+  return Promise.all(intents.map(async (intent) => {
+    try {
+      const outcome = await settlePendingPayment(journal, intent.scope, reconcile)
+      return { scope: intent.scope, idempotencyKey: intent.idempotencyKey, state: outcome.state }
+    } catch {
+      // The server could not be asked: keep the entry so the user can Retry it manually.
+      return { scope: intent.scope, idempotencyKey: intent.idempotencyKey, state: 'unknown' }
+    }
+  }))
+}
+
 /** Asks the server, a few times, whether the payment sent with this key was saved (see summarizeReconcileLookups). */
 export async function reconcilePaymentKey(lookup, idempotencyKey, delays = PAYMENT_RECONCILE_DELAYS_MS, wait = (ms) => new Promise((r) => setTimeout(r, ms))) {
   const lookups = []
