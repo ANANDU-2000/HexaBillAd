@@ -3329,7 +3329,9 @@ namespace HexaBill.Api.Modules.Reports
                 .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
             // 6. Pending Balance = Total Sales - Total Payments - Total Returns + RefundsPaid
-            var pendingBalance = totalRealPending;
+            // Customer position: invoices − receipts − approved returns + refunds paid. A return larger than the unpaid
+            // balance leaves a credit (negative), which the ledger must show instead of clamping to zero.
+            var pendingBalance = totalSales - totalPayments - totalReturns + refundsPaid;
             var netCashIn = totalPayments - refundsPaid;
 
             return new SalesLedgerReportDto
