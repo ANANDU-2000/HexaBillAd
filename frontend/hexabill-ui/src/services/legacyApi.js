@@ -13,6 +13,11 @@ export const legacyAPI = {
     const response = await api.get(`/legacy/invoices/${id}`)
     return response.data
   },
+  // Printable A4 PDF of a historical invoice (same renderer as live invoices, original issuer identity).
+  getInvoicePdf: async (id) => {
+    const response = await api.get(`/legacy/invoices/${id}/pdf`, { responseType: 'blob', timeout: 120000, _bypassCache: true })
+    return response.data
+  },
   getPayments: async (params = {}) => {
     const response = await api.get('/legacy/payments', { params })
     return response.data
@@ -47,6 +52,30 @@ export const legacyAPI = {
     return response.data
   }
 };
+
+/** Fetches the historical invoice PDF and opens it in a new tab (same behaviour as live invoice PDFs). */
+export async function openLegacyInvoicePdf(id) {
+  const blob = await legacyAPI.getInvoicePdf(id)
+  const url = window.URL.createObjectURL(blob)
+  const opened = window.open(url, '_blank')
+  setTimeout(() => window.URL.revokeObjectURL(url), 60000)
+  if (!opened) throw new Error('Pop-up blocked. Allow pop-ups for this site and try again.')
+  return opened
+}
+
+/** Reads the server's JSON message from a failed blob request (404/422/500 responses are blobs here). */
+export async function legacyPdfErrorMessage(err, fallback) {
+  const data = err?.response?.data
+  if (typeof Blob !== 'undefined' && data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text())
+      if (parsed?.message) return parsed.message
+    } catch {
+      // Not JSON: fall through to the generic message.
+    }
+  }
+  return err?.message && !err?.response ? err.message : fallback
+}
 
 export default legacyAPI
 

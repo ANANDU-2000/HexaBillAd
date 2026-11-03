@@ -365,6 +365,10 @@ namespace HexaBill.Api.Models
         public bool IsLegacy { get; set; }
         /// <summary>Source LegacyInvoices.Id when IsLegacy is true.</summary>
         public int? LegacyInvoiceId { get; set; }
+        /// <summary>Original legal issuer of a historical invoice (printed instead of the tenant identity). Null for live sales.</summary>
+        public string? LegacyIssuerName { get; set; }
+        /// <summary>Original issuer TRN of a historical invoice. Null for live sales.</summary>
+        public string? LegacyIssuerTrn { get; set; }
         public int OwnerId { get; set; } // MULTI-TENANT: Owner identification
         public string InvoiceNo { get; set; } = string.Empty;
         public DateTime InvoiceDate { get; set; }

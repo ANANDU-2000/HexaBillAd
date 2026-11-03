@@ -2544,4 +2544,4 @@ export const demoRequestAPI = {
 }
 
 export { quotationsAPI, agreementsAPI, salaryCertificatesAPI } from './documentsApi'
-export { legacyAPI } from './legacyApi'
+export { legacyAPI, openLegacyInvoicePdf, legacyPdfErrorMessage } from './legacyApi'

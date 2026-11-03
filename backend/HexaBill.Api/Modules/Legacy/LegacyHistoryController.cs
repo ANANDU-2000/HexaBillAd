@@ -5,11 +5,13 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using HexaBill.Api.Core.Infrastructure;
 using HexaBill.Api.Core.Tenancy;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Models.Legacy;
+using HexaBill.Api.Modules.Sales;
 
 namespace HexaBill.Api.Modules.Legacy
 {
@@ -25,6 +27,59 @@ namespace HexaBill.Api.Modules.Legacy
         {
             _context = context;
             _logger = logger;
+        }
+
+        /// <summary>
+        /// GET /api/legacy/invoices/{id}/pdf
+        /// Printable A4 invoice for a historical Starplus invoice. Uses the normal invoice renderer with the
+        /// original issuer's name and TRN. Tenant-scoped; never reads or writes live sales.
+        /// </summary>
+        [HttpGet("invoices/{id:int}/pdf")]
+        public async Task<IActionResult> GetInvoicePdf(int id)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
+
+                var inv = await _context.LegacyInvoices
+                    .AsNoTracking()
+                    .Include(i => i.Items)
+                    .FirstOrDefaultAsync(i => i.Id == id && i.TenantId == tenantId);
+
+                if (inv == null)
+                {
+                    return NotFound(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = $"Historical invoice with ID {id} not found."
+                    });
+                }
+
+                if (!LegacyInvoicePdfMapper.HasPrintableLines(inv))
+                {
+                    return UnprocessableEntity(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "This historical invoice has no line items in the Starplus export, so a PDF cannot be printed from its totals alone."
+                    });
+                }
+
+                var sale = LegacyInvoicePdfMapper.ToSaleDto(inv, tenantId);
+                var pdfService = HttpContext.RequestServices.GetRequiredService<IPdfService>();
+                var pdfBytes = await pdfService.GenerateInvoicePdfAsync(sale, "A4", "full");
+                return File(pdfBytes, "application/pdf", $"INV-{inv.LegacyInvoiceNumber}.pdf");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating PDF for legacy invoice {InvoiceId}", id);
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "An error occurred generating the historical invoice PDF",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
         }
 
         /// <summary>

@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react'
 import { X, Printer, RefreshCw, AlertTriangle, ShieldCheck, FileText, CheckCircle2, Clock } from 'lucide-react'
-import { legacyAPI } from '../services/index'
+import { legacyAPI, openLegacyInvoicePdf, legacyPdfErrorMessage } from '../services/index'
 import { formatCurrency } from '../utils/currency'
 
 export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose }) {
   const [loading, setLoading] = useState(false)
   const [invoice, setInvoice] = useState(null)
   const [error, setError] = useState(null)
+  const [printing, setPrinting] = useState(false)
+  const [printError, setPrintError] = useState(null)
 
   useEffect(() => {
     if (!isOpen || !invoiceId) {
       setInvoice(null)
       setError(null)
+      setPrintError(null)
       return
     }
 
@@ -43,8 +46,17 @@ export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose })
 
   if (!isOpen) return null
 
-  const handlePrint = () => {
-    window.print()
+  // Printing uses the server A4 invoice PDF (same renderer as live invoices), never the browser page print.
+  const handlePrint = async () => {
+    setPrinting(true)
+    setPrintError(null)
+    try {
+      await openLegacyInvoicePdf(invoiceId)
+    } catch (err) {
+      setPrintError(await legacyPdfErrorMessage(err, 'Could not generate the historical invoice PDF.'))
+    } finally {
+      setPrinting(false)
+    }
   }
 
   return (
@@ -64,7 +76,7 @@ export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose })
             <button
               type="button"
               onClick={handlePrint}
-              disabled={loading || !invoice}
+              disabled={loading || !invoice || printing}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-300 bg-white text-xs font-medium text-neutral-700 hover:bg-neutral-100 disabled:opacity-50"
             >
               <Printer className="h-3.5 w-3.5" />
@@ -82,6 +94,11 @@ export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose })
 
         {/* Modal Body */}
         <div className="overflow-y-auto p-5 sm:p-6 space-y-6 flex-1">
+          {printError && (
+            <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-900">
+              {printError}
+            </div>
+          )}
           {loading ? (
             <div className="py-20 text-center">
               <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary-600" />

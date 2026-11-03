@@ -3256,9 +3256,8 @@ const PosEnterprisePage = () => {
               setProductSearchTermsByRowId((prev) => ({ ...prev, [drawerOwnerRowId]: searchValue }))
               setProductHighlight(0)
               setProductPickerPage(0)
-              if (searchValue && searchValue.length >= 3) {
-                barcodeEngineRef.current?.fromInputValue(searchValue)
-              }
+              // Typing filters the list only. It must not run the barcode matcher: a partial name
+              // showed "No product for …", and a value equal to a SKU/barcode added that product mid-typing.
             }}
             onKeyDown={(e) => {
               if (!drawerOwnerRowId) return

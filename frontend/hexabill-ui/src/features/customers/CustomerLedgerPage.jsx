@@ -45,7 +45,7 @@ import { Input, Select } from '../../components/Form'
 import Modal from '../../components/Modal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { OverflowMenu } from '../../components/ui'
-import { customersAPI, paymentsAPI, salesAPI, reportsAPI, adminAPI, returnsAPI, subscriptionAPI, legacyAPI } from '../../services/index'
+import { customersAPI, paymentsAPI, salesAPI, reportsAPI, adminAPI, returnsAPI, subscriptionAPI, legacyAPI, openLegacyInvoicePdf, legacyPdfErrorMessage } from '../../services/index'
 import {
   computeInvoiceSettlementShortfall,
   computeOutstanding,
@@ -3052,11 +3052,13 @@ const CustomerLedgerPage = () => {
                       onViewPDF={async (invoiceId, invoiceRow) => {
                         const target = invoiceRow || customerInvoices.find(i => i.id === invoiceId)
                         // Historical rows never reach the Sales PDF endpoint: their id is a legacy id and can equal a live sale id
-                        // in the same tenant. They open as the read-only record until a historical PDF renderer exists.
+                        // in the same tenant. They print through the legacy PDF endpoint with the same A4 renderer.
                         if (target?.isLegacy) {
-                          toast('Historical invoices open as a read-only record. A historical PDF is not available yet.')
-                          setSelectedLegacyInvoiceId(target.legacyInvoiceId || target.id)
-                          setShowLegacyInvoiceModal(true)
+                          try {
+                            await openLegacyInvoicePdf(target.legacyInvoiceId || target.id)
+                          } catch (error) {
+                            toast.error(await legacyPdfErrorMessage(error, 'Failed to generate the historical invoice PDF'))
+                          }
                           return
                         }
                         const saleId = salePdfId(target)
