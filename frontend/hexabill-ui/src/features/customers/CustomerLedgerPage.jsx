@@ -228,6 +228,26 @@ const CustomerLedgerPage = () => {
     }
   }, [paymentScope, paymentJournal])
 
+  // A request left unconfirmed by an earlier visit is checked on load, not left for the user to find. Saved on the server:
+  // replayed with its own key (the server returns the stored payment, so nothing new is booked). Never stored: released.
+  // Anything unclear: kept, with the banner. The replay only happens after the server has confirmed the save.
+  const autoReconcileKeyRef = useRef(null)
+  useEffect(() => {
+    const intent = unconfirmedPayment
+    if (!intent || intent.scope !== paymentScope || paymentLoadingRef.current) return
+    if (autoReconcileKeyRef.current === intent.idempotencyKey) return
+    autoReconcileKeyRef.current = intent.idempotencyKey
+    ;(async () => {
+      const outcome = await reconcileSavedPayment(intent.idempotencyKey)
+      if (intent.scope !== paymentScopeRef.current) return
+      if (outcome.state === 'saved') await executePaymentApi({ savedIntent: intent })
+      else if (outcome.state === 'not_saved') {
+        paymentJournal.complete(intent.scope, intent.idempotencyKey)
+        setUnconfirmedPayment(null)
+      }
+    })()
+  }, [unconfirmedPayment, paymentScope, paymentJournal])
+
   // Keyboard shortcuts refs
   const searchInputRef = useRef(null)
 
