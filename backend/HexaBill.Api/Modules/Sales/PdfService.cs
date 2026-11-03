@@ -443,14 +443,14 @@ namespace HexaBill.Api.Modules.Sales
                                 // larger text, taller rows, readable line height. Long invoices paginate (the header repeats);
                                 // text is never shrunk to force a single page.
                                 var fhA4Bilingual = settings.BilingualMonochromeHeader;
-                                var fhA4ItemNumFont = fhA4Bilingual ? FrozenHubA4ItemFontSize : A4ItemNumberFontSize;
-                                var fhA4ItemDescFont = fhA4Bilingual ? FrozenHubA4ItemFontSize : A4ItemDescriptionFontSize;
+                                var fhA4ItemNumFont = fhA4Bilingual ? FrozenHubA4ItemNumberFontSize : A4ItemNumberFontSize;
+                                var fhA4ItemDescFont = fhA4Bilingual ? FrozenHubA4ItemDescriptionFontSize : A4ItemDescriptionFontSize;
                                 var fhA4ItemPad = fhA4Bilingual ? FrozenHubA4ItemCellPadding : A4ItemCellPadding;
                                 var fhA4LineH = fhA4Bilingual ? FrozenHubA4ItemLineHeight : A4ItemLineHeight;
-                                var fhA4TotPad = fhA4Bilingual ? 1.2f : 2f;
+                                var fhA4TotPad = 2f;
                                 var fhA4TotFont = fhA4Bilingual ? FrozenHubA4TotalsFontSize : 10f;
-                                var fhA4TotArabic = fhA4Bilingual ? 6.5f : 9f;
-                                var fhA4TotSmall = fhA4Bilingual ? 6.5f : 8f;
+                                var fhA4TotArabic = 9f;
+                                var fhA4TotSmall = 8f;
                                 innerColumn.Item().Border(0.5f).DefaultTextStyle(x => x.LineHeight(fhA4LineH)).Table(table =>
                                 {
                                     // Full printable width; Description gets the largest share so product names rarely wrap.
@@ -504,21 +504,24 @@ namespace HexaBill.Api.Modules.Sales
                                             
                                             // Vertical borders between columns, no horizontal rules between rows (Starplus style).
                                             IContainer Cell(float hPad) => table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(fhA4ItemPad).PaddingHorizontal(hPad);
-                                            Cell(1).AlignCenter().Text((i + 1).ToString()).FontSize(fhA4ItemNumFont);
-                                            Cell(3).AlignLeft().Text(item.ProductName ?? "").FontSize(fhA4ItemDescFont);
+                                            Cell(1).AlignCenter().AlignMiddle().Text((i + 1).ToString()).FontSize(fhA4ItemNumFont);
+                                            // Regular weight, as invoice 7028 printed: the bundled Noto Sans Arabic has no SemiBold, so a
+                                            // SemiBold request prints digits in Bold next to SemiBold letters ("LEG 18KG" looked mixed).
+                                            Cell(3).AlignLeft().AlignMiddle().Text(item.ProductName ?? "").FontSize(fhA4ItemDescFont);
                                             var unitTypeText = string.IsNullOrWhiteSpace(item.UnitType) ? "CRTN" : item.UnitType.ToUpper();
-                                            Cell(1).AlignCenter().Text(unitTypeText).FontSize(fhA4ItemNumFont);
-                                            Cell(1).AlignCenter().Text(item.Qty.ToString("0.##")).FontSize(fhA4ItemNumFont);
+                                            Cell(1).AlignCenter().AlignMiddle().Text(unitTypeText).FontSize(fhA4ItemNumFont);
+                                            Cell(1).AlignCenter().AlignMiddle().Text(item.Qty.ToString("0.##")).FontSize(fhA4ItemNumFont);
                                             // Monetary columns right-aligned.
-                                            Cell(2).AlignRight().Text(item.UnitPrice.ToString("0.00")).FontSize(fhA4ItemNumFont);
+                                            Cell(2).AlignRight().AlignMiddle().Text(item.UnitPrice.ToString("0.00")).FontSize(fhA4ItemNumFont);
                                             var lineNet = item.Qty * item.UnitPrice;
-                                            Cell(2).AlignRight().Text(lineNet.ToString("0.00")).FontSize(fhA4ItemNumFont);
-                                            Cell(2).AlignRight().Text(item.VatAmount.ToString("0.00")).FontSize(fhA4ItemNumFont);
-                                            Cell(2).AlignRight().Text(item.LineTotal.ToString("0.00")).FontSize(fhA4ItemNumFont);
+                                            Cell(2).AlignRight().AlignMiddle().Text(lineNet.ToString("0.00")).FontSize(fhA4ItemNumFont);
+                                            Cell(2).AlignRight().AlignMiddle().Text(item.VatAmount.ToString("0.00")).FontSize(fhA4ItemNumFont);
+                                            Cell(2).AlignRight().AlignMiddle().Text(item.LineTotal.ToString("0.00")).FontSize(fhA4ItemNumFont);
                                         }
                                     }
 
-                                    // Bilingual (FrozenHub/StarPlus): fixed 10-row frame on page 1; items beyond 10 flow to the next page.
+                                    // Bilingual (FrozenHub/StarPlus): the table body is framed to 10 rows on page 1. The empty filler
+                                    // shrinks as items are added (0 at 10 items); fonts never shrink. Items beyond 10 flow to the next page.
                                     // Other tenants keep the existing fill rule.
                                     if (!settings.LetterheadOnlyPrint)
                                     {
@@ -638,32 +641,15 @@ namespace HexaBill.Api.Modules.Sales
                                     footerCol.Item().PaddingTop(6).Row(sigRow =>
                                     {
                                         // Left column: Receiver's info
-                                        sigRow.RelativeItem(fhA4Bilingual ? 34 : 1).Column(leftCol => {
+                                        sigRow.RelativeItem().Column(leftCol => {
                                             leftCol.Item().Text("Receiver's Name").FontSize(8);
                                             leftCol.Item().PaddingTop(9).Text(new string('.', 40)).FontSize(8);
                                             leftCol.Item().PaddingTop(10).Text("Receiver's Sign").FontSize(8);
                                             leftCol.Item().PaddingTop(9).Text(new string('.', 40)).FontSize(8);
                                         });
 
-                                        // Bilingual (FrozenHub/StarPlus): bank details beside the signatures, in the same row.
-                                        if (fhA4Bilingual && !settings.LetterheadOnlyPrint
-                                            && !string.IsNullOrWhiteSpace(settings.InvoiceBankAccountName)
-                                            && !string.IsNullOrWhiteSpace(settings.InvoiceBankName)
-                                            && !string.IsNullOrWhiteSpace(settings.InvoiceBankIban))
-                                        {
-                                            var fhIban = string.Concat(settings.InvoiceBankIban.Where(c => !char.IsWhiteSpace(c)));
-                                            var fhGroupedIban = string.Join(" ", Enumerable.Range(0, (fhIban.Length + 3) / 4)
-                                                .Select(i => fhIban.Substring(i * 4, Math.Min(4, fhIban.Length - i * 4))));
-                                            sigRow.RelativeItem(36).PaddingHorizontal(4).Column(bankCol => {
-                                                bankCol.Item().Text("Bank Details").FontFamily(_englishFont).FontSize(7f).Bold();
-                                                bankCol.Item().Text($"Bank Name: {settings.InvoiceBankName.Trim()}").FontFamily(_englishFont).FontSize(6.5f);
-                                                bankCol.Item().Text($"Account Name: {settings.InvoiceBankAccountName.Trim()}").FontFamily(_englishFont).FontSize(6.5f);
-                                                bankCol.Item().Text($"IBAN: {fhGroupedIban}").FontFamily(_englishFont).FontSize(6.5f);
-                                            });
-                                        }
-
-                                        // Right column: Company name (skipped when letterhead-only — stamp/sig fills this zone)
-                                        sigRow.RelativeItem(fhA4Bilingual ? 30 : 1).Column(rightCol => {
+// Right column: Company name (skipped when letterhead-only — stamp/sig fills this zone)
+                                        sigRow.RelativeItem().Column(rightCol => {
                                             if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                             {
                                                 rightCol.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(8);
@@ -690,8 +676,10 @@ namespace HexaBill.Api.Modules.Sales
                                         });
                                     }
                                     
-                                    // Non-bilingual tenants keep bank details below both signature areas (bilingual shows them beside the signatures).
-                                    if (!settings.LetterheadOnlyPrint && !fhA4Bilingual)
+                                    // PDF-2 (invoice 7043 regression): bank details are ONE block strictly BELOW the whole signature row
+                                    // (Receiver's Name / Receiver's Sign / company signatory), and above the customer balance footer.
+                                    // Never a column inside the signature row.
+                                    if (!settings.LetterheadOnlyPrint)
                                         RenderInvoiceBankDetails(footerCol, settings, 9f, paddingTop: 10);
 
                                     // Bill + customer account summary from the Customer Ledger (shown even when zero).
@@ -973,15 +961,19 @@ namespace HexaBill.Api.Modules.Sales
         // P0-PRINT-007 item table sizing (points). Constants so tests can assert them.
         internal const float A4ItemDescriptionFontSize = 11f;
         internal const float FrozenHubA4HeaderDetailSize = 9.5f;
-        // Bilingual A4 invoice layout (owner decision, 2026-11-03): compact items, 10-row frame, compact header.
-        internal const float FrozenHubA4ItemFontSize = 7f;
-        internal const float FrozenHubA4ItemCellPadding = 1.2f;
-        internal const float FrozenHubA4ItemLineHeight = 0.92f;
-        internal const float FrozenHubA4ItemRowHeight = 10f;
+        // Bilingual A4 invoice layout. PDF-1 (owner, 2026-11-03 evening, supersedes the morning "compact" layout that
+        // printed invoice 7043 at 7pt): product rows read like invoice 7028 — description 10.5pt, numbers 10pt,
+        // 5pt vertical padding. The font NEVER shrinks with item count; only the empty filler below short tables does.
+        internal const float FrozenHubA4ItemDescriptionFontSize = 10.5f;
+        internal const float FrozenHubA4ItemNumberFontSize = 10f;
+        internal const float FrozenHubA4ItemCellPadding = 5f;
+        internal const float FrozenHubA4ItemLineHeight = 1.2f;
+        // Height of one empty frame row (one-line item row at the sizes above) used for the filler below short tables.
+        internal const float FrozenHubA4ItemRowHeight = 22f;
         internal const int FrozenHubA4FrameRows = 10;
-        internal const float FrozenHubA4TotalsFontSize = 7.5f;
-        internal const float FrozenHubA4InvoiceHeaderHeight = 62f;
-        internal const float FrozenHubA4InvoiceHeaderDetailSize = 7f;
+        internal const float FrozenHubA4TotalsFontSize = 10f;
+        internal const float FrozenHubA4InvoiceHeaderHeight = 95f;
+        internal const float FrozenHubA4InvoiceHeaderDetailSize = 9.5f;
         internal const float A4ItemNumberFontSize = 10.5f;
         internal const float A4HeaderFontSize = 10f;
         internal const float A4ItemCellPadding = 6f;

@@ -53,19 +53,11 @@ public class FrozenHubPrintReadabilityTests
         var bankHeading = words.First(w => w.Text == "Bank" && words.Any(d => d.Text == "Details" && Math.Abs(d.BoundingBox.Bottom - w.BoundingBox.Bottom) < 1)).BoundingBox.Top;
         var footer = Top("Bills:");
 
-        if (format == "A4")
-        {
-            // Owner decision 2026-11-03: bilingual A4 shows bank details beside the signatures, above the balance footer.
-            var receiverName = words.First(w => w.Text.StartsWith("Receiver", StringComparison.Ordinal)).BoundingBox.Top;
-            Assert.True(Math.Abs(bankHeading - receiverName) < 30, $"bank ({bankHeading}) should sit beside Receiver's Name ({receiverName})");
-            Assert.True(footer < bankHeading, $"balance footer ({footer}) must stay below the bank block ({bankHeading})");
-        }
-        else
-        {
-            Assert.True(bankHeading < receiverSign, $"bank ({bankHeading}) must be below Receiver's Sign ({receiverSign})");
-            Assert.True(bankHeading < companySign, $"bank ({bankHeading}) must be below the company signature ({companySign})");
-            Assert.True(footer < bankHeading, $"balance footer ({footer}) must stay below the bank block ({bankHeading})");
-        }
+        // PDF-2 (invoice 7043 regression, owner 2026-11-03 evening): on A4 AND A5 the bank block is below both signature
+        // areas and above the balance footer — never a column inside the signature row.
+        Assert.True(bankHeading < receiverSign, $"bank ({bankHeading}) must be below Receiver's Sign ({receiverSign})");
+        Assert.True(bankHeading < companySign, $"bank ({bankHeading}) must be below the company signature ({companySign})");
+        Assert.True(footer < bankHeading, $"balance footer ({footer}) must stay below the bank block ({bankHeading})");
 
         var text = Squash(string.Concat(doc.GetPages().Select(p => p.Text)));
         var iBank = text.IndexOf("BankName:ADCBIslamic", StringComparison.Ordinal);
@@ -85,15 +77,18 @@ public class FrozenHubPrintReadabilityTests
 
         var description = words.First(w => w.Text == "QUALIKO");
         var price = words.First(w => w.Text == "124.00");
-        // Owner decision 2026-11-03: bilingual A4 item text is 7pt (was 11pt; supersedes P0-PRINT-007 for this layout).
-        Assert.InRange(description.Letters.Max(l => l.PointSize), PdfService.FrozenHubA4ItemFontSize - 0.3, PdfService.FrozenHubA4ItemFontSize + 0.3);
-        Assert.InRange(price.Letters.Max(l => l.PointSize), PdfService.FrozenHubA4ItemFontSize - 0.3, PdfService.FrozenHubA4ItemFontSize + 0.3);
+        // PDF-1 (owner 2026-11-03 evening; invoice 7043 printed at 7pt): description 10.5pt, numbers 10pt, like invoice 7028.
+        Assert.Equal(10.5f, PdfService.FrozenHubA4ItemDescriptionFontSize);
+        Assert.Equal(10f, PdfService.FrozenHubA4ItemNumberFontSize);
+        Assert.Equal(5f, PdfService.FrozenHubA4ItemCellPadding);
+        Assert.InRange(description.Letters.Max(l => l.PointSize), 10.2, 10.8);
+        Assert.InRange(price.Letters.Max(l => l.PointSize), 9.7, 10.3);
 
-        // Row pitch: baseline distance between consecutive product rows (was ~15pt at 9pt / 3pt padding).
+        // Row pitch: baseline distance between consecutive one-line product rows (10.5pt text + 2 x 5pt padding).
         var rows = new[] { "QUALIKO", "6", "ARAURA", "DORRY(HAMOOR)", "EVERYDAY" }
             .Select(t => words.First(w => w.Text == t && w.BoundingBox.Left < 300).BoundingBox.Bottom).ToList();
         for (var i = 1; i < rows.Count; i++)
-            Assert.True(rows[i - 1] - rows[i] >= 8 && rows[i - 1] - rows[i] <= 14, $"row pitch {rows[i - 1] - rows[i]:0.0}pt between rows {i} and {i + 1}");
+            Assert.True(rows[i - 1] - rows[i] >= 18 && rows[i - 1] - rows[i] <= 30, $"row pitch {rows[i - 1] - rows[i]:0.0}pt between rows {i} and {i + 1}");
     }
 
     [Fact]
@@ -210,6 +205,42 @@ public class FrozenHubPrintReadabilityTests
         }
     }
 
+    [Fact]
+    public async Task Evidence_Invoice7028And7043_LiveLines()
+    {
+        // Lines and totals of FrozenHub invoices 7028 (morning, correct) and 7043 (evening, regressed) copied from the live
+        // database on 2026-11-03. Rendered for PNG inspection; amounts must print exactly as stored.
+        await using var db = await SeedAsync();
+        var s7028 = await Sale7013Async(db, Fh1);
+        s7028.InvoiceNo = "7028"; s7028.InvoiceDate = new DateTime(2026, 11, 3, 12, 0, 0, DateTimeKind.Utc);
+        s7028.Items = new List<SaleItemDto>
+        {
+            new() { ProductId = 1, ProductName = "AL ARMAN BEEF VEAL LEG 18KG", UnitType = "CRTN", Qty = 1m, UnitPrice = 435m, VatAmount = 21.75m, LineTotal = 456.75m },
+            new() { ProductId = 2, ProductName = "BEEF BRISKET", UnitType = "CRTN", Qty = 0.5m, UnitPrice = 210m, VatAmount = 5.25m, LineTotal = 110.25m },
+            new() { ProductId = 3, ProductName = "FROZEN BRAZIL BEEF TRIPE", UnitType = "KG", Qty = 10m, UnitPrice = 22m, VatAmount = 11m, LineTotal = 231m },
+            new() { ProductId = 4, ProductName = "CKN BREAST AROURA 12KG", UnitType = "CRTN", Qty = 0.5m, UnitPrice = 182m, VatAmount = 4.55m, LineTotal = 95.55m },
+            new() { ProductId = 5, ProductName = "MUTTON 6 WAY CUT-AUS", UnitType = "KG", Qty = 16.4m, UnitPrice = 36m, VatAmount = 29.52m, LineTotal = 619.92m },
+        };
+        s7028.Subtotal = 1441.40m; s7028.Discount = 3.47m; s7028.VatTotal = 72.07m; s7028.RoundOff = 0m; s7028.GrandTotal = 1510.00m;
+        var s7043 = await Sale7013Async(db, Fh1);
+        s7043.InvoiceNo = "7043"; s7043.InvoiceDate = new DateTime(2026, 11, 3, 12, 0, 0, DateTimeKind.Utc);
+        s7043.Items = new List<SaleItemDto>
+        {
+            new() { ProductId = 1, ProductName = "FROZEN CHICKEN 1200GM QUALIKO", UnitType = "CRTN", Qty = 4m, UnitPrice = 124m, VatAmount = 24.80m, LineTotal = 520.80m },
+        };
+        s7043.Subtotal = 496m; s7043.Discount = 0m; s7043.VatTotal = 24.80m; s7043.RoundOff = 0.20m; s7043.GrandTotal = 521.00m;
+        foreach (var (sale, total) in new[] { (s7028, "1510.00"), (s7043, "521.00") })
+        {
+            var bytes = await Pdf(db).GenerateInvoicePdfAsync(sale, "A4", "full");
+            await SaveAsync(bytes, $"fh1-{sale.InvoiceNo}-A4.pdf");
+            using var doc = PdfDocument.Open(bytes);
+            Assert.Equal(1, doc.NumberOfPages);
+            var text = Squash(Text(bytes));
+            Assert.Contains(total, text);
+            Assert.True(text.IndexOf("Receiver'sSign", StringComparison.Ordinal) < text.IndexOf("BankDetails", StringComparison.Ordinal));
+        }
+    }
+
     // ---------- helpers ----------
 
     private static async Task<SaleDto> Sale7013Async(AppDbContext db, int tenant)
@@ -255,24 +286,60 @@ public class FrozenHubPrintReadabilityTests
     }
 
     [Fact]
-    public async Task A4_TwelveItems_FitOnOnePage_WithTheWholeFooter()
+    public async Task A4_TenItems_FitOnOnePage_WithTheWholeFooter_AtFullSize()
     {
+        // Owner spec (2026-11-03): 1-10 items fit on page 1 without shrinking the 10.5pt product text.
         await using var db = await SeedAsync();
         var sale = await Sale7013Async(db, Fh1);
-        sale.Items = Enumerable.Range(1, 12).Select(i => new SaleItemDto
+        sale.Items = Enumerable.Range(1, 10).Select(i => new SaleItemDto
         {
             ProductId = i, ProductName = $"FROZEN PRODUCT row{i:00} 1300GM", Qty = 1, UnitType = "CRTN", UnitPrice = 100m, VatAmount = 5m, LineTotal = 105m
         }).ToList();
-        sale.Subtotal = 1200m; sale.VatTotal = 60m; sale.Discount = 0; sale.GrandTotal = 1260m;
+        sale.Subtotal = 1000m; sale.VatTotal = 50m; sale.Discount = 0; sale.GrandTotal = 1050m;
         var bytes = await Pdf(db).GenerateInvoicePdfAsync(sale, "A4", "full");
-        await SaveAsync(bytes, "fh1-A4-12-items.pdf");
+        await SaveAsync(bytes, "fh1-A4-10-items.pdf");
         using var doc = PdfDocument.Open(bytes);
         Assert.Equal(1, doc.NumberOfPages);
+        var row = doc.GetPage(1).GetWords().First(w => w.Text == "row10");
+        Assert.InRange(row.Letters.Max(l => l.PointSize), 10.2, 10.8);
         var text = Squash(Text(bytes));
-        for (var i = 1; i <= 12; i++) Assert.Contains($"row{i:00}", text);
+        for (var i = 1; i <= 10; i++) Assert.Contains($"row{i:00}", text);
         Assert.Contains("Receiver'sName", text);
         Assert.Contains("BankDetails", text);
         Assert.Contains("Bills:", text);
+    }
+
+    [Theory]
+    [InlineData(5)]
+    [InlineData(10)]
+    [InlineData(20)]
+    public async Task A4_FooterOrder_SignaturesThenBankThenCustomerBalance(int items)
+    {
+        // PDF-2 lock (invoice 7043): Receiver's Sign < Bank Details < Customer Balance in reading order, on the same page.
+        await using var db = await SeedAsync();
+        var sale = await Sale7013Async(db, Fh1);
+        if (items != 5)
+        {
+            sale.Items = Enumerable.Range(1, items).Select(i => new SaleItemDto
+            {
+                ProductId = i, ProductName = $"FROZEN PRODUCT row{i:00} 1300GM", Qty = 1, UnitType = "CRTN", UnitPrice = 100m, VatAmount = 5m, LineTotal = 105m
+            }).ToList();
+            sale.Subtotal = 100m * items; sale.VatTotal = 5m * items; sale.Discount = 0; sale.GrandTotal = 105m * items;
+        }
+        var bytes = await Pdf(db).GenerateInvoicePdfAsync(sale, "A4", "full");
+        using var doc = PdfDocument.Open(bytes);
+        var last = doc.GetPage(doc.NumberOfPages);
+        var text = Squash(last.Text);
+        var iName = text.IndexOf("Receiver'sName", StringComparison.Ordinal);
+        var iSign = text.IndexOf("Receiver'sSign", StringComparison.Ordinal);
+        var iBank = text.IndexOf("BankDetails", StringComparison.Ordinal);
+        var iBalance = text.IndexOf("CustomerBalance", StringComparison.Ordinal);
+        Assert.True(iName >= 0 && iSign > iName && iBank > iSign && iBalance > iBank, $"order name={iName} sign={iSign} bank={iBank} balance={iBalance}");
+        // Geometry: the bank heading is below every signature label (PDF y grows upward).
+        var words = last.GetWords().ToList();
+        var lowestSignature = words.Where(w => w.Text == "Sign" || w.Text == "For").Min(w => w.BoundingBox.Bottom);
+        var bankTop = words.First(w => w.Text == "Bank" && words.Any(d => d.Text == "Details" && Math.Abs(d.BoundingBox.Bottom - w.BoundingBox.Bottom) < 1)).BoundingBox.Top;
+        Assert.True(bankTop < lowestSignature, $"bank top {bankTop:0.0} must be below the signature labels ({lowestSignature:0.0})");
     }
 
     private static PdfService Pdf(AppDbContext db)
