@@ -102,3 +102,22 @@ inside the signature row. Invoice 7028 (09:00) printed before it went live; 7043
 - UI tablet/mobile pass for all 8 tabs: not run in this release.
 - Secrets in chat: DB password, Groq key, R2 keys, edge proxy secret and the Render API key were pasted into the
   conversation. Rotation recommended (owner action).
+
+## 8. Follow-up: "payments not working" (client voice note 2026-11-03 evening) — release `2f98ec36`
+
+Live evidence (Render logs + DB, user 34 = Vahid, owner of FrozenHub 1):
+- 2026-11-02 13:37–13:54 UTC: 14 attempts to record Khan Darbar's historical payments (1,485 and 1,465) were all refused
+  (`POST /api/payments` 400). Cause: the historical-invoice payment check (fixed in `980fe851`, live 2026-11-03 morning).
+  The same payments saved on 2026-11-03 (#1509, #1517). This is the "two days of delayed payments".
+- 2026-11-03: all 25 payments sent were saved (201 and present in the DB). Edit #1520 saved (200); edit of #1525 was refused
+  because #1525 had already been voided. No delete calls. 0 server errors on payment endpoints.
+- Frontend defects that made saves look failed, for every customer:
+  1. Every GET was cached 30 s and writes never cleared it: right after a save/edit/void the ledger, invoice status and
+     balance reloaded as the pre-payment values.
+  2. Pending entries for payments saved hours earlier (#1523 at 07:31 UTC, #1511 at 03:32 UTC) stayed in a tablet tab and
+     were re-sent at 14:19 and 14:33 (the server correctly replayed the old payment, no duplicate). While such an entry
+     exists, a different payment for that customer was refused ("Retry the previous payment before recording a different payment").
+- Fix (`2f98ec36`): successful writes clear the client cache; payment/customer/sales/historical/purchase/ledger reads are
+  never cached; a different payment first settles the pending one with the server (saved → cleared, not saved → released,
+  unclear → wait). Tests `paymentFreshness` 7/7; `npm test` 393/393; `vite build` OK.
+- Owner action: on each tablet/phone, close and reopen the HexaBill tab (or pull to refresh) once, so the new code loads.
