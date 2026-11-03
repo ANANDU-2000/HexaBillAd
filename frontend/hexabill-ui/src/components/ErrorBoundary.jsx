@@ -1,5 +1,14 @@
 import React from 'react'
 import { RefreshCw } from 'lucide-react'
+import { isStaleChunkError, shouldAutoReloadForStaleChunk } from '../utils/staleChunk'
+
+const readSessionStorage = () => {
+  try {
+    return typeof window !== 'undefined' ? window.sessionStorage : null
+  } catch {
+    return null
+  }
+}
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -13,6 +22,12 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo)
+    // A tab left open across a deploy requests chunks that no longer exist. Reload once to pick up the new build.
+    const online = typeof navigator === 'undefined' || navigator.onLine !== false
+    if (online && isStaleChunkError(error) && shouldAutoReloadForStaleChunk(readSessionStorage())) {
+      window.location.reload()
+      return
+    }
     this.setState({
       error,
       errorInfo
@@ -37,7 +52,7 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      const chunkFailure = /ChunkLoadError|Loading chunk .* failed|dynamically imported module|Importing a module script failed/i.test(this.state.error?.message || '')
+      const chunkFailure = isStaleChunkError(this.state.error)
       const offline = typeof navigator !== 'undefined' && navigator.onLine === false
       return (
         <div className={`${this.props.contained ? 'min-h-[240px] flex-1' : 'min-h-screen'} bg-[#F8FAFC] flex items-center justify-center p-4`}>
