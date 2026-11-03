@@ -228,22 +228,31 @@ const CustomerLedgerPage = () => {
     }
   }, [paymentScope, paymentJournal])
 
-  // A request left unconfirmed by an earlier visit is checked on load, not left for the user to find. Saved on the server:
-  // replayed with its own key (the server returns the stored payment, so nothing new is booked). Never stored: released.
-  // Anything unclear: kept, with the banner. The replay only happens after the server has confirmed the save.
-  const autoReconcileKeyRef = useRef(null)
+  // A request left unconfirmed by an earlier visit is checked on load, not left for the user to find. On a definite
+  // server answer the entry is settled WITHOUT re-posting: saved on the server -> confirmed and cleared (the payment is
+  // already booked; nothing new is sent and nothing can time out); never stored -> released. Anything unclear stays,
+  // with the Retry button. The key is held only while a check is in flight, so a check that is discarded (e.g. the
+  // user switches customer while it runs) can still run again instead of disabling the banner for the whole tab.
+  const autoReconcileInFlightRef = useRef(new Set())
   useEffect(() => {
     const intent = unconfirmedPayment
     if (!intent || intent.scope !== paymentScope || paymentLoadingRef.current) return
-    if (autoReconcileKeyRef.current === intent.idempotencyKey) return
-    autoReconcileKeyRef.current = intent.idempotencyKey
+    const key = intent.idempotencyKey
+    if (autoReconcileInFlightRef.current.has(key)) return
+    autoReconcileInFlightRef.current.add(key)
     ;(async () => {
-      const outcome = await reconcileSavedPayment(intent.idempotencyKey)
-      if (intent.scope !== paymentScopeRef.current) return
-      if (outcome.state === 'saved') await executePaymentApi({ savedIntent: intent })
-      else if (outcome.state === 'not_saved') {
-        paymentJournal.complete(intent.scope, intent.idempotencyKey)
-        setUnconfirmedPayment(null)
+      try {
+        // settlePendingPayment completes the journal and clears the banner for both definite answers; 'unknown' keeps it.
+        const outcome = await settlePendingPayment(paymentJournal, intent.scope, reconcileSavedPayment)
+        if (intent.scope !== paymentScopeRef.current) return
+        if (outcome.state === 'saved') {
+          setUnconfirmedPayment(null)
+          toast(`Previous payment of ${formatCurrency(intent.request.amount)} was already saved.`, { id: 'payment-previous-saved', duration: 4000 })
+        } else if (outcome.state === 'not_saved') {
+          setUnconfirmedPayment(null)
+        }
+      } finally {
+        autoReconcileInFlightRef.current.delete(key)
       }
     })()
   }, [unconfirmedPayment, paymentScope, paymentJournal])
