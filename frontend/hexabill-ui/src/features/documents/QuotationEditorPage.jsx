@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2, Save, Download, Printer, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { quotationsAPI } from '../../services/documentsApi'
@@ -71,6 +71,8 @@ function formatPreviewDate(iso) {
 export default function QuotationEditorPage() {
   const { currency = 'AED' } = useBranding()
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const copyId = searchParams.get('copy')
   const isEdit = Boolean(id)
   const navigate = useNavigate()
   const [quoteNo, setQuoteNo] = useState('Quote-…')
@@ -364,6 +366,56 @@ export default function QuotationEditorPage() {
             discount: 0,
             items: [emptyLine()],
           }
+          // Duplicate: start from an existing quotation but as a fresh Draft with today's dates.
+          if (copyId) {
+            try {
+              const src = (await quotationsAPI.get(copyId))?.data
+              if (src && !cancelled) {
+                const copyItems = (src.items || []).map((i) => ({
+                  tempId: newTempId(),
+                  productId: i.productId ?? null,
+                  description: i.description,
+                  descriptionSubtitle: i.descriptionSubtitle || '',
+                  unitLabel: i.unitLabel || 'Pcs',
+                  qty: i.qty,
+                  unitPrice: i.unitPrice,
+                  vatRate: i.vatRate || 5,
+                }))
+                Object.assign(next, {
+                  customerName: src.customerName || '',
+                  customerAddress: src.customerAddress || '',
+                  customerTrn: src.customerTrn || '',
+                  customerPhone: src.customerPhone || '',
+                  customerEmail: src.customerEmail || '',
+                  customerId: src.customerId ?? null,
+                  subject: src.subject || '',
+                  terms: src.termsAndConditions || defTerms,
+                  notes: src.notes || '',
+                  salutation: src.salutation || DEFAULT_SALUTATION,
+                  introLine: src.introLine || DEFAULT_INTRO,
+                  closingLine: src.closingLine || DEFAULT_CLOSING,
+                  discount: src.discount || 0,
+                  items: copyItems.length ? copyItems : next.items,
+                })
+                setCustomerName(next.customerName)
+                setCustomerAddress(next.customerAddress)
+                setCustomerTrn(next.customerTrn)
+                setCustomerPhone(next.customerPhone)
+                setCustomerEmail(next.customerEmail)
+                setCustomerId(next.customerId)
+                setSubject(next.subject)
+                setTerms(next.terms)
+                setNotes(next.notes)
+                setSalutation(next.salutation)
+                setIntroLine(next.introLine)
+                setClosingLine(next.closingLine)
+                setDiscount(next.discount)
+                setItems(next.items)
+              }
+            } catch {
+              /* copy source missing: fall back to a blank quotation */
+            }
+          }
           setBaseline(serializeForm(next))
           skipAutoSave.current = true
         }
@@ -374,7 +426,7 @@ export default function QuotationEditorPage() {
     return () => {
       cancelled = true
     }
-  }, [id, isEdit, serializeForm])
+  }, [id, isEdit, copyId, serializeForm])
 
   const totals = useMemo(() => calcQuoteTotals(items, discount, 5), [items, discount])
 

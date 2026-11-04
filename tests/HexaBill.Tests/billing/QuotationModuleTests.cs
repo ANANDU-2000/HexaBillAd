@@ -71,6 +71,27 @@ public class QuotationModuleTests
     }
 
     [Fact]
+    public async Task LargeQuotation_25Items_CreateGrowShrinkAndDelete_StayConsistent()
+    {
+        var (db, svc) = NewService();
+        var created = await svc.CreateAsync(new CreateQuotationRequest { Items = Lines(25) }, 1, TenantA);
+        Assert.Equal(25, created.Items.Count);
+        Assert.Equal(Enumerable.Range(0, 25), created.Items.Select(i => i.SortOrder));
+
+        var grown = await svc.UpdateAsync(created.Id, new UpdateQuotationRequest { Items = Lines(40, 5m) }, 1, TenantA);
+        Assert.Equal(40, grown!.Items.Count);
+        Assert.Equal(40, await db.QuotationItems.CountAsync());
+
+        var shrunk = await svc.UpdateAsync(created.Id, new UpdateQuotationRequest { Items = Lines(12) }, 1, TenantA);
+        Assert.Equal(12, shrunk!.Items.Count);
+        Assert.Equal(12, await db.QuotationItems.CountAsync());
+        Assert.Equal(Lines(12).Sum(l => Math.Round(l.Qty * l.UnitPrice, 2)), shrunk.Subtotal);
+
+        Assert.True(await svc.DeleteAsync(created.Id, 1, TenantA));
+        Assert.Empty(await svc.ListAsync(TenantA));
+    }
+
+    [Fact]
     public async Task DeleteQuotation_IsTenantScoped_AndHidesFromListAndGet()
     {
         var (_, svc) = NewService();

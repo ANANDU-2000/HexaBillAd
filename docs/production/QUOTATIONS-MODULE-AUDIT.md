@@ -18,3 +18,8 @@
 ## Not verified
 - Live (production) create/print/delete with a real session (no production login available to automation).
 - Visual check of every tenant's letterhead.
+
+## Round 3: large quotations + list features
+- Backend test `LargeQuotation_25Items_CreateGrowShrinkAndDelete_StayConsistent`: 25 -> 40 -> 12 items, no orphan rows, sort order preserved, delete (6/6 module tests pass).
+- Browser `quotation-large-and-list.spec.js` (m390, t768, d1440 pass): 22 rows through the UI with auto-save firing mid-way, reload (22 persisted), remove 5, reload (17), list search / status filter / quick status change, Copy (prefilled 17 rows), delete. Existing `document-lists-responsive` and `quotation-editor-flow` specs also pass.
+- List page now: search (number, customer, subject, TRN), status filter, sort, 25/page paging, item count, valid-until with "lapsed" marker, inline status change, Copy (duplicate), totals strip, filtered-empty state.
