@@ -12,6 +12,7 @@ import { useAuthedImageSrc } from '../../utils/useAuthedImageSrc'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import BackLink from '../../components/ui/BackLink'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
+import { reserveTab, showPdf, closeTab, downloadBlob } from '../../utils/pdfOpen'
 
 /** productsAPI returns ApiResponse; list is often nested as data.items (paged) or data (array). */
 function unwrapProductList(res) {
@@ -42,24 +43,6 @@ const emptyLine = () => ({
   vatRate: 5,
 })
 
-function downloadBlob(blob, filename) {
-  const url = window.URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  setTimeout(() => {
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
-  }, 1000)
-}
-
-function openPdfBlob(blob) {
-  const url = window.URL.createObjectURL(blob)
-  window.open(url, '_blank')
-  setTimeout(() => window.URL.revokeObjectURL(url), 60_000)
-}
 
 function formatPreviewDate(iso) {
   if (!iso) return ''
@@ -435,6 +418,8 @@ export default function QuotationEditorPage() {
 
   const handlePdf = async (format, mode, layout = 'full') => {
     setError('')
+    // Must happen synchronously inside the click, before any await, or browsers block the tab.
+    const tab = mode === 'download' ? null : reserveTab()
     setSaving(true)
     try {
       let qid = savedId
@@ -444,9 +429,10 @@ export default function QuotationEditorPage() {
       const blob = await quotationsAPI.getPdf(qid, format, layout)
       const name = `${quoteNo || 'Quote'}_${format}.pdf`
       if (mode === 'download') downloadBlob(blob, name)
-      else openPdfBlob(blob)
+      else showPdf(blob, name, tab)
     } catch (e) {
-      setError(e?.response?.data?.message || 'PDF failed')
+      closeTab(tab)
+      setError(e?.response?.data?.message || e?.message || 'PDF failed')
     } finally {
       setSaving(false)
     }
@@ -584,11 +570,64 @@ export default function QuotationEditorPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Line items</span>
-              <button type="button" onClick={addItem} className="inline-flex items-center gap-1 text-sm text-primary">
+              <button type="button" onClick={addItem} className="hidden md:inline-flex items-center gap-1 px-2 min-h-9 text-sm text-primary">
                 <Plus className="w-4 h-4" /> Add
               </button>
             </div>
-            <div className="overflow-x-auto border rounded">
+            {/* Phone: one card per line, no sideways scrolling */}
+            <ul className="md:hidden space-y-2" aria-label="Line items">
+              {items.map((row, idx) => {
+                const calc = calcQuoteLine(row.qty, row.unitPrice, row.vatRate || 5)
+                const field = 'w-full min-h-11 border rounded px-2 text-sm'
+                return (
+                  <li key={row.tempId ?? idx} className="border rounded-lg p-2 bg-slate-50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-text-secondary">Item {idx + 1}</span>
+                      <button type="button" onClick={() => removeItem(idx)} disabled={items.length <= 1} className="min-h-11 min-w-11 inline-flex items-center justify-center text-error disabled:opacity-40" aria-label={`Remove item ${idx + 1}`}>
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        className={field}
+                        value={row.description}
+                        onChange={(e) => updateItem(idx, { description: e.target.value, productId: null })}
+                        placeholder="Description"
+                        aria-label={`Item ${idx + 1} description`}
+                      />
+                      <button type="button" className="shrink-0 min-h-11 min-w-11 inline-flex items-center justify-center border rounded text-primary" onClick={() => openDrawer(idx)} aria-label="Search products">
+                        <Search className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <input className={field} placeholder="Subtitle (optional)" value={row.descriptionSubtitle} onChange={(e) => updateItem(idx, { descriptionSubtitle: e.target.value })} aria-label={`Item ${idx + 1} subtitle`} />
+                    <div className="grid grid-cols-3 gap-2">
+                      <label className="text-micro text-text-secondary">Qty
+                        <input type="number" inputMode="decimal" className={`${field} text-right`} value={row.qty} onChange={(e) => updateItem(idx, { qty: e.target.value })} />
+                      </label>
+                      <label className="text-micro text-text-secondary">Unit
+                        <input className={field} value={row.unitLabel} onChange={(e) => updateItem(idx, { unitLabel: e.target.value })} />
+                      </label>
+                      <label className="text-micro text-text-secondary">VAT %
+                        <input type="number" inputMode="decimal" className={`${field} text-right`} value={row.vatRate} onChange={(e) => updateItem(idx, { vatRate: e.target.value })} />
+                      </label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 items-end">
+                      <label className="text-micro text-text-secondary">Price
+                        <input type="number" inputMode="decimal" step="0.01" className={`${field} text-right`} value={row.unitPrice} onChange={(e) => updateItem(idx, { unitPrice: e.target.value })} />
+                      </label>
+                      <div className="text-right text-sm">
+                        <div className="text-micro text-text-secondary">Tax {calc.vatAmount.toFixed(2)}</div>
+                        <div className="font-semibold tabular-nums">{currency} {calc.lineTotal.toFixed(2)}</div>
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+            <button type="button" onClick={addItem} className="md:hidden w-full min-h-11 inline-flex items-center justify-center gap-1 border border-dashed rounded-lg text-sm text-primary">
+              <Plus className="w-4 h-4" /> Add another item
+            </button>
+            <div className="hidden md:block overflow-x-auto border rounded">
               <table className="min-w-[40rem] w-full text-xs">
                 <thead className="bg-slate-100">
                   <tr>

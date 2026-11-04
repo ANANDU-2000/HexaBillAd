@@ -3,25 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Plus, FileText, Pencil, Printer, Trash2, Download } from 'lucide-react'
 import { quotationsAPI } from '../../services/documentsApi'
 import { useBranding } from '../../tenant/TenantBrandingContext'
-
-function downloadBlob(blob, filename) {
-  const url = window.URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  setTimeout(() => {
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
-  }, 1000)
-}
-
-function openPdfBlob(blob) {
-  const url = window.URL.createObjectURL(blob)
-  window.open(url, '_blank')
-  setTimeout(() => window.URL.revokeObjectURL(url), 60_000)
-}
+import { reserveTab, showPdf, closeTab, downloadBlob } from '../../utils/pdfOpen'
 
 export default function QuotationsPage() {
   const { currency = 'AED' } = useBranding()
@@ -57,20 +39,27 @@ export default function QuotationsPage() {
       window.dispatchEvent(new CustomEvent('dataUpdated'))
       setRows((prev) => prev.filter((r) => r.id !== row.id))
     } catch (e) {
-      setError(e?.response?.data?.message || 'Delete failed')
+      setError(
+        e?.response?.status === 403
+          ? 'Only an Owner or Admin can delete quotations.'
+          : e?.response?.data?.message || 'Delete failed'
+      )
     } finally {
       setBusyId(null)
     }
   }
 
   const handlePdf = async (row, format, mode, layout = 'full') => {
+    // Open the tab synchronously inside the click so popup blockers / iOS Safari allow it.
+    const tab = mode === 'download' ? null : reserveTab()
     setBusyId(row.id)
     setError('')
     try {
       const blob = await quotationsAPI.getPdf(row.id, format, layout)
       if (mode === 'download') downloadBlob(blob, `${row.quoteNo}_${format}.pdf`)
-      else openPdfBlob(blob)
+      else showPdf(blob, `${row.quoteNo}_${format}.pdf`, tab)
     } catch (e) {
+      closeTab(tab)
       setError(e?.response?.data?.message || 'PDF failed')
     } finally {
       setBusyId(null)
