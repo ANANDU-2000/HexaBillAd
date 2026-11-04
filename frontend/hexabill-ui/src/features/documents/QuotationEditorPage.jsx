@@ -643,7 +643,8 @@ export default function QuotationEditorPage() {
     }
     const name = product.nameEn || product.name || product.NameEn || ''
     const price = Number(product.sellPrice ?? product.SellPrice ?? 0)
-    const unit = product.unit || product.Unit || product.unitLabel || 'Pcs'
+    // Backend ProductDto sends UnitType (CRTN/KG/PCS); also accept camel/Pascal variants.
+    const unit = product.UnitType || product.unitType || product.unit || product.Unit || product.unitLabel || 'Pcs'
     updateItem(drawerRow, {
       productId: product.id ?? product.Id,
       description: name,
@@ -806,7 +807,8 @@ export default function QuotationEditorPage() {
                         className={field}
                         value={row.description}
                         onChange={(e) => updateItem(idx, { description: e.target.value, productId: null })}
-                        placeholder="Description"
+                        onFocus={() => { if (!row.description?.trim()) openDrawer(idx) }}
+                        placeholder="Tap to pick a product or type"
                         aria-label={`Item ${idx + 1} description`}
                       />
                       <button type="button" className="shrink-0 min-h-11 min-w-11 inline-flex items-center justify-center border rounded text-primary" onClick={() => openDrawer(idx)} aria-label="Search products">
@@ -867,6 +869,8 @@ export default function QuotationEditorPage() {
                               className="w-full min-w-0 border rounded px-1 py-1"
                               value={row.description}
                               onChange={(e) => updateItem(idx, { description: e.target.value, productId: null })}
+                              onFocus={() => { if (!row.description?.trim()) openDrawer(idx) }}
+                              onClick={() => { if (!row.description?.trim()) openDrawer(idx) }}
                               onKeyDown={(e) => onLineKeyDown(e, idx, 'description')}
                               placeholder="Search or type"
                             />
