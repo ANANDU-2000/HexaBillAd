@@ -2888,74 +2888,71 @@ const CustomerLedgerPage = () => {
                 </Modal>
               )}
 
-              {/* Date + branch/route/staff (UX-L02): phones see a one-line summary that opens the
-                  filters; from 768px the strip stays inline. Values still auto-apply (debounced). */}
-              {selectedCustomer && (
-                <button
-                  type="button"
-                  onClick={() => setLedgerFiltersOpen((v) => !v)}
-                  className="md:hidden shrink-0 flex min-h-11 w-full items-center gap-2 border-b border-neutral-200 bg-neutral-50 px-3 text-left text-xs text-neutral-700"
-                  aria-expanded={ledgerFiltersOpen}
-                  aria-controls="ledger-period-filters"
-                >
-                  <Filter className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
-                  <span className="min-w-0 flex-1 truncate">{ledgerFilterSummary}</span>
-                  <span className="shrink-0 font-medium text-primary-700">{ledgerFiltersOpen ? 'Done' : 'Change'}</span>
-                </button>
-              )}
-              {selectedCustomer && (
-                <div id="ledger-period-filters" className={`${ledgerFiltersOpen ? 'grid' : 'hidden'} md:flex shrink-0 grid-cols-2 gap-2 bg-neutral-50 border-b border-neutral-200 px-3 py-2 md:py-1.5 md:flex-wrap md:items-center`}>
-                  <label className="flex min-w-0 flex-col gap-0.5 md:flex-row md:items-center md:gap-1.5">
+              <div className="shrink-0 bg-slate-50 border-b border-neutral-200 px-3 py-2 flex flex-wrap items-center gap-2">
+                  <DatePresetChips from={filterDraft.from} to={filterDraft.to} onChange={(r) => setFilterDraft(prev => ({ ...prev, from: r.from, to: r.to }))} />
+                  <label className="flex items-center gap-1 text-xs text-neutral-600">
                     <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">From</span>
                     <input
                       type="date"
                       value={filterDraft.from}
                       onChange={(e) => setFilterDraft(prev => ({ ...prev, from: e.target.value }))}
-                      className="input min-w-0 text-sm md:min-h-9 md:w-auto"
+                      className="h-8 text-xs px-2 rounded-md border bg-white"
                     />
                   </label>
-                  <label className="flex min-w-0 flex-col gap-0.5 md:flex-row md:items-center md:gap-1.5">
+                  <label className="flex items-center gap-1 text-xs text-neutral-600">
                     <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">To</span>
                     <input
                       type="date"
                       value={filterDraft.to}
                       onChange={(e) => setFilterDraft(prev => ({ ...prev, to: e.target.value }))}
-                      className="input min-w-0 text-sm md:min-h-9 md:w-auto"
+                      className="h-8 text-xs px-2 rounded-md border bg-white"
                     />
                   </label>
-                  <DatePresetChips from={filterDraft.from} to={filterDraft.to} onChange={(r) => setFilterDraft(prev => ({ ...prev, from: r.from, to: r.to }))} className="col-span-2" />
-                  <select
-                    value={filterDraft.branchId}
-                    onChange={(e) => setFilterDraft(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
-                    className={`input min-w-0 text-sm md:min-h-9 md:max-w-[11rem] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
-                    disabled={!isAdminOrOwner(user) && availableBranches.length <= 1}
-                    title="Filter by branch"
+                  <button
+                    type="button"
+                    onClick={() => setLedgerFiltersOpen((v) => !v)}
+                    className="inline-flex items-center gap-1 h-8 px-2.5 text-xs font-semibold rounded-md border bg-white text-neutral-700 hover:bg-neutral-100"
+                    aria-expanded={ledgerFiltersOpen}
                   >
-                    {isAdminOrOwner(user) && <option value="">All branches</option>}
-                    {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                  <select
-                    value={filterDraft.routeId}
-                    onChange={(e) => setFilterDraft(prev => ({ ...prev, routeId: e.target.value }))}
-                    className={`input min-w-0 text-sm md:min-h-9 md:max-w-[11rem] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
-                    disabled={!isAdminOrOwner(user) && availableRoutes.length <= 1}
-                    title="Filter by route"
-                  >
-                    {isAdminOrOwner(user) && <option value="">All routes</option>}
-                    {(filterDraft.branchId ? availableRoutes.filter(r => r.branchId === parseInt(filterDraft.branchId, 10)) : availableRoutes).map(r => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={filterDraft.staffId}
-                    onChange={(e) => setFilterDraft(prev => ({ ...prev, staffId: e.target.value }))}
-                    className={`input min-w-0 text-sm md:min-h-9 md:max-w-[11rem] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
-                    disabled={!isAdminOrOwner(user)}
-                    title="Filter by staff"
-                  >
-                    {isAdminOrOwner(user) && <option value="">All staff</option>}
-                    {availableStaff.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
-                  </select>
+                    <Filter className="h-3.5 w-3.5 shrink-0 text-neutral-500" aria-hidden />
+                    Filters {ledgerFiltersOpen ? '▲' : '▼'}
+                  </button>
+                  {ledgerFiltersOpen && (
+                    <div className="flex flex-wrap items-center gap-2 w-full">
+                      <select
+                        value={filterDraft.branchId}
+                        onChange={(e) => setFilterDraft(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
+                        className={`input min-w-0 text-sm md:min-h-9 md:max-w-[11rem] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                        disabled={!isAdminOrOwner(user) && availableBranches.length <= 1}
+                        title="Filter by branch"
+                      >
+                        {isAdminOrOwner(user) && <option value="">All branches</option>}
+                        {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                      </select>
+                      <select
+                        value={filterDraft.routeId}
+                        onChange={(e) => setFilterDraft(prev => ({ ...prev, routeId: e.target.value }))}
+                        className={`input min-w-0 text-sm md:min-h-9 md:max-w-[11rem] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                        disabled={!isAdminOrOwner(user) && availableRoutes.length <= 1}
+                        title="Filter by route"
+                      >
+                        {isAdminOrOwner(user) && <option value="">All routes</option>}
+                        {(filterDraft.branchId ? availableRoutes.filter(r => r.branchId === parseInt(filterDraft.branchId, 10)) : availableRoutes).map(r => (
+                          <option key={r.id} value={r.id}>{r.name}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={filterDraft.staffId}
+                        onChange={(e) => setFilterDraft(prev => ({ ...prev, staffId: e.target.value }))}
+                        className={`input min-w-0 text-sm md:min-h-9 md:max-w-[11rem] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                        disabled={!isAdminOrOwner(user)}
+                        title="Filter by staff"
+                      >
+                        {isAdminOrOwner(user) && <option value="">All staff</option>}
+                        {availableStaff.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
 
