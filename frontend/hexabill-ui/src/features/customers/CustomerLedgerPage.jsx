@@ -4139,32 +4139,27 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
 
   return (
     <div className="w-full h-full flex flex-col bg-neutral-50 min-w-0 min-h-0">
-      {/* 5 Customer KPI Cards */}
-      <div className="shrink-0 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 px-3 py-2 bg-neutral-50 border-b border-neutral-200" aria-label="Customer summary">
-        <div className="rounded-md border border-neutral-200 border-l-4 border-l-primary-600 bg-white p-2">
+      {/* 5 Customer KPI Cards — compact one-row strip so Ledger rows get the vertical space */}
+      <div className="shrink-0 grid grid-cols-2 sm:grid-cols-5 gap-1.5 px-2.5 py-1.5 bg-neutral-50 border-b border-neutral-200" aria-label="Customer summary">
+        <div className="px-2 py-1.5 rounded-lg border bg-white flex flex-col justify-between">
           <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Total Billed</p>
-          <p className="text-sm font-bold tabular-nums text-neutral-900 truncate">{formatCurrency(Number(totalDebit) || 0)}</p>
-          <p className="text-[10px] text-neutral-500 truncate">Debits in period</p>
+          <p className="text-sm sm:text-base font-extrabold tabular-nums text-neutral-900">{formatCurrency(Number(totalDebit) || 0)}</p>
         </div>
-        <div className="rounded-md border border-neutral-200 border-l-4 border-l-emerald-600 bg-white p-2">
+        <div className="px-2 py-1.5 rounded-lg border bg-white flex flex-col justify-between">
           <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Total Received</p>
-          <p className="text-sm font-bold tabular-nums text-emerald-700 truncate">{formatCurrency(Number(totalCredit) || 0)}</p>
-          <p className="text-[10px] text-neutral-500 truncate">Payments & credits</p>
+          <p className="text-sm sm:text-base font-extrabold tabular-nums text-emerald-700">{formatCurrency(Number(totalCredit) || 0)}</p>
         </div>
-        <div className="rounded-md border border-neutral-200 border-l-4 border-l-amber-600 bg-white p-2">
+        <div className="px-2 py-1.5 rounded-lg border bg-white flex flex-col justify-between">
           <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Period Net</p>
-          <p className="text-sm font-bold tabular-nums text-amber-800 truncate">{formatCurrency((Number(totalDebit) || 0) - (Number(totalCredit) || 0))}</p>
-          <p className="text-[10px] text-neutral-500 truncate">Billed minus paid</p>
+          <p className="text-sm sm:text-base font-extrabold tabular-nums text-amber-800">{formatCurrency((Number(totalDebit) || 0) - (Number(totalCredit) || 0))}</p>
         </div>
-        <div className="rounded-md border border-neutral-200 border-l-4 border-l-violet-600 bg-white p-2">
+        <div className="px-2 py-1.5 rounded-lg border bg-white flex flex-col justify-between">
           <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Transactions</p>
-          <p className="text-sm font-bold tabular-nums text-neutral-900 truncate">{displayedEntries.length}</p>
-          <p className="text-[10px] text-neutral-500 truncate">Ledger rows</p>
+          <p className="text-sm sm:text-base font-extrabold tabular-nums text-neutral-900">{displayedEntries.length}</p>
         </div>
-        <div className="rounded-md border border-neutral-200 border-l-4 border-l-rose-600 bg-white p-2">
+        <div className="px-2 py-1.5 rounded-lg border bg-white flex flex-col justify-between">
           <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Closing Balance</p>
-          <p className={`text-sm font-bold tabular-nums truncate ${(Number(closingBalance) || 0) > 0 ? 'text-red-700' : (Number(closingBalance) || 0) < 0 ? 'text-emerald-700' : 'text-neutral-900'}`}>{formatBalance(Number(closingBalance) || 0)}</p>
-          <p className="text-[10px] text-neutral-500 truncate">Current balance</p>
+          <p className={`text-sm sm:text-base font-extrabold tabular-nums ${(Number(closingBalance) || 0) > 0 ? 'text-red-700' : (Number(closingBalance) || 0) < 0 ? 'text-emerald-700' : 'text-neutral-900'}`}>{formatBalance(Number(closingBalance) || 0)}</p>
         </div>
       </div>
 
