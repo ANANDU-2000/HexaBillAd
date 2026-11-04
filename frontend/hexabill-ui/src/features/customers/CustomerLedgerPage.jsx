@@ -2721,57 +2721,50 @@ const CustomerLedgerPage = () => {
                       type="button"
                       onClick={() => clearSelectedCustomer({ keepSearch: false })}
                       className="inline-flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-md border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
-                      title="Switch customer (F2)"
+                      title="Back to customer list"
                       aria-label="Back to customer list"
                     >
                       <ArrowLeft className="h-4 w-4" aria-hidden />
                     </button>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-lg sm:text-xl font-bold text-slate-900 break-words min-w-0">{selectedCustomer.name}</h2>
-                        <button
-                          type="button"
-                          onClick={() => clearSelectedCustomer({ keepSearch: true })}
-                          className="text-xs text-primary-700 font-medium hover:underline shrink-0"
-                          title="Switch customer (F2)"
-                        >
-                          Switch (F2)
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm sm:text-base text-slate-700 flex-wrap">
-                        {selectedCustomer.id !== 'cash' && selectedCustomer.phone && <span className="font-medium">{selectedCustomer.phone}</span>}
-                        {selectedCustomer.id !== 'cash' && selectedCustomer.trn && <span>TRN: {selectedCustomer.trn}</span>}
-                        {selectedCustomer.id !== 'cash' && selectedCustomer.location && <span>{selectedCustomer.location}</span>}
-                        {selectedCustomer.id === 'cash' && <span className="text-primary-600 font-medium">Cash sales</span>}
-                      </div>
+                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                      <h1 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight truncate min-w-0">{selectedCustomer.name}</h1>
+                      {selectedCustomer.id !== 'cash' && selectedCustomer.phone && (
+                        <span className="text-xs sm:text-sm font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded whitespace-nowrap shrink-0">{selectedCustomer.phone}</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => clearSelectedCustomer({ keepSearch: true })}
+                        className="text-xs font-semibold text-blue-600 hover:underline whitespace-nowrap shrink-0"
+                        title="Switch customer (F2)"
+                      >
+                        Switch (F2)
+                      </button>
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-micro text-neutral-600 uppercase tracking-wide">Balance</p>
-                    {balanceRefreshSkeleton ? (
-                      <p className="text-sm text-neutral-500 animate-pulse">Refreshing…</p>
-                    ) : (
-                      <div>
-                        <p className="text-base sm:text-lg font-semibold tabular-nums text-text-primary">
-                          {formatCurrency(Math.abs(selectedCustomer.balance ?? 0))}
-                          <span className="text-micro font-medium text-neutral-500 ml-1">{(selectedCustomer.balance ?? 0) < 0 ? 'Cr' : (selectedCustomer.balance ?? 0) > 0 ? 'Dr' : ''}</span>
-                        </p>
-                        {outstandingInvoices.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveTab('invoices')
-                              setDateRange({ from: '', to: '' })
-                              setFilterDraft(prev => ({ ...prev, from: '', to: '' }))
-                            }}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded px-1.5 py-0.5 mt-0.5 cursor-pointer transition-colors"
-                            title="Click to view all unpaid invoices"
-                          >
-                            <AlertCircle className="h-3 w-3 text-amber-600" />
-                            <span>{outstandingInvoices.length} Unpaid Invoice{outstandingInvoices.length > 1 ? 's' : ''}</span>
-                          </button>
-                        )}
-                      </div>
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg flex-shrink-0">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block leading-none">Balance Due</span>
+                      {balanceRefreshSkeleton ? (
+                        <span className="text-sm text-red-500 animate-pulse">Refreshing…</span>
+                      ) : (
+                        <span className="text-base sm:text-lg font-extrabold text-red-700 tabular-nums">
+                          {formatCurrency(Math.abs(selectedCustomer.balance ?? 0))} {(selectedCustomer.balance ?? 0) < 0 ? 'Cr' : (selectedCustomer.balance ?? 0) > 0 ? 'Dr' : ''}
+                        </span>
+                      )}
+                    </div>
+                    {outstandingInvoices.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('pending')
+                          setDateRange({ from: '', to: '' })
+                          setFilterDraft(prev => ({ ...prev, from: '', to: '' }))
+                        }}
+                        title="View unpaid bills"
+                        className="bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
+                      >
+                        {outstandingInvoices.length} Unpaid
+                      </button>
                     )}
                   </div>
 
