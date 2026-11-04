@@ -2727,8 +2727,8 @@ const CustomerLedgerPage = () => {
                       <ArrowLeft className="h-4 w-4" aria-hidden />
                     </button>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-sm sm:text-base font-bold text-neutral-900 truncate">{selectedCustomer.name}</h2>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-lg sm:text-xl font-bold text-slate-900 break-words min-w-0">{selectedCustomer.name}</h2>
                         <button
                           type="button"
                           onClick={() => clearSelectedCustomer({ keepSearch: true })}
@@ -2738,8 +2738,8 @@ const CustomerLedgerPage = () => {
                           Switch (F2)
                         </button>
                       </div>
-                      <div className="flex items-center gap-2 text-micro sm:text-xs text-neutral-600 flex-wrap">
-                        {selectedCustomer.id !== 'cash' && selectedCustomer.phone && <span>{selectedCustomer.phone}</span>}
+                      <div className="flex items-center gap-2 text-sm sm:text-base text-slate-700 flex-wrap">
+                        {selectedCustomer.id !== 'cash' && selectedCustomer.phone && <span className="font-medium">{selectedCustomer.phone}</span>}
                         {selectedCustomer.id !== 'cash' && selectedCustomer.trn && <span>TRN: {selectedCustomer.trn}</span>}
                         {selectedCustomer.id !== 'cash' && selectedCustomer.location && <span>{selectedCustomer.location}</span>}
                         {selectedCustomer.id === 'cash' && <span className="text-primary-600 font-medium">Cash sales</span>}
