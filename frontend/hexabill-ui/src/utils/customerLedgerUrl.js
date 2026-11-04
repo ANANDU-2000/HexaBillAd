@@ -1,8 +1,9 @@
-const VALID_LEDGER_TABS = new Set(['ledger', 'invoices', 'payments', 'reports'])
+const VALID_LEDGER_TABS = new Set(['pending', 'ledger', 'invoices', 'payments', 'reports'])
 
 /** @param {string | null | undefined} tab */
 export function normalizeLedgerTab(tab) {
-  return tab && VALID_LEDGER_TABS.has(tab) ? tab : 'ledger'
+  // Default to the Pending & Partial tab so unpaid/partially-paid bills are front-and-center.
+  return tab && VALID_LEDGER_TABS.has(tab) ? tab : 'pending'
 }
 
 /**
@@ -11,7 +12,7 @@ export function normalizeLedgerTab(tab) {
  */
 export function syncLedgerTabSearchParam(params, { tab }) {
   const normalized = normalizeLedgerTab(tab)
-  if (normalized === 'ledger') params.delete('tab')
+  if (normalized === 'pending') params.delete('tab')
   else params.set('tab', normalized)
 }
 

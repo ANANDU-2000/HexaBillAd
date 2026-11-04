@@ -2375,6 +2375,48 @@ const CustomerLedgerPage = () => {
     setShowPaymentModal(true)
   }
 
+  // Reusable invoice View / PDF / Pay handlers (shared by the Pending & Partial tab and the
+  // Pending Bills List inside Summary & Stats, so every unpaid bill exposes these actions).
+  const openInvoiceView = (invoiceId, inv) => {
+    const target = inv || customerInvoices.find(i => i.id === invoiceId)
+    if (target?.isLegacy) {
+      setSelectedLegacyInvoiceId(target.legacyInvoiceId || target.id)
+      setShowLegacyInvoiceModal(true)
+    } else {
+      setSelectedInvoiceForView(invoiceId)
+      setShowInvoiceModal(true)
+    }
+  }
+  const openInvoicePdf = async (invoiceId, invoiceRow) => {
+    const target = invoiceRow || customerInvoices.find(i => i.id === invoiceId)
+    // Historical rows never reach the Sales PDF endpoint: their id is a legacy id and can equal a live sale id.
+    if (target?.isLegacy) {
+      try {
+        await openLegacyInvoicePdf(target.legacyInvoiceId || target.id)
+      } catch (error) {
+        toast.error(await legacyPdfErrorMessage(error, 'Failed to generate the historical invoice PDF'))
+      }
+      return
+    }
+    const saleId = salePdfId(target)
+    if (saleId === undefined) {
+      toast.error('This invoice has no printable sale record')
+      return
+    }
+    try {
+      const pdfBlob = await salesAPI.getInvoicePdf(saleId, { layout: 'full' })
+      const url = window.URL.createObjectURL(pdfBlob)
+      window.open(url, '_blank')
+      setTimeout(() => window.URL.revokeObjectURL(url), 100)
+    } catch (error) {
+      if (!error?._handledByInterceptor) toast.error('Failed to generate PDF')
+    }
+  }
+  const openPayInvoice = (invoiceId) => {
+    setPaymentModalInvoiceId(invoiceId)
+    setShowPaymentModal(true)
+  }
+
   const handlePendingBillsPdf = async () => {
     if (pdfLoading) return
     if (!selectedCustomer || !selectedCustomer.id) {
@@ -2931,10 +2973,11 @@ const CustomerLedgerPage = () => {
                   activeId={activeTab}
                   onChange={handleLedgerTabChange}
                   tabs={[
-                    { id: 'ledger', label: 'Ledger', shortLabel: 'Ledger', icon: FileText },
-                    { id: 'invoices', label: 'Invoices', shortLabel: 'Bills', icon: FileText },
-                    { id: 'payments', label: 'Payments', shortLabel: 'Paid', icon: CreditCard },
-                    { id: 'reports', label: 'Reports', shortLabel: 'Stats', icon: TrendingUp }
+                    { id: 'pending', label: 'Pending & Partial', shortLabel: `Pending (${outstandingInvoices.length})`, icon: Clock },
+                    { id: 'invoices', label: 'All Bills', shortLabel: 'Bills', icon: FileText },
+                    { id: 'payments', label: 'Payments Received', shortLabel: 'Payments', icon: CreditCard },
+                    { id: 'ledger', label: 'Full Statement', shortLabel: 'Ledger', icon: FileText },
+                    { id: 'reports', label: 'Summary & Stats', shortLabel: 'Stats', icon: TrendingUp }
                   ]}
                 />
 
@@ -3037,6 +3080,21 @@ const CustomerLedgerPage = () => {
                           })
                         }}
                         onViewReceipt={openReceiptPreviewForPaymentId}
+                      />
+                    )
+                  )}
+
+                  {activeTab === 'pending' && (
+                    showLedgerLoading ? (
+                      <div className="flex items-center justify-center h-full min-h-[12rem] p-8">
+                        <LoadingCard message="Loading pending bills..." />
+                      </div>
+                    ) : (
+                      <PendingPartialTab
+                        outstandingInvoices={outstandingInvoices}
+                        onPayInvoice={openPayInvoice}
+                        onViewInvoice={openInvoiceView}
+                        onViewPDF={openInvoicePdf}
                       />
                     )
                   )}
@@ -3232,6 +3290,9 @@ const CustomerLedgerPage = () => {
                       payments={customerPayments}
                       outstandingInvoices={outstandingInvoices}
                       dateRange={dateRange}
+                      onPay={openPayInvoice}
+                      onViewPDF={openInvoicePdf}
+                      onView={openInvoiceView}
                     />
                     )
                   )}
@@ -5185,8 +5246,117 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
   )
 }
 
+// Pending & Partial Tab — every unpaid / partially-paid invoice (current + historical) front-and-center,
+// with large 1-tap Pay, Partial Pay, View and Print actions.
+const PendingPartialTab = ({ outstandingInvoices, onPayInvoice, onViewInvoice, onViewPDF }) => {
+  const fmtDate = (d) => {
+    if (!d) return '–'
+    const n = new Date(d)
+    return isNaN(n.getTime()) ? String(d).slice(0, 10) : n.toLocaleDateString('en-GB')
+  }
+  const daysDueOf = (inv) => {
+    const explicit = Number(inv.daysOverdue)
+    if (Number.isFinite(explicit)) return explicit
+    const due = inv.dueDate || inv.invoiceDate || inv.date
+    if (!due) return 0
+    return Math.max(0, Math.round((new Date(localDateString()).getTime() - new Date(String(due).slice(0, 10)).getTime()) / 86400000))
+  }
+  const rows = [...(outstandingInvoices || [])].sort((a, b) => daysDueOf(b) - daysDueOf(a))
+  const totalDue = rows.reduce((s, inv) => s + (Number(inv.balanceAmount) || 0), 0)
+
+  if (rows.length === 0) {
+    return (
+      <div className="p-1">
+        <div className="rounded-lg border border-neutral-200 bg-white p-8 text-center text-neutral-500 text-sm">
+          This customer has no unpaid or partially-paid invoices. 🎉
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3 p-1">
+      <div className="rounded-lg border border-neutral-200 bg-white p-4">
+        <p className="text-sm font-semibold text-neutral-900">
+          {rows.length} unpaid / partially-paid invoice{rows.length === 1 ? '' : 's'} open
+        </p>
+        <p className="text-xl font-bold text-red-600 tabular-nums">Total Due: {formatCurrency(totalDue)}</p>
+      </div>
+
+      <ul className="space-y-2">
+        {rows.map((inv) => {
+          const paid = Number(inv.paidAmount) || 0
+          const total = Number(inv.grandTotal || inv.total) || 0
+          const balance = Number(inv.balanceAmount) || Math.max(0, total - paid)
+          const status = paid > 0 ? 'Partial' : 'Pending'
+          const daysOverdue = daysDueOf(inv)
+          const no = inv.invoiceNo || inv.invoiceNumber || inv.legacyInvoiceNumber || `#${inv.id}`
+          return (
+            <li key={inv.id} className="rounded-lg border border-neutral-200 bg-white p-3">
+              <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[16px] font-bold text-neutral-900 break-words">{no}</span>
+                    {inv.isLegacy ? <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700">Historical</span> : null}
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${status === 'Partial' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-700'}`}>{status}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-neutral-700">
+                    <span>{fmtDate(inv.invoiceDate || inv.date)}</span>
+                    {daysOverdue > 0 ? (
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">{daysOverdue} days overdue</span>
+                    ) : null}
+                    {inv.dueDate ? <span className="text-neutral-500">due {fmtDate(inv.dueDate)}</span> : null}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-3 gap-2 text-right">
+                <div>
+                  <div className="text-micro uppercase text-neutral-500">Total</div>
+                  <div className="text-[15px] font-bold tabular-nums text-neutral-900">{formatCurrency(total)}</div>
+                </div>
+                <div>
+                  <div className="text-micro uppercase text-neutral-500">Paid</div>
+                  <div className="text-[15px] font-bold tabular-nums text-emerald-700">{formatCurrency(paid)}</div>
+                </div>
+                <div>
+                  <div className="text-micro uppercase text-neutral-500">Balance due</div>
+                  <div className="text-[16px] font-bold tabular-nums text-red-600">{formatCurrency(balance)}</div>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {!inv.isLegacy ? (
+                  <>
+                    <button type="button" onClick={() => onPayInvoice(inv.id)}
+                      className="inline-flex items-center justify-center gap-1 rounded-md bg-emerald-600 px-3.5 py-2 text-sm font-bold text-white min-h-[40px]">
+                      + Pay Full
+                    </button>
+                    <button type="button" onClick={() => onPayInvoice(inv.id)}
+                      className="inline-flex items-center justify-center rounded-md border border-primary-600 px-3 py-1.5 text-sm font-semibold text-primary-700 min-h-[40px]">
+                      Partial Pay
+                    </button>
+                  </>
+                ) : null}
+                <button type="button" onClick={() => onViewPDF(inv.id, inv)}
+                  className="inline-flex items-center justify-center gap-1 rounded-md border border-neutral-300 px-2.5 py-1.5 text-xs font-semibold text-neutral-700 min-h-[36px]">
+                  <Printer className="h-4 w-4" /> PDF
+                </button>
+                <button type="button" onClick={() => onViewInvoice(inv.id, inv)}
+                  className="inline-flex items-center justify-center gap-1 rounded-md border border-neutral-300 px-2.5 py-1.5 text-xs font-semibold text-neutral-700 min-h-[36px]">
+                  <Eye className="h-4 w-4" /> View
+                </button>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 // Reports Tab Component
-const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices, dateRange }) => {
+const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices, dateRange, onPay, onViewPDF, onView }) => {
   // The value in summary.totalSales is computed from the ledger entries within the APPLIED date range,
   // so the label must never claim it is specifically "this month" when it is actually all-time or a
   // custom/selected period. Derive an honest label from dateRange.
@@ -5252,12 +5422,13 @@ const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices
                 <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Paid</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Balance</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-neutral-700 uppercase">Days Overdue</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-neutral-700 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
               {outstandingInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-4 py-8 text-center text-neutral-500">
+                  <td colSpan="7" className="px-4 py-8 text-center text-neutral-500">
                     No pending bills
                   </td>
                 </tr>
@@ -5266,6 +5437,7 @@ const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices
                   <tr key={inv.id} className="hover:bg-neutral-50">
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-neutral-900">
                       {inv.invoiceNo}
+                      {inv.isLegacy ? <span className="ml-2 rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700">Historical</span> : null}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                       {new Date(inv.invoiceDate).toLocaleDateString('en-GB')}
@@ -5273,7 +5445,7 @@ const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
                       {formatCurrency(Number(inv.grandTotal) || 0)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-emerald-700">
                       {formatCurrency(Number(inv.paidAmount) || 0)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-error">
@@ -5286,6 +5458,28 @@ const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices
                         }`}>
                         {(Number(inv.daysOverdue) || 0)} days
                       </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {!inv.isLegacy && onPay ? (
+                          <button type="button" onClick={() => onPay(inv.id)}
+                            className="inline-flex items-center justify-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white min-h-[36px]">
+                            Pay
+                          </button>
+                        ) : null}
+                        {onViewPDF ? (
+                          <button type="button" onClick={() => onViewPDF(inv.id, inv)}
+                            className="inline-flex items-center justify-center gap-1 rounded-md border border-neutral-300 px-2.5 py-1.5 text-xs font-semibold text-neutral-700 min-h-[36px]">
+                            <Printer className="h-3.5 w-3.5" /> PDF
+                          </button>
+                        ) : null}
+                        {onView ? (
+                          <button type="button" onClick={() => onView(inv.id, inv)}
+                            className="inline-flex items-center justify-center gap-1 rounded-md border border-neutral-300 px-2.5 py-1.5 text-xs font-semibold text-neutral-700 min-h-[36px]">
+                            <Eye className="h-3.5 w-3.5" /> View
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))
