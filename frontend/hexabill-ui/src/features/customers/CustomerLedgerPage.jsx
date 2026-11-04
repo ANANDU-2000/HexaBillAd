@@ -4632,7 +4632,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                 <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Paid</th>
                 <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Balance</th>
                 <th className="px-3 py-2 text-center text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Status</th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Action</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-neutral-700 uppercase whitespace-nowrap sticky right-0 bg-neutral-50 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)]">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
@@ -4704,7 +4704,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                           {getAgingBadge(getDaysOverdue(invoice))}
                         </div>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center text-sm">
+                      <td className="px-3 py-2 whitespace-nowrap text-center text-sm sticky right-0 bg-white z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)]">
                         <div className="flex items-center justify-center gap-1.5 sm:gap-2">
                           {/* Pay Button - Only show if invoice has outstanding balance */}
                           {balance > 0 && onPayInvoice && (
