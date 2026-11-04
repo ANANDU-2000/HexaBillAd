@@ -188,11 +188,11 @@ const CustomerLedgerPage = () => {
   const [pickerFiltersOpen, setPickerFiltersOpen] = useState(false)
   const [ledgerFiltersOpen, setLedgerFiltersOpen] = useState(false)
   const [filterDraft, setFilterDraft] = useState(() => {
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    // Default to ALL dates (empty From/To) so unpaid/pending bills are never hidden and the
+    // "All dates" chip matches the actually-applied range. Only use a range when pinned in the URL.
     return {
-      from: searchParams.get('from') || localDateString(monthStart),
-      to: searchParams.get('to') || localDateString(now),
+      from: searchParams.get('from') || '',
+      to: searchParams.get('to') || '',
       branchId: searchParams.get('branchId') || '',
       routeId: searchParams.get('routeId') || '',
       staffId: searchParams.get('staffId') || '',
@@ -3231,6 +3231,7 @@ const CustomerLedgerPage = () => {
                       invoices={customerInvoices}
                       payments={customerPayments}
                       outstandingInvoices={outstandingInvoices}
+                      dateRange={dateRange}
                     />
                     )
                   )}
@@ -5185,7 +5186,17 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
 }
 
 // Reports Tab Component
-const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices }) => {
+const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices, dateRange }) => {
+  // The value in summary.totalSales is computed from the ledger entries within the APPLIED date range,
+  // so the label must never claim it is specifically "this month" when it is actually all-time or a
+  // custom/selected period. Derive an honest label from dateRange.
+  const rangeActive = Boolean(dateRange?.from || dateRange?.to)
+  const salesLabel = rangeActive
+    ? `Total Billed (Selected Period)`
+    : 'Total Billed (All Time)'
+  const salesHint = rangeActive
+    ? `From ${dateRange.from || '…'} to ${dateRange.to || '…'}`
+    : 'All recorded invoice/sale debits'
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
@@ -5193,10 +5204,11 @@ const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices
         <div className="bg-white p-6 rounded-lg border border-neutral-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-neutral-600">Total Sales This Month</p>
+              <p className="text-sm font-medium text-neutral-600">{salesLabel}</p>
               <p className="text-lg sm:text-2xl font-bold text-primary-600 mt-2">
                 {formatCurrency(summary?.totalSales || 0)}
               </p>
+              <p className="mt-1 text-xs text-neutral-500">{salesHint}</p>
             </div>
             <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-primary-600" />
           </div>
