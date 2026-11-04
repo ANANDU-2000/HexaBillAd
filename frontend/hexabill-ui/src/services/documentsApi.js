@@ -9,6 +9,10 @@ export const quotationsAPI = {
     const response = await api.get(`/quotations/${id}`, { _bypassCache: true })
     return response.data
   },
+  defaults: async () => {
+    const response = await api.get('/quotations/defaults', { _bypassCache: true })
+    return response.data
+  },
   nextNumber: async () => {
     const response = await api.get('/quotations/next-number')
     return response.data

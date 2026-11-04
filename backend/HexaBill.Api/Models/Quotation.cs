@@ -29,6 +29,16 @@ namespace HexaBill.Api.Models
         [MaxLength(100)]
         public string? CustomerEmail { get; set; }
 
+        [MaxLength(50)]
+        public string? CustomerTrn { get; set; }
+
+        public DateTime? ValidUntil { get; set; }
+
+        [MaxLength(300)]
+        public string? Subject { get; set; }
+
+        public string? TermsAndConditions { get; set; }
+
         public int? CustomerId { get; set; }
 
         public decimal Subtotal { get; set; }

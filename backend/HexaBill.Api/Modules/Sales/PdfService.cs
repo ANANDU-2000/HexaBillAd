@@ -3584,7 +3584,7 @@ if (hasLogo)
                                         .FontSize(fmt == "A5" ? 10 : 12);
                                     if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
                                         col.Item().AlignCenter().Text(settings.CompanyAddress).FontSize(7);
-                                    var contactBits = new[] { settings.CompanyPhone, settings.CompanyEmail, string.IsNullOrWhiteSpace(settings.CompanyTrn) ? null : settings.CompanyTrn }
+                                    var contactBits = new[] { settings.CompanyPhone, settings.CompanyEmail, string.IsNullOrWhiteSpace(settings.CompanyTrn) ? null : "TRN: " + settings.CompanyTrn }
                                         .Where(s => !string.IsNullOrWhiteSpace(s));
                                     if (contactBits.Any())
                                         col.Item().AlignCenter().Text(string.Join("  |  ", contactBits!)).FontSize(7);
@@ -3606,15 +3606,21 @@ if (hasLogo)
                                     c.Item().Text(quotation.CustomerName ?? "").Bold();
                                     if (!string.IsNullOrWhiteSpace(quotation.CustomerAddress))
                                         c.Item().Text(quotation.CustomerAddress).FontSize(8);
+                                    if (!string.IsNullOrWhiteSpace(quotation.CustomerTrn))
+                                        c.Item().Text($"TRN: {quotation.CustomerTrn}").FontSize(8);
                                 });
                                 row.ConstantItem(150).AlignRight().Column(c =>
                                 {
                                     c.Item().Text($"Quotation#: {quotation.QuoteNo}").Bold();
                                     c.Item().Text($"Date: {quotation.QuoteDate:dd-MM-yyyy}");
+                                    if (quotation.ValidUntil.HasValue)
+                                        c.Item().Text($"Valid until: {quotation.ValidUntil.Value:dd-MM-yyyy}");
                                 });
                             });
 
-                            col.Item().PaddingTop(12).Text(salutation).FontSize(9);
+                            if (!string.IsNullOrWhiteSpace(quotation.Subject))
+                                col.Item().PaddingTop(10).Text($"Subject: {quotation.Subject}").Bold().FontSize(9);
+                            col.Item().PaddingTop(10).Text(salutation).FontSize(9);
                             col.Item().PaddingTop(2).Text(intro).FontSize(8);
 
                             col.Item().PaddingTop(10).Table(table =>
@@ -3682,6 +3688,12 @@ if (hasLogo)
                                     r.RelativeItem().Text("SUBTOTAL");
                                     r.ConstantItem(90).AlignRight().Text($"AED {quotation.Subtotal:N2}");
                                 });
+                                if (quotation.Discount > 0)
+                                    totals.Item().Row(r =>
+                                    {
+                                        r.RelativeItem().Text("DISCOUNT");
+                                        r.ConstantItem(90).AlignRight().Text($"- AED {quotation.Discount:N2}");
+                                    });
                                 totals.Item().Row(r =>
                                 {
                                     r.RelativeItem().Text("TAX");
@@ -3694,7 +3706,18 @@ if (hasLogo)
                                 });
                             });
 
-                            col.Item().PaddingTop(18).Text(closing).FontSize(8);
+                            col.Item().PaddingTop(4).AlignRight().Text($"{HexaBill.Api.Core.Infrastructure.AmountToWords.Dirhams(quotation.GrandTotal)}").Italic().FontSize(8);
+
+                            if (!string.IsNullOrWhiteSpace(quotation.TermsAndConditions))
+                            {
+                                col.Item().PaddingTop(12).Column(t =>
+                                {
+                                    t.Item().Text("Terms & Conditions").Bold().FontSize(8);
+                                    t.Item().Text(quotation.TermsAndConditions).FontSize(8);
+                                });
+                            }
+
+                            col.Item().PaddingTop(14).Text(closing).FontSize(8);
 
                             col.Item().PaddingTop(28).AlignRight().Width(160).Column(sig =>
                             {

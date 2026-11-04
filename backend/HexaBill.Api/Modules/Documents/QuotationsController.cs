@@ -83,6 +83,24 @@ namespace HexaBill.Api.Modules.Documents
             }
         }
 
+        [HttpGet("defaults")]
+        public async Task<IActionResult> Defaults()
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var blocked = await EnsureFeatureAsync(tenantId);
+                if (blocked != null) return blocked;
+                var data = await _service.GetDefaultsAsync(tenantId);
+                return Ok(new ApiResponse<QuotationDefaultsDto> { Success = true, Data = data });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Quotation defaults failed");
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Failed to load quotation defaults" });
+            }
+        }
+
         [HttpGet("{id:int}")]
         public async Task<IActionResult> Get(int id)
         {

@@ -30,6 +30,10 @@ namespace HexaBill.Api.Models
         public string? CustomerPhone { get; set; }
         public string? CustomerEmail { get; set; }
         public int? CustomerId { get; set; }
+        public string? CustomerTrn { get; set; }
+        public DateTime? ValidUntil { get; set; }
+        public string? Subject { get; set; }
+        public string? TermsAndConditions { get; set; }
         public decimal Subtotal { get; set; }
         public decimal VatTotal { get; set; }
         public decimal Discount { get; set; }
@@ -62,7 +66,7 @@ namespace HexaBill.Api.Models
         public string UnitLabel { get; set; } = "Pcs";
         [Range(0.0001, 999999)]
         public decimal Qty { get; set; }
-        [Range(0, 999999999)]
+        [Range(0.0001, 999999999)]
         public decimal UnitPrice { get; set; }
         /// <summary>Percent e.g. 5 for 5%. Server may override from settings if 0.</summary>
         public decimal? VatRate { get; set; }
@@ -80,6 +84,13 @@ namespace HexaBill.Api.Models
         [MaxLength(100)]
         public string? CustomerEmail { get; set; }
         public int? CustomerId { get; set; }
+        [MaxLength(50)]
+        public string? CustomerTrn { get; set; }
+        public DateTime? ValidUntil { get; set; }
+        [MaxLength(300)]
+        public string? Subject { get; set; }
+        public string? TermsAndConditions { get; set; }
+        [Range(0, 999999999)]
         public decimal Discount { get; set; }
         [MaxLength(20)]
         public string Status { get; set; } = "Draft";
@@ -96,6 +107,14 @@ namespace HexaBill.Api.Models
     }
 
     public class UpdateQuotationRequest : CreateQuotationRequest { }
+
+    public class QuotationDefaultsDto
+    {
+        public string NextQuoteNo { get; set; } = string.Empty;
+        public int ValidDays { get; set; } = 30;
+        public string Terms { get; set; } = string.Empty;
+        public decimal VatPercent { get; set; } = 5m;
+    }
 
     public class AgreementDto
     {

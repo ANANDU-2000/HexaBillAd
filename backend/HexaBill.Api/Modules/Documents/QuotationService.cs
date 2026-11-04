@@ -17,6 +17,7 @@ namespace HexaBill.Api.Modules.Documents
         Task<QuotationDto?> UpdateAsync(int id, UpdateQuotationRequest request, int userId, int tenantId);
         Task<bool> DeleteAsync(int id, int userId, int tenantId);
         Task<string> PeekNextQuoteNoAsync(int tenantId);
+        Task<QuotationDefaultsDto> GetDefaultsAsync(int tenantId);
     }
 
     public class QuotationService : IQuotationService
@@ -40,6 +41,19 @@ namespace HexaBill.Api.Modules.Documents
 
         public async Task<string> PeekNextQuoteNoAsync(int tenantId)
             => await _quoteNumbers.GenerateNextQuoteNumberAsync(tenantId);
+
+        public async Task<QuotationDefaultsDto> GetDefaultsAsync(int tenantId)
+        {
+            var validRaw = await _settings.GetSettingValueAsync(tenantId, "QUOTE_VALID_DAYS");
+            var terms = await _settings.GetSettingValueAsync(tenantId, "QUOTE_TERMS");
+            return new QuotationDefaultsDto
+            {
+                NextQuoteNo = await _quoteNumbers.GenerateNextQuoteNumberAsync(tenantId),
+                ValidDays = int.TryParse(validRaw, out var d) && d > 0 && d <= 365 ? d : 30,
+                Terms = terms?.Trim() ?? string.Empty,
+                VatPercent = await GetVatPercentAsync(tenantId)
+            };
+        }
 
         public async Task<List<QuotationDto>> ListAsync(int tenantId)
         {
@@ -82,6 +96,10 @@ namespace HexaBill.Api.Modules.Documents
                     CustomerPhone = request.CustomerPhone?.Trim(),
                     CustomerEmail = request.CustomerEmail?.Trim(),
                     CustomerId = request.CustomerId,
+                    CustomerTrn = request.CustomerTrn?.Trim(),
+                    ValidUntil = request.ValidUntil.HasValue ? ToUtcDate(request.ValidUntil) : null,
+                    Subject = request.Subject?.Trim(),
+                    TermsAndConditions = string.IsNullOrWhiteSpace(request.TermsAndConditions) ? null : request.TermsAndConditions.Trim(),
                     Subtotal = subtotal,
                     VatTotal = vatTotal,
                     Discount = request.Discount,
@@ -144,6 +162,10 @@ namespace HexaBill.Api.Modules.Documents
                 entity.CustomerPhone = request.CustomerPhone?.Trim();
                 entity.CustomerEmail = request.CustomerEmail?.Trim();
                 entity.CustomerId = request.CustomerId;
+                entity.CustomerTrn = request.CustomerTrn?.Trim();
+                entity.ValidUntil = request.ValidUntil.HasValue ? ToUtcDate(request.ValidUntil) : null;
+                entity.Subject = request.Subject?.Trim();
+                entity.TermsAndConditions = string.IsNullOrWhiteSpace(request.TermsAndConditions) ? null : request.TermsAndConditions.Trim();
                 entity.Subtotal = subtotal;
                 entity.VatTotal = vatTotal;
                 entity.Discount = request.Discount;
@@ -233,9 +255,12 @@ namespace HexaBill.Api.Modules.Documents
             return decimal.TryParse(raw, out var v) && v >= 0 ? v : 5m;
         }
 
+        internal static readonly string[] AllowedStatuses = { "Draft", "Final", "Sent", "Accepted", "Rejected", "Expired" };
+
         private static string NormalizeStatus(string? status)
         {
-            if (string.Equals(status, "Final", StringComparison.OrdinalIgnoreCase)) return "Final";
+            foreach (var allowed in AllowedStatuses)
+                if (string.Equals(status, allowed, StringComparison.OrdinalIgnoreCase)) return allowed;
             return "Draft";
         }
 
@@ -259,6 +284,10 @@ namespace HexaBill.Api.Modules.Documents
             CustomerPhone = q.CustomerPhone,
             CustomerEmail = q.CustomerEmail,
             CustomerId = q.CustomerId,
+            CustomerTrn = q.CustomerTrn,
+            ValidUntil = q.ValidUntil,
+            Subject = q.Subject,
+            TermsAndConditions = q.TermsAndConditions,
             Subtotal = q.Subtotal,
             VatTotal = q.VatTotal,
             Discount = q.Discount,

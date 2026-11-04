@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Plus, Trash2, Save, Download, Printer, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { quotationsAPI } from '../../services/documentsApi'
-import { productsAPI, settingsAPI } from '../../services/index'
+import { productsAPI, settingsAPI, customersAPI, adminAPI } from '../../services/index'
 import { calcQuoteLine, calcQuoteTotals } from '../../utils/quoteMath'
 import QuotationProductDrawer from '../../components/QuotationProductDrawer'
 import { getSetting, getSettingBool } from '../../utils/settingsKeys'
@@ -31,6 +31,23 @@ const DEFAULT_CLOSING = 'We hope you find our offer to be in line with your requ
 let tempIdSeq = 0
 /** Stable per-row React key so rows never collide when the list is edited. */
 const newTempId = () => `q${Date.now().toString(36)}-${++tempIdSeq}`
+
+const UNITS = ['Pcs', 'CRTN', 'KG', 'PKT', 'BOX', 'BAG', 'LTR', 'DOZ', 'TIN']
+const STATUSES = ['Draft', 'Final', 'Sent', 'Accepted', 'Rejected', 'Expired']
+
+const addDays = (isoDate, days) => {
+  const d = new Date(`${isoDate}T00:00:00`)
+  d.setDate(d.getDate() + days)
+  return localDateString(d)
+}
+
+/** Row problems that must be fixed before a quotation can be saved (blank rows are ignored). */
+function lineIssue(row) {
+  if (!row.description?.trim()) return ''
+  if (!(Number(row.qty) > 0)) return 'Quantity must be greater than 0'
+  if (!(Number(row.unitPrice) > 0)) return 'Price must be greater than 0'
+  return ''
+}
 
 const emptyLine = () => ({
   tempId: newTempId(),
@@ -60,6 +77,16 @@ export default function QuotationEditorPage() {
   const [quoteDate, setQuoteDate] = useState(() => localDateString())
   const [customerName, setCustomerName] = useState('')
   const [customerAddress, setCustomerAddress] = useState('')
+  const [customerTrn, setCustomerTrn] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
+  const [customerEmail, setCustomerEmail] = useState('')
+  const [customerId, setCustomerId] = useState(null)
+  const [validUntil, setValidUntil] = useState('')
+  const [subject, setSubject] = useState('')
+  const [terms, setTerms] = useState('')
+  const [defaults, setDefaults] = useState({ validDays: 30, terms: '' })
+  const [customerHits, setCustomerHits] = useState([])
+  const customerTimer = useRef(null)
   const [status, setStatus] = useState('Draft')
   const [notes, setNotes] = useState('')
   const [salutation, setSalutation] = useState(DEFAULT_SALUTATION)
@@ -103,6 +130,13 @@ export default function QuotationEditorPage() {
         quoteDate: state.quoteDate,
         customerName: state.customerName,
         customerAddress: state.customerAddress,
+        customerTrn: state.customerTrn || '',
+        customerPhone: state.customerPhone || '',
+        customerEmail: state.customerEmail || '',
+        customerId: state.customerId ?? null,
+        validUntil: state.validUntil || '',
+        subject: state.subject || '',
+        terms: state.terms || '',
         status: state.status,
         notes: state.notes,
         salutation: state.salutation,
@@ -128,6 +162,13 @@ export default function QuotationEditorPage() {
         quoteDate,
         customerName,
         customerAddress,
+        customerTrn,
+        customerPhone,
+        customerEmail,
+        customerId,
+        validUntil,
+        subject,
+        terms,
         status,
         notes,
         salutation,
@@ -141,6 +182,13 @@ export default function QuotationEditorPage() {
       quoteDate,
       customerName,
       customerAddress,
+      customerTrn,
+      customerPhone,
+      customerEmail,
+      customerId,
+      validUntil,
+      subject,
+      terms,
       status,
       notes,
       salutation,
@@ -176,6 +224,7 @@ export default function QuotationEditorPage() {
     autoSaveTimer.current = setTimeout(async () => {
       if (!isDirtyRef.current || !persistRef.current) return
       if (!items.some((i) => i.description?.trim())) return
+      if (items.some((i) => lineIssue(i))) return
       setAutoSaveStatus('saving')
       try {
         await persistRef.current()
@@ -240,6 +289,13 @@ export default function QuotationEditorPage() {
             quoteDate: q.quoteDate?.slice?.(0, 10) || q.quoteDate,
             customerName: q.customerName || '',
             customerAddress: q.customerAddress || '',
+            customerTrn: q.customerTrn || '',
+            customerPhone: q.customerPhone || '',
+            customerEmail: q.customerEmail || '',
+            customerId: q.customerId ?? null,
+            validUntil: q.validUntil?.slice?.(0, 10) || '',
+            subject: q.subject || '',
+            terms: q.termsAndConditions || '',
             status: q.status || 'Draft',
             notes: q.notes || '',
             salutation: q.salutation || DEFAULT_SALUTATION,
@@ -252,6 +308,13 @@ export default function QuotationEditorPage() {
           setQuoteDate(next.quoteDate)
           setCustomerName(next.customerName)
           setCustomerAddress(next.customerAddress)
+          setCustomerTrn(next.customerTrn)
+          setCustomerPhone(next.customerPhone)
+          setCustomerEmail(next.customerEmail)
+          setCustomerId(next.customerId)
+          setValidUntil(next.validUntil)
+          setSubject(next.subject)
+          setTerms(next.terms)
           setStatus(next.status)
           setNotes(next.notes)
           setSalutation(next.salutation)
@@ -263,13 +326,36 @@ export default function QuotationEditorPage() {
           setBaseline(serializeForm(next))
           skipAutoSave.current = true
         } else {
-          const res = await quotationsAPI.nextNumber()
+          let d = null
+          try {
+            d = (await quotationsAPI.defaults())?.data
+          } catch {
+            /* fall back to plain numbering below */
+          }
+          const today = localDateString()
+          let nextNo = d?.nextQuoteNo
+          if (!nextNo) {
+            const res = await quotationsAPI.nextNumber()
+            nextNo = res?.data || res || 'Quote-1'
+          }
           if (cancelled) return
-          setQuoteNo(res?.data || res || 'Quote-1')
+          setQuoteNo(nextNo)
+          const validDays = d?.validDays > 0 ? d.validDays : 30
+          const defTerms = d?.terms || ''
+          setDefaults({ validDays, terms: defTerms })
+          setValidUntil(addDays(today, validDays))
+          setTerms(defTerms)
           const next = {
-            quoteDate: localDateString(),
+            quoteDate: today,
             customerName: '',
             customerAddress: '',
+            customerTrn: '',
+            customerPhone: '',
+            customerEmail: '',
+            customerId: null,
+            validUntil: addDays(today, validDays),
+            subject: '',
+            terms: defTerms,
             status: 'Draft',
             notes: '',
             salutation: DEFAULT_SALUTATION,
@@ -296,6 +382,44 @@ export default function QuotationEditorPage() {
     setItems((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)))
   }
 
+  const onCustomerNameChange = (value) => {
+    setCustomerName(value)
+    setCustomerId(null)
+    if (customerTimer.current) clearTimeout(customerTimer.current)
+    if (value.trim().length < 2) {
+      setCustomerHits([])
+      return
+    }
+    customerTimer.current = setTimeout(async () => {
+      try {
+        const res = await customersAPI.searchCustomers(value.trim(), 6)
+        setCustomerHits(res?.data || [])
+      } catch {
+        setCustomerHits([])
+      }
+    }, 250)
+  }
+
+  const pickCustomer = (c) => {
+    setCustomerName(c.name || '')
+    setCustomerAddress(c.address || c.Address || '')
+    setCustomerTrn(c.trn || c.Trn || '')
+    setCustomerPhone(c.phone || c.Phone || '')
+    setCustomerEmail(c.email || c.Email || '')
+    setCustomerId(c.id ?? null)
+    setCustomerHits([])
+  }
+
+  const saveTermsAsDefault = async () => {
+    try {
+      await adminAPI.updateSettings({ QUOTE_TERMS: terms || '', QUOTE_VALID_DAYS: String(defaults.validDays || 30) })
+      setDefaults((d) => ({ ...d, terms }))
+      toast.success('Saved as your default terms for new quotations')
+    } catch (e) {
+      toast.error(e?.response?.status === 403 ? 'Only an Owner or Admin can change default terms' : 'Could not save default terms')
+    }
+  }
+
   const addItem = () => setItems((prev) => [...prev, emptyLine()])
   const removeItem = (index) => {
     setDrawerRow(null)
@@ -318,6 +442,13 @@ export default function QuotationEditorPage() {
       quoteDate,
       customerName,
       customerAddress,
+      customerPhone: customerPhone || null,
+      customerEmail: customerEmail || null,
+      customerId: customerId || null,
+      customerTrn: customerTrn || null,
+      validUntil: validUntil || null,
+      subject: subject || null,
+      termsAndConditions: terms || null,
       status,
       notes,
       salutation,
@@ -328,41 +459,19 @@ export default function QuotationEditorPage() {
     }
   }
 
-  const markCleanFromState = (q) => {
-    const mappedItems = (q.items || items).map((i) => ({
-      productId: i.productId ?? null,
-      description: i.description,
-      descriptionSubtitle: i.descriptionSubtitle || '',
-      unitLabel: i.unitLabel || 'Pcs',
-      qty: i.qty,
-      unitPrice: i.unitPrice,
-      vatRate: i.vatRate || 5,
-    }))
-    setBaseline(
-      serializeForm({
-        quoteDate: q.quoteDate?.slice?.(0, 10) || quoteDate,
-        customerName: q.customerName ?? customerName,
-        customerAddress: q.customerAddress ?? customerAddress,
-        status: q.status || status,
-        notes: q.notes ?? notes,
-        salutation: q.salutation || salutation,
-        introLine: q.introLine || introLine,
-        closingLine: q.closingLine || closingLine,
-        discount: q.discount ?? discount,
-        items: mappedItems,
-      })
-    )
-  }
-
   const persist = async () => {
     const payload = buildPayload()
     if (!payload.items.length) {
       throw new Error('Add at least one line with a description')
     }
+    const badRow = items.findIndex((i) => lineIssue(i))
+    if (badRow >= 0) {
+      throw new Error(`Item ${badRow + 1}: ${lineIssue(items[badRow])}`)
+    }
     // Snapshot of exactly what is being sent; edits made while the request is in flight stay dirty.
     const sentSnapshot = serializeForm({
-      quoteDate, customerName, customerAddress, status, notes,
-      salutation, introLine, closingLine, discount, items,
+      quoteDate, customerName, customerAddress, customerTrn, customerPhone, customerEmail, customerId,
+      validUntil, subject, terms, status, notes, salutation, introLine, closingLine, discount, items,
     })
     const res = savedId
       ? await quotationsAPI.update(savedId, payload)
@@ -410,7 +519,7 @@ export default function QuotationEditorPage() {
     try {
       await persist()
     } catch (e) {
-      setError(e?.response?.data?.message || 'Save failed')
+      setError(e?.response?.data?.message || e?.message || 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -475,6 +584,11 @@ export default function QuotationEditorPage() {
 
   const selectProduct = (product) => {
     if (drawerRow == null) return
+    if (product.__custom) {
+      updateItem(drawerRow, { productId: null, description: product.name })
+      closeDrawer()
+      return
+    }
     const name = product.nameEn || product.name || product.NameEn || ''
     const price = Number(product.sellPrice ?? product.SellPrice ?? 0)
     const unit = product.unit || product.Unit || product.unitLabel || 'Pcs'
@@ -533,39 +647,81 @@ export default function QuotationEditorPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
         <div className="border rounded-lg bg-white p-2.5 space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <label className="text-xs space-y-1">
-              <span className="text-text-secondary">Date</span>
-              <input type="date" className="w-full border rounded px-2 py-1.5 text-sm" value={quoteDate} onChange={(e) => setQuoteDate(e.target.value)} />
+          <fieldset className="border rounded-lg p-2 space-y-2">
+            <legend className="px-1 text-xs font-semibold text-text-secondary">Quotation details</legend>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+              <label className="text-xs space-y-1">
+                <span className="text-text-secondary">Date</span>
+                <input type="date" className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" value={quoteDate} onChange={(e) => setQuoteDate(e.target.value)} />
+              </label>
+              <label className="text-xs space-y-1">
+                <span className="text-text-secondary">Valid until</span>
+                <input type="date" min={quoteDate} className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+              </label>
+              <label className="text-xs space-y-1 col-span-2 lg:col-span-1">
+                <span className="text-text-secondary">Status</span>
+                <select className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
+                  {STATUSES.map((st) => <option key={st} value={st}>{st}</option>)}
+                </select>
+              </label>
+            </div>
+            <label className="text-xs space-y-1 block">
+              <span className="text-text-secondary">Subject (optional)</span>
+              <input className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" maxLength={300} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Supply of frozen meat" />
             </label>
-            <label className="text-xs space-y-1">
-              <span className="text-text-secondary">Status</span>
-              <select className="w-full border rounded px-2 py-1.5 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="Draft">Draft</option>
-                <option value="Final">Final</option>
-              </select>
+          </fieldset>
+
+          <fieldset className="border rounded-lg p-2 space-y-2">
+            <legend className="px-1 text-xs font-semibold text-text-secondary">Customer</legend>
+            <div className="relative">
+              <label className="text-xs space-y-1 block">
+                <span className="text-text-secondary">Client name {customerId ? <span className="text-success-fg">· linked customer</span> : <span>· type to search saved customers</span>}</span>
+                <input className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" value={customerName} onChange={(e) => onCustomerNameChange(e.target.value)} onBlur={() => setTimeout(() => setCustomerHits([]), 150)} placeholder="Customer or company name" autoComplete="off" />
+              </label>
+              {customerHits.length > 0 && (
+                <ul className="absolute z-20 left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-56 overflow-auto" role="listbox">
+                  {customerHits.map((h) => (
+                    <li key={h.id}>
+                      <button type="button" className="w-full text-left px-3 py-2 min-h-11 hover:bg-slate-50 text-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => pickCustomer(h)}>
+                        <span className="font-medium">{h.name}</span>
+                        {(h.trn || h.phone) ? <span className="ml-2 text-xs text-text-secondary">{[h.trn, h.phone].filter(Boolean).join(' · ')}</span> : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label className="text-xs space-y-1 block">
+                <span className="text-text-secondary">Customer TRN</span>
+                <input className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" maxLength={50} inputMode="numeric" value={customerTrn} onChange={(e) => setCustomerTrn(e.target.value)} placeholder="15-digit TRN" />
+              </label>
+              <label className="text-xs space-y-1 block">
+                <span className="text-text-secondary">Phone</span>
+                <input className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" maxLength={50} inputMode="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+              </label>
+            </div>
+            <label className="text-xs space-y-1 block">
+              <span className="text-text-secondary">Address</span>
+              <textarea className="w-full border rounded px-2 py-1.5 text-sm" rows={2} value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder="Multi-line address" />
             </label>
-          </div>
-          <label className="text-xs space-y-1 block">
-            <span className="text-text-secondary">Client name</span>
-            <input className="w-full border rounded px-2 py-1.5 text-sm" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Blank until typed" />
-          </label>
-          <label className="text-xs space-y-1 block">
-            <span className="text-text-secondary">Address</span>
-            <textarea className="w-full border rounded px-2 py-1.5 text-sm" rows={2} value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder="Multi-line address" />
-          </label>
-          <label className="text-xs space-y-1 block">
-            <span className="text-text-secondary">Salutation</span>
-            <input className="w-full border rounded px-2 py-1.5 text-sm" value={salutation} onChange={(e) => setSalutation(e.target.value)} />
-          </label>
-          <label className="text-xs space-y-1 block">
-            <span className="text-text-secondary">Intro</span>
-            <textarea className="w-full border rounded px-2 py-1.5 text-sm" rows={2} value={introLine} onChange={(e) => setIntroLine(e.target.value)} />
-          </label>
-          <label className="text-xs space-y-1 block">
-            <span className="text-text-secondary">Closing</span>
-            <textarea className="w-full border rounded px-2 py-1.5 text-sm" rows={2} value={closingLine} onChange={(e) => setClosingLine(e.target.value)} />
-          </label>
+          </fieldset>
+
+          <fieldset className="border rounded-lg p-2 space-y-2">
+            <legend className="px-1 text-xs font-semibold text-text-secondary">Letter text</legend>
+            <label className="text-xs space-y-1 block">
+              <span className="text-text-secondary">Salutation</span>
+              <input className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" value={salutation} onChange={(e) => setSalutation(e.target.value)} />
+            </label>
+            <label className="text-xs space-y-1 block">
+              <span className="text-text-secondary">Intro</span>
+              <textarea className="w-full border rounded px-2 py-1.5 text-sm" rows={2} value={introLine} onChange={(e) => setIntroLine(e.target.value)} />
+            </label>
+            <label className="text-xs space-y-1 block">
+              <span className="text-text-secondary">Closing</span>
+              <textarea className="w-full border rounded px-2 py-1.5 text-sm" rows={2} value={closingLine} onChange={(e) => setClosingLine(e.target.value)} />
+            </label>
+          </fieldset>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -574,6 +730,12 @@ export default function QuotationEditorPage() {
                 <Plus className="w-4 h-4" /> Add
               </button>
             </div>
+            <datalist id="quote-units">{UNITS.map((u) => <option key={u} value={u} />)}</datalist>
+            {items.some((i) => lineIssue(i)) && (
+              <p className="text-xs text-error" role="alert">
+                {items.map((i, n) => (lineIssue(i) ? `Item ${n + 1}: ${lineIssue(i)}` : null)).filter(Boolean).join(' · ')} — not saved until fixed.
+              </p>
+            )}
             {/* Phone: one card per line, no sideways scrolling */}
             <ul className="md:hidden space-y-2" aria-label="Line items">
               {items.map((row, idx) => {
@@ -605,7 +767,7 @@ export default function QuotationEditorPage() {
                         <input type="number" inputMode="decimal" className={`${field} text-right`} value={row.qty} onChange={(e) => updateItem(idx, { qty: e.target.value })} />
                       </label>
                       <label className="text-micro text-text-secondary">Unit
-                        <input className={field} value={row.unitLabel} onChange={(e) => updateItem(idx, { unitLabel: e.target.value })} />
+                        <input list="quote-units" className={field} value={row.unitLabel} onChange={(e) => updateItem(idx, { unitLabel: e.target.value })} />
                       </label>
                       <label className="text-micro text-text-secondary">VAT %
                         <input type="number" inputMode="decimal" className={`${field} text-right`} value={row.vatRate} onChange={(e) => updateItem(idx, { vatRate: e.target.value })} />
@@ -613,7 +775,7 @@ export default function QuotationEditorPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-2 items-end">
                       <label className="text-micro text-text-secondary">Price
-                        <input type="number" inputMode="decimal" step="0.01" className={`${field} text-right`} value={row.unitPrice} onChange={(e) => updateItem(idx, { unitPrice: e.target.value })} />
+                        <input type="number" inputMode="decimal" step="0.01" min="0" className={`${field} text-right ${Number(row.unitPrice) > 0 || !row.description?.trim() ? '' : 'border-error'}`} value={row.unitPrice} onChange={(e) => updateItem(idx, { unitPrice: e.target.value })} />
                       </label>
                       <div className="text-right text-sm">
                         <div className="text-micro text-text-secondary">Tax {calc.vatAmount.toFixed(2)}</div>
@@ -653,7 +815,6 @@ export default function QuotationEditorPage() {
                               className="w-full min-w-0 border rounded px-1 py-1"
                               value={row.description}
                               onChange={(e) => updateItem(idx, { description: e.target.value, productId: null })}
-                              onFocus={() => openDrawer(idx)}
                               onKeyDown={(e) => onLineKeyDown(e, idx, 'description')}
                               placeholder="Search or type"
                             />
@@ -683,6 +844,7 @@ export default function QuotationEditorPage() {
                         <td className="p-1">
                           <input
                             data-quote-cell={`${idx}-unitLabel`}
+                            list="quote-units"
                             className="w-full border rounded px-1 py-1"
                             value={row.unitLabel}
                             onChange={(e) => updateItem(idx, { unitLabel: e.target.value })}
@@ -694,7 +856,8 @@ export default function QuotationEditorPage() {
                             data-quote-cell={`${idx}-unitPrice`}
                             type="number"
                             step="0.01"
-                            className="w-full border rounded px-1 py-1 text-right"
+                            min="0"
+                            className={`w-full border rounded px-1 py-1 text-right ${Number(row.unitPrice) > 0 || !row.description?.trim() ? '' : 'border-error'}`}
                             value={row.unitPrice}
                             onChange={(e) => updateItem(idx, { unitPrice: e.target.value })}
                             onKeyDown={(e) => onLineKeyDown(e, idx, 'unitPrice')}
@@ -733,6 +896,13 @@ export default function QuotationEditorPage() {
             <input type="number" step="0.01" className="w-full border rounded px-2 py-1.5 text-sm" value={discount} onChange={(e) => setDiscount(e.target.value)} />
           </label>
           <label className="text-xs space-y-1 block">
+            <span className="flex items-center justify-between text-text-secondary">
+              <span>Terms &amp; conditions (printed on the PDF)</span>
+              <button type="button" onClick={saveTermsAsDefault} disabled={terms === defaults.terms} className="min-h-9 px-2 text-primary disabled:opacity-40">Save as my default</button>
+            </span>
+            <textarea className="w-full border rounded px-2 py-1.5 text-sm" rows={4} value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="1. Prices valid for 30 days.&#10;2. Payment terms..." />
+          </label>
+          <label className="text-xs space-y-1 block">
             <span className="text-text-secondary">Notes</span>
             <textarea className="w-full border rounded px-2 py-1.5 text-sm" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </label>
@@ -761,12 +931,15 @@ export default function QuotationEditorPage() {
               <div className="font-semibold text-xs">To</div>
               <div className="font-medium">{customerName || '—'}</div>
               <div className="text-xs whitespace-pre-wrap">{customerAddress}</div>
+              {customerTrn ? <div className="text-xs">TRN: {customerTrn}</div> : null}
             </div>
             <div className="text-right text-xs">
               <div><span className="font-semibold">Quotation#</span> {quoteNo}</div>
               <div><span className="font-semibold">Date</span> {formatPreviewDate(quoteDate)}</div>
+              {validUntil ? <div><span className="font-semibold">Valid until</span> {formatPreviewDate(validUntil)}</div> : null}
             </div>
           </div>
+          {subject ? <p className="text-sm font-semibold mb-1">Subject: {subject}</p> : null}
           <p className="text-sm mb-1">{salutation}</p>
           <p className="text-xs mb-3">{introLine}</p>
           <table className="w-full text-xs border-collapse">
@@ -804,9 +977,16 @@ export default function QuotationEditorPage() {
           </table>
           <div className="mt-3 ml-auto w-52 text-xs space-y-1">
             <div className="flex justify-between"><span>SUBTOTAL</span><span>{currency} {totals.subtotal.toFixed(2)}</span></div>
+            {Number(discount) > 0 ? <div className="flex justify-between"><span>DISCOUNT</span><span>- {currency} {Number(discount).toFixed(2)}</span></div> : null}
             <div className="flex justify-between"><span>TAX</span><span>{currency} {totals.vatTotal.toFixed(2)}</span></div>
             <div className="flex justify-between font-bold border-t border-b-2 py-1"><span>GRAND TOTAL</span><span>{currency} {totals.grandTotal.toFixed(2)}</span></div>
           </div>
+          {terms ? (
+            <div className="mt-3 text-xs">
+              <div className="font-semibold">Terms &amp; Conditions</div>
+              <div className="whitespace-pre-wrap">{terms}</div>
+            </div>
+          ) : null}
           <p className="text-xs mt-4">{closingLine}</p>
           {!company.letterheadOnly ? (
             <div className="mt-8 ml-auto w-40 text-center text-xs">
@@ -834,6 +1014,7 @@ export default function QuotationEditorPage() {
         loading={drawerLoading}
         products={drawerProducts}
         onSelect={selectProduct}
+        allowCustom
       />
     </div>
   )

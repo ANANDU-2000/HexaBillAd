@@ -15,6 +15,7 @@ export default function QuotationProductDrawer({
   loading,
   products = [],
   onSelect,
+  allowCustom = false,
 }) {
   const { currency = 'AED' } = useBranding()
   if (!open) return null
@@ -52,6 +53,15 @@ export default function QuotationProductDrawer({
             />
           </div>
         </div>
+        {allowCustom && (searchValue || '').trim() ? (
+          <button
+            type="button"
+            className="shrink-0 w-full text-left px-3 py-3 min-h-11 border-b bg-primary-50 text-primary text-sm font-medium"
+            onClick={() => onSelect?.({ __custom: true, name: searchValue.trim() })}
+          >
+            Use “{searchValue.trim()}” as a custom item
+          </button>
+        ) : null}
         <div className="flex-1 overflow-y-auto min-h-0">
           {loading ? (
             <div className="p-4 text-center text-sm text-neutral-500">Loading…</div>
