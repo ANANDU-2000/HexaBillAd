@@ -27,7 +27,12 @@ const DEFAULT_SALUTATION = 'Dear Sir/Mam,'
 const DEFAULT_INTRO = 'Thank you for your valuable inquiry. We are pleased to quote as below:'
 const DEFAULT_CLOSING = 'We hope you find our offer to be in line with your requirement.'
 
+let tempIdSeq = 0
+/** Stable per-row React key so rows never collide when the list is edited. */
+const newTempId = () => `q${Date.now().toString(36)}-${++tempIdSeq}`
+
 const emptyLine = () => ({
+  tempId: newTempId(),
   productId: null,
   description: '',
   descriptionSubtitle: '',
@@ -100,6 +105,7 @@ export default function QuotationEditorPage() {
   const [drawerRow, setDrawerRow] = useState(null)
   const autoSaveTimer = useRef(null)
   const persistRef = useRef(null)
+  const justSavedIdRef = useRef(null)
   const isDirtyRef = useRef(false)
   const skipAutoSave = useRef(true)
   const [drawerSearch, setDrawerSearch] = useState('')
@@ -235,7 +241,10 @@ export default function QuotationEditorPage() {
           const res = await quotationsAPI.get(id)
           const q = res?.data ?? res
           if (cancelled || !q) return
+          // Just created in this session (create -> navigate): local rows are newer than the server copy.
+          if (Number(q.id) === justSavedIdRef.current) return
           const mappedItems = (q.items || []).map((i) => ({
+            tempId: newTempId(),
             productId: i.productId ?? null,
             description: i.description,
             descriptionSubtitle: i.descriptionSubtitle || '',
@@ -305,7 +314,10 @@ export default function QuotationEditorPage() {
   }
 
   const addItem = () => setItems((prev) => [...prev, emptyLine()])
-  const removeItem = (index) => setItems((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)))
+  const removeItem = (index) => {
+    setDrawerRow(null)
+    setItems((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)))
+  }
 
   const buildPayload = () => {
     const lineItems = items
@@ -364,26 +376,21 @@ export default function QuotationEditorPage() {
     if (!payload.items.length) {
       throw new Error('Add at least one line with a description')
     }
+    // Snapshot of exactly what is being sent; edits made while the request is in flight stay dirty.
+    const sentSnapshot = serializeForm({
+      quoteDate, customerName, customerAddress, status, notes,
+      salutation, introLine, closingLine, discount, items,
+    })
     const res = savedId
       ? await quotationsAPI.update(savedId, payload)
       : await quotationsAPI.create(payload)
     const q = res?.data ?? res
+    // Never replace local rows with the server copy: the server drops blank rows and any rows
+    // added/edited during the request, which made new products overwrite or vanish.
+    justSavedIdRef.current = Number(q.id)
     setSavedId(q.id)
     setQuoteNo(q.quoteNo)
-    if (q.items?.length) {
-      setItems(
-        q.items.map((i) => ({
-          productId: i.productId ?? null,
-          description: i.description,
-          descriptionSubtitle: i.descriptionSubtitle || '',
-          unitLabel: i.unitLabel || 'Pcs',
-          qty: i.qty,
-          unitPrice: i.unitPrice,
-          vatRate: i.vatRate || 5,
-        }))
-      )
-    }
-    markCleanFromState(q)
+    setBaseline(sentSnapshot)
     window.dispatchEvent(new CustomEvent('dataUpdated'))
     if (!isEdit && q.id) navigate(`/quotations/${q.id}`, { replace: true })
     return q.id
@@ -599,7 +606,7 @@ export default function QuotationEditorPage() {
                   {items.map((row, idx) => {
                     const calc = calcQuoteLine(row.qty, row.unitPrice, row.vatRate || 5)
                     return (
-                      <tr key={idx} className="border-t align-top">
+                      <tr key={row.tempId ?? idx} className="border-t align-top">
                         <td className="p-1">
                           <div className="flex gap-1">
                             <input

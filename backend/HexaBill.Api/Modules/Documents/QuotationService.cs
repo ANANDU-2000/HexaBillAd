@@ -96,8 +96,24 @@ namespace HexaBill.Api.Modules.Documents
                     Items = items
                 };
 
-                _context.Quotations.Add(entity);
-                await _context.SaveChangesAsync();
+                // Max+1 numbering can race with a concurrent save; retry on the unique (TenantId, QuoteNo) index.
+                for (var attempt = 1; ; attempt++)
+                {
+                    _context.Quotations.Add(entity);
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+                        break;
+                    }
+                    catch (DbUpdateException ex) when (attempt < 5 && ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+                    {
+                        _context.ChangeTracker.Clear();
+                        entity.Id = 0;
+                        foreach (var it in entity.Items) it.Id = 0;
+                        entity.QuoteNo = await _quoteNumbers.GenerateNextQuoteNumberAsync(tenantId);
+                        quoteNo = entity.QuoteNo;
+                    }
+                }
                 _logger.LogInformation("Quotation {QuoteNo} created for tenant {TenantId}", quoteNo, tenantId);
                 return Map(entity);
             }
