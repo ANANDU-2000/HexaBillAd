@@ -50,7 +50,9 @@ factory.Services.GetRequiredService<DatabaseInitializationStatus>().CompleteInit
 
 var bridgeBuilder = WebApplication.CreateSlimBuilder(args);
 bridgeBuilder.Logging.ClearProviders();
-bridgeBuilder.WebHost.UseUrls("http://127.0.0.1:5078");
+// Loop teams run several hosts at once; the runner passes a distinct loopback port (default stays 5078).
+var bridgePort = int.TryParse(Environment.GetEnvironmentVariable("HEXABILL_SYNTHETIC_API_PORT"), out var envPort) && envPort is >= 1024 and <= 65535 ? envPort : 5078;
+bridgeBuilder.WebHost.UseUrls($"http://127.0.0.1:{bridgePort}");
 var bridge = bridgeBuilder.Build();
 bridge.MapGet("/__synthetic-host", () => new { syntheticOnly = true, migrationProof = false,
     flags = receiptFixtureMode ? "receipt_snapshots (gulfharvest-test only, synthetic opt-in)" : "OFF" });
@@ -72,7 +74,7 @@ bridge.MapFallback("/{**path}", async context =>
             context.Response.Headers[header.Key] = header.Value.ToArray();
     await response.Content.CopyToAsync(context.Response.Body, context.RequestAborted);
 });
-Console.WriteLine("Synthetic browser API bridge: loopback 5078; migrationProof=false; production readiness is not certified.");
+Console.WriteLine($"Synthetic browser API bridge: loopback {bridgePort}; migrationProof=false; production readiness is not certified.");
 await bridge.RunAsync();
 
 sealed class BrowserApiFactory(string apiRoot, string connection) : WebApplicationFactory<AppDbContext>

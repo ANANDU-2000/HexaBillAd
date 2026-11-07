@@ -4,7 +4,9 @@ param(
     [string[]]$Spec = @('e2e/customer-save-contract.spec.js'),
     [switch]$ResumeFixtures,
     [string]$Database = 'hexabill_codex_browser_20261012_1525',
-    [int]$PostgresPort = 55472
+    [int]$PostgresPort = 55472,
+    [int]$ApiPort = 5078,
+    [int]$FePort = 5175
 )
 $ErrorActionPreference = 'Stop'
 function New-QaSecret([int]$Bytes) { $b = New-Object byte[] $Bytes; $g = [Security.Cryptography.RandomNumberGenerator]::Create(); try { $g.GetBytes($b) } finally { $g.Dispose() }; [Convert]::ToBase64String($b) }
@@ -25,9 +27,10 @@ try {
     Set-Item -Path 'Env:HEXABILL_E2E_EMAIL_GULFHARVEST-TEST' -Value 'owner@gulfharvest-test.hexabill.local'
     $env:HEXABILL_EDGE_PROXY_SECRET = (New-QaSecret 48)
     $env:Hosting__EdgeProxySecret = $env:HEXABILL_EDGE_PROXY_SECRET
-    $env:HEXABILL_API = 'http://127.0.0.1:5078'
+    $env:HEXABILL_API = "http://127.0.0.1:$ApiPort"
+    $env:HEXABILL_SYNTHETIC_API_PORT = "$ApiPort"
     $env:HEXABILL_DEV_API_ORIGIN = $env:HEXABILL_API
-    $env:HEXABILL_FE_PORT = '5175'
+    $env:HEXABILL_FE_PORT = "$FePort"
     $env:PGHOST = '127.0.0.1'
     $env:PGPORT = "$PostgresPort"
     $env:PGUSER = 'hexabill_qa'
@@ -39,7 +42,7 @@ try {
     else { & dotnet $qaSeedDll }
     if ($LASTEXITCODE -ne 0) { throw 'Synthetic seed failed.' }
     Remove-Item Env:HEXABILL_SYNTHETIC_PASSWORD
-    foreach ($qaPort in @(5078, 5175)) {
+    foreach ($qaPort in @($ApiPort, $FePort)) {
         if (Get-NetTCPConnection -LocalPort $qaPort -State Listen -ErrorAction SilentlyContinue) {
             throw "Port $qaPort is already in use; no existing process is stopped."
         }
@@ -47,13 +50,13 @@ try {
     $qaLogPrefix = Join-Path $env:TEMP ('hexabill-save-qa-' + [Guid]::NewGuid().ToString('N'))
     $qaApiProcess = Start-Process dotnet -ArgumentList ('"' + $qaHostDll + '"') -WorkingDirectory $qaRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaLogPrefix-api.out" -RedirectStandardError "$qaLogPrefix-api.err"
     $qaUiRoot = Join-Path $qaRoot 'frontend\hexabill-ui'
-    $qaViteProcess = Start-Process node -ArgumentList @('node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5175', '--strictPort') -WorkingDirectory $qaUiRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaLogPrefix-vite.out" -RedirectStandardError "$qaLogPrefix-vite.err"
+    $qaViteProcess = Start-Process node -ArgumentList @('node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', "$FePort", '--strictPort') -WorkingDirectory $qaUiRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaLogPrefix-vite.out" -RedirectStandardError "$qaLogPrefix-vite.err"
     $qaReady = $false
     for ($qaAttempt = 0; $qaAttempt -lt 40; $qaAttempt++) {
         if ($qaApiProcess.HasExited -or $qaViteProcess.HasExited) { throw "Owned server exited; inspect $qaLogPrefix logs." }
         try {
             $qaHostState = Invoke-RestMethod "$env:HEXABILL_API/__synthetic-host" -TimeoutSec 2
-            $qaUi = Invoke-WebRequest 'http://127.0.0.1:5175/login' -UseBasicParsing -TimeoutSec 2
+            $qaUi = Invoke-WebRequest "http://127.0.0.1:$FePort/login" -UseBasicParsing -TimeoutSec 2
             if ($qaHostState.syntheticOnly -eq $true -and $qaUi.StatusCode -eq 200) { $qaReady = $true; break }
         } catch { Start-Sleep -Milliseconds 500 }
     }
