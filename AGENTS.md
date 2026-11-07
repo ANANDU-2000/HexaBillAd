@@ -65,3 +65,12 @@ Everything else is routine local work and proceeds without a stop.
 
 ## Working contract
 Report `PASS / FAIL / BLOCKED / NOT TESTED` with evidence. Follow `docs/plan/HEXABILL-AI-ERP-MASTER-GOAL.md` milestones; do not start next milestone without recording gate status. An approval to plan or create test code is NOT an approval to modify production.
+
+## Cloud Agent local runtime
+Local services are started by the environment, not by production credentials.
+
+- API: `http://127.0.0.1:5000` (`GET /health` is ok when PostgreSQL `hexabill_dev` is ready). UI: `http://demo-company-1.localhost:5173`.
+- Sign-in is host-scoped. `localhost` is not a tenant. Use `demo-company-1.localhost` for owner1 and `demo-company-2.localhost` for owner2.
+- Development passwords are generated on first boot into `/home/ubuntu/.hexabill-dev-credentials` (mode 600). Do not print, commit, or copy them. Emails: `admin@hexabill.com`, `owner1@hexabill.com`, `owner2@hexabill.com`.
+- PostgreSQL 16 listens on `127.0.0.1:5432` with local trust for role `hexabill`. Integration tests: `HEXABILL_TEST_POSTGRES=Host=127.0.0.1;Port=5432;Database=hexabill_test;Username=hexabill`.
+- An empty `hexabill_dev` is baselined from the EF model before the API starts. The migration chain cannot build that empty database by itself.
