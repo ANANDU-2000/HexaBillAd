@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { buildCustomerLedgerCollectHref, buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import { useDebounce } from '../../hooks/useDebounce'
 import ReportSwitcher from '../../components/ui/ReportSwitcher'

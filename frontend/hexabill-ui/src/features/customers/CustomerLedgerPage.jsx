@@ -2954,7 +2954,6 @@ const CustomerLedgerPage = () => {
                     </div>
                   )}
                 </div>
-              )}
 
               {/* TAB SECTIONS - Full Width */}
               <div className="flex-1 flex flex-col overflow-hidden w-full min-w-0 min-h-0">
