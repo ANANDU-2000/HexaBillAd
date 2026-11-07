@@ -1,0 +1,46 @@
+{
+  "kind": "e2e",
+  "page": "salesLedgerScaled",
+  "profile": "desktop",
+  "target": "preview",
+  "generatedAt": "2026-11-07T17:47:56.862Z",
+  "metrics": {
+    "firstDataRowMs": 411,
+    "apiSettledMs": 413,
+    "apiRequestsOnLoad": 10,
+    "longTasksOver200OnLoad": 0,
+    "longTasksOver50OnLoad": 0,
+    "longTaskMaxMsOnLoad": 0,
+    "longTasksOver200Interaction": 0,
+    "longTasksOver50Interaction": 0,
+    "longTaskMaxMsInteraction": 0,
+    "apiRequestsInteraction": 0,
+    "slowRequestsOver3s": 0
+  },
+  "notes": {
+    "route": "/sales-ledger",
+    "firstRowDetected": "tr: 07/11/2026PaymentZZ-TEST-gulfharvest-test-001ZZ-TEST gulfhar",
+    "interaction": "scroll x8",
+    "tenantSize": {
+      "customers": 1,
+      "products": 1,
+      "sales": 3
+    },
+    "ledgerCustomer": {
+      "id": 1,
+      "balance": 105
+    },
+    "apiCalls": [
+      "GET /api/settings/logo-data-uri",
+      "GET /api/auth/validate",
+      "GET /api/settings",
+      "GET /api/alerts/unread-count",
+      "GET /api/branches",
+      "GET /api/routes",
+      "PATCH /api/users/me/ping",
+      "GET /api/users",
+      "GET /api/reports/sales-ledger",
+      "GET /api/users"
+    ]
+  }
+}

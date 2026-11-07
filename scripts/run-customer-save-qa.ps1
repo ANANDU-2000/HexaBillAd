@@ -50,7 +50,11 @@ try {
     $qaLogPrefix = Join-Path $env:TEMP ('hexabill-save-qa-' + [Guid]::NewGuid().ToString('N'))
     $qaApiProcess = Start-Process dotnet -ArgumentList ('"' + $qaHostDll + '"') -WorkingDirectory $qaRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaLogPrefix-api.out" -RedirectStandardError "$qaLogPrefix-api.err"
     $qaUiRoot = Join-Path $qaRoot 'frontend\hexabill-ui'
-    $qaViteProcess = Start-Process node -ArgumentList @('node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', "$FePort", '--strictPort') -WorkingDirectory $qaUiRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaLogPrefix-vite.out" -RedirectStandardError "$qaLogPrefix-vite.err"
+    # HEXABILL_FE_MODE=preview serves the production build (run `npm run build` first) so perf specs measure what users get.
+    $qaViteArgs = @('node_modules/vite/bin/vite.js')
+    if ($env:HEXABILL_FE_MODE -eq 'preview') { $qaViteArgs += 'preview' }
+    $qaViteArgs += @('--host', '127.0.0.1', '--port', "$FePort", '--strictPort')
+    $qaViteProcess = Start-Process node -ArgumentList $qaViteArgs -WorkingDirectory $qaUiRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaLogPrefix-vite.out" -RedirectStandardError "$qaLogPrefix-vite.err"
     $qaReady = $false
     for ($qaAttempt = 0; $qaAttempt -lt 40; $qaAttempt++) {
         if ($qaApiProcess.HasExited -or $qaViteProcess.HasExited) { throw "Owned server exited; inspect $qaLogPrefix logs." }

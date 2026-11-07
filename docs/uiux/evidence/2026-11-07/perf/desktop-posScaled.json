@@ -1,0 +1,139 @@
+{
+  "kind": "e2e",
+  "page": "posScaled",
+  "profile": "desktop",
+  "target": "preview",
+  "generatedAt": "2026-11-07T17:50:04.562Z",
+  "metrics": {
+    "readyToSearchMs": 404,
+    "drawerOpenMs": 11,
+    "keystrokeToListMedianMs": 2.7,
+    "keystrokeToListP95Ms": 4,
+    "keystrokeToListMaxMs": 4,
+    "addItemToTotalMs": 5.8,
+    "longTasksOver200Interaction": 0,
+    "longTasksOver50Interaction": 0,
+    "longTaskMaxMsInteraction": 0,
+    "longTasksOver200OnLoad": 0,
+    "longTaskMaxMsOnLoad": 0,
+    "apiRequestsOnLoad": 10,
+    "apiRequestsWhileTyping": 0
+  },
+  "notes": {
+    "scaled": true,
+    "productRequests": [
+      "/api/products?page=1&pageSize=200"
+    ],
+    "product": "ZZ-TEST gulfharvest-test product",
+    "keystrokesMeasured": "8 of 24 keys changed the list (others left the DOM unchanged)",
+    "keystrokeDetail": [
+      {
+        "key": "Z",
+        "ms": 4
+      },
+      {
+        "key": "Z",
+        "ms": null
+      },
+      {
+        "key": "-",
+        "ms": null
+      },
+      {
+        "key": "T",
+        "ms": null
+      },
+      {
+        "key": "E",
+        "ms": null
+      },
+      {
+        "key": " ",
+        "ms": null
+      },
+      {
+        "key": "#",
+        "ms": 2.399999976158142
+      },
+      {
+        "key": "1",
+        "ms": null
+      },
+      {
+        "key": "9",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": 2.800000011920929
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": 2.5999999940395355
+      },
+      {
+        "key": "z",
+        "ms": 2.699999988079071
+      },
+      {
+        "key": "z",
+        "ms": null
+      },
+      {
+        "key": "q",
+        "ms": 2.5999999940395355
+      },
+      {
+        "key": "Backspace",
+        "ms": 3
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": 2.0999999940395355
+      }
+    ],
+    "addItemSamplesMs": [
+      5.800000011920929,
+      4.299999982118607
+    ],
+    "readyDefinition": "max(add-product control usable, last /api/products response done), ms from navigation start",
+    "tenantSize": {
+      "customers": 1,
+      "products": 1,
+      "sales": 3
+    },
+    "idleAndSoak": "see pos-idle.spec.js; 30 min / 100-invoice soak NOT TESTED"
+  }
+}

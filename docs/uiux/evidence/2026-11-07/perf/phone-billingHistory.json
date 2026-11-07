@@ -1,0 +1,47 @@
+{
+  "kind": "e2e",
+  "page": "billingHistory",
+  "profile": "phone",
+  "target": "preview",
+  "generatedAt": "2026-11-07T17:59:42.553Z",
+  "metrics": {
+    "firstDataRowMs": 2260,
+    "apiSettledMs": 2158,
+    "apiRequestsOnLoad": 8,
+    "longTasksOver200OnLoad": 0,
+    "longTasksOver50OnLoad": 4,
+    "longTaskMaxMsOnLoad": 167,
+    "longTasksOver200Interaction": 0,
+    "longTasksOver50Interaction": 0,
+    "longTaskMaxMsInteraction": 0,
+    "apiRequestsInteraction": 2,
+    "slowRequestsOver3s": 0,
+    "noVisibleLoadingStateAt3s": 0,
+    "stillLoadingCancelMissingAt3s": 1
+  },
+  "notes": {
+    "route": "/billing-history",
+    "firstRowDetected": "text: t-003",
+    "interaction": "scroll x8; search type abc + clear",
+    "tenantSize": {
+      "customers": 1,
+      "products": 1,
+      "sales": 3
+    },
+    "ledgerCustomer": {
+      "id": 1,
+      "balance": 105
+    },
+    "apiCalls": [
+      "GET /api/settings/logo-data-uri",
+      "GET /api/auth/validate",
+      "GET /api/settings",
+      "GET /api/alerts/unread-count",
+      "GET /api/branches",
+      "GET /api/routes",
+      "PATCH /api/users/me/ping",
+      "GET /api/legacy/invoices/unified?page=1&pageSize=20"
+    ],
+    "slowStateProbe": "Billing History Loading… Payment status Any status Paid Partial Unpaid Voided Sort Newest Oldest Today Yesterday Week 30 Days Month Last Month All Time Custom L"
+  }
+}
