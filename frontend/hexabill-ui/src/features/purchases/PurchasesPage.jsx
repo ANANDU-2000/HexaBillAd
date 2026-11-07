@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { statusTone } from '../../utils/statusTone'
 import { useCreateIntent } from '../../hooks/useCreateIntent'
@@ -86,6 +86,13 @@ const PurchasesPage = () => {
   const supplierPickedRef = useRef(false)
   const [products, setProducts] = useState([])
   const [productSearchTerm, setProductSearchTerm] = useState('')
+  // Which search term `products` actually answers ('' = default alphabetical list). Used so the
+  // dropdown never shows the unfiltered list while a typed term is still being fetched.
+  const [productsTerm, setProductsTerm] = useState('')
+  const searchSeqRef = useRef(0)
+  const qtyRefs = useRef({})
+  const costRefs = useRef({})
+  const [pendingFocusPid, setPendingFocusPid] = useState(null)
   const [showProductSearch, setShowProductSearch] = useState(false)
   const searchInputRef = useRef(null)
   const formRef = useRef(null) // CRITICAL: Ref for scrolling to form
@@ -473,6 +480,7 @@ const PurchasesPage = () => {
       const response = await productsAPI.getProducts({ pageSize: 100 })
       if (response.success) {
         setProducts(response.data.items || [])
+        setProductsTerm('')
       }
     } catch (error) {
       console.error('Failed to load products')
@@ -484,19 +492,65 @@ const PurchasesPage = () => {
       loadProducts()
       return
     }
+    const seq = ++searchSeqRef.current
     try {
       const response = await productsAPI.searchProducts(query, 20)
-      if (response.success) {
+      // Ignore out-of-order responses for an older term
+      if (response.success && seq === searchSeqRef.current) {
         setProducts(response.data || [])
+        setProductsTerm(query)
       }
     } catch (error) {
       console.error('Failed to search products')
     }
   }
 
+  // Instant local filter while the server answer for the typed term is in flight, so the
+  // dropdown never flashes the unfiltered alphabetical list.
+  const displayProducts = useMemo(() => {
+    const term = productSearchTerm.trim().toLowerCase()
+    if (!term || productsTerm === productSearchTerm) return products
+    const words = term.split(/\s+/)
+    return products.filter((p) => {
+      const hay = `${p.nameEn || ''} ${p.sku || ''}`.toLowerCase()
+      return words.every((w) => hay.includes(w))
+    })
+  }, [products, productSearchTerm, productsTerm])
+
+  const addedQtyByProduct = useMemo(() => {
+    const m = {}
+    formData.items.forEach((it) => { if (it.productId) m[it.productId] = (m[it.productId] || 0) + (Number(it.qty) || 0) })
+    return m
+  }, [formData.items])
+
+  // After a product is picked: scroll to its row and put the cursor in Qty (value selected).
+  useEffect(() => {
+    if (pendingFocusPid == null) return
+    // Mobile cards and desktop table both render; focus whichever one is visible
+    const el = [qtyRefs.current[`${pendingFocusPid}:m`], qtyRefs.current[`${pendingFocusPid}:d`]].find((n) => n && n.offsetParent !== null)
+    if (el) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      el.focus({ preventScroll: true })
+      el.select()
+      setPendingFocusPid(null)
+    }
+  }, [pendingFocusPid, formData.items])
+
+  const onRowKey = (e, pid, next) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    if (next === 'cost') {
+      const el = [costRefs.current[`${pid}:m`], costRefs.current[`${pid}:d`]].find((n) => n && n.offsetParent !== null)
+      if (el) { el.focus(); el.select() }
+    } else {
+      searchInputRef.current?.focus()
+    }
+  }
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (productSearchTerm) {
+      // Also runs when the box is cleared so stale search results are replaced by the default list
+      if (productSearchTerm || productsTerm) {
         searchProducts(productSearchTerm)
       }
     }, 300)
@@ -516,12 +570,19 @@ const PurchasesPage = () => {
       qty: 1,
       unitCost: unitCost
     }
-    setFormData((prev) => ({
-      ...prev,
-      items: [...prev.items, newItem]
-    }))
+    // Same product already on the voucher: bump its qty instead of adding a duplicate row
+    setFormData((prev) => {
+      const idx = prev.items.findIndex((it) => it.productId === product.id)
+      if (idx >= 0) {
+        const items = [...prev.items]
+        items[idx] = { ...items[idx], qty: (Number(items[idx].qty) || 0) + 1 }
+        return { ...prev, items }
+      }
+      return { ...prev, items: [...prev.items, newItem] }
+    })
+    // Keep the typed search text so several matching products can be added quickly
     setShowProductSearch(false)
-    setProductSearchTerm('')
+    setPendingFocusPid(product.id)
   }
 
   const updateItem = (index, field, value) => {
@@ -573,6 +634,10 @@ const PurchasesPage = () => {
       const qty = typeof item.qty === 'number' ? item.qty : parseFloat(item.qty)
       if (!Number.isFinite(qty) || qty <= 0) {
         toast.error(`Row ${i + 1}: type the quantity, for example 10`)
+        return
+      }
+      if (!(Number(item.unitCost) > 0)) {
+        toast.error(`Row ${i + 1}: unit cost is 0.00 — type the price for ${item.productName || 'this product'}`)
         return
       }
       const cost = fixMoney(item.unitCost, `Row ${i + 1} unit cost`)
@@ -845,7 +910,7 @@ const PurchasesPage = () => {
 
   return (
     <div className={`h-full min-h-0 bg-neutral-50 overflow-x-hidden w-full flex flex-col ${mobilePageShellClass}`}>
-      <div className="bg-white border-b border-neutral-200 px-3 sm:px-4 py-2 sticky top-0 z-20">
+      <div className={`bg-white border-b border-neutral-200 px-3 sm:px-4 py-2 ${showForm ? '' : 'sticky top-0 z-20'}`}>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-xl font-semibold text-neutral-900">Purchases</h1>
           {isFrozenHub1 && (
@@ -1159,7 +1224,8 @@ const PurchasesPage = () => {
                   inputClassName={tallyInputClass}
                   value={productSearchTerm}
                   onChange={setProductSearchTerm}
-                  products={products}
+                  products={displayProducts}
+                  addedQty={addedQtyByProduct}
                   open={showProductSearch}
                   onOpenChange={setShowProductSearch}
                   onSelect={addItem}
@@ -1172,7 +1238,7 @@ const PurchasesPage = () => {
                 </div>
 
                 {/* Mobile: compact cards per item */}
-                <div className="md:hidden space-y-2 max-h-[320px] overflow-y-auto border-2 border-neutral-200 border-t-0 rounded-b-lg p-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="md:hidden space-y-2 border-2 border-neutral-200 border-t-0 rounded-b-lg p-2">
                   {formData.items.length === 0 ? (
                     <p className="text-center text-primary-500 text-sm py-4">No items. Search and add products above.</p>
                   ) : (
@@ -1183,20 +1249,20 @@ const PurchasesPage = () => {
                       const vat = subtotal * (vatPercent / 100)
                       const total = subtotal + vat
                       return (
-                        <div key={index} className="bg-neutral-50 rounded-lg border border-neutral-200 p-3">
+                        <div key={index} className="bg-neutral-50 rounded-lg border border-neutral-200 px-3 pt-3 pb-2">
                           <div className="flex justify-between items-start gap-2">
                             <div className="min-w-0 flex-1">
-                              <p className="font-medium text-primary-800 text-sm truncate">{item.productName}</p>
+                              <p className="font-medium text-primary-800 text-sm leading-snug break-words">{item.productName}</p>
                               <p className="text-xs text-primary-500">{item.sku}</p>
                             </div>
                             <button type="button" onClick={() => removeItem(index)} className="shrink-0 text-error p-1" aria-label="Remove">
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 mt-2">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
                             <div>
                               <label className="text-xs text-primary-500">Qty</label>
-                              <input type="number" inputMode="decimal" step="any" placeholder="e.g. 10" className="w-full min-h-11 px-2 border border-neutral-200 rounded text-base md:text-sm" value={item.qty === '' ? '' : item.qty} onChange={(e) => updateItem(index, 'qty', e.target.value)} />
+                              <input type="number" inputMode="decimal" step="any" placeholder="e.g. 10" ref={(el) => { qtyRefs.current[`${item.productId}:m`] = el }} onFocus={(e) => e.target.select()} onKeyDown={(e) => onRowKey(e, item.productId, 'cost')} enterKeyHint="next" className="w-full min-h-11 px-2 border border-neutral-200 rounded text-base md:text-sm" value={item.qty === '' ? '' : item.qty} onChange={(e) => updateItem(index, 'qty', e.target.value)} />
                             </div>
                             <div>
                               <label className="text-xs text-primary-500">Unit</label>
@@ -1212,7 +1278,7 @@ const PurchasesPage = () => {
                             </div>
                             <div>
                               <label className="text-xs text-primary-500">Unit cost</label>
-                              <input type="number" inputMode="decimal" step="any" placeholder="e.g. 120.00" className="w-full min-h-11 px-2 border border-neutral-200 rounded text-base md:text-sm" value={item.unitCost === '' ? '' : item.unitCost} onChange={(e) => updateItem(index, 'unitCost', e.target.value)} />
+                              <input type="number" inputMode="decimal" step="any" placeholder="e.g. 120.00" ref={(el) => { costRefs.current[`${item.productId}:m`] = el }} onFocus={(e) => e.target.select()} onKeyDown={(e) => onRowKey(e, item.productId, 'search')} enterKeyHint="done" className={`w-full min-h-11 px-2 border rounded text-base md:text-sm ${cost > 0 ? 'border-neutral-200' : 'border-error ring-1 ring-error'}`} value={item.unitCost === '' ? '' : item.unitCost} onChange={(e) => updateItem(index, 'unitCost', e.target.value)} />
                             </div>
                             <div className="flex flex-col justify-end">
                               <span className="text-xs text-primary-500">Total</span>
@@ -1308,6 +1374,9 @@ const PurchasesPage = () => {
                                 type="number"
                                 min="0"
                                 step="0.01"
+                                ref={(el) => { qtyRefs.current[`${item.productId}:d`] = el }}
+                                onFocus={(e) => e.target.select()}
+                                onKeyDown={(e) => onRowKey(e, item.productId, 'cost')}
                                 className="w-20 min-h-[44px] px-1 border border-neutral-200 rounded text-sm"
                                 value={item.qty === '' ? '' : item.qty}
                                 onChange={(e) => updateItem(index, 'qty', e.target.value)}
@@ -1318,7 +1387,10 @@ const PurchasesPage = () => {
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                className="w-20 min-h-[44px] px-1 border border-neutral-200 rounded text-sm"
+                                ref={(el) => { costRefs.current[`${item.productId}:d`] = el }}
+                                onFocus={(e) => e.target.select()}
+                                onKeyDown={(e) => onRowKey(e, item.productId, 'search')}
+                                className={`w-20 min-h-[44px] px-1 border rounded text-sm ${!(Number(item.unitCost) > 0) ? 'border-error ring-1 ring-error' : 'border-neutral-200'}`}
                                 value={item.unitCost === '' ? '' : item.unitCost}
                                 onChange={(e) => updateItem(index, 'unitCost', e.target.value)}
                               />

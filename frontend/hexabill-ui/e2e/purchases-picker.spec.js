@@ -40,7 +40,44 @@ test('keyboard selects a product and closes the list; Escape closes without addi
   await input.press('ArrowDown')
   await input.press('Enter')
   await expect(page.getByRole('listbox')).toHaveCount(0)
-  await expect(input).toHaveValue('')
+  // The typed text is kept so several matching products can be added in a row.
+  await expect(input).toHaveValue('a')
+})
+
+test('pick focuses Qty, Enter goes to Unit cost then back to search; re-pick marks Added and does not duplicate', async ({ page }) => {
+  const input = await openPicker(page, 'a')
+  const option = page.getByRole('listbox').getByRole('option').first()
+  await expect(option).toBeVisible()
+  await option.dispatchEvent('pointerdown')
+  await expect(page.getByRole('listbox')).toHaveCount(0)
+
+  const qty = page.locator('input[type="number"]:visible').first()
+  await expect(qty).toBeFocused()
+  await page.keyboard.type('3')
+  await expect(qty).toHaveValue('3') // default 1 was selected, so typing replaced it
+  await page.keyboard.press('Enter')
+  const cost = page.locator('input[type="number"]:visible').nth(1)
+  await expect(cost).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(input).toBeFocused()
+  await expect(input).toHaveValue('a')
+
+  // Same product again: badge shown, qty incremented, still one row.
+  const again = page.getByRole('listbox').getByRole('option').first()
+  await expect(again).toContainText('Added (Qty: 3)')
+  await again.dispatchEvent('pointerdown')
+  await expect(page.locator('input[type="number"]:visible').first()).toHaveValue('4')
+})
+
+test('typing never shows the unfiltered list: every option matches the term', async ({ page }) => {
+  const input = await openPicker(page, '')
+  await input.pressSequentially('nat', { delay: 30 })
+  const options = page.getByRole('listbox').getByRole('option')
+  for (let i = 0; i < 10; i++) {
+    const texts = await options.allTextContents()
+    expect(texts.every((t) => /nat/i.test(t))).toBe(true)
+    await page.waitForTimeout(60)
+  }
 })
 
 test.describe('touch', () => {

@@ -6,7 +6,7 @@ import { pickerKey } from '../../utils/pickerNav'
 // Product search combobox for the purchase voucher. The list is anchored inside the same
 // relative wrapper as the input, sits above table headers, and selects on pointer-down so a
 // touch tap is not lost to the input blur.
-export default function ProductPicker({ inputRef, inputId, inputClassName, value, onChange, products, open, onOpenChange, onSelect }) {
+export default function ProductPicker({ inputRef, inputId, inputClassName, value, onChange, products, open, onOpenChange, onSelect, addedQty = {} }) {
   const wrapRef = useRef(null)
   const [active, setActive] = useState(-1)
   const listId = `${inputId}-list`
@@ -69,7 +69,12 @@ export default function ProductPicker({ inputRef, inputId, inputClassName, value
             >
               <div className="flex justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{product.nameEn}</p>
+                  <p className="truncate text-sm font-medium">
+                    {product.nameEn}
+                    {addedQty[product.id] > 0 && (
+                      <span className="ml-2 rounded bg-success-bg px-1.5 py-0.5 text-[11px] font-semibold text-success-fg">Added (Qty: {addedQty[product.id]})</span>
+                    )}
+                  </p>
                   <p className="text-xs text-primary-500">SKU: {product.sku}</p>
                 </div>
                 <div className="shrink-0 text-right">
