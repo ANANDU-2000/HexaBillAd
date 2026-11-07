@@ -62,6 +62,11 @@ Add one line per fact. Delete a line when it is no longer true.
 - No Docker and no psql/pg_isready on PATH. PostgreSQL 18 is at `C:\Program Files\PostgreSQL8in`. Working QA cluster notes: memory `hexabill-local-qa-harness` (start `pg_ctl` with output redirected, runner = `scripts/run-customer-save-qa.ps1`, Playwright projects `m360,m390,t768,d1024,d1440`).
 - `docs/uiux/evidence/` already exists in repo (untracked files in primary tree); evidence for this loop goes in `docs/uiux/evidence/2026-11-07/`.
 
+- DANGER (cost me the shared node_modules once): every loop worktree has `frontend/hexabill-ui/node_modules` as a JUNCTION to the primary tree. `git worktree remove --force` FOLLOWS the junction and empties the real node_modules (other sessions use it). Always `cmd /c rmdir "<worktree>rontend\hexabill-ui
+ode_modules"` FIRST, then remove the worktree. Repair if it happens: `npm ci` in the primary frontend dir (lockfile clean, ~20 s). Never run npm install/ci from a worktree.
+- Files modified in the primary (dirty) tree overlap loop work: App.jsx, Layout.jsx, PosEnterprisePage.jsx, PosPageLegacy.jsx, BillingHistoryPage, SalesLedgerPage, CustomersPage, ExpensesPage, PaymentsPage, ProductsPage, ModernTable, Badge, OverflowMenu etc. Expect merge conflicts when the owner commits that work onto main; the loop never touches the primary tree.
+- Native-confirm replacement pattern: `const [askConfirm, confirmDialog] = useConfirmDialog()`; `if (!(await askConfirm({title, message, confirmLabel}))) return`; render `{confirmDialog}` in the component root. Name it askConfirm (the task grep flags `confirm(`).
+- Page tests that bundle a page with esbuild stub `lucide-react` with a fixed icon list (tests/vatManagementPage.test.js); add any new icon a page transitively imports.
 - LOCAL QA STACK (works, verified 2026-11-07): PG cluster `%TEMP%\hexabill-unified-pg-20261101` on port 55481 (start with `pg_ctl ... -o "-p 55481" -W start >/dev/null 2>&1 </dev/null`; first start takes ~30 s crash recovery). Loop DB `hexabill_codex_browser_loop_20261107` (seeded; tenant `gulfharvest-test`, owner `owner@gulfharvest-test.hexabill.local`). Run a spec: `cmd //c "powershell -NoProfile -File C:\Users\anand\.claude-worktrees\_loop-tools\run-spec.ps1 -Root <worktree> -Spec e2e/x.spec.js -Projects d1440 > out.txt 2>&1"` (wrapper lives outside the repo; `-FirstSeed` only on a new DB). Needs `dotnet build tools/HexaBill.SyntheticSeed` and `tools/HexaBill.SyntheticBrowserHost` once per worktree.
 - Port plan (runner now takes -ApiPort/-FePort): T1 5178/5179, T2 5180/5181, T3 5182/5183, T4 5184/5185, T5 5186/5187. Default 5078/5175 can be blocked by a phantom PID-0 Listen socket for ~30 s after a run; the wrapper waits.
 - Baseline at HEAD 9183b31e: `npm run lint` = 3 errors + 256 warnings (errors are BUG-1..3, none from the loop); `npm test` = 403 tests, 401 pass, 2 fail (customerLedgerUrl, BUG-4); `npm run build` exit 0 (~16 s).
@@ -73,7 +78,7 @@ Add one line per fact. Delete a line when it is no longer true.
 `[ ]` todo · `[~]` doing/blocked · `[x]` done · `STUCK` · `BLOCKED-BACKEND`
 
 - Perf: P-00 [ ] P-01 [ ] P-02 [ ] P-03 [ ] P-04 [ ] P-05 [ ] P-06 [ ] P-07 [ ] P-08 [ ] P-09 [ ] P-10 [ ]
-- A: A01 [x] A02 [ ] A03 [ ] A04 [ ] A05 [ ] A06 [ ]
+- A: A01 [x] A02 BLOCKED-DECISION (see REVIEW-INBOX 7 Nov; reply text hidden by design) A03 [x] (A03b open: useUnsavedChangesGuard.js still uses window.confirm) A04 [ ] A05 [ ] A06 [ ]
 - B: B01 [ ] B02 [ ] B03 [ ] B04 [ ] B05 [ ] B06 [ ]
 - C: C01 [ ] C02 [ ] C03 [ ] C04 [ ] C05 [ ] C06 [ ] C07 [ ] C08 [ ] C09 [ ]
 - D: D01 [ ] D02 [ ] D03 [ ]
@@ -87,6 +92,8 @@ Add one line per fact. Delete a line when it is no longer true.
 | # | Date | Task | Result | Commit | Tests (unit/e2e) | Evidence path | Notes |
 |---|---|---|---|---|---|---|---|
 | 1 | 2026-11-07 | A01 Users table | PASS | fefe5bd7 | unit 401/403 (2 pre-existing fails), build 0, lint 0 new errors, e2e users-page-table 2/2 | docs/uiux/evidence/2026-11-07/A01-users-*.png | Also fixed a Status/Role header swap hidden by the invisible header. Before: contrast 1.09 |
+| 2 | 2026-11-07 | A02 assistant reply text | BLOCKED | - | - | docs/plan/REVIEW-INBOX.md | Task assumption wrong: hiding model text is a deliberate guard (commit 923564c0 + test). No code changed |
+| 3 | 2026-11-07 | A03 native confirm -> modal | PASS | 7e58d5b4 | unit 401/403 (same 2 pre-existing), build 0, lint 0 new errors, e2e confirm-modal 2/2 (d1440, m360) | docs/uiux/evidence/2026-11-07/A03-*.png | New hooks/useConfirmDialog.jsx (`askConfirm`). 2 tests updated (UIX006 assertion, VAT icon stub +X). Grep now only hits the guard hook + hook docs |
 | | | | | | | | |
 
 
