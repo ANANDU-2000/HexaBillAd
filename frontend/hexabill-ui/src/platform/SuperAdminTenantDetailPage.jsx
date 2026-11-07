@@ -55,6 +55,7 @@ import { Input, Select } from '../components/Form'
 import ConfirmDangerModal from '../components/ConfirmDangerModal'
 import { isValidTenantSlug } from '../tenant/tenantHost'
 import { localDateString } from '../utils/dateFormat'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import { TabNavigation } from '../components/ui'
 import ErrorState from '../components/ui/ErrorState'
 
@@ -2075,6 +2076,7 @@ const SuperAdminTenantDetailPage = () => {
 // --- Sub-components ---
 
 const TenantFeaturesTab = ({ tenantId }) => {
+  const [askConfirm, confirmDialog] = useConfirmDialog()
   // Feature keys mapping: frontend key -> backend key
   const FEATURE_KEYS = {
     invoicing: 'invoicing',
@@ -2188,9 +2190,11 @@ const TenantFeaturesTab = ({ tenantId }) => {
   const handleSaveVatBasis = async () => {
     if (!tenantId) return
     if (vatBasisDraft === 'ProfitBased') {
-      const ok = window.confirm(
-        'Profit-based VAT presentation applies only to the VAT return profit form after accountant approval. Statutory sales boxes are unchanged. Continue?'
-      )
+      const ok = await askConfirm({
+        title: 'Use profit-based VAT presentation?',
+        message: 'Profit-based VAT presentation applies only to the VAT return profit form after accountant approval. Statutory sales boxes are unchanged.',
+        confirmLabel: 'Continue',
+      })
       if (!ok) return
     }
     if (vatBasisDraft === vatBasis) {
@@ -2288,7 +2292,11 @@ const TenantFeaturesTab = ({ tenantId }) => {
     const current = tenantFeatures[featureKey]
     const newValue = !current
     const action = newValue ? 'Enable' : 'Disable'
-    if (!window.confirm(`${action} "${featureName || featureKey}" for this tenant?`)) return
+    if (!(await askConfirm({
+      title: `${action} "${featureName || featureKey}"?`,
+      message: 'This changes the feature for this tenant only.',
+      confirmLabel: action,
+    }))) return
     try {
       setFeaturesSaving(true)
       const next = { ...tenantFeatures, [featureKey]: newValue }
@@ -2454,6 +2462,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
           </LoadingButton>
         </div>
       </div>
+      {confirmDialog}
     </div>
   )
 }

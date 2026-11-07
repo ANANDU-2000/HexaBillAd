@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { shouldRunBackgroundRefresh, vatPeriodKey } from '../../utils/vatRefreshGate'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useConfirmDialog } from '../../hooks/useConfirmDialog'
 import {
   RefreshCw,
   Lock,
@@ -128,6 +129,7 @@ function snapToSupportedVatPeriod(fromStr, toStr) {
 }
 
 const VatReturnPage = () => {
+  const [askConfirm, confirmDialog] = useConfirmDialog()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -836,7 +838,11 @@ const VatReturnPage = () => {
                     if ((v.status || '').toLowerCase() === 'locked' || (v.status || '').toLowerCase() === 'submitted') { toast.error('Period is already frozen'); return }
                     const company = v.companyName ?? v.CompanyName ?? 'Company not configured'
                     const trn = v.vatTrn ?? v.VatTrn ?? 'Not provided'
-                    if (!window.confirm(`Freeze this management report?\nCompany: ${company}\nVAT TRN: ${trn}\nPeriod: ${periodLabel}\nNet VAT payable: ${formatCurrency(netVatPayable)}\nNo further transaction changes in this period will be allowed.`)) return
+                    if (!(await askConfirm({
+                      title: 'Freeze this management report?',
+                      message: `Company: ${company}\nVAT TRN: ${trn}\nPeriod: ${periodLabel}\nNet VAT payable: ${formatCurrency(netVatPayable)}\n\nNo further transaction changes in this period will be allowed.`,
+                      confirmLabel: 'Freeze report',
+                    }))) return
                     await runVatAction(async () => {
                       // Interim until the explicit Review step lands in the VAT UI milestone.
                       if (String(v.status ?? v.Status) !== 'Reviewed') await reportsAPI.reviewVatReturnPeriod(v.periodId)
@@ -859,7 +865,11 @@ const VatReturnPage = () => {
                     if ((v.status || '').toLowerCase() !== 'locked') return
                     const company = v.companyName ?? v.CompanyName ?? 'Company not configured'
                     const trn = v.vatTrn ?? v.VatTrn ?? 'Not provided'
-                    if (!window.confirm(`Mark as filed locally? This does not file with the FTA.\nCompany: ${company}\nVAT TRN: ${trn}\nPeriod: ${periodLabel}\nNet VAT payable: ${formatCurrency(netVatPayable)}`)) return
+                    if (!(await askConfirm({
+                      title: 'Mark as filed locally?',
+                      message: `This does not file with the FTA.\n\nCompany: ${company}\nVAT TRN: ${trn}\nPeriod: ${periodLabel}\nNet VAT payable: ${formatCurrency(netVatPayable)}`,
+                      confirmLabel: 'Mark as filed',
+                    }))) return
                     await runVatAction(async () => {
                       const res = await reportsAPI.submitVatReturnPeriod(v.periodId)
                       if (res?.success) { acknowledgeVatAction('Marked as filed locally'); toast.success('Marked as filed locally') }
@@ -1664,6 +1674,7 @@ const VatReturnPage = () => {
           )}
         </>
       )}
+      {confirmDialog}
     </div>
   )
 }

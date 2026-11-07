@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useConfirmDialog } from '../../hooks/useConfirmDialog'
 import { Plus, ScrollText, Pencil, Printer, Trash2, Download } from 'lucide-react'
 import { agreementsAPI } from '../../services/documentsApi'
 
@@ -23,6 +24,7 @@ function openPdfBlob(blob) {
 }
 
 export default function AgreementsPage() {
+  const [askConfirm, confirmDialog] = useConfirmDialog()
   const navigate = useNavigate()
   const [rows, setRows] = useState([])
   const [error, setError] = useState('')
@@ -47,7 +49,7 @@ export default function AgreementsPage() {
   }, [load])
 
   const handleDelete = async (row) => {
-    if (!window.confirm(`Delete ${row.agreementNo}? This cannot be undone.`)) return
+    if (!(await askConfirm({ title: `Delete ${row.agreementNo}?`, message: 'The agreement will be permanently removed. This cannot be undone.', confirmLabel: 'Delete agreement' }))) return
     setBusyId(row.id)
     setError('')
     try {
@@ -182,6 +184,7 @@ export default function AgreementsPage() {
         </div>
       )}
       </div>
+      {confirmDialog}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useConfirmDialog } from '../../hooks/useConfirmDialog'
 import { Plus, BadgeDollarSign, Pencil, Printer, Trash2, Download, Search } from 'lucide-react'
 import { salaryCertificatesAPI } from '../../services/documentsApi'
 
@@ -23,6 +24,7 @@ function openPdfBlob(blob) {
 }
 
 export default function SalaryCertificatesPage() {
+  const [askConfirm, confirmDialog] = useConfirmDialog()
   const navigate = useNavigate()
   const [rows, setRows] = useState([])
   const [error, setError] = useState('')
@@ -68,7 +70,7 @@ export default function SalaryCertificatesPage() {
   }, [rows, q])
 
   const handleDelete = async (row) => {
-    if (!window.confirm(`Delete ${row.certificateNo}? This cannot be undone.`)) return
+    if (!(await askConfirm({ title: `Delete ${row.certificateNo}?`, message: 'The salary certificate will be permanently removed. This cannot be undone.', confirmLabel: 'Delete certificate' }))) return
     setBusyId(row.id)
     setError('')
     try {
@@ -263,6 +265,7 @@ export default function SalaryCertificatesPage() {
           </div>
         )}
       </div>
+      {confirmDialog}
     </div>
   )
 }

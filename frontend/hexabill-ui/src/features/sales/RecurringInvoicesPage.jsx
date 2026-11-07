@@ -5,6 +5,7 @@ Date: 2025
 */
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useConfirmDialog } from '../../hooks/useConfirmDialog'
 import { recurringInvoicesAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -13,6 +14,7 @@ import { FileText, Plus, Trash2 } from 'lucide-react'
 const FREQ_LABELS = { 0: 'Daily', 1: 'Weekly', 2: 'Monthly', 3: 'Yearly' }
 
 const RecurringInvoicesPage = () => {
+  const [askConfirm, confirmDialog] = useConfirmDialog()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [list, setList] = useState([])
@@ -39,7 +41,7 @@ const RecurringInvoicesPage = () => {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this recurring invoice?')) return
+    if (!(await askConfirm({ title: 'Delete this recurring invoice?', message: 'The recurring schedule will be removed. This cannot be undone.', confirmLabel: 'Delete schedule' }))) return
     try {
       const res = await recurringInvoicesAPI.deleteRecurringInvoice(id)
       if (res?.success) {
@@ -117,6 +119,7 @@ const RecurringInvoicesPage = () => {
           </table>
         </div>
       )}
+      {confirmDialog}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useConfirmDialog } from '../../hooks/useConfirmDialog'
 import { Plus, FileText, Pencil, Printer, Trash2, Download, Copy, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { quotationsAPI } from '../../services/documentsApi'
@@ -32,6 +33,7 @@ function StatusBadge({ status }) {
 }
 
 export default function QuotationsPage() {
+  const [askConfirm, confirmDialog] = useConfirmDialog()
   const { currency = 'AED' } = useBranding()
   const navigate = useNavigate()
   const [rows, setRows] = useState([])
@@ -80,7 +82,7 @@ export default function QuotationsPage() {
   useEffect(() => setPage(1), [query, statusFilter, sort])
 
   const handleDelete = async (row) => {
-    if (!window.confirm(`Delete ${row.quoteNo}? This cannot be undone.`)) return
+    if (!(await askConfirm({ title: `Delete ${row.quoteNo}?`, message: 'The quotation will be permanently removed. This cannot be undone.', confirmLabel: 'Delete quotation' }))) return
     setBusyId(row.id)
     setError('')
     try {
@@ -366,6 +368,7 @@ export default function QuotationsPage() {
         </div>
       )}
       </div>
+      {confirmDialog}
     </div>
   )
 }

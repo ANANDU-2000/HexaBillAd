@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import {
   Shield,
   HelpCircle,
@@ -37,6 +38,7 @@ const CURRENCIES = [
 ]
 
 const SuperAdminSettingsPage = () => {
+  const [askConfirm, confirmDialog] = useConfirmDialog()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('defaults')
@@ -270,10 +272,15 @@ const SuperAdminSettingsPage = () => {
                   aria-checked={form.maintenanceMode}
                   aria-label="Maintenance mode"
                   checked={form.maintenanceMode}
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     // UIX-006: turning this on locks every tenant out, so confirm first and name the impact.
-                    if (e.target.checked && !window.confirm('Turn on maintenance mode? All tenant users will see a maintenance screen until you turn it off. You still need to click Save.')) return
-                    setForm({ ...form, maintenanceMode: e.target.checked })
+                    const turnOn = e.target.checked
+                    if (turnOn && !(await askConfirm({
+                      title: 'Turn on maintenance mode?',
+                      message: 'All tenant users will see a maintenance screen until you turn it off. You still need to click Save.',
+                      confirmLabel: 'Turn on',
+                    }))) return
+                    setForm((prev) => ({ ...prev, maintenanceMode: turnOn }))
                   }}
                   className="h-4 w-4 rounded"
                 />
@@ -394,6 +401,7 @@ const SuperAdminSettingsPage = () => {
           </div>
         </div>
       </div>
+      {confirmDialog}
     </div>
   )
 }

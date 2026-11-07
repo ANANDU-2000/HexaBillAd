@@ -8,6 +8,7 @@ import { PosSelectionProvider, usePosSelection } from './managers/SelectionManag
 import { createBarcodeEngine } from './barcode/BarcodeEngine'
 import { usePosUndo } from './hooks/usePosUndo'
 import { usePosDraft } from './hooks/usePosDraft'
+import { useConfirmDialog } from '../../../hooks/useConfirmDialog'
 import { useProductCatalog } from './hooks/useProductCatalog'
 import {
   usePosInteraction,
@@ -79,6 +80,7 @@ function normalizeApiPaymentMethodToUi(method) {
 }
 
 const PosEnterprisePage = () => {
+  const [askConfirm, confirmDialog] = useConfirmDialog()
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
@@ -2162,9 +2164,13 @@ const PosEnterprisePage = () => {
     roundOffInput,
   }), [cart, discount, discountInput, selectedCustomer, paymentMethod, paymentAmount, notes, invoiceDate, selectedBranchId, selectedRouteId, roundOff, roundOffInput])
 
-  const applyDraftRestore = useCallback((parsed) => {
+  const applyDraftRestore = useCallback(async (parsed) => {
     if (!parsed || isEditMode) return
-    const ok = window.confirm('Restore unsaved POS draft from this browser?')
+    const ok = await askConfirm({
+      title: 'Restore unsaved draft?',
+      message: 'An unsaved POS draft from this browser was found. Restoring it replaces what is on the screen now.',
+      confirmLabel: 'Restore draft',
+    })
     if (!ok) return
     if (Array.isArray(parsed.cart)) setCart(ensureCartRowIds(parsed.cart))
     if (parsed.discount != null) setDiscount(parsed.discount)
@@ -2177,7 +2183,7 @@ const PosEnterprisePage = () => {
     if (parsed.selectedBranchId != null) setSelectedBranchId(parsed.selectedBranchId)
     if (parsed.selectedRouteId != null) setSelectedRouteId(parsed.selectedRouteId)
     toast.success('Draft restored')
-  }, [isEditMode])
+  }, [isEditMode, askConfirm])
 
   const { clearDraft } = usePosDraft({
     tenantId,
@@ -4262,6 +4268,7 @@ const PosEnterprisePage = () => {
         onConfirm={dangerModal.onConfirm}
         onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
       />
+      {confirmDialog}
     </>
   )
 }

@@ -35,7 +35,7 @@ before(async () => {
       builder.onLoad({ filter: /^icons$/, namespace: 'vat-test' }, () => ({
         contents: `export const RefreshCw=()=>null, Lock=()=>null, Send=()=>null, Download=()=>null,
           ArrowLeft=()=>null, Calendar=()=>null, ShieldCheck=()=>null, AlertTriangle=()=>null,
-          CheckCircle=()=>null, Activity=()=>null, ExternalLink=()=>null, ChevronDown=()=>null, ChevronUp=()=>null, Loader2=()=>null`, loader: 'js'
+          CheckCircle=()=>null, Activity=()=>null, ExternalLink=()=>null, ChevronDown=()=>null, ChevronUp=()=>null, Loader2=()=>null, X=()=>null`, loader: 'js'
       }))
       builder.onResolve({ filter: /services\/index/ }, () => ({ path: 'services', namespace: 'vat-test' }))
       builder.onLoad({ filter: /^services$/, namespace: 'vat-test' }, () => ({

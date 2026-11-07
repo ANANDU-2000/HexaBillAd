@@ -43,6 +43,9 @@ test('UIX014: document editors and tenant VAT date use the local day, not the UT
 test('UIX006: maintenance mode is a switch that asks before turning on, and says so', () => {
   const page = src('platform', 'SuperAdminSettingsPage.jsx')
   assert.equal(page.includes('role="switch"'), true)
-  assert.equal(page.includes('window.confirm('), true)
+  // UX-A03: the question is asked in the in-app modal, never the browser's native confirm().
+  assert.equal(page.includes('window.confirm('), false)
+  assert.equal(page.includes('askConfirm('), true)
+  assert.equal(page.includes('Turn on maintenance mode?'), true)
   assert.equal(page.includes('Maintenance mode is on'), true)
 })
