@@ -169,6 +169,36 @@ namespace HexaBill.Api.Modules.Legacy
         public string? Reference { get; set; }
     }
 
+    /// <summary>One row of the combined payment history: a current payment or a read-only historical (migrated) payment.</summary>
+    public class UnifiedPaymentDto
+    {
+        /// <summary>True for a migrated historical payment (read-only, never editable).</summary>
+        public bool IsHistorical { get; set; }
+        public int Id { get; set; }
+        public int? SaleId { get; set; }
+        public int? LegacyInvoiceId { get; set; }
+        public string? InvoiceNo { get; set; }
+        public int? CustomerId { get; set; }
+        public string? CustomerName { get; set; }
+        public decimal Amount { get; set; }
+        public string Mode { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string? Reference { get; set; }
+        public DateTime PaymentDate { get; set; }
+        // Current payments only (null/false for historical rows):
+        public int? SaleReturnId { get; set; }
+        public int? CreatedBy { get; set; }
+        public DateTime? CreatedAt { get; set; }
+        public bool IsSettlementAdjustment { get; set; }
+        public int? ParentPaymentId { get; set; }
+    }
+
+    public class LegacyPaymentsSummaryDto
+    {
+        /// <summary>Number of historical payments this tenant owns. 0 means the tenant has no historical data.</summary>
+        public int HistoricalCount { get; set; }
+    }
+
     public class LegacyPurchaseSummaryDto
     {
         public int Id { get; set; }

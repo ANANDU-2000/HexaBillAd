@@ -16,6 +16,7 @@ import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { productsAPI } from '../../services/index'
 import { LoadingCard } from '../../components/Loading'
+import TableSkeleton from '../../components/ui/TableSkeleton'
 import ProductForm from '../../components/ProductForm'
 import StockAdjustmentModal from '../../components/StockAdjustmentModal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
@@ -268,6 +269,9 @@ const ProductDetailPage = () => {
               <img
                 src={imageSrc(product.imageUrl)}
                 alt={displayName}
+                width={96}
+                height={96}
+                decoding="async"
                 className="h-24 w-24 object-cover rounded-lg border border-neutral-200"
                 onError={(e) => { e.target.style.display = 'none' }}
               />
@@ -366,7 +370,7 @@ const ProductDetailPage = () => {
           </button>
         </div>
         {movementsLoading ? (
-          <p className="text-sm text-neutral-500 py-6 text-center">Loading movements…</p>
+          <TableSkeleton rows={5} className="border-0 rounded-none" />
         ) : movements.length === 0 ? (
           <p className="text-sm text-neutral-500 py-6 text-center">No movements recorded yet.</p>
         ) : (

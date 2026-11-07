@@ -1,0 +1,46 @@
+{
+ "stage": "before",
+ "lang": "en",
+ "project": "t768",
+ "errors": [],
+ "screens": {
+  "customers": {
+   "viewport": {
+    "vw": 768,
+    "vh": 1024
+   },
+   "dir": "ltr",
+   "lang": "en",
+   "overflowX": 0,
+   "firstRecordY": null,
+   "firstRecordRatio": null,
+   "controlsAboveFirstRecord": null,
+   "rowHeight": null,
+   "rowCountVisible": 0,
+   "controlsUnder32px": 5,
+   "smallestTextPx": 10,
+   "usesTable": true,
+   "scrollContainers": 2,
+   "textLength": 7366
+  },
+  "payments": {
+   "viewport": {
+    "vw": 768,
+    "vh": 1024
+   },
+   "dir": "ltr",
+   "lang": "en",
+   "overflowX": 0,
+   "firstRecordY": null,
+   "firstRecordRatio": null,
+   "controlsAboveFirstRecord": null,
+   "rowHeight": null,
+   "rowCountVisible": 0,
+   "controlsUnder32px": 28,
+   "smallestTextPx": 10,
+   "usesTable": true,
+   "scrollContainers": 2,
+   "textLength": 2853
+  }
+ }
+}

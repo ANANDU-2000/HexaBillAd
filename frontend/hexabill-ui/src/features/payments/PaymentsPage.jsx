@@ -44,10 +44,17 @@ import { localDateString } from '../../utils/dateFormat'
 import { readPaymentsStateFromParams, syncPaymentsSearchParams, paymentListParams, paymentDateRangeError } from '../../utils/paymentsUrl'
 import { getReturnLabel, showReturnToPrompt } from '../../utils/returnNavigation'
 import { offerReceiptPreviewAfterPayment } from '../../utils/offerReceiptPreview'
-import { canReceivePaymentReceipt, currentReceiptSelection, receiptIneligibilityReason, paymentStatusLabel, receiptSelectionSummary, toggleVisibleReceiptSelection, mergeSelectedPaymentRecords } from '../../utils/receiptEligibility'
+import { canReceivePaymentReceipt as canReceiveBase, currentReceiptSelection, receiptIneligibilityReason, paymentStatusLabel, receiptSelectionSummary, toggleVisibleReceiptSelection, mergeSelectedPaymentRecords } from '../../utils/receiptEligibility'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import Alert from '../../components/ui/Alert'
+import TableSkeleton from '../../components/ui/TableSkeleton'
+import { ModernTable, Badge, OverflowMenu } from '../../components/ui'
+import { statusKind } from '../../utils/statusTone'
 import { bulkRowFromSaved, createLedgerPaymentJournal, createPaymentBatchJournal, isDefinitivePaymentRejection, ledgerPaymentAccountPrefix, ledgerPaymentForm, ledgerPaymentScope, paymentBatchScope, paymentRejectionMessage, reconcilePaymentKey, settleAllPendingPayments } from '../../utils/ledgerPaymentIntent'
+
+// Historical payments come from the old system and are read-only. Their ids live in a different number
+// space, so the page re-keys them ("h-<id>") and they can never be selected or receipted by mistake.
+const canReceivePaymentReceipt = (payment) => !payment?.isHistorical && canReceiveBase(payment)
 
 const PaymentsPage = () => {
   const { user } = useAuth()
@@ -97,43 +104,12 @@ const PaymentsPage = () => {
   const [showBulkPaymentModal, setShowBulkPaymentModal] = useState(false)
   const [bulkPayments, setBulkPayments] = useState([{ customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
   const [selectedPaymentIds, setSelectedPaymentIds] = useState([])
-  const [paymentsTab, setPaymentsTab] = useState(() => searchParams.get('tab') || 'active')
-  const [legacyPayments, setLegacyPayments] = useState([])
-  const [legacyPage, setLegacyPage] = useState(1)
-  const [legacyPageSize, setLegacyPageSize] = useState(25)
-  const [legacyTotalCount, setLegacyTotalCount] = useState(0)
-  const [legacyTotalPages, setLegacyTotalPages] = useState(1)
-  const [legacyStatus, setLegacyStatus] = useState('')
-  const [legacyLoading, setLegacyLoading] = useState(false)
-
-  const loadLegacyPayments = useCallback(async () => {
-    try {
-      setLegacyLoading(true)
-      const res = await legacyAPI.getPayments({
-        page: legacyPage,
-        pageSize: legacyPageSize,
-        search: searchTerm?.trim() || undefined,
-        status: legacyStatus || undefined,
-        fromDate: fromDate || undefined,
-        toDate: toDate || undefined
-      })
-      if (res?.success && res.data) {
-        setLegacyPayments(res.data.items || [])
-        setLegacyTotalCount(res.data.totalCount || 0)
-        setLegacyTotalPages(res.data.totalPages || 1)
-      }
-    } catch (err) {
-      console.warn('Error loading historical legacy payments:', err)
-    } finally {
-      setLegacyLoading(false)
-    }
-  }, [legacyPage, legacyPageSize, searchTerm, legacyStatus, fromDate, toDate])
-
-  useEffect(() => {
-    if (paymentsTab === 'legacy') {
-      loadLegacyPayments()
-    }
-  }, [paymentsTab, loadLegacyPayments])
+  // Historical (migrated) payments: shown in the same list, only for tenants that actually own historical rows.
+  const [historicalCount, setHistoricalCount] = useState(0)
+  const [historyKnown, setHistoryKnown] = useState(false)
+  const [source, setSource] = useState('all')
+  const [pageSize, setPageSize] = useState(50)
+  const customersLoadedScopeRef = useRef(null)
 
   const selectedPaymentIdsRef = useRef(selectedPaymentIds)
   selectedPaymentIdsRef.current = selectedPaymentIds
@@ -316,10 +292,23 @@ const PaymentsPage = () => {
     }
   }, [selectedCustomerId])
 
+  // How many historical payments this tenant owns (0 for most tenants): decides whether the Source filter exists.
+  useEffect(() => {
+    let cancelled = false
+    setHistoryKnown(false)
+    setHistoricalCount(0)
+    setSource('all')
+    legacyAPI.getPaymentsSummary()
+      .then((res) => { if (!cancelled) setHistoricalCount(Number(res?.data?.historicalCount) || 0) })
+      .catch(() => { /* no history information: behave like a tenant without history */ })
+      .finally(() => { if (!cancelled) setHistoryKnown(true) })
+    return () => { cancelled = true }
+  }, [accountPrefix])
+
   useEffect(() => {
     fetchDataRef.current?.()
     return () => { listRequestRef.current += 1 }
-  }, [debouncedSearchTerm, filterMethod, filterStatus, fromDate, toDate, page, accountPrefix])
+  }, [debouncedSearchTerm, filterMethod, filterStatus, fromDate, toDate, page, pageSize, accountPrefix, historyKnown, historicalCount, source])
 
   const fetchData = async () => {
     const requestId = ++listRequestRef.current
@@ -332,14 +321,20 @@ const PaymentsPage = () => {
       setTotalPages(1)
       return
     }
+    if (!historyKnown) return
     setLoading(true)
     setListError('')
     try {
+      const params = paymentListParams({
+        page, pageSize, search: debouncedSearchTerm, method: filterMethod, status: filterStatus, fromDate, toDate
+      })
+      // Tenants with historical payments get one merged, server-paged history; everyone else keeps the original list.
+      const useUnified = historicalCount > 0 && source !== 'current'
+      const needCustomers = customersLoadedScopeRef.current !== scope
       const [paymentsRes, customersRes] = await Promise.all([
-        paymentsAPI.getPayments(paymentListParams({
-          page, search: debouncedSearchTerm, method: filterMethod, status: filterStatus, fromDate, toDate
-        })),
-        loadAllCustomerPages(customersAPI.getCustomers)
+        useUnified ? legacyAPI.getUnifiedPayments({ ...params, source }) : paymentsAPI.getPayments(params),
+        // The customer list only feeds the add-payment pickers: load it once per account, not on every search or page.
+        needCustomers ? loadAllCustomerPages(customersAPI.getCustomers) : Promise.resolve(null)
       ])
       if (requestId !== listRequestRef.current || scope !== accountPrefixRef.current) return
       if (!paymentsRes.success || !paymentsRes.data) throw new Error('Payments could not be loaded.')
@@ -351,11 +346,14 @@ const PaymentsPage = () => {
         setPage(pages)
         return
       }
-      const rows = data.items || []
+      const rows = (data.items || []).map((row) => (row.isHistorical ? { ...row, historicalId: row.id, id: `h-${row.id}` } : row))
       setPayments(previous => mergeSelectedPaymentRecords(previous, rows, selectedPaymentIdsRef.current))
       setFilteredPayments(rows)
       setListScope(scope)
-      if (customersRes.items?.length || customersRes.response?.success) setCustomers(customersRes.items)
+      if (customersRes && (customersRes.items?.length || customersRes.response?.success)) {
+        setCustomers(customersRes.items)
+        customersLoadedScopeRef.current = scope
+      }
       setSales([])
     } catch (error) {
       if (requestId !== listRequestRef.current || scope !== accountPrefixRef.current) return
@@ -372,6 +370,7 @@ const PaymentsPage = () => {
   // Listen for data update events to refresh when payments are made (uses ref to avoid stale closure)
   useEffect(() => {
     const handleDataUpdate = () => {
+      customersLoadedScopeRef.current = null // customers may have changed: reload them with this refresh
       if (fetchDataRef.current) fetchDataRef.current()
     }
     window.addEventListener('dataUpdated', handleDataUpdate)
@@ -670,8 +669,135 @@ const PaymentsPage = () => {
     return statusTone(status, 'cheque')
   }
 
+  const statusBadge = (payment) => (
+    <Badge variant={statusKind(payment.status, 'cheque')} dot size="lg">{paymentStatusLabel(payment)}</Badge>
+  )
+
+  const paymentColumns = [
+    {
+      key: 'select',
+      mobile: 'hidden',
+      width: '2.75rem',
+      label: (
+        <label className="-m-2 flex h-10 w-10 cursor-pointer items-center justify-center" title="Tick cleared incoming payments to print one combined receipt">
+          <input
+            type="checkbox"
+            checked={selectionSummary.allVisibleSelected}
+            disabled={eligibleFilteredReceiptIds.length === 0}
+            onChange={toggleSelectAllPayments}
+            className="h-5 w-5 rounded border-neutral-300 disabled:opacity-40"
+            aria-label="Select all eligible payments for receipt"
+          />
+        </label>
+      ),
+      render: (payment) => (canEditPayments && !user?.supportReadOnly && canReceivePaymentReceipt(payment)
+        ? (
+          <label className="-m-2 flex h-10 w-10 cursor-pointer items-center justify-center">
+            <input
+              type="checkbox"
+              checked={receiptSelectedIds.includes(payment.id)}
+              onChange={() => togglePaymentSelection(payment.id)}
+              className="h-5 w-5 rounded border-neutral-300"
+              aria-label={`Select payment ${payment.id} for receipt`}
+            />
+          </label>
+        )
+        : null)
+    },
+    {
+      key: 'customerName',
+      label: 'Customer',
+      mobile: 'title',
+      render: (payment) => (
+        <div className="min-w-0">
+          <div className="line-clamp-2 text-sm font-semibold text-text-primary" title={payment.customerName || ''}>{payment.customerName || 'Cash customer'}</div>
+          <div className="text-sm text-neutral-600">
+            {payment.invoiceNo || 'General payment'}
+            {payment.isHistorical && <Badge variant="neutral" size="lg" className="ms-2 align-middle">Historical</Badge>}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'amount',
+      label: 'Amount',
+      align: 'right',
+      render: (payment) => (
+        <div className="leading-tight">
+          <div className="font-semibold">{money(payment.amount)}</div>
+          <div className="text-sm text-neutral-600 lg:hidden">{getPaymentMethod(payment)}</div>
+        </div>
+      )
+    },
+    {
+      key: 'method',
+      label: 'Method',
+      hideBelow: 'lg',
+      mobile: 'hidden',
+      render: (payment) => (
+        <div className="leading-tight">
+          <div>{getPaymentMethod(payment) || '-'}</div>
+          {(payment.ref || payment.reference) && <div className="text-sm text-neutral-600">{payment.ref || payment.reference}</div>}
+        </div>
+      )
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (payment) => (
+        <div className="leading-tight">
+          {statusBadge(payment)}
+          <div className="mt-1 text-sm tabular-nums text-neutral-600 lg:hidden">{formatDate(payment.paymentDate)}</div>
+        </div>
+      )
+    },
+    { key: 'paymentDate', label: 'Date', hideBelow: 'lg', mobile: 'hidden', render: (payment) => <span className="whitespace-nowrap tabular-nums">{formatDate(payment.paymentDate)}</span> }
+  ]
+
+  // One visible next step per row, the rest under a labelled "More". Historical rows are read-only.
+  const renderPaymentActions = (payment) => {
+    if (payment.isHistorical) return <span className="text-sm text-neutral-500">Read-only</span>
+    const method = getPaymentMethod(payment)
+    const chequeStatus = getChequeStatus(payment)
+    const pendingCheque = method === 'Cheque' && chequeStatus === 'Pending'
+    const canReceipt = canReceivePaymentReceipt(payment)
+    return (
+      <div className="flex items-center justify-end gap-2">
+        {pendingCheque && canEditPayments && (
+          <button type="button" onClick={() => handleChequeStatusUpdate(payment.id, 'Cleared')} className="btn btn-secondary px-3 border-success-border text-success-fg hover:bg-success-bg">
+            <CheckCircle className="h-4 w-4" aria-hidden />
+            Mark cleared
+          </button>
+        )}
+        {!pendingCheque && canReceipt && (
+          <button type="button" onClick={() => openReceiptPreview([payment.id])} className="btn btn-secondary px-3" aria-label={`Print receipt for payment ${payment.id}`}>
+            <Printer className="h-4 w-4" aria-hidden />
+            Receipt
+          </button>
+        )}
+        <OverflowMenu
+          label={`More actions for payment ${payment.id}`}
+          buttonText="More"
+          buttonClassName="px-3"
+          showLabel
+          items={[
+            { label: 'Print receipt', icon: Printer, hidden: !pendingCheque && canReceipt, disabled: !canReceipt, onClick: () => openReceiptPreview([payment.id]) },
+            { label: 'Edit payment', icon: Edit, hidden: !canEditPayments, onClick: () => handleEdit(payment) },
+            { label: 'Return cheque', icon: XCircle, hidden: !(canEditPayments && pendingCheque), separatorBefore: true, onClick: () => handleChequeStatusUpdate(payment.id, 'Returned') },
+            { label: 'Mark cheque pending again', icon: Clock, hidden: !(canEditPayments && method === 'Cheque' && chequeStatus === 'Cleared'), onClick: () => handleChequeStatusUpdate(payment.id, 'Pending') },
+            { label: 'Void payment', icon: Trash2, danger: true, hidden: !canEditPayments, separatorBefore: true, onClick: () => handleDeletePayment(payment) }
+          ]}
+        />
+      </div>
+    )
+  }
+
+  const filtersActive = Boolean(debouncedSearchTerm || filterMethod || filterStatus || fromDate || toDate)
+  const showSourceFilter = historyKnown && historicalCount > 0
+  const tableBusy = loading || listScope !== accountPrefix
+
   return (
-    <div className={`min-h-0 flex-1 space-y-6 overflow-y-auto ${receiptSelectedIds.length ? 'pb-48 lg:pb-20' : ''}`}>
+    <div className={`flex min-h-0 flex-1 flex-col gap-3 ${receiptSelectedIds.length ? 'pb-48 lg:pb-20' : ''}`}>
       {returnTo && (
         <button
           type="button"
@@ -701,311 +827,156 @@ const PaymentsPage = () => {
           Saved bulk payments: {savedBatch.rows.filter(row => row.confirmed).length} of {savedBatch.rows.length} confirmed. Remaining payments retain their original amounts and keys.
         </Alert>
       )}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-neutral-900">Payments</h1>
-          <div className="flex items-center gap-2 mt-3 border-b border-neutral-200">
-            <button
-              type="button"
-              onClick={() => setPaymentsTab('active')}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${
-                paymentsTab === 'active'
-                  ? 'border-primary-600 text-primary-700 bg-primary-50/50 rounded-t-lg'
-                  : 'border-transparent text-neutral-600 hover:text-neutral-900'
-              }`}
-            >
-              Current Payments
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaymentsTab('legacy')}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5 ${
-                paymentsTab === 'legacy'
-                  ? 'border-amber-600 text-amber-800 bg-amber-50/50 rounded-t-lg'
-                  : 'border-transparent text-neutral-600 hover:text-neutral-900'
-              }`}
-            >
-              <span>Historical Payments (Starplus)</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">5,330 Records</span>
-            </button>
+      {/* Header and filters in one block: title with the real total, one primary action, filters on one row. */}
+      <div className="shrink-0 rounded-lg border border-surface-border bg-white">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 pt-3 sm:px-4">
+          <div className="min-w-0 lg:w-44 lg:shrink-0">
+            <h1 className="text-lg font-semibold text-text-primary">Payments</h1>
+            <p className="text-sm text-neutral-600 tabular-nums" aria-live="polite">
+              {tableBusy && !payments.length ? 'Loading...' : `${totalCount.toLocaleString()} ${filtersActive ? 'matching ' : ''}payment${totalCount === 1 ? '' : 's'}`}
+            </p>
           </div>
-          <p className="text-sm text-neutral-600 sm:text-base">Manage customer payments and cheque status. Customer balance reflects cleared payments only; mark cheques as cleared when they clear.</p>
-        </div>
-        <div className="mt-3 flex flex-nowrap items-center gap-2 sm:gap-3 lg:mt-0 lg:shrink-0">
-          <button
-            onClick={() => fetchDataRef.current?.()}
-            aria-label="Refresh"
-            title="Refresh"
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 sm:w-auto sm:px-4 sm:text-sm sm:font-medium"
-          >
-            <RefreshCw className="h-4 w-4 sm:mr-2" aria-hidden />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-          <button
-            onClick={() => setShowBulkPaymentModal(true)}
-            disabled={submitting || Boolean(user?.supportReadOnly) || listScope !== accountPrefix}
-            className="inline-flex min-h-[44px] flex-1 items-center justify-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:opacity-50 sm:flex-none sm:px-4"
-            title="Add multiple payments at once"
-          >
-            Bulk Payment
-          </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            disabled={submitting || Boolean(user?.supportReadOnly) || listScope !== accountPrefix}
-            className="inline-flex min-h-[44px] flex-1 items-center justify-center whitespace-nowrap rounded-md bg-primary-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 sm:flex-none sm:px-4"
-          >
-            <Plus className="mr-2 h-4 w-4" aria-hidden />
-            Add Payment
-          </button>
-        </div>
-      </div>
-
-      {/* Search and Filters */}
-      <div data-sticky-toolbar className="sticky top-0 z-20 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-0 flex-[1_1_10rem] sm:max-w-[26rem]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-              <input
-                type="search" aria-label="Search payments" maxLength={120}
-                placeholder="Invoice, customer or reference"
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setPage(1) }}
-                className="min-h-[44px] w-full rounded-md border border-neutral-300 py-2 pl-10 pr-3 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
-              />
+          {showSourceFilter && (
+            <div role="group" aria-label="Payment source" className="inline-flex rounded-md border border-neutral-300 bg-white p-0.5">
+              {[['all', 'All'], ['current', 'Recorded here'], ['historical', 'Historical']].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={source === id}
+                  onClick={() => { setSource(id); setPage(1) }}
+                  className={`min-h-[40px] rounded px-3 text-sm font-medium ${source === id ? 'bg-primary-600 text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
+          )}
+          <div className="ms-auto flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowBulkPaymentModal(true)}
+              disabled={submitting || Boolean(user?.supportReadOnly) || listScope !== accountPrefix}
+              className="btn btn-secondary disabled:opacity-50"
+              title="Add multiple payments at once"
+            >
+              Bulk Payment
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddModal(true)}
+              disabled={submitting || Boolean(user?.supportReadOnly) || listScope !== accountPrefix}
+              className="btn btn-primary disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Add Payment
+            </button>
           </div>
+        </div>
+        <div data-sticky-toolbar className="flex flex-wrap items-center gap-2 px-3 pb-3 pt-3 sm:px-4">
+          <div className="relative min-w-0 flex-[1_1_100%] lg:flex-[1_1_14rem] lg:max-w-[26rem]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" aria-hidden />
+            <input
+              type="search" aria-label="Search payments" maxLength={120}
+              placeholder="Search customer, invoice or reference"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setPage(1) }}
+              className="input h-11 w-full pl-9"
+            />
+          </div>
+          <select
+            aria-label="Payment method" value={filterMethod}
+            onChange={(e) => { setFilterMethod(e.target.value); setPage(1) }}
+            className="input h-11 min-w-0 flex-1 lg:w-32 lg:flex-none"
+          >
+            <option value="">All methods</option>
+            <option value="Cash">Cash</option>
+            <option value="Cheque">Cheque</option>
+            <option value="Online">Online</option>
+            <option value="Debit">Debit</option>
+            <option value="Credit">Credit</option>
+          </select>
+          <select
+            aria-label="Payment status" value={filterStatus}
+            onChange={(e) => { setFilterStatus(e.target.value); setPage(1) }}
+            className="input h-11 min-w-0 flex-1 lg:w-32 lg:flex-none"
+          >
+            <option value="">All statuses</option>
+            <option value="completed">Completed</option>
+            <option value="pending">Pending</option>
+            <option value="credit">Credit</option>
+            <option value="void">Voided</option>
+            <option value="returned">Returned</option>
+          </select>
           <button
             type="button" aria-label="Payment date filters" aria-expanded={showDateFilters}
             onClick={() => setShowDateFilters(value => !value)}
             title={fromDate || toDate ? ('Payment dates: ' + (fromDate || 'any') + ' to ' + (toDate || 'any')) : 'Filter by payment date'}
-            className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-md border border-neutral-300 px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+            className="btn btn-secondary"
           >
-            <Filter className="h-4 w-4" /> Dates
+            <Filter className="h-4 w-4" aria-hidden /> Dates
             {(fromDate || toDate) && <span className="h-2 w-2 rounded-full bg-primary-600" aria-label="Date range active" />}
           </button>
-          <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
-            <select
-              aria-label="Payment method" value={filterMethod}
-              onChange={(e) => { setFilterMethod(e.target.value); setPage(1) }}
-              className="min-h-[44px] min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm sm:w-32 sm:flex-none"
-            >
-              <option value="">All Methods</option>
-              <option value="Cash">Cash</option>
-              <option value="Cheque">Cheque</option>
-              <option value="Online">Online</option>
-              <option value="Debit">Debit</option>
-              <option value="Credit">Credit</option>
-            </select>
-            <select
-              aria-label="Payment status" value={filterStatus}
-              onChange={(e) => { setFilterStatus(e.target.value); setPage(1) }}
-              className="min-h-[44px] min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm sm:w-32 sm:flex-none"
-            >
-              <option value="">All Status</option>
-              <option value="completed">Completed</option>
-              <option value="pending">Pending</option>
-              <option value="credit">Credit</option>
-              <option value="void">Voided</option>
-              <option value="returned">Returned</option>
-            </select>
-            {(filterMethod || filterStatus || searchTerm || fromDate || toDate) && (
-              <button
-                type="button" aria-label="Clear payment filters"
-                onClick={() => {
-                  setSearchTerm(''); setFilterMethod(''); setFilterStatus('')
-                  setFromDate(''); setToDate(''); setPage(1)
-                }}
-                className="min-h-[44px] shrink-0 rounded-md border border-neutral-300 px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-              >Clear</button>
-            )}
-          </div>
+          <button type="button" onClick={() => fetchDataRef.current?.()} className="btn btn-ghost">
+            <RefreshCw className="h-4 w-4" aria-hidden />
+            Refresh
+          </button>
+          {filtersActive && (
+            <button
+              type="button" aria-label="Clear payment filters"
+              onClick={() => {
+                setSearchTerm(''); setFilterMethod(''); setFilterStatus('')
+                setFromDate(''); setToDate(''); setPage(1)
+              }}
+              className="btn btn-ghost"
+            >Clear filters</button>
+          )}
         </div>
         {showDateFilters && (
-          <div className="mt-3 border-t border-neutral-200 pt-3">
+          <div className="border-t border-surface-border px-3 pb-3 pt-3 sm:px-4">
             <DateRangeFilter
               label="Payment date range" from={fromDate} to={toDate} error={dateRangeError}
               onChange={({ from, to }) => { setFromDate(from); setToDate(to); setPage(1) }}
             />
           </div>
         )}
-        {(fromDate || toDate) && <p className="mt-2 text-xs text-neutral-600">Payment date: {fromDate || 'Any date'} to {toDate || 'Any date'}</p>}
       </div>
       {(dateRangeError || listError) && (
-        <Alert
-          tone="error"
-          action={!dateRangeError && <button type="button" onClick={fetchData} className="min-h-[36px] rounded-sm border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 disabled:opacity-50">Try again</button>}
-        >
-          {dateRangeError || listError}
-        </Alert>
+        <div className="shrink-0">
+          <Alert
+            tone="error"
+            action={!dateRangeError && <button type="button" onClick={fetchData} className="btn btn-secondary">Try again</button>}
+          >
+            {dateRangeError || listError}
+          </Alert>
+        </div>
       )}
 
-      <p className="text-xs text-neutral-600 px-1">Receipts are for cleared incoming payments only (cash, cheque, online, debit).</p>
-
-      {/* Payments Table - Desktop */}
-      <div className={(dateRangeError || listError ? 'hidden' : 'hidden xl:block') + ' bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden'}>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-neutral-200">
-            <thead className="bg-neutral-50">
-              <tr>
-                <th className="px-4 py-3 text-left">
-                  <input
-                    type="checkbox"
-                    checked={selectionSummary.allVisibleSelected}
-                    disabled={eligibleFilteredReceiptIds.length === 0}
-                    onChange={toggleSelectAllPayments}
-                    className="rounded border-neutral-300 disabled:opacity-40"
-                    aria-label="Select all eligible payments for receipt"
-                  />
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Invoice
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Method
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Reference
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="sticky right-0 z-10 bg-neutral-50 px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.12)]">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-neutral-200">
-              {loading || listScope !== accountPrefix ? (
-                <tr><td colSpan="9"><LoadingCard message="Loading payments..." /></td></tr>
-              ) : filteredPayments.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <CreditCard className="h-12 w-12 text-neutral-400 mb-4" />
-                      <p className="text-neutral-500 text-lg font-medium">No payments found</p>
-                      <p className="text-neutral-500 text-sm mt-1">
-                        {searchTerm ? 'Try adjusting your search criteria' : 'Get started by adding a new payment'}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredPayments.map((payment) => (
-                  <tr key={payment.id} className="group hover:bg-neutral-50">
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {canEditPayments && !user?.supportReadOnly && canReceivePaymentReceipt(payment) && <input
-                        type="checkbox"
-                        checked={receiptSelectedIds.includes(payment.id)}
-                        onChange={() => togglePaymentSelection(payment.id)}
-                        className="rounded border-neutral-300 disabled:opacity-40"
-                        aria-label={`Select payment ${payment.id} for receipt`}
-                      />}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-neutral-900">{payment.invoiceNo || '-'}</div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-neutral-900">{payment.customerName || '-'}</div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
-                      {money(payment.amount)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <CreditCard className="h-4 w-4 text-neutral-400 mr-2" />
-                        <span className="text-sm text-neutral-900">{getPaymentMethod(payment)}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
-                      {payment.ref || payment.reference || '-'}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        {getStatusIcon(payment.status, getChequeStatus(payment), getPaymentMethod(payment))}
-                        <span className={`ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.status, getChequeStatus(payment), getPaymentMethod(payment))}`}>
-                          {paymentStatusLabel(payment)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
-                      {formatDate(payment.paymentDate)}
-                    </td>
-                    <td className="sticky right-0 z-10 bg-white group-hover:bg-neutral-50 px-4 py-4 whitespace-nowrap text-sm font-medium shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.12)]">
-                      <div className="flex items-center space-x-2">
-                        {canEditPayments && (
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(payment)}
-                            className="text-indigo-600 hover:text-indigo-900"
-                            title="Edit Payment"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                        )}
-                        {canEditPayments && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeletePayment(payment)}
-                            className="text-error hover:text-red-900"
-                            title="Void payment"
-                            aria-label="Void payment"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => openReceiptPreview([payment.id])}
-                          disabled={!canReceivePaymentReceipt(payment)}
-                          className="text-indigo-600 hover:text-indigo-900 disabled:opacity-40 disabled:cursor-not-allowed"
-                          title={canReceivePaymentReceipt(payment) ? 'Print payment receipt' : receiptIneligibilityReason(payment)}
-                        >
-                          <Printer className="h-4 w-4" />
-                        </button>
-                        {getPaymentMethod(payment) === 'Cheque' && getChequeStatus(payment) === 'Pending' && (
-                          <div className="inline-flex space-x-1 ml-2">
-                            <button
-                              onClick={() => handleChequeStatusUpdate(payment.id, 'Cleared')}
-                              className="text-success hover:text-green-900 text-xs px-2 py-1 border border-green-300 rounded"
-                            >
-                              Mark cleared
-                            </button>
-                            <button
-                              onClick={() => handleChequeStatusUpdate(payment.id, 'Returned')}
-                              className="text-error hover:text-red-900 text-xs px-2 py-1 border border-red-300 rounded"
-                            >
-                              Return
-                            </button>
-                          </div>
-                        )}
-                        {getPaymentMethod(payment) === 'Cheque' && getChequeStatus(payment) === 'Cleared' && (
-                          <button
-                            onClick={() => handleChequeStatusUpdate(payment.id, 'Pending')}
-                            className="text-warning hover:text-amber-900 text-xs px-2 py-1 border border-amber-300 rounded"
-                            title="Revert to pending (e.g. cheque not yet cleared)"
-                          >
-                            Mark pending
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {!dateRangeError && !listError && (
+        <ModernTable
+          fill
+          stickyHeader
+          mobileCards
+          busy={tableBusy && payments.length > 0}
+          loading={tableBusy && payments.length === 0}
+          caption="Payments"
+          data={filteredPayments}
+          columns={paymentColumns}
+          actions={renderPaymentActions}
+          actionsLabel="Actions"
+          totalCount={totalCount}
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={(next) => setPage(next)}
+          pageSize={pageSize}
+          pageSizeOptions={[25, 50, 100]}
+          onPageSizeChange={(n) => { setPageSize(n); setPage(1) }}
+          emptyTitle={filtersActive ? 'No payments match these filters' : 'No payments yet'}
+          emptyDescription={filtersActive ? 'Clear the filters or try a different name or invoice number.' : 'Record the first payment to see it here.'}
+          emptyAction={filtersActive
+            ? { label: 'Clear filters', onClick: () => { setSearchTerm(''); setFilterMethod(''); setFilterStatus(''); setFromDate(''); setToDate(''); setPage(1) } }
+            : { label: 'Add payment', icon: Plus, onClick: () => setShowAddModal(true) }}
+        />
+      )}
 
       {/* Selection action bar - Generate Receipt */}
       {receiptSelectedIds.length > 0 && (
@@ -1044,128 +1015,6 @@ const PaymentsPage = () => {
         }}
         onSuccess={() => fetchDataRef.current?.()}
       />
-
-      {/* Payments Cards - Mobile */}
-      <div className={(dateRangeError || listError ? 'hidden' : 'xl:hidden') + ' space-y-3'}>
-        {loading || listScope !== accountPrefix ? <LoadingCard message="Loading payments..." /> : filteredPayments.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-8 text-center">
-            <CreditCard className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
-            <p className="text-neutral-500 text-lg font-medium">No payments found</p>
-            <p className="text-neutral-500 text-sm mt-1">
-              {searchTerm ? 'Try adjusting your search criteria' : 'Get started by adding a new payment'}
-            </p>
-          </div>
-        ) : (
-          filteredPayments.map((payment) => (
-            <div key={payment.id} className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                {canEditPayments && !user?.supportReadOnly && canReceivePaymentReceipt(payment) && (
-                  <input type="checkbox" checked={receiptSelectedIds.includes(payment.id)} onChange={() => togglePaymentSelection(payment.id)}
-                    aria-label={`Select payment ${payment.id} for receipt`} className="mt-1 mr-1 min-h-[24px] min-w-[24px] shrink-0 rounded border-neutral-300" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-neutral-900">{payment.customerName || 'Unknown'}</p>
-                  <p className="truncate text-xs text-neutral-500">{payment.invoiceNo || 'General Payment'}</p>
-                </div>
-                <p className="shrink-0 whitespace-nowrap text-base font-bold tabular-nums text-neutral-900">{money(payment.amount)}</p>
-              </div>
-              <div className="flex items-center gap-3 mb-3 text-xs text-neutral-500">
-                <div className="flex items-center gap-1">
-                  <CreditCard className="h-3.5 w-3.5" />
-                  <span>{getPaymentMethod(payment)}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span>{formatDate(payment.paymentDate)}</span>
-                </div>
-                {payment.ref && (
-                  <span className="truncate max-w-[100px]">Ref: {payment.ref}</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  {getStatusIcon(payment.status, getChequeStatus(payment), getPaymentMethod(payment))}
-                  <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(payment.status, getChequeStatus(payment), getPaymentMethod(payment))}`}>
-                    {paymentStatusLabel(payment)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {canEditPayments && (
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(payment)}
-                      className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                      title="Edit"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                  )}
-                  {canEditPayments && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePayment(payment)}
-                      className="p-2 text-error hover:bg-error-bg rounded-lg"
-                      title="Void payment"
-                      aria-label="Void payment"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => openReceiptPreview([payment.id])}
-                    disabled={!canReceivePaymentReceipt(payment)}
-                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px] min-w-[44px]"
-                    title={canReceivePaymentReceipt(payment) ? 'Print payment receipt' : receiptIneligibilityReason(payment)}
-                  >
-                    <Printer className="h-4 w-4" />
-                  </button>
-                  {getPaymentMethod(payment) === 'Cheque' && getChequeStatus(payment) === 'Pending' && (
-                    <>
-                      <button
-                        onClick={() => handleChequeStatusUpdate(payment.id, 'Cleared')}
-                        className="text-xs px-2 py-1 text-success-fg bg-success-bg border border-success-border rounded-lg"
-                      >
-                        Mark cleared
-                      </button>
-                      <button
-                        onClick={() => handleChequeStatusUpdate(payment.id, 'Returned')}
-                        className="text-xs px-2 py-1 text-error-fg bg-error-bg border border-error-border rounded-lg"
-                      >
-                        Return
-                      </button>
-                    </>
-                  )}
-                  {getPaymentMethod(payment) === 'Cheque' && getChequeStatus(payment) === 'Cleared' && (
-                    <button
-                      onClick={() => handleChequeStatusUpdate(payment.id, 'Pending')}
-                      className="text-xs px-2 py-1 text-warning-fg bg-warning-bg border border-warning-border rounded-lg"
-                    >
-                      Mark pending
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {!dateRangeError && !listError && (
-        <nav aria-label="Payment pagination" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-3">
-          <p className="text-xs text-neutral-600">
-            {loading || listScope !== accountPrefix ? 'Loading payments...' : totalCount === 0 ? '0 matching payments' :
-              'Showing ' + ((page - 1) * 25 + 1) + '–' + Math.min(totalCount, (page - 1) * 25 + filteredPayments.length) + ' of ' + totalCount + ' matching payments'}
-          </p>
-          <div className="flex items-center gap-2">
-            <button type="button" disabled={loading || listScope !== accountPrefix || page <= 1} onClick={() => setPage(value => value - 1)}
-              className="min-h-[44px] rounded-md border border-neutral-300 px-3 text-sm disabled:opacity-40">Previous</button>
-            <span className="text-xs text-neutral-600">Page {page} of {totalPages}</span>
-            <button type="button" disabled={loading || listScope !== accountPrefix || page >= totalPages} onClick={() => setPage(value => value + 1)}
-              className="min-h-[44px] rounded-md border border-neutral-300 px-3 text-sm disabled:opacity-40">Next</button>
-          </div>
-        </nav>
-      )}
 
       {/* Add Payment Modal */}
       <Modal

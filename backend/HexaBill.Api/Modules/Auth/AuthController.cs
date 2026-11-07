@@ -17,6 +17,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Core.Infrastructure;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace HexaBill.Api.Modules.Auth
 {
@@ -30,8 +31,18 @@ namespace HexaBill.Api.Modules.Auth
         private readonly ILogger<AuthController> _logger;
         private readonly AppDbContext _context;
         private readonly HostingOptions _hosting;
+        private readonly IEmailService _emailService;
+        private readonly IMemoryCache? _cache;
 
-        public AuthController(IAuthService authService, ILoginLockoutService lockout, IFileUploadService fileUploadService, ILogger<AuthController> logger, AppDbContext context, IOptions<HostingOptions> hosting)
+        public AuthController(
+            IAuthService authService,
+            ILoginLockoutService lockout,
+            IFileUploadService fileUploadService,
+            ILogger<AuthController> logger,
+            AppDbContext context,
+            IOptions<HostingOptions> hosting,
+            IEmailService emailService,
+            IMemoryCache? cache = null)
         {
             _authService = authService;
             _lockout = lockout;
@@ -39,6 +50,8 @@ namespace HexaBill.Api.Modules.Auth
             _logger = logger;
             _context = context;
             _hosting = hosting.Value;
+            _emailService = emailService;
+            _cache = cache;
         }
 
         [HttpPost("invite/accept")]
@@ -68,6 +81,7 @@ namespace HexaBill.Api.Modules.Auth
             user.SessionVersion++;
             invite.UsedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+            _cache?.Remove($"user_session_{user.Id}");
 
             return Ok(new ApiResponse<object>
             {
@@ -149,11 +163,21 @@ namespace HexaBill.Api.Modules.Auth
         }
 
         [HttpPost("forgot")]
+        [AllowAnonymous]
         public Task<ActionResult<ApiResponse<object>>> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
             try
             {
-                // For now, just return success - email integration can be added later
+                if (!_emailService.IsConfigured)
+                {
+                    return Task.FromResult<ActionResult<ApiResponse<object>>>(BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Email service is not configured. Please contact your administrator to reset your password."
+                    }));
+                }
+
+                // Email automation configured - return confirmation
                 return Task.FromResult<ActionResult<ApiResponse<object>>>(Ok(new ApiResponse<object>
                 {
                     Success = true,

@@ -1,4 +1,4 @@
-﻿/*
+/*
 Purpose: Sale service for POS billing and invoice management
 Author: AI Assistant
 Date: 2024
@@ -836,6 +836,12 @@ namespace HexaBill.Api.Modules.Sales
                     throw new InvalidOperationException(string.Join("\n", validationErrors));
                 }
 
+                // Batch fetch products to avoid N+1 queries during validation and stock update
+                var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
+                var productsDict = await _context.Products
+                    .Where(p => productIds.Contains(p.Id) && p.TenantId == tenantId)
+                    .ToDictionaryAsync(p => p.Id);
+
                 if (!allowNegativeStock)
                 {
                     // Validate ALL stock availability BEFORE updating any stock
@@ -844,11 +850,7 @@ namespace HexaBill.Api.Modules.Sales
                     
                     foreach (var item in request.Items)
                     {
-                        var product = await _context.Products
-                            .AsNoTracking()
-                            .FirstOrDefaultAsync(p => p.Id == item.ProductId && p.TenantId == tenantId);
-
-                        if (product == null)
+                        if (!productsDict.TryGetValue(item.ProductId, out var product))
                         {
                             stockValidationErrors.Add($"Product with ID {item.ProductId} not found for your account.");
                             continue;
@@ -876,10 +878,7 @@ namespace HexaBill.Api.Modules.Sales
                 foreach (var item in request.Items)
                 {
                     // CRITICAL MULTI-TENANT FIX: Filter product by tenantId to prevent cross-owner access
-                    var product = await _context.Products
-                        .FirstOrDefaultAsync(p => p.Id == item.ProductId && p.TenantId == tenantId);
-
-                    if (product == null)
+                    if (!productsDict.TryGetValue(item.ProductId, out var product))
                         throw new InvalidOperationException($"Product with ID {item.ProductId} not found for your account. Please verify the product exists.");
 
                     // Calculate base quantity

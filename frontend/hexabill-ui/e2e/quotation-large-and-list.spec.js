@@ -2,6 +2,14 @@
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
+const setDesc = async (page, loc, text) => {
+  await loc.click()
+  const dr = page.locator('[data-quote-product-picker="overlay"]')
+  await dr.getByRole('searchbox').fill(text)
+  await dr.getByRole('button', { name: /as a custom item/ }).click()
+  await expect(dr).toBeHidden()
+}
+
 const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 const N = 22
 
@@ -17,11 +25,11 @@ test('quotation with 22 items: create, reload, shrink, list search/filter/status
   const card = (i) => page.getByRole('list', { name: 'Line items' }).getByRole('listitem').nth(i)
   const fillRow = async (i) => {
     if (mobile) {
-      await card(i).getByLabel(/description/).fill(`${unique} ITEM ${i + 1}`)
+      await setDesc(page, card(i).getByLabel(/description/), `${unique} ITEM ${i + 1}`)
       await card(i).getByLabel('Qty').fill(String(i + 1))
       await card(i).getByLabel('Price').fill(String(10 + i))
     } else {
-      await page.locator(`[data-quote-cell="${i}-description"]`).fill(`${unique} ITEM ${i + 1}`)
+      await setDesc(page, page.locator(`[data-quote-cell="${i}-description"]`), `${unique} ITEM ${i + 1}`)
       await page.locator(`[data-quote-cell="${i}-qty"]`).fill(String(i + 1))
       await page.locator(`[data-quote-cell="${i}-unitPrice"]`).fill(String(10 + i))
     }

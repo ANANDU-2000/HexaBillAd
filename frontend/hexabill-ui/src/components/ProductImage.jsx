@@ -29,5 +29,5 @@ export default function ProductImage ({ productId, src, alt = '', ...props }) {
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
   }, [productId, src, scope])
-  return resolved?.scope === scope && resolved?.source === src ? <img src={resolved.url} alt={alt} {...props} /> : <span role={alt ? 'img' : undefined} aria-label={alt ? `${alt} unavailable` : undefined} className={props.className} />
+  return resolved?.scope === scope && resolved?.source === src ? <img src={resolved.url} alt={alt} loading="lazy" decoding="async" {...props} /> : <span role={alt ? 'img' : undefined} aria-label={alt ? `${alt} unavailable` : undefined} className={props.className} />
 }

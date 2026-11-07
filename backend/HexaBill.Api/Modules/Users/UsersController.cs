@@ -11,6 +11,7 @@ using HexaBill.Api.Models;
 using HexaBill.Api.Data;
 using HexaBill.Api.Modules.Auth;
 using HexaBill.Api.Modules.Subscription;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace HexaBill.Api.Modules.Users
 {
@@ -23,13 +24,15 @@ namespace HexaBill.Api.Modules.Users
         private readonly AppDbContext _context;
         private readonly ISubscriptionService _subscriptions;
         private readonly ILogger<UsersController> _logger;
+        private readonly IMemoryCache? _cache;
 
-        public UsersController(IAuthService authService, AppDbContext context, ISubscriptionService subscriptions, ILogger<UsersController> logger)
+        public UsersController(IAuthService authService, AppDbContext context, ISubscriptionService subscriptions, ILogger<UsersController> logger, IMemoryCache? cache = null)
         {
             _authService = authService;
             _context = context;
             _subscriptions = subscriptions;
             _logger = logger;
+            _cache = cache;
         }
 
         // GET: api/users - Get all users (Admin and Owner)
@@ -550,7 +553,9 @@ namespace HexaBill.Api.Modules.Users
 
                 // Hash new password
                 user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+                user.SessionVersion++;
                 await _context.SaveChangesAsync();
+                _cache?.Remove($"user_session_{user.Id}");
 
                 // Create audit log
                 var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
@@ -639,6 +644,7 @@ namespace HexaBill.Api.Modules.Users
 
                 _context.Users.Remove(user);
                 await _context.SaveChangesAsync();
+                _cache?.Remove($"user_session_{id}");
 
                 // Create audit log
                 var auditLog = new AuditLog

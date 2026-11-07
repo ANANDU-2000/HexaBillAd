@@ -6,6 +6,7 @@ import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { customersAPI, legacyAPI } from '../../services/index'
 import { LoadingCard } from '../../components/Loading'
+import TableSkeleton from '../../components/ui/TableSkeleton'
 import { localDateString } from '../../utils/dateFormat'
 import { navigationUrl } from '../../utils/shopLocation'
 import LegacyInvoiceDetailModal from '../../components/LegacyInvoiceDetailModal'
@@ -122,7 +123,7 @@ const CustomerDetailPage = () => {
   if (loading) {
     return (
       <div className="p-6">
-        <LoadingCard />
+        <TableSkeleton rows={8} />
       </div>
     )
   }
@@ -345,10 +346,7 @@ const CustomerDetailPage = () => {
           </button>
         </div>
         {ledgerLoading ? (
-          <div className="py-8 text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-neutral-400" />
-            <p className="mt-2 text-sm text-neutral-500">Loading transactions...</p>
-          </div>
+          <TableSkeleton rows={6} className="border-0 rounded-none" />
         ) : ledger.length === 0 ? (
           <div className="py-8 text-center">
             <FileText className="h-12 w-12 mx-auto text-neutral-400" />

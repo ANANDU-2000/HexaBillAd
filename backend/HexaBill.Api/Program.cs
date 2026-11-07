@@ -205,8 +205,9 @@ if (usePostgreSQL && !string.IsNullOrWhiteSpace(connectionString) && !connection
 // Production: PostgreSQL 1GB plan allows ~97-100 connections. Use 90 to stay under limit and avoid connection exhaustion.
 if (usePostgreSQL && !string.IsNullOrWhiteSpace(connectionString) && !connectionString.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase))
 {
-    connectionString += ";Maximum Pool Size=90";
-    logger.LogInformation("✅ PostgreSQL connection pool set to 90 for production concurrency");
+    var maxPoolSize = Environment.GetEnvironmentVariable("PG_MAX_POOL_SIZE") ?? "45";
+    connectionString += $";Maximum Pool Size={maxPoolSize}";
+    logger.LogInformation($"PostgreSQL connection pool set to {maxPoolSize} for production concurrency (rolling deploy safe)");
 }
 
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -289,6 +290,14 @@ builder.Services.AddScoped<HexaBill.Api.Core.Infrastructure.IAuditService, HexaB
 
 // Services
 builder.Services.AddMemoryCache();
+// Perf: Brotli/Gzip for JSON API responses (default MIME list = text/json/xml/js; binary PDFs/images untouched)
+builder.Services.AddResponseCompression(o =>
+{
+    o.EnableForHttps = true; // API uses bearer tokens, not cookies; Render terminates TLS upstream anyway
+    o.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+    o.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+});
+builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProviderOptions>(o => o.Level = System.IO.Compression.CompressionLevel.Fastest);
 builder.Services.AddSingleton<IFontService, FontService>(); // Singleton for font registration
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProductService, ProductService>();
@@ -1221,6 +1230,8 @@ app.Use(async (context, next) =>
 // Only enforce HTTPS in non-development (forwarded headers already applied above)
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
+
+app.UseResponseCompression();
 
 // CORS MUST be before authentication/authorization
 // Use Development policy when not explicitly Production so localhost:5173 works without ALLOWED_ORIGINS

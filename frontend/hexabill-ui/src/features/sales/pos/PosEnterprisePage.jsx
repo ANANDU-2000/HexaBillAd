@@ -2892,6 +2892,8 @@ const PosEnterprisePage = () => {
                                       <img 
                                         src={imageUrl} 
                                         alt={item.productName}
+                                        loading="lazy"
+                                        decoding="async"
                                         className="w-7 h-7 object-cover rounded border border-neutral-200 flex-shrink-0"
                                         onError={(e) => { e.target.style.display = 'none' }}
                                       />
@@ -3111,6 +3113,8 @@ const PosEnterprisePage = () => {
                             <img 
                               src={imageUrl} 
                               alt={item.productName}
+                              loading="lazy"
+                              decoding="async"
                               className="w-10 h-10 object-cover rounded border border-neutral-200 flex-shrink-0"
                               onError={(e) => { e.target.style.display = 'none' }}
                             />

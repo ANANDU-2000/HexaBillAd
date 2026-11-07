@@ -18,7 +18,7 @@ import {
   AlertTriangle,
   Lock
 } from 'lucide-react'
-import { OverflowMenu } from '../../components/ui'
+import { OverflowMenu, TableSkeleton } from '../../components/ui'
 import { useAuth } from '../../hooks/useAuth'
 import { salesAPI, paymentsAPI, legacyAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
@@ -491,10 +491,7 @@ const BillingHistoryPage = () => {
 
       <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden flex-1 min-h-0 overflow-y-auto">
         {loading && rows.length === 0 ? (
-          <div className="py-16 text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary-600" />
-            <p className="mt-2 text-sm text-neutral-500">Loading invoices…</p>
-          </div>
+          <TableSkeleton rows={10} className="border-0 rounded-none" />
         ) : listError ? (
           <div className="text-center py-12" role="alert">
             <AlertTriangle className="h-8 w-8 mx-auto text-rose-500" />

@@ -921,6 +921,252 @@ namespace HexaBill.Api.Modules.Legacy
             return paid > 0 ? "Partial" : "Pending";
         }
 
+        /// <summary>
+        /// GET /api/legacy/payments/summary
+        /// How many historical payments THIS tenant owns. The UI shows the historical source filter only when this is above 0,
+        /// so tenants without migrated data never see a historical option or a count.
+        /// </summary>
+        [HttpGet("payments/summary")]
+        public async Task<ActionResult<ApiResponse<LegacyPaymentsSummaryDto>>> GetPaymentsSummary()
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0) return Forbid();
+            var count = await _context.LegacyPayments.AsNoTracking().CountAsync(p => p.TenantId == tenantId);
+            return Ok(new ApiResponse<LegacyPaymentsSummaryDto>
+            {
+                Success = true,
+                Data = new LegacyPaymentsSummaryDto { HistoricalCount = count }
+            });
+        }
+
+        /// <summary>
+        /// GET /api/legacy/payments/unified
+        /// One chronological, server-paged payment history for the logged-in tenant: its current payments plus its own
+        /// read-only historical (migrated) payments. Every query is filtered by the authenticated tenant id; a tenant with no
+        /// historical rows just gets its current payments. Historical rows are never editable.
+        /// </summary>
+        /// <param name="source">all (default) | current | historical</param>
+        [HttpGet("payments/unified")]
+        public async Task<ActionResult<ApiResponse<PagedResponse<UnifiedPaymentDto>>>> GetUnifiedPayments(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 25,
+            [FromQuery] string? search = null,
+            [FromQuery] string? method = null,
+            [FromQuery] string? status = null,
+            [FromQuery] string? source = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
+
+                page = Math.Max(1, page);
+                pageSize = Math.Clamp(pageSize, 1, 200);
+
+                ActionResult<ApiResponse<PagedResponse<UnifiedPaymentDto>>> Bad(string message) =>
+                    BadRequest(new ApiResponse<PagedResponse<UnifiedPaymentDto>> { Success = false, Message = message });
+
+                var sourceKey = (source ?? "all").Trim().ToLowerInvariant();
+                if (sourceKey is not ("all" or "current" or "historical")) return Bad("source must be one of: all, current, historical");
+                if (fromDate.HasValue && toDate.HasValue && fromDate.Value.Date > toDate.Value.Date) return Bad("From date must be on or before To date.");
+
+                var term = string.IsNullOrWhiteSpace(search) ? null : search.Trim().ToLowerInvariant();
+                if (term != null && term.Length > 120) return Bad("Payment search must be 120 characters or fewer.");
+
+                PaymentMode? modeFilter = null;
+                if (!string.IsNullOrWhiteSpace(method))
+                {
+                    if (!Enum.TryParse<PaymentMode>(method.Trim(), true, out var parsedMode) || !Enum.IsDefined(parsedMode)) return Bad("Choose a valid payment method.");
+                    modeFilter = parsedMode;
+                }
+
+                var statusState = string.IsNullOrWhiteSpace(status) ? null : status.Trim().ToUpperInvariant();
+                PaymentStatus? statusFilter = null;
+                var creditOnly = statusState == "CREDIT";
+                if (statusState != null && !creditOnly)
+                {
+                    if (statusState == "COMPLETED") statusState = "CLEARED";
+                    if (!Enum.TryParse<PaymentStatus>(statusState, true, out var parsedStatus) || !Enum.IsDefined(parsedStatus)) return Bad("Choose a valid payment status.");
+                    statusFilter = parsedStatus;
+                }
+
+                // Same UTC calendar-date rule as the current payment list.
+                DateTime? fromUtc = fromDate.HasValue ? DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc) : null;
+                DateTime? untilUtc = toDate.HasValue && toDate.Value.Date < DateTime.MaxValue.Date
+                    ? DateTime.SpecifyKind(toDate.Value.Date.AddDays(1), DateTimeKind.Utc) : null;
+
+                // ---- Current payments ----
+                IQueryable<UnifiedPaymentKey>? currentKeys = null;
+                if (sourceKey is "all" or "current")
+                {
+                    var cur = _context.Payments.AsNoTracking().Where(p => p.TenantId == tenantId);
+                    if (fromUtc.HasValue) cur = cur.Where(p => p.PaymentDate >= fromUtc.Value);
+                    if (untilUtc.HasValue) cur = cur.Where(p => p.PaymentDate < untilUtc.Value);
+                    if (modeFilter.HasValue) cur = cur.Where(p => p.Mode == modeFilter.Value);
+                    if (creditOnly) cur = cur.Where(p => p.Mode == PaymentMode.CREDIT && p.Status == PaymentStatus.PENDING);
+                    else if (statusFilter == PaymentStatus.CLEARED) cur = cur.Where(p => p.Status == PaymentStatus.CLEARED || p.Status == PaymentStatus.Completed);
+                    else if (statusFilter.HasValue) cur = cur.Where(p => p.Status == statusFilter.Value);
+                    if (term != null)
+                    {
+                        cur = cur.Where(p =>
+                            (p.Sale != null && p.Sale.InvoiceNo.ToLower().Contains(term)) ||
+                            (p.LegacyInvoice != null && p.LegacyInvoice.LegacyInvoiceNumber.ToLower().Contains(term)) ||
+                            (p.Customer != null && p.Customer.Name.ToLower().Contains(term)) ||
+                            (p.Reference != null && p.Reference.ToLower().Contains(term)));
+                    }
+                    currentKeys = cur.Select(p => new UnifiedPaymentKey { IsLegacy = false, RecordId = p.Id, Day = p.PaymentDate.Date, Recorded = p.CreatedAt });
+                }
+
+                // ---- Historical payments (this tenant's own migrated rows only) ----
+                IQueryable<UnifiedPaymentKey>? historicalKeys = null;
+                if (sourceKey is "all" or "historical")
+                {
+                    var hist = LegacyPaymentRows(tenantId);
+                    if (fromUtc.HasValue) hist = hist.Where(x => x.p.PaymentDate >= fromUtc.Value);
+                    if (untilUtc.HasValue) hist = hist.Where(x => x.p.PaymentDate < untilUtc.Value);
+                    if (modeFilter.HasValue)
+                    {
+                        var modeName = modeFilter.Value.ToString().ToUpper();
+                        hist = hist.Where(x => x.p.Mode != null && x.p.Mode.ToUpper() == modeName);
+                    }
+                    if (creditOnly) hist = hist.Where(x => false); // migrated payments have no "credit pending" state
+                    else if (statusFilter == PaymentStatus.CLEARED) hist = hist.Where(x => x.p.Status.ToUpper() == "CLEARED" || x.p.Status.ToUpper() == "COMPLETED");
+                    else if (statusFilter.HasValue)
+                    {
+                        var statusName = statusFilter.Value.ToString().ToUpper();
+                        hist = hist.Where(x => x.p.Status.ToUpper() == statusName);
+                    }
+                    if (term != null)
+                    {
+                        hist = hist.Where(x =>
+                            (x.InvoiceNo != null && x.InvoiceNo.ToLower().Contains(term)) ||
+                            (x.CustName != null && x.CustName.ToLower().Contains(term)) ||
+                            (x.p.Reference != null && x.p.Reference.ToLower().Contains(term)));
+                    }
+                    historicalKeys = hist.Select(x => new UnifiedPaymentKey { IsLegacy = true, RecordId = x.p.Id, Day = x.p.PaymentDate.Date, Recorded = x.p.PaymentDate });
+                }
+
+                var keys = currentKeys != null && historicalKeys != null ? currentKeys.Concat(historicalKeys) : currentKeys ?? historicalKeys;
+                if (keys == null)
+                {
+                    return Ok(new ApiResponse<PagedResponse<UnifiedPaymentDto>>
+                    {
+                        Success = true,
+                        Data = new PagedResponse<UnifiedPaymentDto> { Items = new(), Page = page, PageSize = pageSize, TotalCount = 0, TotalPages = 0 }
+                    });
+                }
+
+                var totalCount = await keys.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+                var pageKeys = await keys
+                    .OrderByDescending(k => k.Day).ThenByDescending(k => k.Recorded).ThenBy(k => k.IsLegacy).ThenByDescending(k => k.RecordId)
+                    .Skip((page - 1) * pageSize).Take(pageSize)
+                    .ToListAsync();
+
+                var currentIds = pageKeys.Where(k => !k.IsLegacy).Select(k => k.RecordId).ToList();
+                var legacyIds = pageKeys.Where(k => k.IsLegacy).Select(k => k.RecordId).ToList();
+
+                var currentRows = currentIds.Count == 0
+                    ? new Dictionary<int, UnifiedPaymentDto>()
+                    : (await _context.Payments.AsNoTracking()
+                        .Where(p => p.TenantId == tenantId && currentIds.Contains(p.Id))
+                        .Select(p => new UnifiedPaymentDto
+                        {
+                            IsHistorical = false,
+                            Id = p.Id,
+                            SaleId = p.SaleId,
+                            LegacyInvoiceId = p.LegacyInvoiceId,
+                            InvoiceNo = p.Sale != null ? p.Sale.InvoiceNo : (p.LegacyInvoice != null ? p.LegacyInvoice.LegacyInvoiceNumber : null),
+                            CustomerId = p.CustomerId,
+                            CustomerName = p.Customer != null ? p.Customer.Name : null,
+                            Amount = p.Amount,
+                            Mode = p.Mode.ToString(),
+                            Status = p.Status.ToString(),
+                            Reference = p.Reference,
+                            PaymentDate = p.PaymentDate,
+                            SaleReturnId = p.SaleReturnId,
+                            CreatedBy = p.CreatedBy,
+                            CreatedAt = p.CreatedAt,
+                            IsSettlementAdjustment = p.IsSettlementAdjustment,
+                            ParentPaymentId = p.ParentPaymentId
+                        })
+                        .ToListAsync()).ToDictionary(x => x.Id);
+
+                var legacyRows = legacyIds.Count == 0
+                    ? new Dictionary<int, UnifiedPaymentDto>()
+                    : (await LegacyPaymentRows(tenantId)
+                        .Where(x => legacyIds.Contains(x.p.Id))
+                        .Select(x => new UnifiedPaymentDto
+                        {
+                            IsHistorical = true,
+                            Id = x.p.Id,
+                            LegacyInvoiceId = x.p.LegacyInvoiceId,
+                            InvoiceNo = x.InvoiceNo,
+                            CustomerId = x.p.DestinationCustomerId,
+                            CustomerName = x.CustName,
+                            Amount = x.p.Amount,
+                            Mode = x.p.Mode ?? string.Empty,
+                            Status = x.p.Status,
+                            Reference = x.p.Reference,
+                            PaymentDate = x.p.PaymentDate
+                        })
+                        .ToListAsync()).ToDictionary(x => x.Id);
+
+                var items = new List<UnifiedPaymentDto>(pageKeys.Count);
+                foreach (var k in pageKeys)
+                {
+                    var rows = k.IsLegacy ? legacyRows : currentRows;
+                    if (rows.TryGetValue(k.RecordId, out var row)) items.Add(row);
+                }
+
+                return Ok(new ApiResponse<PagedResponse<UnifiedPaymentDto>>
+                {
+                    Success = true,
+                    Message = "Payments retrieved successfully",
+                    Data = new PagedResponse<UnifiedPaymentDto> { Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize, TotalPages = totalPages }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving unified payments for tenant {TenantId}", CurrentTenantId);
+                return StatusCode(500, new ApiResponse<PagedResponse<UnifiedPaymentDto>>
+                {
+                    Success = false,
+                    Message = "Payments could not be loaded. Please try again."
+                });
+            }
+        }
+
+        // A tenant's historical payments joined to their historical invoice number and customer name (all tenant-scoped).
+        private IQueryable<LegacyPaymentRow> LegacyPaymentRows(int tenantId) =>
+            from p in _context.LegacyPayments.AsNoTracking().Where(p => p.TenantId == tenantId)
+            join i in _context.LegacyInvoices.AsNoTracking().Where(i => i.TenantId == tenantId)
+                on p.LegacyInvoiceId equals i.Id into invJoin
+            from inv in invJoin.DefaultIfEmpty()
+            join c in _context.LegacyCustomers.AsNoTracking().Where(c => c.TenantId == tenantId)
+                on p.SourceCustomerId equals c.SourceCustomerId into custJoin
+            from cust in custJoin.DefaultIfEmpty()
+            select new LegacyPaymentRow { p = p, InvoiceNo = inv != null ? inv.LegacyInvoiceNumber : null, CustName = cust != null ? cust.Name : null };
+
+        public sealed class LegacyPaymentRow
+        {
+            public LegacyPayment p { get; set; } = null!;
+            public string? InvoiceNo { get; set; }
+            public string? CustName { get; set; }
+        }
+
+        /// <summary>Lightweight row used to page the combined payment history before loading details.</summary>
+        public sealed class UnifiedPaymentKey
+        {
+            public bool IsLegacy { get; set; }
+            public int RecordId { get; set; }
+            public DateTime Day { get; set; }
+            public DateTime Recorded { get; set; }
+        }
+
         /// <summary>Lightweight row used to page the combined history before loading details.</summary>
         public sealed class UnifiedInvoiceKey
         {

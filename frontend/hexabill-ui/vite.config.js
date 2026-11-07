@@ -39,23 +39,41 @@ window.$RefreshSig$ = () => (type) => type;`
   build: {
     // Security: no source maps in production so source code and stack traces are not exposed
     sourcemap: false,
-    // Terser compress only — identifier mangling disabled. Mangling produced TDZ crashes in prod
-    // ("Cannot access 'pt' / 'xt' / 'st' before initialization") with Recharts + large app graph.
     minify: 'terser',
     terserOptions: {
       compress: {
-        keep_fnames: true,
-        keep_classnames: true,
-        properties: false,
-        reduce_vars: false,
-        reduce_funcs: false,
+        passes: 2,
       },
-      mangle: false,
+      mangle: {
+        safari10: true,
+      },
       format: {
-        // Preserve comments for debugging
         comments: false,
-      }
-    }
+      },
+    },
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('recharts') || id.includes('d3-')) {
+              return 'vendor-charts'
+            }
+            if (id.includes('leaflet') || id.includes('react-leaflet')) {
+              return 'vendor-map'
+            }
+            if (id.includes('react-router-dom') || id.includes('@remix-run')) {
+              return 'vendor-router'
+            }
+            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+              return 'vendor-react'
+            }
+            if (id.includes('lucide-react') || id.includes('react-hot-toast')) {
+              return 'vendor-ui'
+            }
+          }
+        },
+      },
+    },
   },
   server: {
     host: true,

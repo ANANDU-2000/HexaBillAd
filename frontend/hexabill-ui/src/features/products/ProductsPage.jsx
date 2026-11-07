@@ -8,7 +8,7 @@ import ProductForm from '../../components/ProductForm'
 import ProductImage from '../../components/ProductImage'
 import StockAdjustmentModal from '../../components/StockAdjustmentModal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
-import { TabNavigation, FilterPanel, OverflowMenu, Badge, Alert } from '../../components/ui/index'
+import { TabNavigation, FilterPanel, OverflowMenu, Badge, Alert, TableSkeleton } from '../../components/ui/index'
 import { MobileFilterSheet, ListSkeleton } from '../../components/mobile/index'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useAuth } from '../../hooks/useAuth'
@@ -873,9 +873,7 @@ const ProductsPage = () => {
             </div>
 
             {movementsLoading ? (
-              <div className="flex justify-center py-12">
-                <RefreshCw className="h-6 w-6 animate-spin text-primary-600" />
-              </div>
+              <TableSkeleton rows={6} className="border-0 rounded-none" />
             ) : movements.length === 0 ? (
               <div className="text-center py-12 text-neutral-500">
                 <History className="h-10 w-10 mx-auto mb-2 text-neutral-300" />

@@ -1,0 +1,62 @@
+{
+ "stage": "after",
+ "lang": "en",
+ "project": "m390",
+ "errors": [],
+ "screens": {
+  "customers": {
+   "viewport": {
+    "vw": 390,
+    "vh": 844
+   },
+   "dir": "ltr",
+   "lang": "en",
+   "overflowX": 0,
+   "firstRecordY": null,
+   "firstRecordRatio": null,
+   "controlsAboveFirstRecord": null,
+   "rowHeight": null,
+   "rowCountVisible": 0,
+   "controlsUnder32px": 1,
+   "smallestTextPx": 12,
+   "usesTable": true,
+   "tableInfo": {
+    "tableWidth": 0,
+    "wrapperWidth": 0,
+    "wrapperScrollWidth": 0,
+    "sidewaysScrollNeeded": false,
+    "headers": [],
+    "firstRowButtons": []
+   },
+   "scrollContainers": 1,
+   "textLength": 6819
+  },
+  "payments": {
+   "viewport": {
+    "vw": 390,
+    "vh": 844
+   },
+   "dir": "ltr",
+   "lang": "en",
+   "overflowX": 0,
+   "firstRecordY": null,
+   "firstRecordRatio": null,
+   "controlsAboveFirstRecord": null,
+   "rowHeight": null,
+   "rowCountVisible": 0,
+   "controlsUnder32px": 1,
+   "smallestTextPx": 12,
+   "usesTable": true,
+   "tableInfo": {
+    "tableWidth": 0,
+    "wrapperWidth": 0,
+    "wrapperScrollWidth": 0,
+    "sidewaysScrollNeeded": false,
+    "headers": [],
+    "firstRowButtons": []
+   },
+   "scrollContainers": 1,
+   "textLength": 4887
+  }
+ }
+}

@@ -19,7 +19,7 @@ const DOTS = {
 
 const Badge = ({ variant = 'neutral', dot = false, size = 'md', children, className = '' }) => {
   const key = variant === 'default' ? 'neutral' : variant
-  const sizeCls = size === 'sm' ? 'px-1.5 text-micro' : 'px-2 py-0.5 text-xs'
+  const sizeCls = size === 'sm' ? 'px-1.5 text-micro' : size === 'lg' ? 'px-2.5 py-0.5 text-sm' : 'px-2 py-0.5 text-xs'
   return (
     <span
       className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border font-medium ${sizeCls} ${VARIANTS[key] || VARIANTS.neutral} ${className}`}

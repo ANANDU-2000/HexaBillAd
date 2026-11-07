@@ -22,14 +22,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
     {
         // BUG #2.3 FIX: Reduce max rows to 500 for better performance and security
         private const int MaxRows = 500;
-        private const int CommandTimeoutSeconds = 30;
+        private const int CommandTimeoutSeconds = 5;
         private const int MaxQueriesPerSlidingWindow = 30;
         private static readonly TimeSpan RateLimitWindow = TimeSpan.FromMinutes(1);
 
         private static readonly Regex CommentBlockRegex = new Regex(@"/\*[\s\S]*?\*/", RegexOptions.Multiline);
-        // BUG #2.3 FIX: Enhanced blacklist - catch DELETE/UPDATE/TRUNCATE without WHERE clause
+        // BUG #2.3 FIX: Enhanced blacklist - catch DELETE/UPDATE/TRUNCATE without WHERE clause and dangerous PG functions
         private static readonly Regex ForbiddenKeywordRegex = new Regex(
-            @"\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|EXECUTE|EXEC|CALL|REFRESH|LOCK|COPY|VACUUM|INTO)\b",
+            @"\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|EXECUTE|EXEC|CALL|REFRESH|LOCK|COPY|VACUUM|INTO|pg_sleep|pg_terminate_backend|pg_cancel_backend|dblink)\b",
             RegexOptions.IgnoreCase);
         // BUG #2.3 FIX: Detect DELETE/UPDATE without WHERE clause (dangerous even if keyword is allowed)
         private static readonly Regex DangerousDeleteUpdateRegex = new Regex(
@@ -48,7 +48,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         }
 
         /// <summary>
-        /// Execute a read-only SQL query (SELECT only). Timeout 30s, max 1000 rows. SystemAdmin only.
+        /// Execute a read-only SQL query (SELECT only). Timeout 5s, max 500 rows. SystemAdmin only.
         /// </summary>
         [HttpPost("sql-console")]
         public async Task<ActionResult<ApiResponse<SqlConsoleResultDto>>> ExecuteQuery([FromBody] SqlConsoleRequest request)

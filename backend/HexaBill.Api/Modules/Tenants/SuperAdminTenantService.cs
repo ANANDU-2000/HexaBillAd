@@ -13,6 +13,7 @@ using Microsoft.Extensions.Options;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Subscription;
+using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
 
 namespace HexaBill.Api.Modules.Tenants
@@ -180,6 +181,7 @@ namespace HexaBill.Api.Modules.Tenants
         private readonly ISubscriptionService _subscriptionService;
         private readonly HostingOptions _hostingOptions;
         private readonly ITenantHostResolver _tenantHostResolver;
+        private readonly IMemoryCache? _cache;
 
         /// <summary>
         /// Ensures FeaturesJson column exists in Tenants table (SQLite only).
@@ -238,12 +240,14 @@ namespace HexaBill.Api.Modules.Tenants
             AppDbContext context,
             ISubscriptionService subscriptionService,
             IOptions<HostingOptions> hostingOptions,
-            ITenantHostResolver tenantHostResolver)
+            ITenantHostResolver tenantHostResolver,
+            IMemoryCache? cache = null)
         {
             _context = context;
             _subscriptionService = subscriptionService;
             _hostingOptions = hostingOptions.Value;
             _tenantHostResolver = tenantHostResolver;
+            _cache = cache;
         }
 
         public async Task<PlatformDashboardDto> GetPlatformDashboardAsync()
@@ -1598,6 +1602,7 @@ namespace HexaBill.Api.Modules.Tenants
             user.MustChangePassword = false;
             user.SessionVersion++;
             await _context.SaveChangesAsync();
+            _cache?.Remove($"user_session_{userId}");
             return true;
         }
 
@@ -1608,6 +1613,7 @@ namespace HexaBill.Api.Modules.Tenants
 
             user.SessionVersion++;
             await _context.SaveChangesAsync();
+            _cache?.Remove($"user_session_{userId}");
 
             _context.AuditLogs.Add(new AuditLog
             {

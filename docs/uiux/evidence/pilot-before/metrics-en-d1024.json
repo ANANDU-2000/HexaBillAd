@@ -1,0 +1,46 @@
+{
+ "stage": "before",
+ "lang": "en",
+ "project": "d1024",
+ "errors": [],
+ "screens": {
+  "customers": {
+   "viewport": {
+    "vw": 1024,
+    "vh": 768
+   },
+   "dir": "ltr",
+   "lang": "en",
+   "overflowX": 0,
+   "firstRecordY": null,
+   "firstRecordRatio": null,
+   "controlsAboveFirstRecord": null,
+   "rowHeight": null,
+   "rowCountVisible": 0,
+   "controlsUnder32px": 114,
+   "smallestTextPx": 12,
+   "usesTable": true,
+   "scrollContainers": 2,
+   "textLength": 7261
+  },
+  "payments": {
+   "viewport": {
+    "vw": 1024,
+    "vh": 768
+   },
+   "dir": "ltr",
+   "lang": "en",
+   "overflowX": 0,
+   "firstRecordY": null,
+   "firstRecordRatio": null,
+   "controlsAboveFirstRecord": null,
+   "rowHeight": null,
+   "rowCountVisible": 0,
+   "controlsUnder32px": 86,
+   "smallestTextPx": 10,
+   "usesTable": true,
+   "scrollContainers": 2,
+   "textLength": 2748
+  }
+ }
+}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import RouteContent from './RouteContent'
 import { useAuth } from '../hooks/useAuth'
@@ -22,7 +22,8 @@ import { useKeyboardOpen, useOverlayOpen } from '../hooks/useShellChrome'
 import { shouldShowBottomNav } from '../navigation/quickCreate'
 import Logo from './Logo'
 import CommandPalette from './CommandPalette'
-import AssistantPanel from '../features/assistant/AssistantPanel'
+// Assistant chunk is large and only needed once the user opens it: keep it out of the entry bundle.
+const AssistantPanel = lazy(() => import('../features/assistant/AssistantPanel'))
 import { isAssistantEnabled } from '../features/assistant/assistantDraft'
 import ShortcutHelp from './ShortcutHelp'
 import AlertNotifications from './AlertNotifications'
@@ -58,6 +59,9 @@ const Layout = () => {
   const [moreOpen, setMoreOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
+  // Mount the lazy assistant chunk on first open, then keep it mounted so chat state survives closing.
+  const assistantEverOpenedRef = useRef(false)
+  if (assistantOpen) assistantEverOpenedRef.current = true
   // On by default; off with VITE_ENABLE_ASSISTANT=false, localStorage hexabill.assistant=0, or for a platform administrator.
   const assistantEnabled = isAssistantEnabled(import.meta.env, undefined, { platformAdmin: isSystemAdmin(user) })
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -409,7 +413,7 @@ const Layout = () => {
       )}
 
       {/* Sidebar: icon rail from 768px, 240px labels from 1024px unless collapsed */}
-      <div className={`no-print hidden md:fixed md:flex md:flex-col md:min-h-0 md:w-20 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
+      <div className={`no-print hidden md:fixed md:flex md:flex-col md:min-h-0 md:w-24 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${isSidebarCollapsed ? 'lg:w-24' : 'lg:w-60'}`}>
         <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
           <div className={`flex h-16 shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'justify-between gap-2' : 'justify-center'}`}>
             <Link to="/dashboard" className={`flex min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
@@ -453,18 +457,24 @@ const Layout = () => {
                       <Link
                         key={item.id}
                         to={item.href}
-                        className={`group/nav relative flex items-center rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'min-h-11 lg:min-h-10 px-3' : 'min-h-11 justify-center px-2'} ${
+                        className={`group/nav relative flex rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${
+                          labelsVisible
+                            ? 'items-center min-h-11 lg:min-h-10 px-3'
+                            : 'flex-col items-center justify-center gap-0.5 min-h-[52px] px-1'
+                        } ${
                           active ? 'bg-primary-600 text-white shadow-sm ring-1 ring-white/10' : 'text-primary-100/80 hover:bg-primary-800 hover:text-white'
                         }`}
                         aria-label={item.label}
+                        title={item.label}
                         aria-current={active ? 'page' : undefined}
                         onMouseEnter={(event) => showNavTip(event, item.label)}
                         onMouseLeave={() => setNavTip(null)}
                         onFocus={(event) => showNavTip(event, item.label)}
                         onBlur={() => setNavTip(null)}
                       >
-                        <Icon className={`shrink-0 ${labelsVisible ? 'mr-3 h-[18px] w-[18px]' : 'h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
+                        <Icon className={`shrink-0 ${labelsVisible ? 'mr-3 h-[18px] w-[18px]' : 'mb-0.5 h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
                         {labelsVisible && <span className="truncate">{item.label}</span>}
+                        {!labelsVisible && <span className="w-full px-0.5 text-xs font-semibold leading-tight text-center break-normal text-primary-100/70">{item.label}</span>}
                       </Link>
                     )
                   })}
@@ -473,25 +483,31 @@ const Layout = () => {
             })}
             <Link
               to="/more"
-              className={`group/nav relative flex items-center rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'min-h-11 lg:min-h-10 px-3' : 'min-h-11 justify-center px-2'} ${
+              className={`group/nav relative flex rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${
+                labelsVisible
+                  ? 'items-center min-h-11 lg:min-h-10 px-3'
+                  : 'flex-col items-center justify-center gap-0.5 min-h-[52px] px-1'
+              } ${
                 location.pathname === '/more' ? 'bg-primary-600 text-white shadow-sm ring-1 ring-white/10' : 'border border-dashed border-primary-700 text-primary-100/80 hover:border-primary-500 hover:bg-primary-800 hover:text-white'
               }`}
               aria-label="More"
+              title="More tools"
               aria-current={location.pathname === '/more' ? 'page' : undefined}
               onMouseEnter={(event) => showNavTip(event, 'More')}
               onMouseLeave={() => setNavTip(null)}
               onFocus={(event) => showNavTip(event, 'More')}
               onBlur={() => setNavTip(null)}
             >
-              <MoreHorizontal className={`shrink-0 ${labelsVisible ? 'mr-3 h-[18px] w-[18px]' : 'h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
+              <MoreHorizontal className={`shrink-0 ${labelsVisible ? 'mr-3 h-[18px] w-[18px]' : 'mb-0.5 h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
               {labelsVisible && <span className="truncate">More tools</span>}
+              {!labelsVisible && <span className="w-full px-0.5 text-xs font-semibold leading-tight text-center break-normal text-primary-100/70">More</span>}
             </Link>
           </nav>
         </div>
       </div>
 
       {/* Main content - Full viewport after sidebar; pt-10 when impersonation banner visible so content not covered */}
-      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none md:pl-20 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
+      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none md:pl-24 ${isSidebarCollapsed ? 'lg:pl-24' : 'lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
         {backendUnavailable && (
           <div className="px-4 py-2 bg-amber-100 border-b border-warning-border text-amber-900 text-sm">
             Service temporarily unavailable. Try again in a moment, or contact your company administrator.
@@ -501,7 +517,7 @@ const Layout = () => {
         <CloudHostingCostReminder />
         {/* Desktop/tablet top bar — search, alerts, one account menu. Pages own their heading; tenant identity lives in the sidebar only. */}
         {!isPosRoute && (
-        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:block md:left-20 ${isSidebarCollapsed ? 'lg:left-20' : 'lg:left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:block md:left-24 ${isSidebarCollapsed ? 'lg:left-24' : 'lg:left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
           <div className="flex h-full items-center gap-3 px-4 lg:px-6">
             <button
               type="button"
@@ -607,7 +623,11 @@ const Layout = () => {
         </div>
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      {assistantEnabled && <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} />}
+      {assistantEnabled && assistantEverOpenedRef.current && (
+        <Suspense fallback={null}>
+          <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} />
+        </Suspense>
+      )}
       <ShortcutHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       {navTip && (
         <div

@@ -2,6 +2,14 @@
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
+const setDesc = async (page, loc, text) => {
+  await loc.click()
+  const dr = page.locator('[data-quote-product-picker="overlay"]')
+  await dr.getByRole('searchbox').fill(text)
+  await dr.getByRole('button', { name: /as a custom item/ }).click()
+  await expect(dr).toBeHidden()
+}
+
 const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 
 test('quotation: multi-item create, edit, print, validation, delete', async ({ page }) => {
@@ -25,11 +33,11 @@ test('quotation: multi-item create, edit, print, validation, delete', async ({ p
   const fillRow = async (i, [name, qty, price]) => {
     if (mobile) {
       const card = page.getByRole('list', { name: 'Line items' }).getByRole('listitem').nth(i)
-      await card.getByLabel(/description/).fill(name)
+      await setDesc(page, card.getByLabel(/description/), name)
       await card.getByLabel('Qty').fill(qty)
       await card.getByLabel('Price').fill(price)
     } else {
-      await page.locator(`[data-quote-cell="${i}-description"]`).fill(name)
+      await setDesc(page, page.locator(`[data-quote-cell="${i}-description"]`), name)
       await page.locator(`[data-quote-cell="${i}-qty"]`).fill(qty)
       await page.locator(`[data-quote-cell="${i}-unitPrice"]`).fill(price)
     }
@@ -83,9 +91,9 @@ test('quotation: multi-item create, edit, print, validation, delete', async ({ p
   // Validation: a described row with a zero price is flagged and not saved.
   await addRow()
   if (mobile) {
-    await page.getByRole('list', { name: 'Line items' }).getByRole('listitem').nth(3).getByLabel(/description/).fill('E2E ZERO PRICE')
+    await setDesc(page, page.getByRole('list', { name: 'Line items' }).getByRole('listitem').nth(3).getByLabel(/description/), 'E2E ZERO PRICE')
   } else {
-    await page.locator('[data-quote-cell="3-description"]').fill('E2E ZERO PRICE')
+    await setDesc(page, page.locator('[data-quote-cell="3-description"]'), 'E2E ZERO PRICE')
   }
   await expect(page.getByRole('alert').filter({ hasText: 'Price must be greater than 0' })).toBeVisible()
 

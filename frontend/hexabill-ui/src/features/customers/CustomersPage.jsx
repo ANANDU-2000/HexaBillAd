@@ -19,12 +19,14 @@ import {
   AlertCircle,
   UserPlus,
   DollarSign,
+  BookOpen,
   Inbox,
   MessageCircle
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
-import { OverflowMenu } from '../../components/ui'
+import { OverflowMenu, TableSkeleton, ModernTable, ErrorState } from '../../components/ui'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../utils/currency'
+import { moneyTone, moneyWord } from '../../utils/moneyTone'
 import { isAdminOrOwner, canAccessPage } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
 import { validateEmail } from '../../utils/validation'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
@@ -68,6 +70,56 @@ function buildWhatsAppUrlFromPhone(phone) {
   return `https://wa.me/${d}`
 }
 
+// Customers not seen for this many days with money owed are shown as overdue (same rule the list tabs use).
+const OVERDUE_DAYS = 30
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function daysSince (value) {
+  if (!value) return null
+  const t = new Date(value).getTime()
+  return Number.isFinite(t) ? Math.floor((Date.now() - t) / DAY_MS) : null
+}
+
+// "Today", "Yesterday", "12 days ago"; the exact date is the tooltip. Older than 90 days shows the date.
+function seenLabel (value) {
+  const d = daysSince(value)
+  if (d === null) return { text: 'No activity', title: '' }
+  const title = new Date(value).toLocaleDateString('en-GB')
+  if (d <= 0) return { text: 'Today', title }
+  if (d === 1) return { text: 'Yesterday', title }
+  if (d <= 90) return { text: `${d} days ago`, title }
+  return { text: title, title }
+}
+
+function isOverdueCustomer (c) {
+  const pending = Number(c.pendingBalance ?? c.balance) || 0
+  if (pending <= 0) return false
+  const d = daysSince(c.lastActivity)
+  return d === null || d >= OVERDUE_DAYS
+}
+
+// What the customer owes, in plain words. Colour always comes with a word.
+function BalanceCell ({ customer }) {
+  const balance = Number(customer.balance) || 0
+  if (balance === 0) {
+    return (
+      <div className="leading-tight">
+        <div className="text-neutral-500">{formatCurrency(0)}</div>
+        <div className="text-sm text-neutral-500">Settled</div>
+      </div>
+    )
+  }
+  const overdue = isOverdueCustomer(customer)
+  return (
+    <div className="leading-tight">
+      <div className={`font-semibold ${moneyTone('due', balance)}`}>{formatCurrency(Math.abs(balance))}</div>
+      <div className={`text-sm ${balance > 0 ? 'text-error-fg' : 'text-success-fg'}`}>
+        {balance > 0 ? (overdue ? 'Overdue 30+ days' : moneyWord('due', balance)) : moneyWord('due', balance)}
+      </div>
+    </div>
+  )
+}
+
 const CustomersPage = () => {
   const { user } = useAuth()
   const { branches, routes } = useBranchesRoutes()
@@ -77,7 +129,9 @@ const CustomersPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [customers, setCustomers] = useState([])
-  const [filteredCustomers, setFilteredCustomers] = useState([])
+  const [filterCounts, setFilterCounts] = useState(null)
+  const [loadError, setLoadError] = useState(false)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '')
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'all')
   const [currentPage, setCurrentPage] = useState(() => Number(searchParams.get('page')) || 1)
@@ -85,7 +139,7 @@ const CustomersPage = () => {
   const [totalCount, setTotalCount] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const PAGE_SIZE_OPTIONS = [25, 50, 100]
-  const [pageSize, setPageSize] = useState(100)
+  const [pageSize, setPageSize] = useState(50)
   const [sortBy, setSortBy] = useState('name')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -138,7 +192,7 @@ const CustomersPage = () => {
   // Fetch page 1 on mount and when search or page size changes (PRODUCTION_MASTER_TODO #42: pagination)
   useEffect(() => {
     fetchCustomers(1)
-  }, [debouncedSearchTerm, pageSize, sortBy])
+  }, [debouncedSearchTerm, pageSize, sortBy, activeTab])
 
   // Handle ?edit=ID URL parameter from Customer Ledger
   useEffect(() => {
@@ -195,21 +249,23 @@ const CustomersPage = () => {
     setCurrentPage((p) => (p === parsed.currentPage ? p : parsed.currentPage))
   }, [searchParams])
 
-  useEffect(() => {
-    filterCustomers()
-  }, [customers, activeTab])
-
   const fetchCustomers = async (page = 1, append = false) => {
     try {
       setLoading(true)
-      // Server-side search: pass search term to API
+      setLoadError(false)
+      // Server-side search, tab filter and counts: every tab covers ALL customers, not just the loaded page.
       const searchParam = debouncedSearchTerm || undefined
+      const countsRequest = customersAPI.getCustomerFilterCounts({ search: searchParam })
+        .then((res) => { if (res?.success && res.data) setFilterCounts(res.data) })
+        .catch(() => { /* counts are informational; the list still works */ })
       const response = await customersAPI.getCustomers({
         page,
         pageSize,
         search: searchParam,
+        ...(activeTab && activeTab !== 'all' ? { filter: activeTab } : {}),
         ...(sortBy && sortBy !== 'name' ? { sortBy } : {})
       })
+      await countsRequest
       if (response.success && response.data) {
         const newCustomers = response.data.items || []
         if (append) {
@@ -223,9 +279,11 @@ const CustomersPage = () => {
         setCurrentPage(page)
       } else {
         if (!append) setCustomers([])
+        setLoadError(true)
       }
     } catch (error) {
       console.error('Failed to load customers:', error)
+      setLoadError(true)
       // Only show error if it's not a network error (handled by interceptor)
       if (!error?._handledByInterceptor && (error.response || (!error.code || error.code !== 'ERR_NETWORK'))) {
         toast.error(error?.response?.data?.message || 'Failed to load customers')
@@ -233,6 +291,7 @@ const CustomersPage = () => {
       if (!append) setCustomers([])
     } finally {
       setLoading(false)
+      setHasLoadedOnce(true)
     }
   }
 
@@ -240,46 +299,6 @@ const CustomersPage = () => {
     if (!loading && hasMore) {
       fetchCustomers(currentPage + 1, true)
     }
-  }
-
-  const filterCustomers = () => {
-    let filtered = customers
-
-    // Apply tab filter (client-side filtering for tabs, search is server-side)
-    if (activeTab === 'outstanding') {
-      // Outstanding: customers with positive balance (owe money)
-      filtered = filtered.filter(c => (c.balance || 0) > 0)
-    } else if (activeTab === 'active') {
-      // Active: customers with transactions in last 90 days
-      const ninetyDaysAgo = new Date()
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
-      filtered = filtered.filter(c => {
-        if (!c.lastActivity) return false
-        const lastActivityDate = new Date(c.lastActivity)
-        return lastActivityDate >= ninetyDaysAgo
-      })
-    } else if (activeTab === 'overdue') {
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-      filtered = filtered.filter((c) => {
-        const bal = (c.pendingBalance ?? c.balance ?? 0)
-        if (bal <= 0) return false
-        if (!c.lastActivity) return true
-        return new Date(c.lastActivity) < thirtyDaysAgo
-      })
-    } else if (activeTab === 'inactive') {
-      // Inactive: customers with no transactions in last 90 days
-      const ninetyDaysAgo = new Date()
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
-      filtered = filtered.filter(c => {
-        if (!c.lastActivity) return true // No activity = inactive
-        const lastActivityDate = new Date(c.lastActivity)
-        return lastActivityDate < ninetyDaysAgo
-      })
-    }
-
-    // Note: Search is now handled server-side via API, so we don't filter here
-    setFilteredCustomers(filtered)
   }
 
   const onSubmit = async (data) => {
@@ -641,7 +660,6 @@ const CustomersPage = () => {
         }
         // Update state directly without full page reload
         setCustomers(prev => prev.filter(c => c.id !== customerId))
-        setFilteredCustomers(prev => prev.filter(c => c.id !== customerId))
       } else {
         toast.error(response.message || 'Failed to delete customer')
       }
@@ -720,20 +738,11 @@ const CustomersPage = () => {
     window.open(whatsappUrl, '_blank')
   }
 
-  const overdueCount = customers.filter((c) => {
-    const bal = (c.pendingBalance ?? c.balance ?? 0)
-    if (bal <= 0) return false
-    if (!c.lastActivity) return true
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    return new Date(c.lastActivity) < thirtyDaysAgo
-  }).length
-
   // One action list for desktop and phone rows (UX-C03). Ledger first; Collect only when owed.
   const customerMenuItems = (customer) => {
     const waUrl = buildWhatsAppUrlFromPhone(customer.phone)
     return [
-      { label: 'Open ledger', icon: Eye, onClick: () => handleViewLedger(customer) },
+      { label: 'Quick ledger view', icon: Eye, onClick: () => handleViewLedger(customer) },
       { label: 'Collect payment', icon: DollarSign, hidden: !((Number(customer.balance) || 0) > 0), onClick: () => openCollectInLedger(customer) },
       { label: 'WhatsApp', icon: MessageCircle, hidden: !waUrl, onClick: () => window.open(waUrl, '_blank', 'noopener,noreferrer') },
       { label: 'Send statement', icon: Mail, onClick: () => handleSendStatement(customer.id) },
@@ -742,58 +751,120 @@ const CustomersPage = () => {
     ]
   }
 
+  const count = (key) => (filterCounts ? filterCounts[key] : null)
   const tabs = [
-    { id: 'all', label: 'All', icon: Users },
-    { id: 'active', label: 'Active', icon: UserPlus },
-    { id: 'outstanding', label: 'Outstanding', icon: AlertCircle, badge: customers.filter(c => (c.balance || 0) > 0).length },
-    { id: 'overdue', label: 'Overdue 30d+', icon: AlertCircle, badge: overdueCount || null },
-    { id: 'inactive', label: 'Inactive', icon: Users }
+    { id: 'all', label: 'All', icon: Users, badge: count('all') },
+    { id: 'outstanding', label: 'Owes money', icon: AlertCircle, badge: count('outstanding') },
+    { id: 'overdue', label: 'Overdue', icon: AlertCircle, badge: count('overdue') },
+    { id: 'active', label: 'Active', icon: UserPlus, badge: count('active') },
+    { id: 'inactive', label: 'Inactive', icon: Users, badge: count('inactive') }
   ]
 
-  if (loading) {
-    return <LoadingCard message="Loading customers..." />
+  // Sorting is done by the server for the whole list. Header clicks map to the sorts it supports.
+  const SORT_BY_COLUMN = { name: 'name', balance: 'balanceDesc', lastActivity: 'activityDesc' }
+  const COLUMN_BY_SORT = { name: 'name', balanceDesc: 'balance', activityDesc: 'lastActivity' }
+  const tableSort = { key: COLUMN_BY_SORT[sortBy] || 'name', direction: sortBy === 'name' || !sortBy ? 'asc' : 'desc' }
+  const handleSortChange = (key) => {
+    setSortBy(SORT_BY_COLUMN[key] || 'name')
+    setCurrentPage(1)
   }
 
+  const openLedgerPage = (customer) =>
+    navigate(buildCustomerLedgerHref({ customerId: customer.id }), { state: { returnTo: listReturnTo } })
+  const openDetails = (customer) =>
+    navigate(`/customers/${customer.id}`, { state: { returnTo: location.pathname + location.search } })
+
+  const columns = [
+    {
+      key: 'name',
+      label: 'Customer',
+      sortable: true,
+      mobile: 'title',
+      render: (c) => (
+        <div className="min-w-0">
+          <button
+            type="button"
+            onClick={() => openDetails(c)}
+            title={c.name}
+            className="line-clamp-2 block min-h-[32px] py-1 text-start text-sm font-semibold text-primary-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          >
+            {c.name}
+          </button>
+          {c.phone && <div className="text-sm tabular-nums text-neutral-600">{c.phone}</div>}
+        </div>
+      )
+    },
+    { key: 'phone', label: 'Phone', mobile: 'hidden', hideBelow: 'xl', render: (c) => <span className="tabular-nums">{c.phone || '-'}</span> },
+    {
+      key: 'balance',
+      label: 'Balance due',
+      align: 'right',
+      sortable: true,
+      render: (c) => <BalanceCell customer={c} />
+    },
+    {
+      key: 'lastActivity',
+      label: 'Last activity',
+      sortable: true,
+      hideBelow: 'lg',
+      render: (c) => { const seen = seenLabel(c.lastActivity); return <span title={seen.title}>{seen.text}</span> }
+    },
+    {
+      key: 'lastPaymentDate',
+      label: 'Last payment',
+      hideBelow: 'xl',
+      render: (c) => { const seen = seenLabel(c.lastPaymentDate); return <span title={seen.title}>{c.lastPaymentDate ? seen.text : 'None yet'}</span> }
+    },
+    { key: 'creditLimit', label: 'Credit limit', align: 'right', hideBelow: 'xl', mobile: 'hidden', render: (c) => (Number(c.creditLimit) > 0 ? formatCurrency(c.creditLimit) : <span className="text-neutral-500">No limit</span>) },
+    { key: 'totalSales', label: 'Total sales', align: 'right', hideBelow: 'xl', mobile: 'hidden', render: (c) => formatCurrency(c.totalSales) }
+  ]
+
+  // Visible, labelled actions: no hunting for icons. Secondary actions sit under a labelled "More".
+  const renderActions = (c) => (
+    <div className="flex items-center justify-end gap-2">
+      <button type="button" onClick={() => openLedgerPage(c)} className="btn btn-secondary px-3" aria-label={`Open ledger for ${c.name}`}>
+        <BookOpen className="h-4 w-4" aria-hidden />
+        Ledger
+      </button>
+      {(Number(c.balance) || 0) > 0 && (
+        <button type="button" onClick={() => openCollectInLedger(c)} className="btn btn-secondary px-3 border-primary-300 text-primary-700 hover:bg-primary-50" aria-label={`Collect payment from ${c.name}`}>
+          <DollarSign className="h-4 w-4" aria-hidden />
+          Collect
+        </button>
+      )}
+      <OverflowMenu label={`More actions for ${c.name}`} buttonText="More" buttonClassName="px-3" showLabel items={customerMenuItems(c)} />
+    </div>
+  )
+
+  if (loading && !hasLoadedOnce) {
+    return <div className="p-4"><TableSkeleton rows={10} /></div>
+  }
+
+  const filtersActive = Boolean(debouncedSearchTerm) || activeTab !== 'all'
 
   return (
-    <div className="space-y-4 max-w-full overflow-x-hidden">
-      {/* Header (UX-C01/C02): title + count, one primary action, secondary actions in a menu;
-          search and sort on one row; tabs carry the counts. No negative margins. */}
-      <div className="rounded-lg border border-surface-border bg-white">
-        <div className="flex items-center gap-2 px-3 pt-3 sm:px-4">
-          <div className="min-w-0 flex-1">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 max-w-full">
+      {/* Header: title with the real total, one primary action; search and sort on one row; tabs carry server-side counts. */}
+      <div className="shrink-0 rounded-lg border border-surface-border bg-white">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 pt-3 sm:px-4">
+          <div className="min-w-0 lg:w-44 lg:shrink-0">
             <h1 className="text-lg font-semibold text-text-primary">Customers</h1>
-            <p className="text-xs text-neutral-500 tabular-nums" aria-live="polite">
-              {totalCount} {totalCount === 1 ? 'customer' : 'customers'}
+            <p className="text-sm text-neutral-600 tabular-nums" aria-live="polite">
+              {filterCounts ? `${filterCounts.all} customers` : `${totalCount} customers`}
             </p>
           </div>
-          <button type="button" onClick={openAddCustomer} className="btn btn-primary shrink-0" aria-label="Add customer">
-            <Plus className="h-4 w-4" aria-hidden />
-            <span>Add<span className="hidden sm:inline"> customer</span></span>
-          </button>
-          <OverflowMenu
-            label="More customer actions"
-            items={[
-              { label: 'Refresh', icon: RefreshCw, onClick: () => fetchCustomers() },
-              { label: 'Export CSV', icon: Download, onClick: handleExportCustomers },
-              { label: 'Import CSV', icon: Inbox, onClick: () => document.getElementById('csv-import-input')?.click() },
-              { label: 'Overdue invoices report', icon: AlertCircle, separatorBefore: true, hidden: !canAccessPage(user, 'reports'), onClick: () => navigate('/reports?tab=overdue') },
-            ]}
-          />
-          <input id="csv-import-input" type="file" accept=".csv" className="hidden" onChange={handleImportCustomers} />
-        </div>
-        <div className="flex gap-2 px-3 pt-3 sm:px-4">
-          <div className="relative min-w-0 flex-1">
+          <div className="relative order-last min-w-0 basis-full lg:order-none lg:basis-0 lg:flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" aria-hidden />
             <input
               type="search"
-              placeholder="Search customers"
+              placeholder="Search by name, phone or TRN"
               aria-label="Search customers"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input w-full pl-9"
+              className="input h-11 w-full pl-9"
             />
           </div>
+          {/* Phones have no column headers to click, so they keep a sort menu. */}
           <label htmlFor="customer-sort" className="sr-only">Sort customers</label>
           <select
             id="customer-sort"
@@ -802,226 +873,64 @@ const CustomersPage = () => {
               setSortBy(e.target.value)
               setCurrentPage(1)
             }}
-            className="input w-[6.75rem] shrink-0 sm:w-44"
+            className="input order-last h-11 w-40 shrink-0 md:hidden"
           >
-            <option value="name">A–Z</option>
-            <option value="balanceDesc">Balance</option>
-            <option value="activityDesc">Recent</option>
+            <option value="name">Name A-Z</option>
+            <option value="balanceDesc">Highest balance</option>
+            <option value="activityDesc">Recent activity</option>
           </select>
-        </div>
-        <div className="mt-2 px-1 sm:px-2">
-          <TabNavigation tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
-        </div>
-      </div>
-
-      {/* Customers Table - Responsive */}
-      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
-        {/* Desktop Table */}
-        <div className="hidden xl:block overflow-x-auto">
-          <table className="min-w-full divide-y divide-neutral-200">
-            <thead className="bg-neutral-50">
-              <tr>
-                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Contact
-                </th>
-                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Credit Limit
-                </th>
-                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Balance
-                </th>
-                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Last Order
-                </th>
-                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-neutral-200">
-              {filteredCustomers.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="px-4 sm:px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <Inbox className="h-12 w-12 text-neutral-400 mb-3" />
-                      <p className="text-neutral-500 text-sm font-medium">No customers found</p>
-                      <p className="text-neutral-500 text-xs mt-1">Try adjusting your search or filters. Add customers to start creating invoices from POS or Sales Ledger.</p>
-                      <button
-                        onClick={() => {
-                        reset({ branchId: '', routeId: '', name: '', phone: '', email: '', trn: '', creditLimit: '', customerType: 'Credit', paymentTerms: '', address: '', location: '' })
-                        setShowAddModal(true)
-                      }}
-                        className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Customer
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredCustomers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-neutral-50">
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <div>
-                        <button
-                          onClick={() => navigate(`/customers/${customer.id}`, { state: { returnTo: location.pathname + location.search } })}
-                          className="text-xs sm:text-sm font-medium text-primary-600 hover:text-primary-800 hover:underline"
-                        >
-                          {customer.name}
-                        </button>
-                        <div className="text-xs text-neutral-500">{customer.trn}</div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <div className="text-xs sm:text-sm text-neutral-900">{customer.phone}</div>
-                      <div className="text-xs text-neutral-500">{customer.email}</div>
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-xs sm:text-sm text-neutral-900">
-                      {formatCurrency(customer.creditLimit)}
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <span className={`text-sm tabular-nums ${customer.balance > 0 ? 'font-semibold text-text-primary' : 'text-neutral-500'}`}>
-                        {formatBalance(customer.balance)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-xs sm:text-sm text-neutral-900">
-                      {customer.lastOrderDate || 'No orders'}
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-xs sm:text-sm font-medium">
-                      <div className="flex items-center justify-end gap-1">
-                        <button type="button" onClick={() => handleViewLedger(customer)} className="btn btn-ghost btn-sm">
-                          Ledger
-                        </button>
-                        {(Number(customer.balance) || 0) > 0 && (
-                          <button type="button" onClick={() => openCollectInLedger(customer)} className="btn btn-secondary btn-sm">
-                            Collect
-                          </button>
-                        )}
-                        <OverflowMenu label={`More actions for ${customer.name}`} items={customerMenuItems(customer)} />
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile cards: identity and balance first, two direct actions, the rest in More. */}
-        <ul className="xl:hidden divide-y divide-surface-border">
-          {filteredCustomers.map((customer) => {
-            const balance = Number(customer.balance) || 0
-            return (
-              <li key={customer.id} className="px-3 py-2">
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/customers/${customer.id}`, { state: { returnTo: location.pathname + location.search } })}
-                    className="min-w-0 flex-1 text-start"
-                  >
-                    <span className="block truncate text-sm font-semibold text-text-primary">{customer.name}</span>
-                    {customer.phone && <span className="block text-xs text-neutral-500 tabular-nums">{customer.phone}</span>}
-                  </button>
-                  <div className="shrink-0 text-end">
-                    <span className={`block text-sm tabular-nums ${balance > 0 ? 'font-semibold text-text-primary' : 'text-neutral-500'}`}>
-                      {formatBalance(customer.balance)}
-                    </span>
-                    {balance > 0 && <span className="block text-xs text-neutral-500">Outstanding</span>}
-                  </div>
-                  <OverflowMenu label={`More actions for ${customer.name}`} items={customerMenuItems(customer)} />
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
-
-      {/* Pagination — page size and next/prev to avoid loading thousands at once (#42) */}
-      {totalCount > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-sm text-neutral-700">
-                Showing <span className="font-medium">{customers.length}</span> of <span className="font-medium">{totalCount}</span> customers
-                {filteredCustomers.length !== customers.length && (
-                  <span className="ml-2 text-neutral-500">
-                    ({filteredCustomers.length} after filters)
-                  </span>
-                )}
-              </span>
-              <label className="flex items-center gap-2 text-sm text-neutral-700">
-                Per page
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="border border-neutral-300 rounded-md px-2 py-1 text-sm"
-                >
-                  {PAGE_SIZE_OPTIONS.map((n) => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            {hasMore && (
-              <button
-                onClick={handleLoadMore}
-                disabled={loading}
-                className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    Load More ({totalCount - customers.length} remaining)
-                  </>
-                )}
-              </button>
-            )}
-            {totalPages > 1 && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => fetchCustomers(1)}
-                  disabled={currentPage === 1 || loading}
-                  className="px-3 py-1 text-sm border border-neutral-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50"
-                >
-                  First
-                </button>
-                <button
-                  onClick={() => fetchCustomers(currentPage - 1)}
-                  disabled={currentPage === 1 || loading}
-                  className="px-3 py-1 text-sm border border-neutral-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50"
-                >
-                  Previous
-                </button>
-                <span className="text-sm text-neutral-700">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  onClick={() => fetchCustomers(currentPage + 1)}
-                  disabled={currentPage >= totalPages || loading}
-                  className="px-3 py-1 text-sm border border-neutral-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50"
-                >
-                  Next
-                </button>
-                <button
-                  onClick={() => fetchCustomers(totalPages)}
-                  disabled={currentPage >= totalPages || loading}
-                  className="px-3 py-1 text-sm border border-neutral-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50"
-                >
-                  Last
-                </button>
-              </div>
-            )}
+          <div className="ms-auto flex shrink-0 items-center gap-2">
+            <button type="button" onClick={openAddCustomer} className="btn btn-primary">
+              <Plus className="h-4 w-4" aria-hidden />
+              Add customer
+            </button>
+            <OverflowMenu
+              label="More customer actions"
+              buttonText="More"
+              showLabel
+              items={[
+                { label: 'Refresh', icon: RefreshCw, onClick: () => fetchCustomers(currentPage) },
+                { label: 'Export CSV', icon: Download, onClick: handleExportCustomers },
+                { label: 'Import CSV', icon: Inbox, onClick: () => document.getElementById('csv-import-input')?.click() },
+                { label: 'Overdue invoices report', icon: AlertCircle, separatorBefore: true, hidden: !canAccessPage(user, 'reports'), onClick: () => navigate('/reports?tab=overdue') },
+              ]}
+            />
           </div>
+          <input id="csv-import-input" type="file" accept=".csv" className="hidden" onChange={handleImportCustomers} />
+        </div>
+        <div className="mt-1 px-1 sm:px-2">
+          <TabNavigation tabs={tabs} activeTab={activeTab} onChange={(id) => { setActiveTab(id); setCurrentPage(1) }} ariaLabel="Customer lists" />
+        </div>
+      </div>
+
+      {loadError && (
+        <div className="shrink-0">
+          <ErrorState message="The customer list could not be loaded." onAction={() => fetchCustomers(currentPage)} />
         </div>
       )}
+
+      <ModernTable
+        fill
+        stickyHeader
+        mobileCards
+        busy={loading}
+        caption="Customers"
+        data={customers}
+        columns={columns}
+        actions={renderActions}
+        sort={tableSort}
+        onSortChange={handleSortChange}
+        totalCount={totalCount}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={(page) => fetchCustomers(page)}
+        pageSize={pageSize}
+        pageSizeOptions={PAGE_SIZE_OPTIONS}
+        onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1) }}
+        emptyTitle={filtersActive ? 'No customers match' : 'No customers yet'}
+        emptyDescription={filtersActive ? 'Try a different name or phone number, or choose another tab.' : 'Add your first customer to start creating invoices from POS.'}
+        emptyAction={{ label: 'Add customer', icon: Plus, onClick: openAddCustomer }}
+      />
 
       {/* Add Customer Modal */}
       <Modal

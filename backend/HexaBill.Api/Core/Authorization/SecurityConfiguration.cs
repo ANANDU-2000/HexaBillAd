@@ -17,6 +17,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using HexaBill.Api.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace HexaBill.Api.Core.Authorization
 {
@@ -65,6 +66,7 @@ namespace HexaBill.Api.Core.Authorization
                     options.Events = new JwtBearerEvents
                     {
                         // Force logout: SessionVersion checked on every JWT request (PRODUCTION_MASTER_TODO #22)
+                        // SPEED (P0): Cached via IMemoryCache (60s expiration) to avoid per-request DB queries
                         OnTokenValidated = async context =>
                         {
                             var principal = context.Principal;
@@ -84,11 +86,27 @@ namespace HexaBill.Api.Core.Authorization
                                 return;
                             }
 
-                            var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-                            // Session identity must not depend on the tenant filter. A missing host
-                            // scope used to hide every user and report a valid login as expired.
-                            var user = await db.Users.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
-                            if (user == null || !user.IsActive || user.SessionVersion != tokenVer)
+                            var cache = context.HttpContext.RequestServices.GetRequiredService<IMemoryCache>();
+                            var cacheKey = $"user_session_{userId}";
+
+                            if (!cache.TryGetValue<(int SessionVersion, bool IsActive)>(cacheKey, out var userCache))
+                            {
+                                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                                // Session identity must not depend on the tenant filter. A missing host
+                                // scope used to hide every user and report a valid login as expired.
+                                var user = await db.Users.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+                                if (user == null)
+                                {
+                                    context.Response.Headers["X-Auth-Failure"] = "Session-Expired";
+                                    context.Fail(new UnauthorizedAccessException("Session expired. Please login again."));
+                                    return;
+                                }
+
+                                userCache = (user.SessionVersion, user.IsActive);
+                                cache.Set(cacheKey, userCache, TimeSpan.FromSeconds(60));
+                            }
+
+                            if (!userCache.IsActive || userCache.SessionVersion != tokenVer)
                             {
                                 context.Response.Headers["X-Auth-Failure"] = "Session-Expired";
                                 context.Fail(new UnauthorizedAccessException("Session expired. Please login again."));

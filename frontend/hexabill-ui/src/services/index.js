@@ -535,6 +535,11 @@ export const customersAPI = {
     const response = await api.get('/customers', { params })
     return response.data
   },
+  /** Tab counts (all/outstanding/active/overdue/inactive) over the same scope and search as the list. */
+  getCustomerFilterCounts: async (params = {}) => {
+    const response = await api.get('/customers/filter-counts', { params })
+    return response.data
+  },
 
   searchCustomers: async (query, limit = 20) => {
     const response = await api.get('/customers/search', { params: { q: query, limit } })

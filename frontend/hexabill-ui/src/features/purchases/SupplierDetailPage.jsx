@@ -128,15 +128,19 @@ const SupplierDetailPage = () => {
         }
         throw err
       }
-      const balanceRes = await suppliersAPI.getSupplierBalance(supplierName)
+      // Balance, purchases and transactions are independent: fetch together instead of one after another.
+      const needsTransactions = activeTab === 'ledger' || activeTab === 'payments'
+      const from = activeTab === 'ledger' ? (appliedFrom || undefined) : undefined
+      const to = activeTab === 'ledger' ? (appliedTo || undefined) : undefined
+      const [balanceRes, resPurchases, transactionsRes] = await Promise.all([
+        suppliersAPI.getSupplierBalance(supplierName),
+        purchasesAPI.getPurchases({ supplierName, pageSize: 100 }),
+        needsTransactions ? suppliersAPI.getSupplierTransactions(supplierName, from, to) : Promise.resolve(null)
+      ])
       if (balanceRes?.success && balanceRes?.data) setBalance(balanceRes.data)
-      const resPurchases = await purchasesAPI.getPurchases({ supplierName, pageSize: 100 })
       if (resPurchases?.success && resPurchases?.data?.items) setPurchases(resPurchases.data.items)
       else setPurchases([])
-      if (activeTab === 'ledger' || activeTab === 'payments') {
-        const from = activeTab === 'ledger' ? (appliedFrom || undefined) : undefined
-        const to = activeTab === 'ledger' ? (appliedTo || undefined) : undefined
-        const transactionsRes = await suppliersAPI.getSupplierTransactions(supplierName, from, to)
+      if (needsTransactions) {
         if (transactionsRes?.success && Array.isArray(transactionsRes?.data)) setTransactions(transactionsRes.data)
         else setTransactions([])
       }

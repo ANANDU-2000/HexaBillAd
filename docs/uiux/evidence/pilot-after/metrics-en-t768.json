@@ -1,0 +1,110 @@
+{
+ "stage": "after",
+ "lang": "en",
+ "project": "t768",
+ "errors": [],
+ "screens": {
+  "customers": {
+   "viewport": {
+    "vw": 768,
+    "vh": 1024
+   },
+   "dir": "ltr",
+   "lang": "en",
+   "overflowX": 0,
+   "firstRecordY": 288,
+   "firstRecordRatio": 0.28,
+   "controlsAboveFirstRecord": 20,
+   "rowHeight": 69,
+   "rowCountVisible": 50,
+   "controlsUnder32px": 1,
+   "smallestTextPx": 12,
+   "usesTable": true,
+   "tableInfo": {
+    "tableWidth": 638,
+    "wrapperWidth": 638,
+    "wrapperScrollWidth": 638,
+    "sidewaysScrollNeeded": false,
+    "headers": [
+     "Customer",
+     "Balance due",
+     "Actions"
+    ],
+    "firstRowButtons": [
+     {
+      "t": "Ajman Frozen Goods",
+      "x": 123,
+      "w": 149,
+      "h": 32
+     },
+     {
+      "t": "Ledger",
+      "x": 446,
+      "w": 97,
+      "h": 40
+     },
+     {
+      "t": "Collect",
+      "x": 552,
+      "w": 97,
+      "h": 40
+     },
+     {
+      "t": "More",
+      "x": 656,
+      "w": 85,
+      "h": 40
+     }
+    ]
+   },
+   "scrollContainers": 2,
+   "textLength": 5115
+  },
+  "payments": {
+   "viewport": {
+    "vw": 768,
+    "vh": 1024
+   },
+   "dir": "ltr",
+   "lang": "en",
+   "overflowX": 0,
+   "firstRecordY": 356,
+   "firstRecordRatio": 0.35,
+   "controlsAboveFirstRecord": 22,
+   "rowHeight": 77,
+   "rowCountVisible": 50,
+   "controlsUnder32px": 1,
+   "smallestTextPx": 12,
+   "usesTable": true,
+   "tableInfo": {
+    "tableWidth": 638,
+    "wrapperWidth": 638,
+    "wrapperScrollWidth": 638,
+    "sidewaysScrollNeeded": false,
+    "headers": [
+     "",
+     "Customer",
+     "Amount",
+     "Status",
+     "Actions"
+    ],
+    "firstRowButtons": [
+     {
+      "t": "Receipt",
+      "x": 548,
+      "w": 100,
+      "h": 40
+     },
+     {
+      "t": "More",
+      "x": 656,
+      "w": 85,
+      "h": 40
+     }
+    ]
+   },
+   "scrollContainers": 2,
+   "textLength": 5446
+  }
+ }
+}

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Search, X } from 'lucide-react'
 import { useBranding } from '../tenant/TenantBrandingContext'
@@ -18,6 +19,12 @@ export default function QuotationProductDrawer({
   allowCustom = false,
 }) {
   const { currency = 'AED' } = useBranding()
+  useEffect(() => {
+    if (!open) return undefined
+    const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
   if (!open) return null
 
   const panel = (
@@ -46,7 +53,14 @@ export default function QuotationProductDrawer({
               type="search"
               value={searchValue || ''}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              placeholder="Search name, SKU…"
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return
+                e.preventDefault()
+                const text = (searchValue || '').trim()
+                if (products.length > 0) onSelect?.(products[0])
+                else if (allowCustom && text) onSelect?.({ __custom: true, name: text })
+              }}
+              placeholder="Search products, or type a custom item and press Enter"
               className="w-full h-10 pl-9 pr-3 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               autoComplete="off"
               autoFocus

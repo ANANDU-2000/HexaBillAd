@@ -1,0 +1,46 @@
+{
+ "stage": "before",
+ "lang": "en",
+ "project": "d1440",
+ "errors": [],
+ "screens": {
+  "customers": {
+   "viewport": {
+    "vw": 1440,
+    "vh": 900
+   },
+   "dir": "ltr",
+   "lang": "en",
+   "overflowX": 0,
+   "firstRecordY": 281,
+   "firstRecordRatio": 0.31,
+   "controlsAboveFirstRecord": 22,
+   "rowHeight": 59,
+   "rowCountVisible": 100,
+   "controlsUnder32px": 114,
+   "smallestTextPx": 12,
+   "usesTable": true,
+   "scrollContainers": 1,
+   "textLength": 11983
+  },
+  "payments": {
+   "viewport": {
+    "vw": 1440,
+    "vh": 900
+   },
+   "dir": "ltr",
+   "lang": "en",
+   "overflowX": 0,
+   "firstRecordY": 376,
+   "firstRecordRatio": 0.42,
+   "controlsAboveFirstRecord": 26,
+   "rowHeight": 50,
+   "rowCountVisible": 25,
+   "controlsUnder32px": 113,
+   "smallestTextPx": 10,
+   "usesTable": true,
+   "scrollContainers": 1,
+   "textLength": 3166
+  }
+ }
+}

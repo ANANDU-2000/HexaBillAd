@@ -14,6 +14,7 @@ using HexaBill.Api.Models;
 using Microsoft.AspNetCore.Http;
 using Npgsql;
 using HexaBill.Api.Core.Infrastructure;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace HexaBill.Api.Modules.Auth
 {
@@ -56,13 +57,15 @@ namespace HexaBill.Api.Modules.Auth
         private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor? _httpContextAccessor;
         private readonly ITenantHostResolver _tenantHostResolver;
+        private readonly IMemoryCache? _cache;
 
-        public AuthService(AppDbContext context, IConfiguration configuration, ITenantHostResolver tenantHostResolver, IHttpContextAccessor? httpContextAccessor = null)
+        public AuthService(AppDbContext context, IConfiguration configuration, ITenantHostResolver tenantHostResolver, IHttpContextAccessor? httpContextAccessor = null, IMemoryCache? cache = null)
         {
             _context = context;
             _configuration = configuration;
             _tenantHostResolver = tenantHostResolver;
             _httpContextAccessor = httpContextAccessor;
+            _cache = cache;
         }
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
@@ -426,6 +429,7 @@ namespace HexaBill.Api.Modules.Auth
             user.MustChangePassword = false;
             user.SessionVersion++;
             await _context.SaveChangesAsync();
+            _cache?.Remove($"user_session_{userId}");
 
             return true;
         }

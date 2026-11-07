@@ -7,8 +7,9 @@ import { MoreHorizontal } from 'lucide-react'
  * items: [{ label, icon?, onClick, danger?, disabled?, hidden?, separatorBefore? }]
  * Keyboard: Enter/Space opens, arrows move, Home/End jump, Esc closes and returns focus.
  */
-export default function OverflowMenu({ items = [], label = 'More actions', showLabel = false, align = 'end', className = '' }) {
+export default function OverflowMenu({ items = [], label = 'More actions', buttonText, buttonClassName = '', showLabel = false, align = 'end', className = '' }) {
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState(null)
   const rootRef = useRef(null)
   const buttonRef = useRef(null)
   const menuId = useId()
@@ -21,13 +22,25 @@ export default function OverflowMenu({ items = [], label = 'More actions', showL
   }
 
   useEffect(() => {
-    if (!open) return
+    if (!open) { setPos(null); return }
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (rect) {
+      const menuHeight = Math.min(visible.length * 44 + 16, 360)
+      const below = window.innerHeight - rect.bottom
+      const top = below >= menuHeight + 8 || rect.top < menuHeight ? rect.bottom + 4 : rect.top - menuHeight - 4
+      setPos(align === 'end' ? { top, right: Math.max(8, window.innerWidth - rect.right) } : { top, left: Math.max(8, rect.left) })
+    }
+    const close = () => setOpen(false)
+    window.addEventListener('resize', close)
+    document.addEventListener('scroll', close, true)
     const onDown = (e) => { if (!rootRef.current?.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', onDown)
     document.addEventListener('touchstart', onDown)
     const t = setTimeout(() => focusItem(0), 0)
     return () => {
       clearTimeout(t)
+      window.removeEventListener('resize', close)
+      document.removeEventListener('scroll', close, true)
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('touchstart', onDown)
     }
@@ -56,12 +69,12 @@ export default function OverflowMenu({ items = [], label = 'More actions', showL
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        aria-label={showLabel ? undefined : label}
+        aria-label={showLabel && !buttonText ? undefined : label}
         onClick={() => setOpen((v) => !v)}
-        className={`btn btn-secondary ${showLabel ? '' : 'px-2.5'}`}
+        className={`btn btn-secondary ${showLabel ? '' : 'px-2.5'} ${buttonClassName}`}
       >
         <MoreHorizontal className="h-4 w-4" aria-hidden />
-        {showLabel && <span>{label}</span>}
+        {showLabel && <span>{buttonText || label}</span>}
       </button>
       {open && (
         <div
@@ -69,7 +82,8 @@ export default function OverflowMenu({ items = [], label = 'More actions', showL
           role="menu"
           aria-label={label}
           onKeyDown={onMenuKeyDown}
-          className={`absolute top-full z-dropdown mt-1 min-w-[12rem] max-w-[calc(100vw-2rem)] rounded-lg border border-surface-border bg-white py-1 shadow-lg ${align === 'end' ? 'end-0' : 'start-0'}`}
+          style={pos || { visibility: 'hidden' }}
+          className="fixed z-dropdown min-w-[12rem] max-w-[calc(100vw-2rem)] rounded-lg border border-surface-border bg-white py-1 shadow-lg"
         >
           {visible.map((item, idx) => {
             const Icon = item.icon

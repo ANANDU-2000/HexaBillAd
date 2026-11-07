@@ -22,6 +22,16 @@ export const legacyAPI = {
     const response = await api.get('/legacy/payments', { params })
     return response.data
   },
+  // One chronological, server-paged payment history: this tenant's current payments plus its own historical ones.
+  getUnifiedPayments: async (params = {}) => {
+    const response = await api.get('/legacy/payments/unified', { params })
+    return response.data
+  },
+  // { historicalCount } for the logged-in tenant; 0 means the tenant has no historical payments.
+  getPaymentsSummary: async () => {
+    const response = await api.get('/legacy/payments/summary')
+    return response.data
+  },
   getCustomers: async () => {
     const response = await api.get('/legacy/customers')
     return response.data

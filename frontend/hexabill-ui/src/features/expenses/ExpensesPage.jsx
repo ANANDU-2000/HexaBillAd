@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { DatePresetChips } from '../../components/ui/DateRangeFilter'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCreateIntent } from '../../hooks/useCreateIntent'
@@ -228,6 +228,8 @@ const ExpensesPage = () => {
   const [expenses, setExpenses] = useState([])
   const [filteredExpenses, setFilteredExpenses] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const searchTermRef = useRef('')
+  searchTermRef.current = searchTerm
   const [showAddModal, setShowAddModal] = useState(false)
   useCreateIntent(() => setShowAddModal(true))
   const [showEditModal, setShowEditModal] = useState(false)
@@ -428,6 +430,7 @@ const ExpensesPage = () => {
         response = await legacyAPI.getExpenses({
           page: currentPage,
           pageSize: 25,
+          search: searchTermRef.current || undefined,
           fromDate: dateRange.from,
           toDate: dateRange.to
         })
@@ -440,13 +443,28 @@ const ExpensesPage = () => {
         setFilteredExpenses(expenseList)
         setTotalPages(response.data.totalPages || 1)
 
-        let periodCategories = []
-        try {
-          const catRes = await reportsAPI.getExpensesByCategory({
+        // Category breakdown, period summary and VAT readiness are independent: fetch them together.
+        const [catSettled, summarySettled, readinessSettled] = await Promise.allSettled([
+          reportsAPI.getExpensesByCategory({
             fromDate: dateRange.from,
             toDate: `${dateRange.to}T23:59:59`,
             branchId: selectedBranchId ? parseInt(selectedBranchId, 10) : undefined
+          }),
+          expensesAPI.getExpensesSummary({
+            fromDate: dateRange.from,
+            toDate: dateRange.to,
+            branchId: selectedBranchId || undefined
+          }),
+          expensesAPI.getVatReadiness({
+            fromDate: dateRange.from,
+            toDate: dateRange.to
           })
+        ])
+
+        let periodCategories = []
+        try {
+          if (catSettled.status === 'rejected') throw catSettled.reason
+          const catRes = catSettled.value
           if (catRes?.success && Array.isArray(catRes.data)) {
             periodCategories = catRes.data
               .map((row, index) => ({
@@ -464,11 +482,8 @@ const ExpensesPage = () => {
         const categoryTotals = Object.fromEntries(periodCategories.map((row) => [row.name, row.total]))
         // Fetch accurate totals (amount, VAT, claimable VAT) for full period from backend so cards match VAT Return Box 9b
         try {
-          const summaryRes = await expensesAPI.getExpensesSummary({
-            fromDate: dateRange.from,
-            toDate: dateRange.to,
-            branchId: selectedBranchId || undefined
-          })
+          if (summarySettled.status === 'rejected') throw summarySettled.reason
+          const summaryRes = summarySettled.value
           if (summaryRes?.success && summaryRes?.data) {
             const s = summaryRes.data
             const total = Number(s.totalAmount ?? s.TotalAmount ?? 0)
@@ -497,10 +512,8 @@ const ExpensesPage = () => {
 
         // Fetch VAT readiness data
         try {
-          const readinessRes = await expensesAPI.getVatReadiness({
-            fromDate: dateRange.from,
-            toDate: dateRange.to
-          })
+          if (readinessSettled.status === 'rejected') throw readinessSettled.reason
+          const readinessRes = readinessSettled.value
           if (readinessRes?.success && readinessRes?.data) {
             setVatReadiness(readinessRes.data)
           }

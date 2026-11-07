@@ -6,10 +6,10 @@ import { canAccessPage, canManagePayments, isOwner } from '../utils/roles'
 import { getApiBaseUrlNoSuffix } from '../services/apiConfig'
 import { getTenantHost } from '../tenant/tenantHost'
 import Login from '../auth/Login'
-import SignupPage from '../auth/SignupPage'
+const SignupPage = lazy(() => import('../auth/SignupPage'))
 import Layout from '../components/Layout'
 import { BranchesRoutesProvider } from '../contexts/BranchesRoutesContext'
-import SuperAdminLayout from '../components/SuperAdminLayout'
+const SuperAdminLayout = lazy(() => import('../components/SuperAdminLayout'))
 import ConnectionStatus from '../components/ConnectionStatus'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { PageLoading as RouteFallback } from '../components/Loading'
@@ -141,7 +141,7 @@ function App() {
       <ErrorBoundary>
         <MaintenanceOverlay />
         <Routes>
-          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/signup" element={<Suspense fallback={<RouteFallback />}><SignupPage /></Suspense>} />
           <Route path="/login" element={<Login />} />
           <Route path="/Admin26" element={<Login isSuperAdminLogin={true} />} />
           {DesignSystemPage && (

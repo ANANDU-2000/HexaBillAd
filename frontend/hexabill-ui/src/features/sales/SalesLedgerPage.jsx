@@ -1,4 +1,5 @@
 import { DatePresetChips } from '../../components/ui/DateRangeFilter'
+import TableSkeleton from '../../components/ui/TableSkeleton'
 import React, { useState, useEffect, useRef } from 'react'
 
 import { statusTone } from '../../utils/statusTone'
@@ -1275,8 +1276,8 @@ const SalesLedgerPage = () => {
 
       {/* Table - Scrollable (fills remaining viewport height) */}
       {loading ? (
-        <div className="flex-1 min-h-0 flex items-center justify-center">
-        <p className="px-4 py-8 text-center text-sm text-neutral-500">Loading sales ledger…</p>
+        <div className="flex-1 min-h-0 p-3">
+          <TableSkeleton rows={12} />
         </div>
       ) : (
         <div className="flex flex-col md:flex-1 md:min-h-0 md:overflow-hidden bg-white w-full rounded-lg border border-neutral-200">

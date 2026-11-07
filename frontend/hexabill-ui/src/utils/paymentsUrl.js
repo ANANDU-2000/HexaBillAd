@@ -64,9 +64,9 @@ export function paymentDateRangeError ({ fromDate, toDate }) {
   return fromDate && toDate && fromDate > toDate ? 'From date must be on or before To date.' : ''
 }
 
-export function paymentListParams ({ page, search, method, status, fromDate, toDate }) {
+export function paymentListParams ({ page, pageSize = 25, search, method, status, fromDate, toDate }) {
   return {
-    page: paymentListPage(page), pageSize: 25,
+    page: paymentListPage(page), pageSize: [25, 50, 100].includes(Number(pageSize)) ? Number(pageSize) : 25,
     search: (search || '').trim() || undefined,
     method: method || undefined, status: status || undefined,
     fromDate: fromDate || undefined, toDate: toDate || undefined

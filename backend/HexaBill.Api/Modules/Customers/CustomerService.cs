@@ -19,7 +19,9 @@ namespace HexaBill.Api.Modules.Customers
     public interface ICustomerService
     {
         // MULTI-TENANT: All methods now require tenantId for data isolation
-        Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null, string? sortBy = null);
+        Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null, string? sortBy = null, string? filter = null);
+        /// <summary>Counts per list tab (all/outstanding/active/overdue/inactive) over the SAME tenant/branch/route/search scope as the list.</summary>
+        Task<CustomerFilterCounts> GetCustomerFilterCountsAsync(int tenantId, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null);
         Task<CustomerDto?> GetCustomerByIdAsync(int id, int tenantId);
         Task<CustomerDto> CreateCustomerAsync(CreateCustomerRequest request, int tenantId, int? actingUserId = null);
         Task<CustomerDto?> UpdateCustomerAsync(int id, CreateCustomerRequest request, int tenantId, int? actingUserId = null);
@@ -287,15 +289,89 @@ namespace HexaBill.Api.Modules.Customers
             finally { if (!wasOpen) await conn.CloseAsync(); }
         }
 
-        public async Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null, string? sortBy = null)
+        // Tab filters are applied on the server so they cover EVERY customer, not just the loaded page.
+        // Semantics mirror the previous in-browser filters exactly (Balance for outstanding, PendingBalance for overdue).
+        private static IQueryable<Customer> ApplyCustomerFilter(IQueryable<Customer> query, string? filter)
         {
-            // NOTE: DatabaseFixer should only run at application startup (Program.cs)
-            // Calling it here could interfere with transactions if this method is called
-            // during a transaction. Columns should exist from migrations.
-            
+            var now = DateTime.UtcNow;
+            var d30 = now.AddDays(-30);
+            var d90 = now.AddDays(-90);
+            return (filter ?? "").Trim().ToLowerInvariant() switch
+            {
+                "outstanding" => query.Where(c => c.Balance > 0),
+                "active" => query.Where(c => c.LastActivity != null && c.LastActivity >= d90),
+                "overdue" => query.Where(c => c.PendingBalance > 0 && (c.LastActivity == null || c.LastActivity < d30)),
+                "inactive" => query.Where(c => c.LastActivity == null || c.LastActivity < d90),
+                _ => query
+            };
+        }
+
+        public async Task<CustomerFilterCounts> GetCustomerFilterCountsAsync(int tenantId, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null)
+        {
+            var scoped = await BuildScopedCustomerQueryAsync(tenantId, search, branchId, routeId, restrictToBranchIds, restrictToRouteIds);
+            return new CustomerFilterCounts
+            {
+                All = await scoped.CountAsync(),
+                Outstanding = await ApplyCustomerFilter(scoped, "outstanding").CountAsync(),
+                Active = await ApplyCustomerFilter(scoped, "active").CountAsync(),
+                Overdue = await ApplyCustomerFilter(scoped, "overdue").CountAsync(),
+                Inactive = await ApplyCustomerFilter(scoped, "inactive").CountAsync()
+            };
+        }
+
+        // Customers beyond this many rows keep database ordering (numbers inside names may then sort alphabetically).
+        private const int NaturalSortMaxRows = 20000;
+
+        public async Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null, string? sortBy = null, string? filter = null)
+        {
             // OPTIMIZATION: Limit page size and use AsNoTracking
             pageSize = Math.Min(pageSize, 100); // Max 100 items per page
-            
+
+            var scopedQuery = await BuildScopedCustomerQueryAsync(tenantId, search, branchId, routeId, restrictToBranchIds, restrictToRouteIds);
+            var query = ApplyCustomerFilter(scopedQuery, filter);
+
+            var totalCount = await query.CountAsync();
+
+            var sortKey = (sortBy ?? "").Trim().ToLowerInvariant();
+            List<Customer> customersList;
+            if (sortKey is "balancedesc" or "activitydesc" || totalCount > NaturalSortMaxRows)
+            {
+                IOrderedQueryable<Customer> ordered = sortKey switch
+                {
+                    "balancedesc" => query.OrderByDescending(c => c.PendingBalance).ThenBy(c => c.Name),
+                    "activitydesc" => query.OrderByDescending(c => c.LastActivity ?? c.CreatedAt).ThenBy(c => c.Name),
+                    _ => query.OrderBy(c => c.Name)
+                };
+                customersList = await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+            }
+            else
+            {
+                // Name order is natural ("Customer 2" before "Customer 10"). Order a light (Id, Name) projection of
+                // the already tenant-scoped query, then load only the rows of the requested page.
+                var names = await query.Select(c => new { c.Id, c.Name }).ToListAsync();
+                var pageIds = names
+                    .OrderBy(x => x.Name ?? string.Empty, NaturalStringComparer.Instance)
+                    .ThenBy(x => x.Id)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(x => x.Id)
+                    .ToList();
+                var rows = (await query.Where(c => pageIds.Contains(c.Id)).ToListAsync()).ToDictionary(c => c.Id);
+                customersList = pageIds.Where(rows.ContainsKey).Select(id => rows[id]).ToList();
+            }
+
+            return new PagedResponse<CustomerDto>
+            {
+                Items = customersList.Select(ToCustomerDto).ToList(),
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+            };
+        }
+
+        private async Task<IQueryable<Customer>> BuildScopedCustomerQueryAsync(int tenantId, string? search, int? branchId, int? routeId, IReadOnlyList<int>? restrictToBranchIds, IReadOnlyList<int>? restrictToRouteIds)
+        {
             // CRITICAL: Filter by tenantId for data isolation
             var query = _context.Customers
                 .Where(c => c.TenantId == tenantId)
@@ -375,31 +451,7 @@ namespace HexaBill.Api.Modules.Customers
                                         (c.Address != null && c.Address.ToLower().Contains(searchLower)));
             }
 
-            var totalCount = await query.CountAsync();
-
-            var sortKey = (sortBy ?? "").Trim().ToLowerInvariant();
-            IOrderedQueryable<Customer> ordered = sortKey switch
-            {
-                "balancedesc" => query.OrderByDescending(c => c.PendingBalance).ThenBy(c => c.Name),
-                "activitydesc" => query.OrderByDescending(c => c.LastActivity ?? c.CreatedAt).ThenBy(c => c.Name),
-                _ => query.OrderBy(c => c.Name)
-            };
-
-            var customersList = await ordered
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var customers = customersList.Select(ToCustomerDto).ToList();
-
-            return new PagedResponse<CustomerDto>
-            {
-                Items = customers,
-                TotalCount = totalCount,
-                Page = page,
-                PageSize = pageSize,
-                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
-            };
+            return query;
         }
 
         public async Task<CustomerDto?> GetCustomerByIdAsync(int id, int tenantId)

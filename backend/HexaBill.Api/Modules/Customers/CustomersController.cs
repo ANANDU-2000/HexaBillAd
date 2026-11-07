@@ -44,7 +44,8 @@ namespace HexaBill.Api.Modules.Customers
             [FromQuery] string? search = null,
             [FromQuery] int? branchId = null,
             [FromQuery] int? routeId = null,
-            [FromQuery] string? sortBy = null)
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? filter = null)
         {
             try
             {
@@ -52,26 +53,9 @@ namespace HexaBill.Api.Modules.Customers
                 if (tenantId <= 0)
                     return Forbid();
 
-                // Staff with no branch/route filter: restrict to assigned branches and routes
-                IReadOnlyList<int>? restrictToBranchIds = null;
-                IReadOnlyList<int>? restrictToRouteIds = null;
-                if (tenantId > 0 && !branchId.HasValue && !routeId.HasValue && IsStaff)
-                {
-                    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                    if (int.TryParse(userIdClaim, out var userId))
-                    {
-                        var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
-                        var branchIds = await _context.BranchStaff
-                            .Where(bs => bs.UserId == userId)
-                            .Select(bs => bs.BranchId)
-                            .ToListAsync();
-                        var routeIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userId, tenantId, role);
-                        restrictToBranchIds = branchIds;
-                        restrictToRouteIds = routeIds != null && routeIds.Length > 0 ? routeIds : null;
-                    }
-                }
+                var (restrictToBranchIds, restrictToRouteIds) = await ResolveStaffRestrictionsAsync(tenantId, branchId, routeId);
 
-                var result = await _customerService.GetCustomersAsync(tenantId, page, pageSize, search, branchId, routeId, restrictToBranchIds, restrictToRouteIds, sortBy);
+                var result = await _customerService.GetCustomersAsync(tenantId, page, pageSize, search, branchId, routeId, restrictToBranchIds, restrictToRouteIds, sortBy, filter);
                 return Ok(new ApiResponse<PagedResponse<CustomerDto>>
                 {
                     Success = true,
@@ -88,6 +72,57 @@ namespace HexaBill.Api.Modules.Customers
                     Errors = new List<string> { ex.Message }
                 });
             }
+        }
+
+        /// <summary>Counts for the customer list tabs over the same tenant/branch/route/staff/search scope as the list.</summary>
+        [HttpGet("filter-counts")]
+        public async Task<ActionResult<ApiResponse<CustomerFilterCounts>>> GetCustomerFilterCounts(
+            [FromQuery] string? search = null,
+            [FromQuery] int? branchId = null,
+            [FromQuery] int? routeId = null)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                    return Forbid();
+
+                var (restrictToBranchIds, restrictToRouteIds) = await ResolveStaffRestrictionsAsync(tenantId, branchId, routeId);
+                var counts = await _customerService.GetCustomerFilterCountsAsync(tenantId, search, branchId, routeId, restrictToBranchIds, restrictToRouteIds);
+                return Ok(new ApiResponse<CustomerFilterCounts> { Success = true, Message = "Customer counts retrieved successfully", Data = counts });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<CustomerFilterCounts>
+                {
+                    Success = false,
+                    Message = "An error occurred",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        // Staff with no branch/route filter: restrict to assigned branches and routes (same rule for the list and its counts).
+        private async Task<(IReadOnlyList<int>? Branches, IReadOnlyList<int>? Routes)> ResolveStaffRestrictionsAsync(int tenantId, int? branchId, int? routeId)
+        {
+            IReadOnlyList<int>? restrictToBranchIds = null;
+            IReadOnlyList<int>? restrictToRouteIds = null;
+            if (tenantId > 0 && !branchId.HasValue && !routeId.HasValue && IsStaff)
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(userIdClaim, out var userId))
+                {
+                    var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+                    var branchIds = await _context.BranchStaff
+                        .Where(bs => bs.UserId == userId)
+                        .Select(bs => bs.BranchId)
+                        .ToListAsync();
+                    var routeIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userId, tenantId, role);
+                    restrictToBranchIds = branchIds;
+                    restrictToRouteIds = routeIds != null && routeIds.Length > 0 ? routeIds : null;
+                }
+            }
+            return (restrictToBranchIds, restrictToRouteIds);
         }
 
         [HttpGet("search")]
