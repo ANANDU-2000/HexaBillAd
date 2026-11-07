@@ -3,6 +3,9 @@ import { Bell, X, AlertTriangle, Info, AlertCircle, CheckCircle2, ExternalLink, 
 import { alertsAPI } from '../services'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+import { isAdminOrOwner } from '../utils/roles'
+import { ALERT_CATEGORIES, alertAction, alertTypeLabel, countByCategory, describeAlert, filterByCategory } from './alertPresentation'
 
 // Request browser notification permission and show notification when alerts exist
 const useBrowserNotifications = (unreadCount) => {
@@ -65,7 +68,19 @@ const AlertNotifications = () => {
   const [activeCategory, setActiveCategory] = useState('all')
   const [showPanel, setShowPanel] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(() => new Set())
   const navigate = useNavigate()
+  const { user } = useAuth()
+  // Raw record ids are technical detail: only Owner/Admin may open them (UX-A05).
+  const canSeeDetails = isAdminOrOwner(user)
+  const categoryCounts = countByCategory(alerts)
+  const visibleAlerts = filterByCategory(alerts, activeCategory)
+  const toggleDetails = (id) => setDetailsOpen((prev) => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return next
+  })
 
   // Fetch unread count (handle both { success, data: number } and raw number)
   const fetchUnreadCount = async () => {
@@ -196,16 +211,6 @@ const AlertNotifications = () => {
     }
   }
 
-  const getAlertAction = (alert) => {
-    const type = alert.type
-    if (type === 'LowStock') return { label: 'View Products', path: '/products?tab=lowStock' }
-    if (type === 'ProductExpiring') return { label: 'View Products', path: '/products' }
-    if (type === 'OverdueInvoice') return { label: 'View Reports', path: '/reports?tab=outstanding' }
-    if (type === 'BalanceMismatch' || type === 'DBMismatch') return { label: 'Customer Ledger', path: '/ledger' }
-    if (type === 'DuplicateInvoice') return { label: 'View Sales', path: '/reports?tab=sales' }
-    return null
-  }
-
   return (
     <div className="relative">
       {/* Bell Icon with Badge */}
@@ -269,34 +274,17 @@ const AlertNotifications = () => {
 
             {/* Category Filter Chips */}
             <div className="flex items-center gap-1.5 px-4 py-2 border-b border-neutral-100 bg-neutral-50 overflow-x-auto text-xs">
-              <button
-                type="button"
-                onClick={() => setActiveCategory('all')}
-                className={`px-2.5 py-1 rounded-full font-medium transition-colors ${activeCategory === 'all' ? 'bg-primary-600 text-white' : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'}`}
-              >
-                All ({alerts.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveCategory('stock')}
-                className={`px-2.5 py-1 rounded-full font-medium transition-colors ${activeCategory === 'stock' ? 'bg-primary-600 text-white' : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'}`}
-              >
-                Stock ({alerts.filter(a => a.type === 'LowStock' || a.type === 'ProductExpiring').length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveCategory('overdue')}
-                className={`px-2.5 py-1 rounded-full font-medium transition-colors ${activeCategory === 'overdue' ? 'bg-primary-600 text-white' : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'}`}
-              >
-                Overdue ({alerts.filter(a => a.type === 'OverdueInvoice').length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveCategory('system')}
-                className={`px-2.5 py-1 rounded-full font-medium transition-colors ${activeCategory === 'system' ? 'bg-primary-600 text-white' : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'}`}
-              >
-                System ({alerts.filter(a => a.type !== 'LowStock' && a.type !== 'ProductExpiring' && a.type !== 'OverdueInvoice').length})
-              </button>
+              {ALERT_CATEGORIES.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setActiveCategory(c.id)}
+                  aria-pressed={activeCategory === c.id}
+                  className={`px-2.5 py-1 rounded-full font-medium transition-colors ${activeCategory === c.id ? 'bg-primary-600 text-white' : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'}`}
+                >
+                  {c.label} ({categoryCounts[c.id]})
+                </button>
+              ))}
             </div>
 
             {/* Alerts List */}
@@ -312,8 +300,12 @@ const AlertNotifications = () => {
                 </div>
               ) : (
                 <div className="divide-y divide-neutral-100">
-                  {alerts.map((alert) => {
-                    const action = getAlertAction(alert)
+                  {visibleAlerts.length === 0 && (
+                    <p className="py-8 text-center text-sm text-neutral-500">Nothing in this group.</p>
+                  )}
+                  {visibleAlerts.map((alert) => {
+                    const action = alertAction(alert)
+                    const view = describeAlert(alert, { canSeeDetails })
                     return (
                       <div
                         key={alert.id}
@@ -329,19 +321,22 @@ const AlertNotifications = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                               <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-md border ${getSeverityBadgeColor(alert.severity)}`}>
-                                {alert.type}
+                                {alertTypeLabel(alert.type)}
                               </span>
                               <span className="text-xs text-neutral-500">
                                 {formatTimeAgo(alert.createdAt)}
                               </span>
                             </div>
                             <p className="text-sm font-medium text-neutral-900 mb-1">
-                              {alert.title}
+                              {view.title}
                             </p>
-                            {alert.message && (
+                            {view.message && (
                               <p className="text-xs text-neutral-600 mb-2">
-                                {alert.message}
+                                {view.message}
                               </p>
+                            )}
+                            {view.details && detailsOpen.has(alert.id) && (
+                              <p className="text-xs text-neutral-500 mb-2 break-words">{view.details}</p>
                             )}
                             <div className="flex items-center space-x-2">
                               {action && (
@@ -355,6 +350,19 @@ const AlertNotifications = () => {
                                 >
                                   <span>{action.label}</span>
                                   <ExternalLink className="h-3 w-3" />
+                                </button>
+                              )}
+                              {view.details && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    toggleDetails(alert.id)
+                                  }}
+                                  aria-expanded={detailsOpen.has(alert.id)}
+                                  className="text-xs text-neutral-500 hover:text-neutral-800"
+                                >
+                                  {detailsOpen.has(alert.id) ? 'Hide details' : 'Details'}
                                 </button>
                               )}
                               {!alert.isResolved && (
