@@ -428,7 +428,6 @@ const ExpensesPage = () => {
         response = await legacyAPI.getExpenses({
           page: currentPage,
           pageSize: 25,
-          search: debouncedSearch || undefined,
           fromDate: dateRange.from,
           toDate: dateRange.to
         })

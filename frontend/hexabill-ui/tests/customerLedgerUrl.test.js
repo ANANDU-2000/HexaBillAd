@@ -7,16 +7,20 @@ import {
   syncLedgerTabSearchParam
 } from '../src/utils/customerLedgerUrl.js'
 
-test('normalizeLedgerTab accepts known tabs and defaults to ledger', () => {
+// The Pending & Partial tab is the default so unpaid bills are front and centre (see customerLedgerUrl.js).
+test('normalizeLedgerTab accepts known tabs and defaults to pending', () => {
   assert.equal(normalizeLedgerTab('payments'), 'payments')
-  assert.equal(normalizeLedgerTab('bogus'), 'ledger')
-  assert.equal(normalizeLedgerTab(null), 'ledger')
+  assert.equal(normalizeLedgerTab('ledger'), 'ledger')
+  assert.equal(normalizeLedgerTab('bogus'), 'pending')
+  assert.equal(normalizeLedgerTab(null), 'pending')
 })
 
-test('syncLedgerTabSearchParam omits default ledger tab', () => {
+test('syncLedgerTabSearchParam omits the default pending tab but keeps ledger', () => {
   const params = new URLSearchParams('tab=payments')
-  syncLedgerTabSearchParam(params, { tab: 'ledger' })
+  syncLedgerTabSearchParam(params, { tab: 'pending' })
   assert.equal(params.has('tab'), false)
+  syncLedgerTabSearchParam(params, { tab: 'ledger' })
+  assert.equal(params.get('tab'), 'ledger')
   syncLedgerTabSearchParam(params, { tab: 'invoices' })
   assert.equal(params.get('tab'), 'invoices')
 })
