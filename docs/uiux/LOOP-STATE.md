@@ -40,6 +40,7 @@ Save as `docs/uiux/LOOP-STATE.md`. This file is the loop's **only memory between
 | D-UX-2 | Auto location during routes | ASSUMED Optional, on by default | |
 | D-UX-3 | Auto-reorder stops | ASSUMED On with Undo | |
 | D-UX-4 | Driver pin needs office approval | ASSUMED yes (matches existing `arrivalRequest`) | |
+| D-A02 | Assistant `reply` text: server flags grounded replies (`grounded: true` + sources on ChatReply, owner adds backend). UI renders `data.text` ONLY when `data.grounded === true`, with sources / as-of; ungrounded keeps the canned fallback. Commit 923564c0 guard stays | OWNER decision | 2026-11-07 |
 | D-UX-5 | Voice provider first | ASSUMED Gemini Live via LiveKit, after data-terms check | |
 
 ## 4. Learned facts (things a fresh session would otherwise rediscover)
@@ -77,7 +78,7 @@ Add one line per fact. Delete a line when it is no longer true.
 `[ ]` todo · `[~]` doing/blocked · `[x]` done · `STUCK` · `BLOCKED-BACKEND`
 
 - Perf: P-00 [ ] P-01 [ ] P-02 [ ] P-03 [ ] P-04 [ ] P-05 [ ] P-06 [ ] P-07 [ ] P-08 [ ] P-09 [ ] P-10 [ ]
-- A: A01 [x] A02 BLOCKED-DECISION (see REVIEW-INBOX 7 Nov; reply text hidden by design) A03 [x] (A03b open: useUnsavedChangesGuard.js still uses window.confirm) A04 [ ] A05 [x] A06 [ ]
+- A: A01 [x] A02 BLOCKED-BACKEND (D-A02 decided; waits for `grounded` on ChatReply) A03 [x] (A03b open: useUnsavedChangesGuard.js still uses window.confirm) A04 [ ] A05 [x] A06 [ ]
 - B: B01 [ ] B02 [ ] B03 [ ] B04 [ ] B05 [ ] B06 [ ]
 - C: C01 [ ] C02 [ ] C03 [ ] C04 [ ] C05 [ ] C06 [ ] C07 [ ] C08 [ ] C09 [ ]
 - D: D01 [ ] D02 [ ] D03 [ ]
@@ -107,6 +108,7 @@ Add one line per fact. Delete a line when it is no longer true.
 
 Format: BUG-n | feature | severity | repro | failing test | suspected file | status
 
+- PRIORITY (owner 2026-11-07): BUG-1, BUG-2, BUG-3, BUG-4 are S1, fix next BEFORE A04. BUG-6 is S2, do after A06. BASE: owner commits his 57 files on branch `wip/pre-loop-2026-11-07`; loop/integration must be rebased onto it before the next merge (waiting: branch not present yet at last check). BUG-2/BUG-4 files are in that dirty set, so fix them after the rebase; BUG-1/BUG-3 files are clean and can go now.
 - BUG-1 | Reports | S2 | `Link` used (L1408, unpaid-invoices link) but never imported from react-router-dom: ReferenceError when that block renders | `npx eslint src/features/reports/ReportsPage.jsx` (react/jsx-no-undef) | ReportsPage.jsx:1408 | OPEN (needs runtime repro of the branch)
 - BUG-2 | Expenses | S2 | `debouncedSearch` is not defined at L431 (list params): ReferenceError when the list loads | `npx eslint src/features/expenses/ExpensesPage.jsx` (no-undef) | ExpensesPage.jsx:431 | OPEN. Primary tree has uncommitted edits to this file; check before fixing
 - BUG-3 | Customer Ledger | S3 triage | ESLint parse error at L2957 (`)}` after `</div>`) while `vite build` succeeds | `npx eslint src/features/customers/CustomerLedgerPage.jsx` | CustomerLedgerPage.jsx:2957 | OPEN, maybe a parser quirk; confirm JSX balance
@@ -125,6 +127,7 @@ Format: BUG-n | feature | severity | repro | failing test | suspected file | sta
 
 | Task | Contract | Status |
 |---|---|---|
+| A02 | `ChatReply` gains `grounded: bool` + `sources[]` (+ asOf). Owner implements. UI part (when this lands): in `describeChatReply` mode `reply`, show `data.text` only if `data.grounded === true`, render sources/as-of, else keep canned text. Keep the existing 'unsupported model text' test for ungrounded | waiting |
 | E03 | `POST /assistant/chat/stream` SSE: token / tool / card / done | waiting |
 | E05 | `POST /assistant/voice/session` → `{url, token, room, expiresAt, provider}` | waiting |
 | F02 | `source:"auto"|"manual"` on the visit body; live-position ping endpoint if not reusable | waiting |
