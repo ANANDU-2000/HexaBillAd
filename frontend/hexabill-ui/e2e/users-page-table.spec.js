@@ -36,6 +36,12 @@ test.describe('Users page (UX-A01)', () => {
       expect(c, 'header cell "Name" must exist').not.toBeNull()
       expect(c.ratio, `header text ${c.fg} on ${c.bg}`).toBeGreaterThanOrEqual(4.5)
 
+      // Headers must label their columns: Status holds Online/Offline, Role holds the role pill.
+      const heads = (await page.locator('table thead th').allInnerTexts()).map((t) => t.trim())
+      const cells = (await page.locator('table tbody tr').first().locator('td').allInnerTexts()).map((t) => t.trim())
+      expect(cells[heads.indexOf('Status')], 'Status column shows presence').toMatch(/^(Online|Offline)$/)
+      expect(cells[heads.indexOf('Role')], 'Role column shows the role').toMatch(/owner|admin|staff/i)
+
       const email = page.locator('table tbody').getByText(OWNER_EMAIL, { exact: true }).first()
       await expect(email).toBeVisible()
       await expect(email, 'full email stays reachable when truncated').toHaveAttribute('title', OWNER_EMAIL)

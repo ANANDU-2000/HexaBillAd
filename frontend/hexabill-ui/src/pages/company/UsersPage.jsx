@@ -714,10 +714,10 @@ const UsersPage = () => {
                     Phone
                   </th>
                   <th className="px-4 py-2.5 text-left text-xs font-medium">
-                    Role
+                    Status
                   </th>
                   <th className="px-4 py-2.5 text-left text-xs font-medium">
-                    Status
+                    Role
                   </th>
                   <th className="px-4 py-2.5 text-left text-xs font-medium">
                     Assigned
@@ -750,7 +750,7 @@ const UsersPage = () => {
                 ) : (
                   filteredUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-neutral-50">
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-2whitespace-nowrap">
                         <div className="flex items-center">
                           {user.role?.toLowerCase() === 'owner' ? (
                             <ShieldAlert className="h-5 w-5 text-error mr-2" />
@@ -762,16 +762,16 @@ const UsersPage = () => {
                           <span className="text-sm font-medium text-neutral-900 break-words">{user.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 min-w-[220px] max-w-[280px]">
+                      <td className="px-4 py-2min-w-[220px] max-w-[280px]">
                         <div className="flex items-center text-sm text-neutral-600">
                           <Mail className="h-4 w-4 mr-2 shrink-0" />
                           <span className="min-w-0 truncate" title={user.email}>{user.email}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
+                      <td className="px-4 py-2whitespace-nowrap text-sm text-neutral-600">
                         {user.phone || '-'}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-2whitespace-nowrap">
                         {/* BUG #2.9 FIX: Online/Offline status indicator using LastActiveAt */}
                         {(() => {
                           const lastActive = user.lastActiveAt ? new Date(user.lastActiveAt).getTime() : 0
@@ -796,7 +796,7 @@ const UsersPage = () => {
                           )
                         })()}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-2whitespace-nowrap">
                         <span
                           title={user.role?.toLowerCase() === 'owner' ? 'Company owner' : undefined}
                           className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full w-fit ${user.role?.toLowerCase() === 'owner'
@@ -808,7 +808,7 @@ const UsersPage = () => {
                           {getRoleDisplayName(user)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-neutral-600 max-w-[280px]">
+                      <td className="px-4 py-2text-sm text-neutral-600 max-w-[280px]">
                         {user.role?.toLowerCase() === 'staff' ? (
                           (() => {
                             const branchIds = user.assignedBranchIds || []
@@ -841,13 +841,13 @@ const UsersPage = () => {
                           <span className="text-neutral-400">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
+                      <td className="px-4 py-2whitespace-nowrap text-sm text-neutral-600">
                         {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : '—'}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
+                      <td className="px-4 py-2whitespace-nowrap text-sm text-neutral-600">
                         {new Date(user.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-4 py-1 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
                           <button
                             onClick={() => {
