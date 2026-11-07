@@ -97,7 +97,7 @@ Add one line per fact. Delete a line when it is no longer true.
 `[ ]` todo · `[~]` doing/blocked · `[x]` done · `STUCK` · `BLOCKED-BACKEND`
 
 - Perf: P-00 [x] P-01 [ ] P-02 [ ] P-03 [ ] P-04 [ ] P-05 [ ] P-06 [ ] P-07 [ ] P-08 [ ] P-09 [ ] P-10 [ ]
-- A: A01 [x] A02 BLOCKED-BACKEND (D-A02 decided; waits for `grounded` on ChatReply) A03 [x] (A03b open: useUnsavedChangesGuard.js still uses window.confirm) A04 [x] A05 [x] A06 [ ]
+- A: A01 [x] A02 BLOCKED-BACKEND (D-A02 decided; waits for `grounded` on ChatReply) A03 [x] (A03b open: useUnsavedChangesGuard.js still uses window.confirm) A04 [x] A05 [x] A06 [x]
 - B: B01 [ ] B02 [ ] B03 [ ] B04 [ ] B05 [ ] B06 [ ]
 - C: C01 [ ] C02 [ ] C03 [ ] C04 [ ] C05 [ ] C06 [ ] C07 [ ] C08 [ ] C09 [ ]
 - D: D01 [ ] D02 [ ] D03 [ ]
@@ -118,6 +118,7 @@ Add one line per fact. Delete a line when it is no longer true.
 | 6 | 2026-11-07 | BUG-2 + BUG-4 (S1) | PASS | 9c98505c | lint 0 errors (baseline now clean), unit 411/411, build 0 | - | BUG-2: dropped undefined debouncedSearch (page search is client-side). BUG-4: stale tests updated to the intentional Pending default tab. Built on committed main, not the owner's WIP |
 | 7 | 2026-11-07 | P-00 perf baseline + harness (T2) | PASS | 7ab8ee33 | merged; lint 0 errors, unit 411/411, build 0; perf runs exit 0 (desktop 18, phone 18 passed) | docs/uiux/evidence/2026-11-07/perf/ (README, baseline.json, bundle.json) | Visualizer skipped (bundle size by script). Runner honours HEXABILL_FE_MODE=preview. NOT TESTED: 30-min soak, server time on a large tenant |
 | 8 | 2026-11-08 | A04 returns invoice picker | PASS | e476cff1 | unit 416/416, lint 0 errors, build 0, e2e returns-picker 4/4 (d1440, m360) | docs/uiux/evidence/2026-11-08/A04-*.png | Recent 30 days, typed search covers all dates; helper renamed invoicePickerQuery.js (a same-name-different-case file shadowed the component on Windows) |
+| 9 | 2026-11-08 | A06 unconfirmed payment alert | PASS | 6e97cf37 | unit 416/416, lint 0, build 0, e2e payments-unconfirmed 4/4 (d1440, m360); two intents = one alert <=64 px | docs/uiux/evidence/2026-11-08/A06-*.png | Time not shown (journal stores none; adding it touches ledgerPaymentIntent.js recovery code, REVIEW-INBOX). Shared-DB lesson: runner rotates password per run, one DB per team |
 | | | | | | | | |
 
 
