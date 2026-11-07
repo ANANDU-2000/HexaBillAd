@@ -146,6 +146,16 @@ const PageAccessControl = ({ selectedPageAccess, onToggle, onSelectAll, onClearA
   </div>
 )
 
+// One-line summary of a user's branch/route assignment for table rows (full list in the tooltip).
+const AssignedSummary = ({ branchNames, routeNames, emptyLabel }) => {
+  if (branchNames.length === 0 && routeNames.length === 0) return emptyLabel
+  const text = [
+    branchNames.length ? `Branches: ${branchNames.join(', ')}` : null,
+    routeNames.length ? `Routes: ${routeNames.join(', ')}` : null,
+  ].filter(Boolean).join(' · ')
+  return <span className="block truncate text-xs text-neutral-600" title={text}>{text}</span>
+}
+
 const UserAssignments = ({ branches, routes, assignedBranches, assignedRoutes, setAssignedBranches, setAssignedRoutes }) => (
   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div className="bg-white p-3 rounded-lg border border-neutral-200">
@@ -692,33 +702,33 @@ const UsersPage = () => {
         <div className="hidden xl:block bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-[900px] w-full divide-y divide-neutral-200">
-              <thead className="bg-neutral-100 text-neutral-800 text-white">
+              <thead className="bg-neutral-50 text-neutral-600">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium">
                     Name
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium">
                     Email
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium">
                     Phone
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium">
                     Role
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    Assigned (Branch / Route)
+                  <th className="px-4 py-2.5 text-left text-xs font-medium">
+                    Assigned
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium">
                     Last login
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium">
                     Created
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-right text-xs font-medium">
                     Actions
                   </th>
                 </tr>
@@ -752,10 +762,10 @@ const UsersPage = () => {
                           <span className="text-sm font-medium text-neutral-900 break-words">{user.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 max-w-[16rem]">
+                      <td className="px-4 py-3 min-w-[220px] max-w-[280px]">
                         <div className="flex items-center text-sm text-neutral-600">
                           <Mail className="h-4 w-4 mr-2 shrink-0" />
-                          <span className="min-w-0 break-all">{user.email}</span>
+                          <span className="min-w-0 truncate" title={user.email}>{user.email}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
@@ -787,19 +797,16 @@ const UsersPage = () => {
                         })()}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="flex flex-col gap-0.5">
-                          <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full w-fit ${user.role?.toLowerCase() === 'owner'
+                        <span
+                          title={user.role?.toLowerCase() === 'owner' ? 'Company owner' : undefined}
+                          className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full w-fit ${user.role?.toLowerCase() === 'owner'
                             ? 'bg-red-100 text-red-800'
                             : user.role?.toLowerCase() === 'admin'
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-primary-100 text-primary-800'
                             }`}>
-                            {getRoleDisplayName(user)}
-                          </span>
-                          {user.role?.toLowerCase() === 'owner' && (
-                            <span className="text-xs text-neutral-500">Company owner</span>
-                          )}
-                        </div>
+                          {getRoleDisplayName(user)}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-neutral-600 max-w-[280px]">
                         {user.role?.toLowerCase() === 'staff' ? (
@@ -808,24 +815,12 @@ const UsersPage = () => {
                             const routeIds = user.assignedRouteIds || []
                             const branchNames = branchIds.map(bid => branches.find(b => b.id === bid)?.name).filter(Boolean)
                             const routeNames = routeIds.map(rid => routes.find(r => r.id === rid)?.name).filter(Boolean)
-                            const hasAny = branchNames.length > 0 || routeNames.length > 0
                             return (
-                              <div className="flex flex-wrap gap-1">
-                                {!hasAny && <span className="text-warning text-xs">Not assigned</span>}
-                                {branchNames.length > 0 && (
-                                  <span className="text-xs text-neutral-500 mr-1">Branches:</span>
-                                )}
-                                {branchNames.map((name, i) => (
-                                  <span key={`b-${i}`} className="inline-flex px-1.5 py-0.5 rounded text-xs bg-primary-100 text-primary-800" title="Branch">{name}</span>
-                                ))}
-                                {routeNames.length > 0 && branchNames.length > 0 && <span className="text-neutral-300">·</span>}
-                                {routeNames.length > 0 && (
-                                  <span className="text-xs text-neutral-500 mr-1">Routes:</span>
-                                )}
-                                {routeNames.map((name, i) => (
-                                  <span key={`r-${i}`} className="inline-flex px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-800" title="Route">{name}</span>
-                                ))}
-                              </div>
+                              <AssignedSummary
+                                branchNames={branchNames}
+                                routeNames={routeNames}
+                                emptyLabel={<span className="text-warning text-xs">Not assigned</span>}
+                              />
                             )
                           })()
                         ) : user.role?.toLowerCase() === 'admin' ? (
@@ -834,17 +829,12 @@ const UsersPage = () => {
                             const routeIds = user.assignedRouteIds || []
                             const branchNames = branchIds.map(bid => branches.find(b => b.id === bid)?.name).filter(Boolean)
                             const routeNames = routeIds.map(rid => routes.find(r => r.id === rid)?.name).filter(Boolean)
-                            const hasAny = branchNames.length > 0 || routeNames.length > 0
-                            if (!hasAny) return <span className="text-neutral-400">—</span>
                             return (
-                              <div className="flex flex-wrap gap-1">
-                                {branchNames.map((name, i) => (
-                                  <span key={`b-${i}`} className="inline-flex px-1.5 py-0.5 rounded text-xs bg-primary-100 text-primary-800">{name}</span>
-                                ))}
-                                {routeNames.map((name, i) => (
-                                  <span key={`r-${i}`} className="inline-flex px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-800">{name}</span>
-                                ))}
-                              </div>
+                              <AssignedSummary
+                                branchNames={branchNames}
+                                routeNames={routeNames}
+                                emptyLabel={<span className="text-neutral-400">—</span>}
+                              />
                             )
                           })()
                         ) : (
