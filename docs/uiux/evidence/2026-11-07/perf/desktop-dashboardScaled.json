@@ -1,0 +1,46 @@
+{
+  "kind": "e2e",
+  "page": "dashboardScaled",
+  "profile": "desktop",
+  "target": "preview",
+  "generatedAt": "2026-11-07T17:48:38.200Z",
+  "metrics": {
+    "firstDataRowMs": null,
+    "apiSettledMs": 471,
+    "apiRequestsOnLoad": 10,
+    "longTasksOver200OnLoad": 0,
+    "longTasksOver50OnLoad": 0,
+    "longTaskMaxMsOnLoad": 0,
+    "longTasksOver200Interaction": 0,
+    "longTasksOver50Interaction": 0,
+    "longTaskMaxMsInteraction": 0,
+    "apiRequestsInteraction": 0,
+    "slowRequestsOver3s": 0
+  },
+  "notes": {
+    "route": "/dashboard",
+    "firstRowDetected": "not measured: landing view has no list rows",
+    "interaction": "scroll x8",
+    "tenantSize": {
+      "customers": 1,
+      "products": 1,
+      "sales": 3
+    },
+    "ledgerCustomer": {
+      "id": 1,
+      "balance": 105
+    },
+    "apiCalls": [
+      "GET /api/settings/logo-data-uri",
+      "GET /api/auth/validate",
+      "GET /api/settings",
+      "GET /api/alerts/unread-count",
+      "GET /api/branches",
+      "GET /api/routes",
+      "PATCH /api/users/me/ping",
+      "GET /api/daily-close/status?businessDate=2026-11-07",
+      "GET /api/reports/summary?fromDate=2026-11-07&toDate=2026-11-07&refresh=true",
+      "GET /api/dashboard/setup-status"
+    ]
+  }
+}

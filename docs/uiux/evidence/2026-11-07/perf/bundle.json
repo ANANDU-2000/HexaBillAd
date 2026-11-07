@@ -1,0 +1,1000 @@
+{
+  "kind": "bundle",
+  "profile": "build",
+  "generatedAt": "2026-11-07T18:13:08.724Z",
+  "note": "gzip -9 of dist/assets/*.js via node zlib; route JS = route chunk + static deps not in the entry closure",
+  "metrics": {
+    "totalJsGzipKb": 952.5,
+    "entryClosureGzipKb": 179.7,
+    "pos.routeJsGzipKb": 76.3,
+    "ledger.routeJsGzipKb": 75.4,
+    "salesLedger.routeJsGzipKb": 37.4,
+    "billingHistory.routeJsGzipKb": 33.5,
+    "reports.routeJsGzipKb": 170.7,
+    "dashboard.routeJsGzipKb": 139.9
+  },
+  "detail": {
+    "pos": {
+      "chunk": "PosPage",
+      "ownKb": 64.8,
+      "depsKb": 11.4,
+      "deps": [
+        "file-text:0.3",
+        "returnNavigation:0.6",
+        "customerLedgerUrl:0.5",
+        "camera:0.2",
+        "scanBeep:3.1",
+        "message-circle:0.2",
+        "download:0.2",
+        "save:0.2",
+        "printer:0.2",
+        "salePaymentSettlement:0.7",
+        "PrintOptionsModal:3",
+        "ConfirmDangerModal:1.4",
+        "toast:0.3",
+        "currency:0.5"
+      ]
+    },
+    "ledger": {
+      "chunk": "CustomerLedgerPage",
+      "ownKb": 39.6,
+      "depsKb": 35.7,
+      "deps": [
+        "shield-check:0.2",
+        "hash:0.2",
+        "message-circle:0.2",
+        "share-2:0.2",
+        "PrintOptionsModal:3",
+        "printer:0.2",
+        "file-text:0.3",
+        "toast:0.3",
+        "credit-card:0.2",
+        "clock:0.2",
+        "pen-square:0.2",
+        "filter:0.2",
+        "download:0.2",
+        "returnNavigation:0.6",
+        "customerLedgerUrl:0.5",
+        "ReceiptPreviewModal:4.2",
+        "currency:0.5",
+        "LegacyInvoiceDetailModal:3",
+        "mobilePageUi:0.8",
+        "tallyFormClasses:0.3",
+        "salePaymentSettlement:0.7",
+        "OverflowMenu:1.3",
+        "Input:0.9",
+        "ConfirmDangerModal:1.4",
+        "InvoicePreviewModal:7",
+        "EditPaymentModal:7",
+        "statusTone:0.4",
+        "loadAllPages:0.4",
+        "DateRangeFilter:1.1"
+      ]
+    },
+    "salesLedger": {
+      "chunk": "SalesLedgerPage",
+      "ownKb": 19.3,
+      "depsKb": 18.1,
+      "deps": [
+        "printer:0.2",
+        "message-circle:0.2",
+        "pencil:0.2",
+        "download:0.2",
+        "filter:0.2",
+        "whatsapp:0.3",
+        "ReceiptPreviewModal:4.2",
+        "currency:0.5",
+        "calendar:0.2",
+        "file-text:0.3",
+        "EditPaymentModal:7",
+        "salePaymentSettlement:0.7",
+        "ConfirmDangerModal:1.4",
+        "mobilePageUi:0.8",
+        "tallyFormClasses:0.3",
+        "statusTone:0.4",
+        "DateRangeFilter:1.1"
+      ]
+    },
+    "billingHistory": {
+      "chunk": "BillingHistoryPage",
+      "ownKb": 8.4,
+      "depsKb": 25.1,
+      "deps": [
+        "clock:0.2",
+        "shield-check:0.2",
+        "hash:0.2",
+        "message-circle:0.2",
+        "share-2:0.2",
+        "PrintOptionsModal:3",
+        "printer:0.2",
+        "file-text:0.3",
+        "toast:0.3",
+        "pen-square:0.2",
+        "square:0.2",
+        "download:0.2",
+        "customerLedgerUrl:0.5",
+        "LegacyInvoiceDetailModal:3",
+        "currency:0.5",
+        "ConfirmDangerModal:1.4",
+        "ReceiptPreviewModal:4.2",
+        "useDebounce:0.2",
+        "InvoicePreviewModal:7",
+        "salePaymentSettlement:0.7",
+        "OverflowMenu:1.3",
+        "Input:0.9"
+      ]
+    },
+    "reports": {
+      "chunk": "ReportsPage",
+      "ownKb": 32.3,
+      "depsKb": 138.5,
+      "deps": [
+        "PieChart:8.4",
+        "generateCategoricalChart:119.3",
+        "BarChart:7.6",
+        "filter:0.2",
+        "download:0.2",
+        "shield-check:0.2",
+        "map-pin:0.2",
+        "trending-down:0.2",
+        "phone:0.3",
+        "clock:0.2",
+        "file-text:0.3",
+        "toast:0.3",
+        "currency:0.5",
+        "useDebounce:0.2",
+        "customerLedgerUrl:0.5"
+      ]
+    },
+    "dashboard": {
+      "chunk": "DashboardTally",
+      "ownKb": 11.3,
+      "depsKb": 128.6,
+      "deps": [
+        "BarChart:7.6",
+        "generateCategoricalChart:119.3",
+        "file-text:0.3",
+        "database:0.2",
+        "tallyFormClasses:0.3",
+        "currency:0.5",
+        "customerLedgerUrl:0.5"
+      ]
+    },
+    "ReportsPage": {
+      "chunk": "ReportsPage",
+      "ownKb": 32.3,
+      "depsKb": 138.5,
+      "deps": [
+        "PieChart:8.4",
+        "generateCategoricalChart:119.3",
+        "BarChart:7.6",
+        "filter:0.2",
+        "download:0.2",
+        "shield-check:0.2",
+        "map-pin:0.2",
+        "trending-down:0.2",
+        "phone:0.3",
+        "clock:0.2",
+        "file-text:0.3",
+        "toast:0.3",
+        "currency:0.5",
+        "useDebounce:0.2",
+        "customerLedgerUrl:0.5"
+      ]
+    },
+    "DashboardTally": {
+      "chunk": "DashboardTally",
+      "ownKb": 11.3,
+      "depsKb": 128.6,
+      "deps": [
+        "BarChart:7.6",
+        "generateCategoricalChart:119.3",
+        "file-text:0.3",
+        "database:0.2",
+        "tallyFormClasses:0.3",
+        "currency:0.5",
+        "customerLedgerUrl:0.5"
+      ]
+    },
+    "WorksheetPage": {
+      "chunk": "WorksheetPage",
+      "ownKb": 4.7,
+      "depsKb": 129.3,
+      "deps": [
+        "PieChart:8.4",
+        "generateCategoricalChart:119.3",
+        "credit-card:0.2",
+        "trending-down:0.2",
+        "calendar:0.2",
+        "download:0.2",
+        "file-text:0.3",
+        "currency:0.5"
+      ]
+    },
+    "CustomersPage": {
+      "chunk": "CustomersPage",
+      "ownKb": 12.6,
+      "depsKb": 66.7,
+      "deps": [
+        "pen-square:0.2",
+        "message-circle:0.2",
+        "phone:0.3",
+        "credit-card:0.2",
+        "download:0.2",
+        "customerLedgerUrl:0.5",
+        "locate-fixed:0.2",
+        "map-pin:0.2",
+        "shopLocation:1",
+        "StopLocationMap:57.7",
+        "ConfirmDangerModal:1.4",
+        "useDebounce:0.2",
+        "validation:0.1",
+        "currency:0.5",
+        "OverflowMenu:1.3",
+        "TabNavigation:0.6",
+        "Input:0.9",
+        "useCreateIntent:0.4",
+        "loadAllPages:0.4"
+      ]
+    },
+    "RouteDetailPage": {
+      "chunk": "RouteDetailPage",
+      "ownKb": 12.7,
+      "depsKb": 65.9,
+      "deps": [
+        "rotate-cw:0.2",
+        "shopLocation:1",
+        "printer:0.2",
+        "arrow-up:0.2",
+        "pen-square:0.2",
+        "map-pin:0.2",
+        "liveLocation:1.3",
+        "driverRoute:1.7",
+        "ErrorState:0.7",
+        "StopLocationMap:57.7",
+        "ConfirmDangerModal:1.4",
+        "currency:0.5",
+        "customerLedgerUrl:0.5"
+      ]
+    },
+    "PosPage": {
+      "chunk": "PosPage",
+      "ownKb": 64.8,
+      "depsKb": 11.4,
+      "deps": [
+        "file-text:0.3",
+        "returnNavigation:0.6",
+        "customerLedgerUrl:0.5",
+        "camera:0.2",
+        "scanBeep:3.1",
+        "message-circle:0.2",
+        "download:0.2",
+        "save:0.2",
+        "printer:0.2",
+        "salePaymentSettlement:0.7",
+        "PrintOptionsModal:3",
+        "ConfirmDangerModal:1.4",
+        "toast:0.3",
+        "currency:0.5"
+      ]
+    },
+    "CustomerLedgerPage": {
+      "chunk": "CustomerLedgerPage",
+      "ownKb": 39.6,
+      "depsKb": 35.7,
+      "deps": [
+        "shield-check:0.2",
+        "hash:0.2",
+        "message-circle:0.2",
+        "share-2:0.2",
+        "PrintOptionsModal:3",
+        "printer:0.2",
+        "file-text:0.3",
+        "toast:0.3",
+        "credit-card:0.2",
+        "clock:0.2",
+        "pen-square:0.2",
+        "filter:0.2",
+        "download:0.2",
+        "returnNavigation:0.6",
+        "customerLedgerUrl:0.5",
+        "ReceiptPreviewModal:4.2",
+        "currency:0.5",
+        "LegacyInvoiceDetailModal:3",
+        "mobilePageUi:0.8",
+        "tallyFormClasses:0.3",
+        "salePaymentSettlement:0.7",
+        "OverflowMenu:1.3",
+        "Input:0.9",
+        "ConfirmDangerModal:1.4",
+        "InvoicePreviewModal:7",
+        "EditPaymentModal:7",
+        "statusTone:0.4",
+        "loadAllPages:0.4",
+        "DateRangeFilter:1.1"
+      ]
+    },
+    "DriverRoutePage": {
+      "chunk": "DriverRoutePage",
+      "ownKb": 6.6,
+      "depsKb": 66.8,
+      "deps": [
+        "rotate-cw:0.2",
+        "map-pin:0.2",
+        "play:0.2",
+        "driverRoute:1.7",
+        "shopLocation:1",
+        "square:0.2",
+        "locate-fixed:0.2",
+        "liveLocation:1.3",
+        "routeLine:2.4",
+        "StopLocationMap:57.7",
+        "BackLink:0.3",
+        "EmptyState:0.6",
+        "ErrorState:0.7"
+      ]
+    },
+    "RouteMapPage": {
+      "chunk": "RouteMapPage",
+      "ownKb": 7.3,
+      "depsKb": 63.2,
+      "deps": [
+        "phone:0.3",
+        "currency:0.5",
+        "routeLine:2.4",
+        "shopLocation:1",
+        "liveLocation:1.3",
+        "StopLocationMap:57.7"
+      ]
+    },
+    "SalesLedgerPage": {
+      "chunk": "SalesLedgerPage",
+      "ownKb": 19.3,
+      "depsKb": 18.1,
+      "deps": [
+        "printer:0.2",
+        "message-circle:0.2",
+        "pencil:0.2",
+        "download:0.2",
+        "filter:0.2",
+        "whatsapp:0.3",
+        "ReceiptPreviewModal:4.2",
+        "currency:0.5",
+        "calendar:0.2",
+        "file-text:0.3",
+        "EditPaymentModal:7",
+        "salePaymentSettlement:0.7",
+        "ConfirmDangerModal:1.4",
+        "mobilePageUi:0.8",
+        "tallyFormClasses:0.3",
+        "statusTone:0.4",
+        "DateRangeFilter:1.1"
+      ]
+    },
+    "ProductsPage": {
+      "chunk": "ProductsPage",
+      "ownKb": 16.4,
+      "depsKb": 20,
+      "deps": [
+        "productFields:1.2",
+        "filter:0.2",
+        "share-2:0.2",
+        "upload:0.2",
+        "scanBeep:3.1",
+        "useDebounce:0.2",
+        "ListSkeleton:0.4",
+        "TabNavigation:0.6",
+        "ConfirmDangerModal:1.4",
+        "rotate-cw:0.2",
+        "printer:0.2",
+        "pen-square:0.2",
+        "image:0.2",
+        "arrow-up:0.2",
+        "OverflowMenu:1.3",
+        "Input:0.9",
+        "StockAdjustmentModal:8.7",
+        "useCreateIntent:0.4"
+      ]
+    },
+    "PaymentsPage": {
+      "chunk": "PaymentsPage",
+      "ownKb": 15,
+      "depsKb": 19.2,
+      "deps": [
+        "download:0.2",
+        "clock:0.2",
+        "file-text:0.3",
+        "map-pin:0.2",
+        "phone:0.3",
+        "calendar:0.2",
+        "printer:0.2",
+        "pen-square:0.2",
+        "credit-card:0.2",
+        "filter:0.2",
+        "returnNavigation:0.6",
+        "useDebounce:0.2",
+        "ConfirmDangerModal:1.4",
+        "EditPaymentModal:7",
+        "currency:0.5",
+        "ReceiptPreviewModal:4.2",
+        "DateRangeFilter:1.1",
+        "statusTone:0.4",
+        "productFields:1.2",
+        "loadAllPages:0.4"
+      ]
+    },
+    "BillingHistoryPage": {
+      "chunk": "BillingHistoryPage",
+      "ownKb": 8.4,
+      "depsKb": 25.1,
+      "deps": [
+        "clock:0.2",
+        "shield-check:0.2",
+        "hash:0.2",
+        "message-circle:0.2",
+        "share-2:0.2",
+        "PrintOptionsModal:3",
+        "printer:0.2",
+        "file-text:0.3",
+        "toast:0.3",
+        "pen-square:0.2",
+        "square:0.2",
+        "download:0.2",
+        "customerLedgerUrl:0.5",
+        "LegacyInvoiceDetailModal:3",
+        "currency:0.5",
+        "ConfirmDangerModal:1.4",
+        "ReceiptPreviewModal:4.2",
+        "useDebounce:0.2",
+        "InvoicePreviewModal:7",
+        "salePaymentSettlement:0.7",
+        "OverflowMenu:1.3",
+        "Input:0.9"
+      ]
+    },
+    "SuperAdminTenantDetailPage": {
+      "chunk": "SuperAdminTenantDetailPage",
+      "ownKb": 19.1,
+      "depsKb": 7.2,
+      "deps": [
+        "rotate-cw:0.2",
+        "hard-drive:0.3",
+        "map-pin:0.2",
+        "trending-down:0.2",
+        "file-text:0.3",
+        "database:0.2",
+        "calendar:0.2",
+        "credit-card:0.2",
+        "download:0.2",
+        "phone:0.3",
+        "pen-square:0.2",
+        "ban:0.2",
+        "log-in:0.2",
+        "copy:0.2",
+        "ErrorState:0.7",
+        "TabNavigation:0.6",
+        "Input:0.9",
+        "ConfirmDangerModal:1.4",
+        "currency:0.5"
+      ]
+    },
+    "ExpensesPage": {
+      "chunk": "ExpensesPage",
+      "ownKb": 19.1,
+      "depsKb": 6.3,
+      "deps": [
+        "clock:0.2",
+        "save:0.2",
+        "upload:0.2",
+        "pen-square:0.2",
+        "file-text:0.3",
+        "filter:0.2",
+        "productFields:1.2",
+        "ConfirmDangerModal:1.4",
+        "ListSkeleton:0.4",
+        "currency:0.5",
+        "useCreateIntent:0.4",
+        "DateRangeFilter:1.1"
+      ]
+    },
+    "SettingsPage": {
+      "chunk": "SettingsPage",
+      "ownKb": 19.4,
+      "depsKb": 5.1,
+      "deps": [
+        "hard-drive:0.3",
+        "printer:0.2",
+        "upload:0.2",
+        "image:0.2",
+        "download:0.2",
+        "save:0.2",
+        "database:0.2",
+        "globe:0.2",
+        "ConfirmDangerModal:1.4",
+        "toast:0.3",
+        "TabNavigation:0.6",
+        "Input:0.9"
+      ]
+    },
+    "PurchasesPage": {
+      "chunk": "PurchasesPage",
+      "ownKb": 16,
+      "depsKb": 6.8,
+      "deps": [
+        "pen-square:0.2",
+        "credit-card:0.2",
+        "save:0.2",
+        "filter:0.2",
+        "productFields:1.2",
+        "ListSkeleton:0.4",
+        "tallyFormClasses:0.3",
+        "OverflowMenu:1.3",
+        "ConfirmDangerModal:1.4",
+        "currency:0.5",
+        "useCreateIntent:0.4",
+        "statusTone:0.4"
+      ]
+    },
+    "ProductDetailPage": {
+      "chunk": "ProductDetailPage",
+      "ownKb": 4,
+      "depsKb": 15.8,
+      "deps": [
+        "upload:0.2",
+        "share-2:0.2",
+        "printer:0.2",
+        "scanBeep:3.1",
+        "productFields:1.2",
+        "pen-square:0.2",
+        "ConfirmDangerModal:1.4",
+        "StockAdjustmentModal:8.7",
+        "currency:0.5"
+      ]
+    },
+    "SuperAdminTenantsPage": {
+      "chunk": "SuperAdminTenantsPage",
+      "ownKb": 10.5,
+      "depsKb": 6.1,
+      "deps": [
+        "EmptyState:0.6",
+        "filter:0.2",
+        "megaphone:0.2",
+        "copy:0.2",
+        "ban:0.2",
+        "log-in:0.2",
+        "useAuthedImageSrc:0.5",
+        "ModernTable:2.5",
+        "Input:0.9",
+        "trending-down:0.2",
+        "currency:0.5"
+      ]
+    },
+    "VatReturnPage": {
+      "chunk": "VatReturnPage",
+      "ownKb": 14.8,
+      "depsKb": 0.9,
+      "deps": [
+        "download:0.2",
+        "calendar:0.2",
+        "currency:0.5"
+      ]
+    },
+    "UsersPage": {
+      "chunk": "UsersPage",
+      "ownKb": 10.2,
+      "depsKb": 3.1,
+      "deps": [
+        "pen-square:0.2",
+        "copy:0.2",
+        "phone:0.3",
+        "shield-alert:0.2",
+        "file-text:0.3",
+        "zap:0.2",
+        "trending-down:0.2",
+        "validation:0.1",
+        "ConfirmDangerModal:1.4"
+      ]
+    },
+    "BranchDetailPage": {
+      "chunk": "BranchDetailPage",
+      "ownKb": 9.1,
+      "depsKb": 4,
+      "deps": [
+        "rotate-cw:0.2",
+        "pen-square:0.2",
+        "filter:0.2",
+        "map-pin:0.2",
+        "pencil:0.2",
+        "ErrorState:0.7",
+        "ConfirmDangerModal:1.4",
+        "currency:0.5",
+        "customerLedgerUrl:0.5"
+      ]
+    },
+    "QuotationEditorPage": {
+      "chunk": "QuotationEditorPage",
+      "ownKb": 10.3,
+      "depsKb": 2.4,
+      "deps": [
+        "printer:0.2",
+        "download:0.2",
+        "save:0.2",
+        "pdfOpen:0.5",
+        "useUnsavedChangesGuard:0.4",
+        "BackLink:0.3",
+        "useAuthedImageSrc:0.5"
+      ]
+    },
+    "SuppliersPage": {
+      "chunk": "SuppliersPage",
+      "ownKb": 7.8,
+      "depsKb": 4.1,
+      "deps": [
+        "pencil:0.2",
+        "filter:0.2",
+        "ListSkeleton:0.4",
+        "tallyFormClasses:0.3",
+        "OverflowMenu:1.3",
+        "productFields:1.2",
+        "currency:0.5"
+      ]
+    },
+    "CustomerDetailPage": {
+      "chunk": "CustomerDetailPage",
+      "ownKb": 4.4,
+      "depsKb": 7.2,
+      "deps": [
+        "clock:0.2",
+        "shield-check:0.2",
+        "printer:0.2",
+        "shield-alert:0.2",
+        "file-text:0.3",
+        "calendar:0.2",
+        "map-pin:0.2",
+        "phone:0.3",
+        "pen-square:0.2",
+        "credit-card:0.2",
+        "LegacyInvoiceDetailModal:3",
+        "currency:0.5",
+        "shopLocation:1",
+        "customerLedgerUrl:0.5"
+      ]
+    },
+    "SupplierDetailPage": {
+      "chunk": "SupplierDetailPage",
+      "ownKb": 7.7,
+      "depsKb": 3.7,
+      "deps": [
+        "download:0.2",
+        "share-2:0.2",
+        "pencil:0.2",
+        "returnNavigation:0.6",
+        "tallyFormClasses:0.3",
+        "ConfirmDangerModal:1.4",
+        "whatsapp:0.3",
+        "currency:0.5"
+      ]
+    },
+    "AuditLogPage": {
+      "chunk": "AuditLogPage",
+      "ownKb": 7.4,
+      "depsKb": 1.5,
+      "deps": [
+        "currency:0.5",
+        "mobilePageUi:0.8",
+        "useDebounce:0.2"
+      ]
+    },
+    "DocumentsPage": {
+      "chunk": "DocumentsPage",
+      "ownKb": 4.9,
+      "depsKb": 3.7,
+      "deps": [
+        "rotate-cw:0.2",
+        "download:0.2",
+        "file-text:0.3",
+        "upload:0.2",
+        "ConfirmDangerModal:1.4",
+        "EmptyState:0.6",
+        "ErrorState:0.7"
+      ]
+    },
+    "BackupPage": {
+      "chunk": "BackupPage",
+      "ownKb": 5.9,
+      "depsKb": 2.5,
+      "deps": [
+        "shield-check:0.2",
+        "upload:0.2",
+        "hard-drive:0.3",
+        "clock:0.2",
+        "download:0.2",
+        "ConfirmDangerModal:1.4"
+      ]
+    },
+    "SalaryCertificateEditorPage": {
+      "chunk": "SalaryCertificateEditorPage",
+      "ownKb": 5.5,
+      "depsKb": 1.9,
+      "deps": [
+        "printer:0.2",
+        "download:0.2",
+        "save:0.2",
+        "useUnsavedChangesGuard:0.4",
+        "BackLink:0.3",
+        "useAuthedImageSrc:0.5"
+      ]
+    },
+    "SuperAdminDemoRequestsPage": {
+      "chunk": "SuperAdminDemoRequestsPage",
+      "ownKb": 2.5,
+      "depsKb": 4.8,
+      "deps": [
+        "EmptyState:0.6",
+        "clock:0.2",
+        "globe:0.2",
+        "phone:0.3",
+        "filter:0.2",
+        "ModernTable:2.5",
+        "Input:0.9"
+      ]
+    },
+    "BranchesPage": {
+      "chunk": "BranchesPage",
+      "ownKb": 4,
+      "depsKb": 3.1,
+      "deps": [
+        "map-pin:0.2",
+        "TabNavigation:0.6",
+        "Input:0.9",
+        "ConfirmDangerModal:1.4"
+      ]
+    },
+    "SuperAdminDashboard": {
+      "chunk": "SuperAdminDashboard",
+      "ownKb": 5.5,
+      "depsKb": 1.3,
+      "deps": [
+        "zap:0.2",
+        "server:0.2",
+        "database:0.2",
+        "ban:0.2",
+        "currency:0.5"
+      ]
+    },
+    "AgreementEditorPage": {
+      "chunk": "AgreementEditorPage",
+      "ownKb": 4.4,
+      "depsKb": 1.9,
+      "deps": [
+        "printer:0.2",
+        "download:0.2",
+        "save:0.2",
+        "useUnsavedChangesGuard:0.4",
+        "BackLink:0.3",
+        "useAuthedImageSrc:0.5"
+      ]
+    },
+    "QuotationsPage": {
+      "chunk": "QuotationsPage",
+      "ownKb": 4.2,
+      "depsKb": 1.6,
+      "deps": [
+        "copy:0.2",
+        "download:0.2",
+        "printer:0.2",
+        "pencil:0.2",
+        "file-text:0.3",
+        "pdfOpen:0.5"
+      ]
+    },
+    "DailyClosePage": {
+      "chunk": "DailyClosePage",
+      "ownKb": 4.5,
+      "depsKb": 1.1,
+      "deps": [
+        "currency:0.5",
+        "returnNavigation:0.6"
+      ]
+    },
+    "LegacyInvoicesPage": {
+      "chunk": "LegacyInvoicesPage",
+      "ownKb": 4.3,
+      "depsKb": 0.9,
+      "deps": [
+        "file-text:0.3",
+        "shield-alert:0.2",
+        "currency:0.5"
+      ]
+    },
+    "ProfilePage": {
+      "chunk": "ProfilePage",
+      "ownKb": 3.8,
+      "depsKb": 0.9,
+      "deps": [
+        "save:0.2",
+        "globe:0.2",
+        "phone:0.3",
+        "camera:0.2"
+      ]
+    },
+    "PendingBillsPage": {
+      "chunk": "PendingBillsPage",
+      "ownKb": 3.4,
+      "depsKb": 1.2,
+      "deps": [
+        "customerLedgerUrl:0.5",
+        "currency:0.5",
+        "tallyFormClasses:0.3"
+      ]
+    },
+    "ReturnCreatePage": {
+      "chunk": "ReturnCreatePage",
+      "ownKb": 3.5,
+      "depsKb": 1,
+      "deps": [
+        "file-text:0.3",
+        "save:0.2",
+        "currency:0.5"
+      ]
+    },
+    "HelpPage": {
+      "chunk": "HelpPage",
+      "ownKb": 3.2,
+      "depsKb": 0.7,
+      "deps": [
+        "phone:0.3",
+        "file-text:0.3",
+        "map-pin:0.2"
+      ]
+    },
+    "OnboardingWizard": {
+      "chunk": "OnboardingWizard",
+      "ownKb": 3.5,
+      "depsKb": 0.5,
+      "deps": [
+        "file-text:0.3",
+        "map-pin:0.2"
+      ]
+    },
+    "PriceList": {
+      "chunk": "PriceList",
+      "ownKb": 2.8,
+      "depsKb": 0.9,
+      "deps": [
+        "save:0.2",
+        "pen-square:0.2",
+        "currency:0.5"
+      ]
+    },
+    "SuperAdminSettingsPage": {
+      "chunk": "SuperAdminSettingsPage",
+      "ownKb": 3.2,
+      "depsKb": 0.4,
+      "deps": [
+        "save:0.2",
+        "megaphone:0.2"
+      ]
+    },
+    "DeliveryNotesPage": {
+      "chunk": "DeliveryNotesPage",
+      "ownKb": 2.8,
+      "depsKb": 0.7,
+      "deps": [
+        "printer:0.2",
+        "download:0.2",
+        "useDebounce:0.2"
+      ]
+    },
+    "SuperAdminAuditLogsPage": {
+      "chunk": "SuperAdminAuditLogsPage",
+      "ownKb": 3,
+      "depsKb": 0.4,
+      "deps": [
+        "file-text:0.3",
+        "filter:0.2"
+      ]
+    },
+    "SalaryCertificatesPage": {
+      "chunk": "SalaryCertificatesPage",
+      "ownKb": 2.7,
+      "depsKb": 0.7,
+      "deps": [
+        "download:0.2",
+        "printer:0.2",
+        "pencil:0.2"
+      ]
+    },
+    "StockAdjustmentsHistoryPage": {
+      "chunk": "StockAdjustmentsHistoryPage",
+      "ownKb": 1.9,
+      "depsKb": 1.1,
+      "deps": [
+        "DateRangeFilter:1.1"
+      ]
+    },
+    "SuperAdminHealthPage": {
+      "chunk": "SuperAdminHealthPage",
+      "ownKb": 2.3,
+      "depsKb": 0.6,
+      "deps": [
+        "server:0.2",
+        "hash:0.2",
+        "database:0.2"
+      ]
+    },
+    "FeedbackPage": {
+      "chunk": "FeedbackPage",
+      "ownKb": 2.5,
+      "depsKb": 0.3,
+      "deps": [
+        "toast:0.3"
+      ]
+    },
+    "SuperAdminGlobalSearchPage": {
+      "chunk": "SuperAdminGlobalSearchPage",
+      "ownKb": 1.7,
+      "depsKb": 1,
+      "deps": [
+        "file-text:0.3",
+        "currency:0.5",
+        "useDebounce:0.2"
+      ]
+    },
+    "AgreementsPage": {
+      "chunk": "AgreementsPage",
+      "ownKb": 2,
+      "depsKb": 0.7,
+      "deps": [
+        "download:0.2",
+        "printer:0.2",
+        "pencil:0.2"
+      ]
+    },
+    "DeliveryNoteViewPage": {
+      "chunk": "DeliveryNoteViewPage",
+      "ownKb": 2,
+      "depsKb": 0.5,
+      "deps": [
+        "printer:0.2",
+        "download:0.2"
+      ]
+    },
+    "SuperAdminSqlConsolePage": {
+      "chunk": "SuperAdminSqlConsolePage",
+      "ownKb": 1.8,
+      "depsKb": 0.7,
+      "deps": [
+        "play:0.2",
+        "database:0.2",
+        "toast:0.3"
+      ]
+    },
+    "SuperAdminErrorLogsPage": {
+      "chunk": "SuperAdminErrorLogsPage",
+      "ownKb": 2.1,
+      "depsKb": 0.3,
+      "deps": [
+        "file-text:0.3"
+      ]
+    },
+    "MorePage": {
+      "chunk": "MorePage",
+      "ownKb": 1.1,
+      "depsKb": 0,
+      "deps": []
+    },
+    "ErrorPage": {
+      "chunk": "ErrorPage",
+      "ownKb": 1.1,
+      "depsKb": 0,
+      "deps": []
+    },
+    "RoutesPage": {
+      "chunk": "RoutesPage",
+      "ownKb": 0.2,
+      "depsKb": 0,
+      "deps": []
+    }
+  }
+}

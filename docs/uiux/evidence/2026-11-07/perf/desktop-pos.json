@@ -1,0 +1,107 @@
+{
+  "kind": "e2e",
+  "page": "pos",
+  "profile": "desktop",
+  "target": "preview",
+  "generatedAt": "2026-11-07T17:49:53.948Z",
+  "metrics": {
+    "readyToSearchMs": 354,
+    "drawerOpenMs": 15,
+    "keystrokeToListMedianMs": 2.9,
+    "keystrokeToListP95Ms": 5.5,
+    "keystrokeToListMaxMs": 5.5,
+    "addItemToTotalMs": 7.8,
+    "longTasksOver200Interaction": 0,
+    "longTasksOver50Interaction": 0,
+    "longTaskMaxMsInteraction": 0,
+    "longTasksOver200OnLoad": 0,
+    "longTaskMaxMsOnLoad": 80,
+    "apiRequestsOnLoad": 10,
+    "apiRequestsWhileTyping": 0
+  },
+  "notes": {
+    "scaled": false,
+    "productRequests": [
+      "/api/products?page=1&pageSize=200"
+    ],
+    "product": "ZZ-TEST gulfharvest-test product",
+    "keystrokesMeasured": "6 of 16 keys changed the list (others left the DOM unchanged)",
+    "keystrokeDetail": [
+      {
+        "key": "Z",
+        "ms": 5.5
+      },
+      {
+        "key": "Z",
+        "ms": null
+      },
+      {
+        "key": "-",
+        "ms": null
+      },
+      {
+        "key": "T",
+        "ms": null
+      },
+      {
+        "key": "E",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": 2.899999976158142
+      },
+      {
+        "key": "z",
+        "ms": 2.9000000059604645
+      },
+      {
+        "key": "z",
+        "ms": null
+      },
+      {
+        "key": "q",
+        "ms": 2.0999999940395355
+      },
+      {
+        "key": "Backspace",
+        "ms": 2.2999999821186066
+      },
+      {
+        "key": "Backspace",
+        "ms": null
+      },
+      {
+        "key": "Backspace",
+        "ms": 2.7999999821186066
+      }
+    ],
+    "addItemSamplesMs": [
+      7.800000011920929,
+      5
+    ],
+    "readyDefinition": "max(add-product control usable, last /api/products response done), ms from navigation start",
+    "tenantSize": {
+      "customers": 1,
+      "products": 1,
+      "sales": 3
+    },
+    "idleAndSoak": "see pos-idle.spec.js; 30 min / 100-invoice soak NOT TESTED"
+  }
+}

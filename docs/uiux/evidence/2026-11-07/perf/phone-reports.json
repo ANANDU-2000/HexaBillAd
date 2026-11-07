@@ -1,0 +1,51 @@
+{
+  "kind": "e2e",
+  "page": "reports",
+  "profile": "phone",
+  "target": "preview",
+  "generatedAt": "2026-11-07T17:59:53.642Z",
+  "metrics": {
+    "firstDataRowMs": null,
+    "apiSettledMs": 3915,
+    "apiRequestsOnLoad": 12,
+    "longTasksOver200OnLoad": 0,
+    "longTasksOver50OnLoad": 4,
+    "longTaskMaxMsOnLoad": 146,
+    "longTasksOver200Interaction": 0,
+    "longTasksOver50Interaction": 0,
+    "longTaskMaxMsInteraction": 0,
+    "apiRequestsInteraction": 0,
+    "slowRequestsOver3s": 0,
+    "noVisibleLoadingStateAt3s": 0,
+    "stillLoadingCancelMissingAt3s": 1
+  },
+  "notes": {
+    "route": "/reports",
+    "firstRowDetected": "not measured: landing view has no list rows",
+    "interaction": "scroll x8",
+    "tenantSize": {
+      "customers": 1,
+      "products": 1,
+      "sales": 3
+    },
+    "ledgerCustomer": {
+      "id": 1,
+      "balance": 105
+    },
+    "apiCalls": [
+      "GET /api/settings/logo-data-uri",
+      "GET /api/auth/validate",
+      "GET /api/settings",
+      "GET /api/alerts/unread-count",
+      "GET /api/branches",
+      "GET /api/routes",
+      "PATCH /api/users/me/ping",
+      "GET /api/products?page=1&pageSize=100",
+      "GET /api/customers?page=1&pageSize=100",
+      "GET /api/reports/summary?fromDate=2024-11-07&toDate=2026-11-07",
+      "GET /api/reports/expenses?fromDate=2024-11-07&toDate=2026-11-07T23:59:59",
+      "GET /api/reports/sales?fromDate=2024-11-07&toDate=2026-11-07&pageSize=100"
+    ],
+    "slowStateProbe": "Reports & Analytics Summary Sales Report Product Analysis Net Sales Report Sales Returns Customer Report Overdue accounts Customer Aging Outstanding Bills Colle"
+  }
+}

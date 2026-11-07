@@ -1,0 +1,44 @@
+{
+  "kind": "e2e",
+  "page": "billingHistoryScaled",
+  "profile": "phone",
+  "target": "preview",
+  "generatedAt": "2026-11-07T17:59:36.614Z",
+  "metrics": {
+    "firstDataRowMs": 2766,
+    "apiSettledMs": 2630,
+    "apiRequestsOnLoad": 8,
+    "longTasksOver200OnLoad": 0,
+    "longTasksOver50OnLoad": 4,
+    "longTaskMaxMsOnLoad": 184,
+    "longTasksOver200Interaction": 0,
+    "longTasksOver50Interaction": 0,
+    "longTaskMaxMsInteraction": 0,
+    "apiRequestsInteraction": 2,
+    "slowRequestsOver3s": 0
+  },
+  "notes": {
+    "route": "/billing-history",
+    "firstRowDetected": "text: t-003",
+    "interaction": "scroll x8; search type abc + clear",
+    "tenantSize": {
+      "customers": 1,
+      "products": 1,
+      "sales": 3
+    },
+    "ledgerCustomer": {
+      "id": 1,
+      "balance": 105
+    },
+    "apiCalls": [
+      "GET /api/settings/logo-data-uri",
+      "GET /api/auth/validate",
+      "GET /api/settings",
+      "GET /api/alerts/unread-count",
+      "GET /api/branches",
+      "GET /api/routes",
+      "PATCH /api/users/me/ping",
+      "GET /api/legacy/invoices/unified?page=1&pageSize=20"
+    ]
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "kind": "e2e",
+  "page": "reportsScaled",
+  "profile": "phone",
+  "target": "preview",
+  "generatedAt": "2026-11-07T17:59:48.677Z",
+  "metrics": {
+    "firstDataRowMs": null,
+    "apiSettledMs": 2316,
+    "apiRequestsOnLoad": 10,
+    "longTasksOver200OnLoad": 0,
+    "longTasksOver50OnLoad": 3,
+    "longTaskMaxMsOnLoad": 137,
+    "longTasksOver200Interaction": 0,
+    "longTasksOver50Interaction": 1,
+    "longTaskMaxMsInteraction": 136,
+    "apiRequestsInteraction": 2,
+    "slowRequestsOver3s": 0
+  },
+  "notes": {
+    "route": "/reports",
+    "firstRowDetected": "not measured: landing view has no list rows",
+    "interaction": "scroll x8",
+    "tenantSize": {
+      "customers": 1,
+      "products": 1,
+      "sales": 3
+    },
+    "ledgerCustomer": {
+      "id": 1,
+      "balance": 105
+    },
+    "apiCalls": [
+      "GET /api/settings/logo-data-uri",
+      "GET /api/auth/validate",
+      "GET /api/settings",
+      "PATCH /api/users/me/ping",
+      "GET /api/alerts/unread-count",
+      "GET /api/branches",
+      "GET /api/routes",
+      "GET /api/products?page=1&pageSize=100",
+      "GET /api/customers?page=1&pageSize=100",
+      "GET /api/reports/summary?fromDate=2024-11-07&toDate=2026-11-07"
+    ]
+  }
+}

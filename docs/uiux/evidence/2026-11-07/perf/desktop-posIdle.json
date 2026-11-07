@@ -1,0 +1,22 @@
+{
+  "kind": "e2e",
+  "page": "posIdle",
+  "profile": "desktop",
+  "target": "preview",
+  "generatedAt": "2026-11-07T18:07:25.657Z",
+  "metrics": {
+    "idleApiRequests60s": 2,
+    "idleHeapGrowthMb60s": 0.08,
+    "idleApiRequests300s": 11,
+    "idleHeapGrowthMb300s": 0.57
+  },
+  "notes": {
+    "idleWindowMs": 300023,
+    "idleRequestsByEndpoint": {
+      "GET /api/products": 5,
+      "GET /api/customers": 5,
+      "PATCH /api/users/me/ping": 1
+    },
+    "budget": "idle 5 min on POS <= 6 requests (run with PERF_IDLE_MS=300000); 30 min soak NOT TESTED"
+  }
+}

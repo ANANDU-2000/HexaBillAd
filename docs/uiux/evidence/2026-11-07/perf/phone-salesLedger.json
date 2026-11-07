@@ -1,0 +1,48 @@
+{
+  "kind": "e2e",
+  "page": "salesLedger",
+  "profile": "phone",
+  "target": "preview",
+  "generatedAt": "2026-11-07T17:59:22.100Z",
+  "metrics": {
+    "firstDataRowMs": 2149,
+    "apiSettledMs": 1994,
+    "apiRequestsOnLoad": 9,
+    "longTasksOver200OnLoad": 0,
+    "longTasksOver50OnLoad": 4,
+    "longTaskMaxMsOnLoad": 153,
+    "longTasksOver200Interaction": 0,
+    "longTasksOver50Interaction": 0,
+    "longTaskMaxMsInteraction": 0,
+    "apiRequestsInteraction": 0,
+    "slowRequestsOver3s": 0,
+    "noVisibleLoadingStateAt3s": 0,
+    "stillLoadingCancelMissingAt3s": 1
+  },
+  "notes": {
+    "route": "/sales-ledger",
+    "firstRowDetected": "text: t-001",
+    "interaction": "scroll x8",
+    "tenantSize": {
+      "customers": 1,
+      "products": 1,
+      "sales": 3
+    },
+    "ledgerCustomer": {
+      "id": 1,
+      "balance": 105
+    },
+    "apiCalls": [
+      "GET /api/settings/logo-data-uri",
+      "GET /api/auth/validate",
+      "GET /api/settings",
+      "GET /api/alerts/unread-count",
+      "GET /api/branches",
+      "GET /api/routes",
+      "PATCH /api/users/me/ping",
+      "GET /api/users",
+      "GET /api/reports/sales-ledger"
+    ],
+    "slowStateProbe": "… → … Overdue Newest Oldest SALES 0.00 AED RETURNS 0.00 AED RECEIVED 0.00 AED VAT 0.00 AED UNPAID 0.00 AED BALANCE 0.00 AED INVOICES 0 ROWS 0 Loading sales ledg"
+  }
+}

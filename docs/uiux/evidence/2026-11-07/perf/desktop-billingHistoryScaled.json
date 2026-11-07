@@ -1,0 +1,44 @@
+{
+  "kind": "e2e",
+  "page": "billingHistoryScaled",
+  "profile": "desktop",
+  "target": "preview",
+  "generatedAt": "2026-11-07T17:48:10.669Z",
+  "metrics": {
+    "firstDataRowMs": 366,
+    "apiSettledMs": 371,
+    "apiRequestsOnLoad": 8,
+    "longTasksOver200OnLoad": 0,
+    "longTasksOver50OnLoad": 0,
+    "longTaskMaxMsOnLoad": 0,
+    "longTasksOver200Interaction": 0,
+    "longTasksOver50Interaction": 0,
+    "longTaskMaxMsInteraction": 0,
+    "apiRequestsInteraction": 2,
+    "slowRequestsOver3s": 0
+  },
+  "notes": {
+    "route": "/billing-history",
+    "firstRowDetected": "tr: ZZ-TEST-gulfharvest-test-00307 Nov 2026ZZ-TEST gulfharvest-t",
+    "interaction": "scroll x8; search type abc + clear",
+    "tenantSize": {
+      "customers": 1,
+      "products": 1,
+      "sales": 3
+    },
+    "ledgerCustomer": {
+      "id": 1,
+      "balance": 105
+    },
+    "apiCalls": [
+      "GET /api/settings/logo-data-uri",
+      "GET /api/auth/validate",
+      "GET /api/settings",
+      "GET /api/alerts/unread-count",
+      "GET /api/branches",
+      "GET /api/routes",
+      "PATCH /api/users/me/ping",
+      "GET /api/legacy/invoices/unified?page=1&pageSize=20"
+    ]
+  }
+}

@@ -9,7 +9,9 @@
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "perf": "node scripts/perf-report.mjs",
+    "perf:bundle": "node scripts/bundle-size.mjs"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.6",
