@@ -28,6 +28,8 @@ import { useDebounce } from '../../hooks/useDebounce'
 import toast from 'react-hot-toast'
 import InvoicePreviewModal from '../../components/InvoicePreviewModal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
+import LoadStatusNotice from '../../components/LoadStatusNotice'
+import { useRequestControl } from '../../hooks/useRequestControl'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import LegacyInvoiceDetailModal from '../../components/LegacyInvoiceDetailModal'
 import ChangeInvoiceNumberModal from './ChangeInvoiceNumberModal'
@@ -112,7 +114,7 @@ const BillingHistoryPage = () => {
     return resolvePeriod(period) || { from: '', to: '' }
   }, [period, customRange])
 
-  const requestSeq = useRef(0)
+  const listRequest = useRequestControl()
   const fetchData = useCallback(async () => {
     if (range.from && range.to && range.from > range.to) {
       setListError(false)
@@ -122,7 +124,8 @@ const BillingHistoryPage = () => {
       setLoading(false)
       return
     }
-    const seq = ++requestSeq.current
+    // P-01: a newer request aborts this one; only the latest response is applied.
+    const ticket = listRequest.start()
     setLoading(true)
     setListError(false)
     try {
@@ -133,8 +136,8 @@ const BillingHistoryPage = () => {
       if (range.to) params.toDate = range.to
       if (status !== 'all') params.status = status
       if (sort !== 'newest') params.sort = sort
-      const response = await legacyAPI.getUnifiedInvoices(params)
-      if (seq !== requestSeq.current) return // a newer request superseded this one
+      const response = await legacyAPI.getUnifiedInvoices(params, { signal: ticket.signal })
+      if (!ticket.isCurrent()) return // a newer request superseded this one
       if (response?.success && response.data) {
         setRows(response.data.items || [])
         setTotalCount(response.data.totalCount || 0)
@@ -143,11 +146,13 @@ const BillingHistoryPage = () => {
         setListError(true)
       }
     } catch (error) {
-      if (seq !== requestSeq.current) return
-      console.error('Error fetching billing history:', error)
+      const kind = ticket.classify(error)
+      if (kind === 'superseded') return
+      if (kind === 'error') console.error('Error fetching billing history:', error)
       setListError(true)
     } finally {
-      if (seq === requestSeq.current) setLoading(false)
+      if (ticket.isCurrent()) setLoading(false)
+      ticket.finish()
     }
   }, [currentPage, pageSize, debouncedSearch, range.from, range.to, status, sort])
 
@@ -489,6 +494,7 @@ const BillingHistoryPage = () => {
         </form>
       </div>
 
+      <LoadStatusNotice phase={listRequest.phase} onCancel={listRequest.cancel} onRetry={() => fetchDataRef.current()} className="mb-2" />
       <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden flex-1 min-h-0 overflow-y-auto">
         {loading && rows.length === 0 ? (
           <div className="py-16 text-center">

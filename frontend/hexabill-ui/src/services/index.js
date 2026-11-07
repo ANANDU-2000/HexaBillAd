@@ -56,8 +56,8 @@ export const authAPI = {
 }
 
 export const productsAPI = {
-  getProducts: async (params = {}) => {
-    const response = await api.get('/products', { params })
+  getProducts: async (params = {}, config = {}) => {
+    const response = await api.get('/products', { params, ...config })
     return response.data
   },
 
@@ -531,8 +531,8 @@ export const customersAPI = {
     const response = await api.get('/customers/pending-summary')
     return response.data
   },
-  getCustomers: async (params = {}) => {
-    const response = await api.get('/customers', { params })
+  getCustomers: async (params = {}, config = {}) => {
+    const response = await api.get('/customers', { params, ...config })
     return response.data
   },
 
@@ -1033,8 +1033,8 @@ export const expensesAPI = {
 }
 
 export const reportsAPI = {
-  getDashboardBatch: async (params = {}) => {
-    const response = await api.get('/dashboard/batch', { params })
+  getDashboardBatch: async (params = {}, config = {}) => {
+    const response = await api.get('/dashboard/batch', { params, ...config })
     return response.data
   },
 
@@ -1043,8 +1043,8 @@ export const reportsAPI = {
     return response.data
   },
 
-  getSummaryReport: async (params = {}) => {
-    const response = await api.get('/reports/summary', { params: normalizeDateParams(params) })
+  getSummaryReport: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/summary', { params: normalizeDateParams(params), ...config })
     return response.data
   },
 
@@ -1084,8 +1084,8 @@ export const reportsAPI = {
     const response = await api.get('/reports/stock', { params })
     return response.data
   },
-  getComprehensiveSalesLedger: async (params = {}) => {
-    const response = await api.get('/reports/sales-ledger', { params: normalizeDateParams(params) })
+  getComprehensiveSalesLedger: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/sales-ledger', { params: normalizeDateParams(params), ...config })
     return response.data
   },
 

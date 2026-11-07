@@ -63,6 +63,12 @@ function flushClientErrorsToBackend() {
 
 // Request deduplication and throttling to prevent 429 errors
 const pendingRequests = new Map()
+const inflightGets = new Map() // P-01: key -> shared promise for identical in-flight GETs
+const GET_TIMEOUT_MS = 15000 // P-01: reads time out at 15 s; writes keep the 30 s instance default
+const cloneResponseData = (data) => {
+  if (data == null || typeof data !== 'object') return data
+  try { return JSON.parse(JSON.stringify(data)) } catch (_) { return data }
+}
 const requestThrottle = new Map() // Track last request time per endpoint
 const REQUEST_THROTTLE_MS = 50 // Only throttle very rapid duplicates (< 50ms) - prevents double-clicks
 const MAX_CONCURRENT_REQUESTS = 20 // Increased concurrent requests limit
@@ -359,6 +365,27 @@ api.request = function(configOrUrl, config) {
     }
   }
   
+  // P-01: reads fail fast (15 s) so the page can offer Retry; money writes keep the 30 s instance default.
+  if (method === 'GET' && finalConfig.responseType !== 'blob' && finalConfig.timeout == null) {
+    finalConfig.timeout = GET_TIMEOUT_MS
+  }
+
+  // P-01: identical in-flight GETs share one network call. Callers that pass their own AbortSignal,
+  // blob downloads, and retries are never shared (one caller's abort must not cancel another's request).
+  if (method === 'GET' && !finalConfig.signal && !finalConfig._isRetry && !finalConfig._noDedupe &&
+      finalConfig.responseType !== 'blob') {
+    const flightKey = getRequestKey(finalConfig)
+    const existing = inflightGets.get(flightKey)
+    if (existing) {
+      return existing.then((res) => ({ ...res, data: cloneResponseData(res.data) }))
+    }
+    const promise = originalRequest(configProxy)
+    inflightGets.set(flightKey, promise)
+    const clear = () => { if (inflightGets.get(flightKey) === promise) inflightGets.delete(flightKey) }
+    promise.then(clear, clear)
+    return promise
+  }
+
   // Call original request with proxied config
   return originalRequest(configProxy)
 }
@@ -810,7 +837,9 @@ api.interceptors.response.use(
     const maxRetries = error.config?._maxRetries ?? 1
     // Prevent retry loops on 401 - authentication errors should never be retried
     const is401Error = error.response?.status === 401
-    const shouldRetry = isRetryable && retryCount < maxRetries && !is401Error &&
+    // P-01: a timed-out read is not retried silently (that would double the 15 s wait); the page offers Retry.
+    const isGetTimeout = isTimeout && String(error.config?.method || 'GET').toUpperCase() === 'GET'
+    const shouldRetry = isRetryable && retryCount < maxRetries && !is401Error && !isGetTimeout &&
       isAutoRetryable(error.config, error.response?.status)
     
     // Additional safety: If retry count exceeded, prevent further retries

@@ -31,6 +31,8 @@ import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { readSalesLedgerStateFromParams, syncSalesLedgerSearchParams } from '../../utils/salesLedgerUrl'
 import { canReceivePaymentReceipt, receiptIneligibilityReason } from '../../utils/receiptEligibility'
 import { buildSalesLedgerKpis } from '../../utils/salesLedgerKpis'
+import { useRequestControl } from '../../hooks/useRequestControl'
+import LoadStatusNotice from '../../components/LoadStatusNotice'
 
 // Literal class names so Tailwind keeps them in the build.
 const SALES_KPI_ACCENT = {
@@ -234,6 +236,7 @@ const SalesLedgerPage = () => {
   const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
   const [ledgerLoadFailed, setLedgerLoadFailed] = useState(false)
+  const ledgerRequest = useRequestControl()
   const getDefaultDateRange = () => {
     const today = new Date()
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -382,6 +385,8 @@ const SalesLedgerPage = () => {
   )
 
   const fetchSalesLedger = async () => {
+    // P-01: a newer filter aborts this call; only the latest response is applied.
+    const ticket = ledgerRequest.start()
     setLoading(true)
     setLedgerLoadFailed(false)
     try {
@@ -393,7 +398,8 @@ const SalesLedgerPage = () => {
       if (filters.routeId) params.routeId = parseInt(filters.routeId, 10)
       if (filters.staffId) params.staffId = parseInt(filters.staffId, 10)
       if (filters.type) params.entryType = filters.type
-      const ledgerResponse = await reportsAPI.getComprehensiveSalesLedger(params)
+      const ledgerResponse = await reportsAPI.getComprehensiveSalesLedger(params, { signal: ticket.signal })
+      if (!ticket.isCurrent()) return
 
       if (ledgerResponse?.success && ledgerResponse?.data) {
         const entries = ledgerResponse.data.entries || []
@@ -431,13 +437,21 @@ const SalesLedgerPage = () => {
         setReportData({ salesLedger: [], salesLedgerSummary: null })
       }
     } catch (error) {
+      const kind = ticket.classify(error)
+      if (kind === 'superseded') return
+      if (kind === 'timedOut' || kind === 'cancelled') {
+        setLedgerLoadFailed(true)
+        setReportData({ salesLedger: [], salesLedgerSummary: null })
+        return
+      }
       console.error('Error loading sales ledger:', error)
       const msg = error?.response?.data?.message || 'Failed to load sales ledger'
       if (!error?._handledByInterceptor) toast.error(msg)
       setLedgerLoadFailed(true)
       setReportData({ salesLedger: [], salesLedgerSummary: null })
     } finally {
-      setLoading(false)
+      if (ticket.isCurrent()) setLoading(false)
+      ticket.finish()
     }
   }
 
@@ -1273,6 +1287,7 @@ const SalesLedgerPage = () => {
         </div>
       </section>
 
+      <LoadStatusNotice phase={ledgerRequest.phase} onCancel={ledgerRequest.cancel} onRetry={() => fetchSalesLedgerRef.current?.()} className="mb-2" />
       {/* Table - Scrollable (fills remaining viewport height) */}
       {loading ? (
         <div className="flex-1 min-h-0 flex items-center justify-center">

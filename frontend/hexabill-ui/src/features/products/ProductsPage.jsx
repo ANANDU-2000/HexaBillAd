@@ -5,6 +5,8 @@ import { Plus, Edit, Trash2, Package, AlertTriangle, Search, Filter, RefreshCw, 
 import { productsAPI, stockAdjustmentsAPI, productCategoriesAPI } from '../../services/index'
 import ProductsTable from './ProductsTable'
 import ProductForm from '../../components/ProductForm'
+import LoadStatusNotice from '../../components/LoadStatusNotice'
+import { useRequestControl } from '../../hooks/useRequestControl'
 import ProductImage from '../../components/ProductImage'
 import StockAdjustmentModal from '../../components/StockAdjustmentModal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
@@ -121,7 +123,10 @@ const ProductsPage = () => {
     })
   }, [searchParams])
 
+  const productsRequest = useRequestControl()
   const loadProducts = useCallback(async () => {
+    // P-01: a newer filter/page aborts this request; only the latest response is applied.
+    const ticket = productsRequest.start()
     try {
       setLoading(true)
       const params = {
@@ -135,7 +140,8 @@ const ProductsPage = () => {
         inactiveOnly: activeTab === 'inactive'
       }
       
-      const response = await productsAPI.getProducts(params)
+      const response = await productsAPI.getProducts(params, { signal: ticket.signal })
+      if (!ticket.isCurrent()) return
       if (response?.success && response?.data) {
         setProducts(response.data.items || [])
         setTotalPages(response.data.totalPages || 1)
@@ -152,6 +158,13 @@ const ProductsPage = () => {
         setTotalPages(1)
       }
     } catch (error) {
+      const kind = ticket.classify(error)
+      if (kind === 'superseded') return
+      if (kind === 'timedOut' || kind === 'cancelled') {
+        setProducts([])
+        setTotalPages(1)
+        return
+      }
       console.error('Error loading products:', error)
       // Only show error if it's not a network error (handled by interceptor)
       if (!error?._handledByInterceptor && (error.response || (!error.code || error.code !== 'ERR_NETWORK'))) {
@@ -160,9 +173,10 @@ const ProductsPage = () => {
       setProducts([])
       setTotalPages(1)
     } finally {
-      setLoading(false)
+      if (ticket.isCurrent()) setLoading(false)
+      ticket.finish()
     }
-  }, [currentPage, pageSize, debouncedSearchTerm, activeTab, activeFilters])
+  }, [currentPage, pageSize, debouncedSearchTerm, activeTab, activeFilters, productsRequest.start])
 
   const loadStockMovements = useCallback(async () => {
     try {
@@ -1110,6 +1124,7 @@ const ProductsPage = () => {
         />
       </div>
 
+      <LoadStatusNotice phase={productsRequest.phase} onCancel={productsRequest.cancel} onRetry={loadProducts} className="mb-2" />
       {/* Product cards (below 1280px: phones, tablets, small laptops) */}
       {loading ? (
         <div className="xl:hidden">

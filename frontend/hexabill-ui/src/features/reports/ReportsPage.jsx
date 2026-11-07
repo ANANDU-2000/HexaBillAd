@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { buildCustomerLedgerCollectHref, buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import { useDebounce } from '../../hooks/useDebounce'
+import { useRequestControl } from '../../hooks/useRequestControl'
+import LoadStatusNotice from '../../components/LoadStatusNotice'
 import ReportSwitcher from '../../components/ui/ReportSwitcher'
 import {
   Download,
@@ -326,6 +328,7 @@ const ReportsPage = () => {
   }
 
   // Define fetchReportData FIRST before any useEffect that uses it
+  const reportRequest = useRequestControl()
   const fetchReportData = useCallback(async (force = false) => {
     // AGGRESSIVE: Prevent ALL requests if one is in flight (unless forced)
     if (!force && isFetchingRef.current) {
@@ -387,6 +390,15 @@ const ReportsPage = () => {
     fetchAbortControllerRef.current = new AbortController()
     const signal = fetchAbortControllerRef.current.signal
 
+    // P-01: the 3 s / 15 s notice and Cancel. A newer fetch (or Cancel / timeout) aborts this ticket.
+    const ticket = reportRequest.start()
+    ticket.signal.addEventListener('abort', () => {
+      if (!ticket.isCurrent()) return
+      lastRequestParamsRef.current = null // allow Retry with the same filters
+      setLoading(false)
+      isFetchingRef.current = false
+    })
+
     // Mark as fetching and store request signature
     isFetchingRef.current = true
     lastFetchTimeRef.current = now
@@ -412,10 +424,10 @@ const ReportsPage = () => {
       }
 
       // Note: Most API calls don't support AbortSignal directly, but we track cancellation
-      const summaryResponse = await reportsAPI.getSummaryReport(summaryParams)
+      const summaryResponse = await reportsAPI.getSummaryReport(summaryParams, { signal: ticket.signal })
 
-      // Check if request was cancelled
-      if (fetchAbortControllerRef.current?.signal?.aborted) {
+      // Check if request was cancelled or superseded
+      if (fetchAbortControllerRef.current?.signal?.aborted || !ticket.isCurrent()) {
         return
       }
       if (summaryResponse?.success && summaryResponse?.data) {
@@ -1086,6 +1098,8 @@ const ReportsPage = () => {
       // Lazy load: mark this tab as loaded so we skip refetch when switching back
       tabDataCacheRef.current[tabCacheKey] = true
     } catch (error) {
+      const requestKind = ticket.classify(error)
+      if (requestKind !== 'error') return // superseded, timed out or cancelled: the notice explains it
       // Check if request was aborted (cancelled)
       const currentSignal = fetchAbortControllerRef.current?.signal
       if (error.name === 'AbortError' || (currentSignal && currentSignal.aborted)) {
@@ -1112,10 +1126,13 @@ const ReportsPage = () => {
       // Error toast is already handled by API interceptor with throttling
       // Don't show duplicate error messages
     } finally {
-      setLoading(false)
-      isFetchingRef.current = false
+      if (ticket.isCurrent()) {
+        setLoading(false)
+        isFetchingRef.current = false
+      }
+      ticket.finish()
     }
-  }, [dateRange, activeTab, appliedFilters, dateRange?.from, dateRange?.to])
+  }, [dateRange, activeTab, appliedFilters, dateRange?.from, dateRange?.to, reportRequest.start])
 
   // Store latest fetchReportData in ref to avoid dependency issues
   useEffect(() => {
@@ -1600,6 +1617,7 @@ const ReportsPage = () => {
       </div>
 
       {/* Report body fills the remaining height and scrolls on its own */}
+      <LoadStatusNotice phase={reportRequest.phase} onCancel={reportRequest.cancel} onRetry={() => fetchReportDataRef.current?.(true)} className="mb-2" />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white">
         <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
           {loading ? (

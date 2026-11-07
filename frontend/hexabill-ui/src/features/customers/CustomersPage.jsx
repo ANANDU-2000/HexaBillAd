@@ -34,6 +34,8 @@ import Modal from '../../components/Modal'
 import { customersAPI, routesAPI } from '../../services/index'
 import { TabNavigation } from '../../components/ui/index'
 import { useDebounce } from '../../hooks/useDebounce'
+import { useRequestControl } from '../../hooks/useRequestControl'
+import LoadStatusNotice from '../../components/LoadStatusNotice'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import CustomerPinField from '../../components/CustomerPinField'
@@ -199,7 +201,10 @@ const CustomersPage = () => {
     filterCustomers()
   }, [customers, activeTab])
 
+  const customersRequest = useRequestControl()
   const fetchCustomers = async (page = 1, append = false) => {
+    // P-01: a newer request aborts this one; only the latest response is applied.
+    const ticket = customersRequest.start()
     try {
       setLoading(true)
       // Server-side search: pass search term to API
@@ -209,7 +214,8 @@ const CustomersPage = () => {
         pageSize,
         search: searchParam,
         ...(sortBy && sortBy !== 'name' ? { sortBy } : {})
-      })
+      }, { signal: ticket.signal })
+      if (!ticket.isCurrent()) return
       if (response.success && response.data) {
         const newCustomers = response.data.items || []
         if (append) {
@@ -225,6 +231,12 @@ const CustomersPage = () => {
         if (!append) setCustomers([])
       }
     } catch (error) {
+      const kind = ticket.classify(error)
+      if (kind === 'superseded') return
+      if (kind === 'timedOut' || kind === 'cancelled') {
+        if (!append) setCustomers([])
+        return
+      }
       console.error('Failed to load customers:', error)
       // Only show error if it's not a network error (handled by interceptor)
       if (!error?._handledByInterceptor && (error.response || (!error.code || error.code !== 'ERR_NETWORK'))) {
@@ -232,7 +244,8 @@ const CustomersPage = () => {
       }
       if (!append) setCustomers([])
     } finally {
-      setLoading(false)
+      if (ticket.isCurrent()) setLoading(false)
+      ticket.finish()
     }
   }
 
@@ -750,13 +763,23 @@ const CustomersPage = () => {
     { id: 'inactive', label: 'Inactive', icon: Users }
   ]
 
+  const loadNotice = (
+    <LoadStatusNotice phase={customersRequest.phase} onCancel={customersRequest.cancel} onRetry={() => fetchCustomers(1)} />
+  )
+
   if (loading) {
-    return <LoadingCard message="Loading customers..." />
+    return (
+      <div className="space-y-3">
+        {loadNotice}
+        <LoadingCard message="Loading customers..." />
+      </div>
+    )
   }
 
 
   return (
     <div className="space-y-4 max-w-full overflow-x-hidden">
+      {loadNotice}
       {/* Header (UX-C01/C02): title + count, one primary action, secondary actions in a menu;
           search and sort on one row; tabs carry the counts. No negative margins. */}
       <div className="rounded-lg border border-surface-border bg-white">

@@ -5,8 +5,8 @@ export const legacyAPI = {
     const response = await api.get('/legacy/invoices', { params })
     return response.data
   },
-  getUnifiedInvoices: async (params = {}) => {
-    const response = await api.get('/legacy/invoices/unified', { params })
+  getUnifiedInvoices: async (params = {}, config = {}) => {
+    const response = await api.get('/legacy/invoices/unified', { params, ...config })
     return response.data
   },
   getInvoiceById: async (id) => {
