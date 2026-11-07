@@ -32,6 +32,25 @@ Save as `docs/uiux/LOOP-STATE.md`. This file is the loop's **only memory between
 | Build output total (kB gz) | — | | | |
 | Money snapshot hash (H03) | 3 ledgers + VAT + worksheet | | | |
 
+Baseline run 2026-11-07 (production build via vite preview, tiny synthetic tenant: absolute numbers understate production; phone = 360, 4x CPU, Fast 4G). Source: docs/uiux/evidence/2026-11-07/perf/baseline.json. Compare with `npm run perf -- --compare`.
+
+| Metric | Desktop | Phone | Budget d/p |
+|---|---|---|---|
+| Ledger first data row | 1148 ms OVER | 3528 ms OVER | 1000 / 2500 |
+| Sales ledger first row | 483 | 2149 | 1000 / 2500 |
+| Billing history first row | 309 | 2260 | 1000 / 2500 |
+| POS ready to search | 354 | 1960 | 1200 / 3000 |
+| POS keystroke to list p95 | 5.5 | 30.4 | 100 / 250 |
+| POS add item to total | 7.8 | 53.4 | 50 / 150 |
+| Long tasks >200 ms | 0 | 0 (ledgerScaled phone 1) | 0 / 2 |
+| POS idle 5 min requests | 11 OVER | 9 OVER | 6 / 6 |
+| POS idle heap growth | 0.57 MB | 0.63 MB | n/a |
+| Route JS gz: pos / ledger / sales-ledger / billing | 76.3 / 75.4 / 37.4 / 33.5 kB | same | 120 |
+| Route JS gz: dashboard / reports | 139.9 / 170.7 kB OVER | same | 120 |
+| Total JS gz | 952.5 kB | | n/a |
+
+Findings from the baseline: no page shows "Still loading... Cancel" at 3 s (P-01); Ledger makes 18-19 API calls on load (P-04); POS idle polls /api/products and /api/customers 5x each in 5 min (P-02/P-03); dashboard/reports exceed 120 kB because of ~128 kB recharts (S9).
+
 ## 3. Decisions in force (owner answers + assumed defaults)
 
 | ID | Decision | Source | Date |
@@ -77,7 +96,7 @@ Add one line per fact. Delete a line when it is no longer true.
 
 `[ ]` todo · `[~]` doing/blocked · `[x]` done · `STUCK` · `BLOCKED-BACKEND`
 
-- Perf: P-00 [ ] P-01 [ ] P-02 [ ] P-03 [ ] P-04 [ ] P-05 [ ] P-06 [ ] P-07 [ ] P-08 [ ] P-09 [ ] P-10 [ ]
+- Perf: P-00 [x] P-01 [ ] P-02 [ ] P-03 [ ] P-04 [ ] P-05 [ ] P-06 [ ] P-07 [ ] P-08 [ ] P-09 [ ] P-10 [ ]
 - A: A01 [x] A02 BLOCKED-BACKEND (D-A02 decided; waits for `grounded` on ChatReply) A03 [x] (A03b open: useUnsavedChangesGuard.js still uses window.confirm) A04 [ ] A05 [x] A06 [ ]
 - B: B01 [ ] B02 [ ] B03 [ ] B04 [ ] B05 [ ] B06 [ ]
 - C: C01 [ ] C02 [ ] C03 [ ] C04 [ ] C05 [ ] C06 [ ] C07 [ ] C08 [ ] C09 [ ]
@@ -97,6 +116,7 @@ Add one line per fact. Delete a line when it is no longer true.
 | 4 | 2026-11-07 | A05 notification language | PASS | f187c607 | unit 409/411 (same 2 pre-existing; +8 new alertPresentation), build 0, lint 0 new errors, e2e notifications-language 2/2 (d1440, t768; m360 NOT TESTED, see BUG-6) | docs/uiux/evidence/2026-11-07/A05-*.png | New components/alertPresentation.js. Also fixed BUG-5 (category chips never filtered the list). Raw ids only behind a Details toggle for Owner/Admin |
 | 5 | 2026-11-07 | BUG-1 + BUG-3 (S1) | PASS | a67da7a9 | lint errors 3 -> 1 (only BUG-2 left), unit 409/411 (BUG-4 same 2), build 0 | - | BUG-1: import Link in ReportsPage. BUG-3: stray `)}` left by commit a566bcfe rendered literal text under the Customer Ledger filter bar (esbuild tolerates it, ESLint did not) |
 | 6 | 2026-11-07 | BUG-2 + BUG-4 (S1) | PASS | 9c98505c | lint 0 errors (baseline now clean), unit 411/411, build 0 | - | BUG-2: dropped undefined debouncedSearch (page search is client-side). BUG-4: stale tests updated to the intentional Pending default tab. Built on committed main, not the owner's WIP |
+| 7 | 2026-11-07 | P-00 perf baseline + harness (T2) | PASS | 7ab8ee33 | merged; lint 0 errors, unit 411/411, build 0; perf runs exit 0 (desktop 18, phone 18 passed) | docs/uiux/evidence/2026-11-07/perf/ (README, baseline.json, bundle.json) | Visualizer skipped (bundle size by script). Runner honours HEXABILL_FE_MODE=preview. NOT TESTED: 30-min soak, server time on a large tenant |
 | | | | | | | | |
 
 
