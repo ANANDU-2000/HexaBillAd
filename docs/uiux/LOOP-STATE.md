@@ -8,13 +8,13 @@ Save as `docs/uiux/LOOP-STATE.md`. This file is the loop's **only memory between
 
 | Field | Value |
 |---|---|
-| Updated | 2026-11-07 session 1 (setup done) |
-| Branch / HEAD | loop/integration @ 9183b31e (+ setup commit); worktree `C:/Users/anand/.claude-worktrees/hexabill-loop-integration` |
-| Current task | T1: A01 (worktree hexabill-loop-A01); T2: P-00 not started |
+| Updated | 2026-11-07 session 1 (A01 merged) |
+| Branch / HEAD | loop/integration @ fefe5bd7 + state commit (base main 9183b31e); worktree `C:/Users/anand/.claude-worktrees/hexabill-loop-integration` |
+| Current task | T1: A02 next; T2: P-00 harness (A01 proved the local stack works) |
 | Status | RUNNING |
-| Next exact action | Finish A01, then P-00 harness (needs local PG, see Learned facts) |
-| Last command + exit | — |
-| Last error (1 line) | — |
+| Next exact action | Write P-00 perf harness (e2e/perf/*.spec.js, scripts/perf-report.mjs) in worktree hexabill-loop-P00; then A02 in hexabill-loop-A02 |
+| Last command + exit | `run-spec.ps1 ... users-page-table.spec.js` exit 0 (2 passed) |
+| Last error (1 line) | none blocking. Pre-existing: lint 3 errors, unit 2 fails (see 6c Bugs found) |
 | Open files | — |
 
 ## 2. Baselines (fill once in P-00, then compare against them)
@@ -62,12 +62,18 @@ Add one line per fact. Delete a line when it is no longer true.
 - No Docker and no psql/pg_isready on PATH. PostgreSQL 18 is at `C:\Program Files\PostgreSQL8in`. Working QA cluster notes: memory `hexabill-local-qa-harness` (start `pg_ctl` with output redirected, runner = `scripts/run-customer-save-qa.ps1`, Playwright projects `m360,m390,t768,d1024,d1440`).
 - `docs/uiux/evidence/` already exists in repo (untracked files in primary tree); evidence for this loop goes in `docs/uiux/evidence/2026-11-07/`.
 
+- LOCAL QA STACK (works, verified 2026-11-07): PG cluster `%TEMP%\hexabill-unified-pg-20261101` on port 55481 (start with `pg_ctl ... -o "-p 55481" -W start >/dev/null 2>&1 </dev/null`; first start takes ~30 s crash recovery). Loop DB `hexabill_codex_browser_loop_20261107` (seeded; tenant `gulfharvest-test`, owner `owner@gulfharvest-test.hexabill.local`). Run a spec: `cmd //c "powershell -NoProfile -File C:\Users\anand\.claude-worktrees\_loop-tools\run-spec.ps1 -Root <worktree> -Spec e2e/x.spec.js -Projects d1440 > out.txt 2>&1"` (wrapper lives outside the repo; `-FirstSeed` only on a new DB). Needs `dotnet build tools/HexaBill.SyntheticSeed` and `tools/HexaBill.SyntheticBrowserHost` once per worktree.
+- Port plan (runner now takes -ApiPort/-FePort): T1 5178/5179, T2 5180/5181, T3 5182/5183, T4 5184/5185, T5 5186/5187. Default 5078/5175 can be blocked by a phantom PID-0 Listen socket for ~30 s after a run; the wrapper waits.
+- Baseline at HEAD 9183b31e: `npm run lint` = 3 errors + 256 warnings (errors are BUG-1..3, none from the loop); `npm test` = 403 tests, 401 pass, 2 fail (customerLedgerUrl, BUG-4); `npm run build` exit 0 (~16 s).
+- DS v2: table header = 12px/500 secondary, NO uppercase; rows 36px. Users table follows it (A01). Other tables still use `uppercase tracking-wider` (later A/B tasks).
+- The Edit tool works on these CRLF-in-worktree files. Don't `sed -i` repo files. Python strings with Windows paths need raw strings.
+
 ## 5. Task board (mirror of the loop file; tick here first)
 
 `[ ]` todo · `[~]` doing/blocked · `[x]` done · `STUCK` · `BLOCKED-BACKEND`
 
 - Perf: P-00 [ ] P-01 [ ] P-02 [ ] P-03 [ ] P-04 [ ] P-05 [ ] P-06 [ ] P-07 [ ] P-08 [ ] P-09 [ ] P-10 [ ]
-- A: A01 [ ] A02 [ ] A03 [ ] A04 [ ] A05 [ ] A06 [ ]
+- A: A01 [x] A02 [ ] A03 [ ] A04 [ ] A05 [ ] A06 [ ]
 - B: B01 [ ] B02 [ ] B03 [ ] B04 [ ] B05 [ ] B06 [ ]
 - C: C01 [ ] C02 [ ] C03 [ ] C04 [ ] C05 [ ] C06 [ ] C07 [ ] C08 [ ] C09 [ ]
 - D: D01 [ ] D02 [ ] D03 [ ]
@@ -80,7 +86,24 @@ Add one line per fact. Delete a line when it is no longer true.
 
 | # | Date | Task | Result | Commit | Tests (unit/e2e) | Evidence path | Notes |
 |---|---|---|---|---|---|---|---|
+| 1 | 2026-11-07 | A01 Users table | PASS | fefe5bd7 | unit 401/403 (2 pre-existing fails), build 0, lint 0 new errors, e2e users-page-table 2/2 | docs/uiux/evidence/2026-11-07/A01-users-*.png | Also fixed a Status/Role header swap hidden by the invisible header. Before: contrast 1.09 |
 | | | | | | | | |
+
+
+## 6b. Claims (files a team is editing; release on merge)
+
+| Team | Task | Files |
+|---|---|---|
+| | | |
+
+## 6c. Bugs found (T4/T5 and gate runs)
+
+Format: BUG-n | feature | severity | repro | failing test | suspected file | status
+
+- BUG-1 | Reports | S2 | `Link` used (L1408, unpaid-invoices link) but never imported from react-router-dom: ReferenceError when that block renders | `npx eslint src/features/reports/ReportsPage.jsx` (react/jsx-no-undef) | ReportsPage.jsx:1408 | OPEN (needs runtime repro of the branch)
+- BUG-2 | Expenses | S2 | `debouncedSearch` is not defined at L431 (list params): ReferenceError when the list loads | `npx eslint src/features/expenses/ExpensesPage.jsx` (no-undef) | ExpensesPage.jsx:431 | OPEN. Primary tree has uncommitted edits to this file; check before fixing
+- BUG-3 | Customer Ledger | S3 triage | ESLint parse error at L2957 (`)}` after `</div>`) while `vite build` succeeds | `npx eslint src/features/customers/CustomerLedgerPage.jsx` | CustomerLedgerPage.jsx:2957 | OPEN, maybe a parser quirk; confirm JSX balance
+- BUG-4 | Customer Ledger tests | S3 | `tests/customerLedgerUrl.test.js` has 2 failures at HEAD (normalizeLedgerTab default, syncLedgerTabSearchParam). Primary tree has uncommitted edits to the test AND source | `npm test` | features/customers + utils | OPEN, depends on owner's uncommitted work
 
 ## 7. Stuck log
 
