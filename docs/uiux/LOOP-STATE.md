@@ -77,7 +77,7 @@ Add one line per fact. Delete a line when it is no longer true.
 `[ ]` todo · `[~]` doing/blocked · `[x]` done · `STUCK` · `BLOCKED-BACKEND`
 
 - Perf: P-00 [ ] P-01 [ ] P-02 [ ] P-03 [ ] P-04 [ ] P-05 [ ] P-06 [ ] P-07 [ ] P-08 [ ] P-09 [ ] P-10 [ ]
-- A: A01 [x] A02 BLOCKED-DECISION (see REVIEW-INBOX 7 Nov; reply text hidden by design) A03 [x] (A03b open: useUnsavedChangesGuard.js still uses window.confirm) A04 [ ] A05 [ ] A06 [ ]
+- A: A01 [x] A02 BLOCKED-DECISION (see REVIEW-INBOX 7 Nov; reply text hidden by design) A03 [x] (A03b open: useUnsavedChangesGuard.js still uses window.confirm) A04 [ ] A05 [x] A06 [ ]
 - B: B01 [ ] B02 [ ] B03 [ ] B04 [ ] B05 [ ] B06 [ ]
 - C: C01 [ ] C02 [ ] C03 [ ] C04 [ ] C05 [ ] C06 [ ] C07 [ ] C08 [ ] C09 [ ]
 - D: D01 [ ] D02 [ ] D03 [ ]
@@ -93,6 +93,7 @@ Add one line per fact. Delete a line when it is no longer true.
 | 1 | 2026-11-07 | A01 Users table | PASS | fefe5bd7 | unit 401/403 (2 pre-existing fails), build 0, lint 0 new errors, e2e users-page-table 2/2 | docs/uiux/evidence/2026-11-07/A01-users-*.png | Also fixed a Status/Role header swap hidden by the invisible header. Before: contrast 1.09 |
 | 2 | 2026-11-07 | A02 assistant reply text | BLOCKED | - | - | docs/plan/REVIEW-INBOX.md | Task assumption wrong: hiding model text is a deliberate guard (commit 923564c0 + test). No code changed |
 | 3 | 2026-11-07 | A03 native confirm -> modal | PASS | 7e58d5b4 | unit 401/403 (same 2 pre-existing), build 0, lint 0 new errors, e2e confirm-modal 2/2 (d1440, m360) | docs/uiux/evidence/2026-11-07/A03-*.png | New hooks/useConfirmDialog.jsx (`askConfirm`). 2 tests updated (UIX006 assertion, VAT icon stub +X). Grep now only hits the guard hook + hook docs |
+| 4 | 2026-11-07 | A05 notification language | PASS | f187c607 | unit 409/411 (same 2 pre-existing; +8 new alertPresentation), build 0, lint 0 new errors, e2e notifications-language 2/2 (d1440, t768; m360 NOT TESTED, see BUG-6) | docs/uiux/evidence/2026-11-07/A05-*.png | New components/alertPresentation.js. Also fixed BUG-5 (category chips never filtered the list). Raw ids only behind a Details toggle for Owner/Admin |
 | | | | | | | | |
 
 
@@ -110,6 +111,9 @@ Format: BUG-n | feature | severity | repro | failing test | suspected file | sta
 - BUG-2 | Expenses | S2 | `debouncedSearch` is not defined at L431 (list params): ReferenceError when the list loads | `npx eslint src/features/expenses/ExpensesPage.jsx` (no-undef) | ExpensesPage.jsx:431 | OPEN. Primary tree has uncommitted edits to this file; check before fixing
 - BUG-3 | Customer Ledger | S3 triage | ESLint parse error at L2957 (`)}` after `</div>`) while `vite build` succeeds | `npx eslint src/features/customers/CustomerLedgerPage.jsx` | CustomerLedgerPage.jsx:2957 | OPEN, maybe a parser quirk; confirm JSX balance
 - BUG-4 | Customer Ledger tests | S3 | `tests/customerLedgerUrl.test.js` has 2 failures at HEAD (normalizeLedgerTab default, syncLedgerTabSearchParam). Primary tree has uncommitted edits to the test AND source | `npm test` | features/customers + utils | OPEN, depends on owner's uncommitted work
+
+- BUG-5 | Notifications | S2 | Category chips (All/Stock/Overdue/System) set `activeCategory` but the list rendered every alert, so the filter did nothing | tests/alertPresentation.test.js (filterByCategory) + e2e notifications-language | AlertNotifications.jsx | FIXED in A05
+- BUG-6 | Shell / Notifications | S2 | The alerts bell exists only in the desktop header (Layout.jsx:529, md+). The phone shell (<768, which includes the HONOR Pad portrait at 752) has no bell, so owners there cannot see stock/overdue/mismatch alerts at all | e2e/notifications-language.spec.js at m360 times out on the bell | components/Layout.jsx (mobile header ~L375). File has uncommitted edits in the primary tree | OPEN, give to task B/C shell work (add bell to mobile header or More menu)
 
 ## 7. Stuck log
 
