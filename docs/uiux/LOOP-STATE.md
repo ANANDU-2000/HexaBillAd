@@ -95,6 +95,7 @@ Add one line per fact. Delete a line when it is no longer true.
 | 2 | 2026-11-07 | A02 assistant reply text | BLOCKED | - | - | docs/plan/REVIEW-INBOX.md | Task assumption wrong: hiding model text is a deliberate guard (commit 923564c0 + test). No code changed |
 | 3 | 2026-11-07 | A03 native confirm -> modal | PASS | 7e58d5b4 | unit 401/403 (same 2 pre-existing), build 0, lint 0 new errors, e2e confirm-modal 2/2 (d1440, m360) | docs/uiux/evidence/2026-11-07/A03-*.png | New hooks/useConfirmDialog.jsx (`askConfirm`). 2 tests updated (UIX006 assertion, VAT icon stub +X). Grep now only hits the guard hook + hook docs |
 | 4 | 2026-11-07 | A05 notification language | PASS | f187c607 | unit 409/411 (same 2 pre-existing; +8 new alertPresentation), build 0, lint 0 new errors, e2e notifications-language 2/2 (d1440, t768; m360 NOT TESTED, see BUG-6) | docs/uiux/evidence/2026-11-07/A05-*.png | New components/alertPresentation.js. Also fixed BUG-5 (category chips never filtered the list). Raw ids only behind a Details toggle for Owner/Admin |
+| 5 | 2026-11-07 | BUG-1 + BUG-3 (S1) | PASS | a67da7a9 | lint errors 3 -> 1 (only BUG-2 left), unit 409/411 (BUG-4 same 2), build 0 | - | BUG-1: import Link in ReportsPage. BUG-3: stray `)}` left by commit a566bcfe rendered literal text under the Customer Ledger filter bar (esbuild tolerates it, ESLint did not) |
 | | | | | | | | |
 
 
@@ -109,13 +110,15 @@ Add one line per fact. Delete a line when it is no longer true.
 Format: BUG-n | feature | severity | repro | failing test | suspected file | status
 
 - PRIORITY (owner 2026-11-07): BUG-1, BUG-2, BUG-3, BUG-4 are S1, fix next BEFORE A04. BUG-6 is S2, do after A06. BASE: owner commits his 57 files on branch `wip/pre-loop-2026-11-07`; loop/integration must be rebased onto it before the next merge (waiting: branch not present yet at last check). BUG-2/BUG-4 files are in that dirty set, so fix them after the rebase; BUG-1/BUG-3 files are clean and can go now.
-- BUG-1 | Reports | S2 | `Link` used (L1408, unpaid-invoices link) but never imported from react-router-dom: ReferenceError when that block renders | `npx eslint src/features/reports/ReportsPage.jsx` (react/jsx-no-undef) | ReportsPage.jsx:1408 | OPEN (needs runtime repro of the branch)
+- BUG-1 | Reports | S2 | `Link` used (L1408, unpaid-invoices link) but never imported from react-router-dom: ReferenceError when that block renders | `npx eslint src/features/reports/ReportsPage.jsx` (react/jsx-no-undef) | ReportsPage.jsx:1408 | FIXED a67da7a9
 - BUG-2 | Expenses | S2 | `debouncedSearch` is not defined at L431 (list params): ReferenceError when the list loads | `npx eslint src/features/expenses/ExpensesPage.jsx` (no-undef) | ExpensesPage.jsx:431 | OPEN. Primary tree has uncommitted edits to this file; check before fixing
-- BUG-3 | Customer Ledger | S3 triage | ESLint parse error at L2957 (`)}` after `</div>`) while `vite build` succeeds | `npx eslint src/features/customers/CustomerLedgerPage.jsx` | CustomerLedgerPage.jsx:2957 | OPEN, maybe a parser quirk; confirm JSX balance
+- BUG-3 | Customer Ledger | S3 triage | ESLint parse error at L2957 (`)}` after `</div>`) while `vite build` succeeds | `npx eslint src/features/customers/CustomerLedgerPage.jsx` | CustomerLedgerPage.jsx:2957 | FIXED a67da7a9 (real bug: literal `)}` text rendered under the filter bar)
 - BUG-4 | Customer Ledger tests | S3 | `tests/customerLedgerUrl.test.js` has 2 failures at HEAD (normalizeLedgerTab default, syncLedgerTabSearchParam). Primary tree has uncommitted edits to the test AND source | `npm test` | features/customers + utils | OPEN, depends on owner's uncommitted work
 
 - BUG-5 | Notifications | S2 | Category chips (All/Stock/Overdue/System) set `activeCategory` but the list rendered every alert, so the filter did nothing | tests/alertPresentation.test.js (filterByCategory) + e2e notifications-language | AlertNotifications.jsx | FIXED in A05
 - BUG-6 | Shell / Notifications | S2 | The alerts bell exists only in the desktop header (Layout.jsx:529, md+). The phone shell (<768, which includes the HONOR Pad portrait at 752) has no bell, so owners there cannot see stock/overdue/mismatch alerts at all | e2e/notifications-language.spec.js at m360 times out on the bell | components/Layout.jsx (mobile header ~L375). File has uncommitted edits in the primary tree | OPEN, give to task B/C shell work (add bell to mobile header or More menu)
+
+- BUG-7 | Reports | S1 (wrong data shown to other tenants) | ReportsPage.jsx ~L1388-1410 'legacy' block has hardcoded fallbacks and copy from one tenant's migration: `|| '5,325'` cleared receipts, `|| 93` pending bills, '21 customers (+ AED 100.80 Inv 2158)', '21 customer accounts with approved opening balances'. Any tenant that reaches this block sees another company's numbers | grep those literals in ReportsPage.jsx | ReportsPage.jsx | OPEN: money/tenant display, owner review first (REVIEW-INBOX). Needs the gating condition checked (is the block only for the migrated tenant?)
 
 ## 7. Stuck log
 
