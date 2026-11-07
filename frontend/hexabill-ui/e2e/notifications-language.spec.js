@@ -1,5 +1,5 @@
 // UX-A05: owner-facing notification language. Only GET /api/alerts and /api/alerts/unread-count are intercepted.
-// Local/dev only. Run: npx playwright test e2e/notifications-language.spec.js --project=d1440 --project=m360
+// Local/dev only. Run: npx playwright test e2e/notifications-language.spec.js --project=d1440 --project=t768 --project=m360
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
@@ -20,7 +20,13 @@ test('mismatch alert is plain language, ids sit behind Details, chips filter, Sy
 
   await page.goto(`${feOrigin(SLUG)}/dashboard`, { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: 'View alerts and notifications' }).filter({ visible: true }).first().click()
-  const panel = page.locator('div.absolute').filter({ hasText: 'Notifications' }).filter({ has: page.getByRole('button', { name: /^All \(3\)/ }) }).last()
+  const panel = page.getByTestId('notifications-panel')
+  await expect(panel).toBeVisible()
+  // BUG-6: on phones the panel must sit fully on screen, not clipped past an edge.
+  const box = await panel.boundingBox()
+  const vw = page.viewportSize().width
+  expect(box.x, 'panel left edge on screen').toBeGreaterThanOrEqual(0)
+  expect(box.x + box.width, 'panel right edge on screen').toBeLessThanOrEqual(vw)
 
   // Plain language, no id dump, no raw type name.
   await expect(panel.getByText('Stock needs a recount for 3 products')).toBeVisible()

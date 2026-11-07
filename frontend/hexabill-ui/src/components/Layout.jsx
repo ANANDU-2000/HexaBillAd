@@ -396,6 +396,8 @@ const Layout = () => {
               <Sparkles className="h-5 w-5" strokeWidth={1.75} />
             </button>
           )}
+          {/* BUG-6: owners and admins on phones and portrait tablets (<768) had no way to open alerts. */}
+          {isAdminOrOwner(user) && <AlertNotifications />}
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
