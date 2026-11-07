@@ -2706,7 +2706,7 @@ const CustomerLedgerPage = () => {
                     ? `Waiting for confirmation of ${formatCurrency(unconfirmedPayment.request.amount)}.`
                     : `A payment of ${formatCurrency(unconfirmedPayment.request.amount)} needs confirmation. Retry it before recording another payment.`)}
                   {!paymentRecoveryError && (
-                    <button type="button" disabled={paymentLoading} className="ml-3 min-h-[44px] px-3 rounded bg-amber-800 text-white disabled:opacity-50"
+                    <button type="button" disabled={paymentLoading} className="ml-3 min-h-[44px] px-3 rounded border border-neutral-300 bg-white font-medium text-neutral-900 hover:bg-neutral-50 disabled:opacity-50"
                       onClick={() => { if (!paymentLoadingRef.current) executePaymentApi({ savedIntent: unconfirmedPayment }) }}>
                       Retry previous payment
                     </button>

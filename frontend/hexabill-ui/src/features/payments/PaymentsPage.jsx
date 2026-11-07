@@ -47,6 +47,7 @@ import { offerReceiptPreviewAfterPayment } from '../../utils/offerReceiptPreview
 import { canReceivePaymentReceipt, currentReceiptSelection, receiptIneligibilityReason, paymentStatusLabel, receiptSelectionSummary, toggleVisibleReceiptSelection, mergeSelectedPaymentRecords } from '../../utils/receiptEligibility'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import Alert from '../../components/ui/Alert'
+import UnconfirmedPaymentsAlert from './UnconfirmedPaymentsAlert'
 import { bulkRowFromSaved, createLedgerPaymentJournal, createPaymentBatchJournal, isDefinitivePaymentRejection, ledgerPaymentAccountPrefix, ledgerPaymentForm, ledgerPaymentScope, paymentBatchScope, paymentRejectionMessage, reconcilePaymentKey, settleAllPendingPayments } from '../../utils/ledgerPaymentIntent'
 
 const PaymentsPage = () => {
@@ -684,15 +685,13 @@ const PaymentsPage = () => {
       )}
       {/* Header */}
       {recoveryError && <Alert tone="error">{recoveryError}</Alert>}
-      {unconfirmedPayments.map(intent => (
-        <Alert
-          key={intent.idempotencyKey}
-          tone="warning"
-          action={<button type="button" disabled={submitting} onClick={() => executePayment(intent)} className="min-h-[36px] rounded-sm border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 disabled:opacity-50">Retry previous payment</button>}
-        >
-          Previous payment of {money(intent.request.amount)} for customer {customerLabel(intent.request.customerId)} is unconfirmed. Confirm it before recording another payment for this customer.
-        </Alert>
-      ))}
+      <UnconfirmedPaymentsAlert
+        intents={unconfirmedPayments}
+        money={money}
+        customerLabel={customerLabel}
+        submitting={submitting}
+        onRetry={executePayment}
+      />
       {savedBatch && (
         <Alert
           tone="warning"

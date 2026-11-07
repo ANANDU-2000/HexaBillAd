@@ -378,9 +378,9 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
 
         {paymentRecoveryError && <p role="alert" className="p-4 text-sm text-error-fg">{paymentRecoveryError}</p>}
         {unconfirmedPayment && (
-          <div role="status" className="p-4 bg-warning-bg border-b border-warning-border text-sm text-amber-950">
+          <div role="status" className="m-3 rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-3 text-sm text-neutral-800">
             <p>Previous payment of {money(unconfirmedPayment.request.amount)} is unconfirmed. Retry it to confirm the result before recording another payment.</p>
-            <button type="button" disabled={loading} onClick={() => doSubmitPayment(unconfirmedPayment)} className="mt-2 min-h-[44px] px-3 border border-amber-400 rounded-md font-medium">Retry previous payment</button>
+            <button type="button" disabled={loading} onClick={() => doSubmitPayment(unconfirmedPayment)} className="mt-2 min-h-[44px] px-3 border border-neutral-300 bg-white rounded-md font-medium text-neutral-900 hover:bg-neutral-50 disabled:opacity-50">Retry previous payment</button>
           </div>
         )}
         {/* Invoice Info */}
