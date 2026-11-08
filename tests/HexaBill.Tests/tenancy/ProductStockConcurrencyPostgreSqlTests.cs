@@ -49,7 +49,8 @@ public class ProductStockConcurrencyPostgreSqlTests
         finally
         {
             seed.InventoryTransactions.RemoveRange(seed.InventoryTransactions.Where(t => t.ProductId == product.Id));
-            seed.AuditLogs.RemoveRange(seed.AuditLogs.Where(t => t.UserId == tenantId));
+            // Audit rows are append-only through the ORM; test cleanup uses a set-based delete.
+            await seed.AuditLogs.Where(t => t.UserId == tenantId).ExecuteDeleteAsync();
             seed.Products.Remove(product);
             seed.Users.RemoveRange(seed.Users.Where(u => u.Id == tenantId));
             seed.Tenants.RemoveRange(seed.Tenants.Where(t => t.Id == tenantId));

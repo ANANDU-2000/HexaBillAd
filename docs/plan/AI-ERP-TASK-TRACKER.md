@@ -1235,3 +1235,9 @@ STOP HERE — do not begin next phase automatically.
 - `dotnet list package --vulnerable --include-transitive`: before 2 packages (High), after none. PASS.
 - Side effect: newer SQLite rejects double-quoted names as string literals. `StagingSnapshotMigrationsTests` had a stub `PaymentReceipts` table missing `TenantId`/`PaymentId`, which old SQLite silently tolerated. Fixed the stub (test-only). Suite after: 2228 pass / 0 fail / 115 skipped (1 run).
 - Not verified: EPPlus Excel export/import against Pkcs 9 beyond what the suite covers; SQLite is dev/test only (prod is PostgreSQL). Not pushed.
+
+### 2026-11-08 — AI Intelligence Layer: Phase 0 PostgreSQL gate at final HEAD
+- Full backend suite on fresh local PostgreSQL 18 databases (`HEXABILL_TEST_POSTGRES`): run 1 = 2341 pass / 1 fail / 1 skip; run 2 (after fix) = **2342 pass / 0 fail / 1 skip**.
+- The run-1 failure was caused by the append-only AuditLog guard (ee040f30): `ProductStockConcurrencyPostgreSqlTests` cleanup deleted audit rows through the ORM. Fixed the test cleanup to use `ExecuteDeleteAsync` (test-only). The earlier 469-test PostgreSQL pass pre-dated the guard.
+- Skip = opt-in `MigrationRehearsalPostgreSqlTests`. Run explicitly with `HEXABILL_MIGRATION_REHEARSAL=1` it FAILS as documented (OPS-01: history alone cannot build an empty PostgreSQL DB; `InitialPostgreSQL`/`Customers already exists`). Pre-existing, not caused by this work. NOT TESTED as a pass.
+- Not pushed. Nothing run against production.
