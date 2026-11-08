@@ -16,6 +16,7 @@ import ErrorState from '../../components/ui/ErrorState'
 import { readApiErrorReason } from '../../utils/apiError'
 import { moveStop, moveStopToTop, orderedStops, locationNeededStops, runSummaryParts, statusLabel, stopNavigationUrl } from './driverRoute'
 import { describeDrivers, POLL_INTERVAL_MS } from './liveLocation'
+import { scheduler } from '../../services/scheduler'
 
 const EXPENSE_CATEGORIES = ['Fuel', 'Staff', 'Delivery', 'Vehicle Maintenance', 'Toll/Parking', 'Misc']
 const ROUTE_TABS = ['overview', 'customers', 'sales', 'expenses', 'staff', 'performance', 'stops']
@@ -466,8 +467,8 @@ const RouteDetailPage = () => {
       }
     }
     poll()
-    const timer = setInterval(poll, POLL_INTERVAL_MS)
-    return () => { cancelled = true; clearInterval(timer) }
+    const unregister = scheduler.register('route-detail-live', poll, { intervalMs: POLL_INTERVAL_MS })
+    return () => { cancelled = true; unregister() }
   }, [liveOn, activeTab, routeRunning, id])
 
   useEffect(() => {

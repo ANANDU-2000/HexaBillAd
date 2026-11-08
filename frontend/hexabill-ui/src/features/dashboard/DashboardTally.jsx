@@ -18,6 +18,7 @@ import DailyCloseStatusCard from './DailyCloseStatusCard'
 import LoadStatusNotice from '../../components/LoadStatusNotice'
 import { useRequestControl } from '../../hooks/useRequestControl'
 import { localDateString } from '../../utils/dateFormat'
+import { scheduler } from '../../services/scheduler'
 
 const GET_STARTED_DISMISSED_KEY = 'hexabill_get_started_dismissed'
 
@@ -348,9 +349,10 @@ const DashboardTally = () => {
                 isFetchingRef.current = false
             }
         }
-        const interval = setInterval(() => {
-            if (document.visibilityState === 'visible' && !isFetchingRef.current) fetchStatsThrottled()
-        }, 120000)
+        // P-02: one scheduler (pauses when hidden/offline/modal/typing, jitter, backoff).
+        const unregisterPoll = scheduler.register('dashboard-summary', () => {
+            if (!isFetchingRef.current) return fetchStatsThrottled()
+        }, { intervalMs: 120000 })
         let debounceTimer = null
         const handleDataUpdate = () => {
             if (debounceTimer) clearTimeout(debounceTimer)
@@ -377,7 +379,7 @@ const DashboardTally = () => {
         window.addEventListener('customerCreated', handleDataUpdate)
         document.addEventListener('visibilitychange', handleVisibilityChange)
         return () => {
-            clearInterval(interval)
+            unregisterPoll()
             if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
             if (debounceTimer) clearTimeout(debounceTimer)
             window.removeEventListener('dataUpdated', handleDataUpdate)

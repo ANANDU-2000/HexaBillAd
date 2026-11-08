@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { isAdminOrOwner } from '../utils/roles'
 import { ALERT_CATEGORIES, alertAction, alertTypeLabel, countByCategory, describeAlert, filterByCategory } from './alertPresentation'
+import { scheduler } from '../services/scheduler'
 
 // Request browser notification permission and show notification when alerts exist
 const useBrowserNotifications = (unreadCount) => {
@@ -114,11 +115,8 @@ const AlertNotifications = () => {
   // Poll for new alerts every 60 seconds — only when tab is visible (reduced from 30s to reduce API requests)
   useEffect(() => {
     fetchUnreadCount()
-    const poll = () => {
-      if (document.visibilityState === 'visible') fetchUnreadCount()
-    }
-    const interval = setInterval(poll, 60000) // Increased from 30s to 60s to reduce API requests
-    return () => clearInterval(interval)
+    // P-02: one scheduler (pauses when hidden/offline/modal/typing, jitter, backoff).
+    return scheduler.register('alerts-unread-count', fetchUnreadCount, { intervalMs: 60000 })
   }, [])
 
   // Browser notifications when unread count increases (outside app)

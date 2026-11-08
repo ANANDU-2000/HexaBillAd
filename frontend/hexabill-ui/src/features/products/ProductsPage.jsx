@@ -20,6 +20,7 @@ import toast from 'react-hot-toast'
 import { readProductsStateFromParams, syncProductsSearchParams } from '../../utils/productsUrl'
 import { saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 import { useBranding } from '../../tenant/TenantBrandingContext'
+import { scheduler } from '../../services/scheduler'
 
 const ProductsPage = () => {
   const { currency = 'AED' } = useBranding()
@@ -213,13 +214,10 @@ const ProductsPage = () => {
     loadProducts()
     // Auto-refresh products every 60 seconds (reduced frequency for better performance)
     // Only refresh if page is visible and not in edit mode
-    const refreshInterval = setInterval(() => {
-      if (document.visibilityState === 'visible' && !showForm && !showStockModal) {
-        loadProducts()
-      }
-    }, 60000) // 60 seconds - reduced from 20
-
-    return () => clearInterval(refreshInterval)
+    // P-02: one scheduler (pauses when hidden/offline/modal/typing, jitter, backoff).
+    return scheduler.register('products-list', () => {
+      if (!showForm && !showStockModal) return loadProducts()
+    }, { intervalMs: 60000 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, pageSize, debouncedSearchTerm, activeTab, activeFilters]) // Only refresh when filters change
 
