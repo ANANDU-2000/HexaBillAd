@@ -155,6 +155,22 @@ Format: BUG-n | feature | severity | repro | failing test | suspected file | sta
 - BUG-20 | Payments backend | S1 money | Concurrent payments without saleId: all 201 but cached Customers.Balance drops only a fraction (C2: 961/965/979 vs expected 905). PaymentService.cs:596-600 reads customer row unlocked, recomputes in memory | tests/concurrency (C2, c2-diag.mjs) | NEEDS-BACKEND, owner decision (money path)
 - BUG-21 | Reports backend | S2 perf | /api/reports/summary p50 408-504 ms with 15 users vs 8-11 ms solo; cache key includes user id (ReportService.cs:92) | tests/concurrency C7 | NEEDS-BACKEND
 
+- BUG-31 | Supplier payment | S1 money | 1e12 payment accepted on zero balance | e2e/bughunt hunt-2 | NEEDS-BACKEND
+- BUG-32 | Expenses | S1 money | Expense 0 or negative accepted | hunt-2 | NEEDS-BACKEND
+- BUG-33 | Expenses | S1 money | Expense 1e12 accepted | hunt-2 | NEEDS-BACKEND
+- BUG-35 | Expenses | S1 data | Idempotency-Key not honoured on expense create | hunt-2 | NEEDS-BACKEND
+- BUG-38 | Driver | S1 isolation | Driver reads another route's customer by id (confirm intended scope) | hunt-2 | OWNER-DECISION
+- BUG-41 | Driver visit | S1 money | Collected amount negative or 1e12 accepted | hunt-2 | NEEDS-BACKEND
+- BUG-42 | Products | S1 data | Stale edit in tab 2 silently reverts tab 1 price | hunt-2 | FE+BE
+- BUG-30 | Suppliers | S2 | 500-char supplier name gives 500 | hunt-2 | NEEDS-BACKEND
+- BUG-34 | Expenses | S2 | 5000-char note gives 500 | hunt-2 | NEEDS-BACKEND
+- BUG-36 | Stock adj | S2 | Adjustment to 1e12 accepted | hunt-2 | NEEDS-BACKEND
+- BUG-39 | Driver | S2 | Driver summary shows tenant-wide pending bills | hunt-2 | NEEDS-BACKEND
+- BUG-40 | Driver visit | S2 | Latitude 999 / longitude -500 accepted | hunt-2 | NEEDS-BACKEND
+- BUG-37 | Stock adj | S3 | No-op adjustment logs phantom row | hunt-2 | NEEDS-BACKEND
+- BUG-43 | Add Product | S3 | No beforeunload warning on unsaved form | hunt-2 | FE (T1)
+- BUG-44 | POS | S3 perf | 56.9 s on slow 3G, over 45 s limit | hunt-2 | FE (T2)
+
 ## 7. Stuck log
 
 | Task | Attempts | Last error | Root-cause guess | What a human should check |
