@@ -61,7 +61,7 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore, onOpenCreate }) => {
   return (
     <>
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-[#E5E7EB] safe-area-bottom shadow-[0_-1px_6px_rgba(15,23,42,0.06)]"
+        className="fixed bottom-0 left-0 right-0 z-50 tab:hidden bg-white border-t border-[#E5E7EB] safe-area-bottom shadow-[0_-1px_6px_rgba(15,23,42,0.06)]"
         aria-label="Main navigation"
       >
         <div className="relative max-w-screen-sm mx-auto px-1 pt-2 pb-1">

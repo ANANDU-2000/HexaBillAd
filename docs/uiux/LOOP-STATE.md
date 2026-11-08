@@ -102,7 +102,7 @@ Add one line per fact. Delete a line when it is no longer true.
 
 - Perf: P-00 [x] P-01 [x] P-02 [x] P-03 [x] P-04 [~] (client side done; backend paging BLOCKED-BACKEND) P-05 [ ] P-06 [ ] P-07 [ ] P-08 [ ] P-09 [ ] P-10 [ ]
 - A: A01 [x] A02 BLOCKED-BACKEND (D-A02 decided; waits for `grounded` on ChatReply) A03 [x] A03b [x] (guard uses app dialog) A04 [x] A05 [x] A06 [x]
-- B: B01 [ ] B02 [ ] B03 [ ] B04 [ ] B05 [ ] B06 [ ]
+- B: B01 [ ] B02 [ ] B03 [ ] B04 [ ] B05 [ ] B06 [x] (tab 700px breakpoint: shell switched from md; 700-1023 gets icon rail, no bottom nav; spec tablet-shell 2/2 at t768 + m360)
 - C: C01 [ ] C02 [ ] C03 [ ] C04 [ ] C05 [ ] C06 [ ] C07 [ ] C08 [ ] C09 [ ]
 - D: D01 [ ] D02 [ ] D03 [ ]
 - E: E01 [x] E02 [x] E03 [~] (adapter built; backend stream BLOCKED-BACKEND) E04 [x] E05 [~] (adapter; backend voice BLOCKED-BACKEND) E06 [~] (More sheet + invoice/ledger entries done; ledger row prefill read pending)
@@ -127,6 +127,7 @@ Add one line per fact. Delete a line when it is no longer true.
 | 11 | 2026-11-08 | T4 bug hunt 1 (tests only) | MERGED | fad3343f | 29/31 new e2e pass; 2 fail on purpose (BUG-8, BUG-9) | docs/uiux/evidence/2026-11-08/bug-hunt-1.md | 6 features, 4 viewports. Render logs BLOCKED (account cannot see HexaBill workspace). Vercel: no failed prod deploys, static SPA |
 | | | | | | | | |
 | 12 | 2026-11-08 | H02 slop lint; P-01 request control; P-03 POS data; P-04 client side; T5 concurrency C1-C9 | MERGED | a4447296 | lint 0 errors, unit 430/430, build 0; POS idle requests 11 -> 1 (d1440), 9 -> 1 (m360); concurrency 8 tests x3 runs | docs/uiux/evidence/concurrency/2026-11-08.md | BUG-20 (S1) and BUG-21 (S2) found. P-04 backend part, Reports cancel wiring and ledger tab split still open |
+| 14 | 2026-11-08 | BUG-45 Dashboard Needs attention always shown; B06 tablet shell at 700px | MERGED (commit pending) | 9bc649eb | lint 0 errors, unit 459/459, build 0; J1 d1440 2/2; tablet-shell t768 + m360 2/2 | docs/uiux/evidence/2026-11-08/ | Shell breakpoints in Layout.jsx and BottomNav.jsx moved md -> tab. Pages keep md. Not yet checked at 752 exactly (t768 used) |
 
 ## 6b. Claims (files a team is editing; release on merge)
 

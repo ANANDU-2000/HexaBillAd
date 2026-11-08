@@ -5,6 +5,8 @@ module.exports = {
   ],
   theme: {
     extend: {
+      // B06: tablet portrait (700-1023 px) gets the tablet shell, not the phone shell.
+      screens: { tab: '700px' },
       fontFamily: {
         // Arabic glyphs fall through to Noto Sans Arabic (bilingual names, RTL screens).
         sans: ['Inter', '"Noto Sans Arabic"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],

@@ -373,7 +373,7 @@ const Layout = () => {
       {/* Mobile top bar — one title per screen. The menu button appears only where the bottom
           navigation (and its More sheet) is hidden, so phones never show two menu entry points. */}
       {(
-      <header className={`md:hidden fixed left-0 right-0 z-50 border-b border-surface-border bg-white text-text-primary safe-area-top ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+      <header className={`tab:hidden fixed left-0 right-0 z-50 border-b border-surface-border bg-white text-text-primary safe-area-top ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
         <div className="flex h-14 items-center gap-1 px-1">
           {!routeShowsBottomNav ? (
           <button
@@ -412,7 +412,7 @@ const Layout = () => {
       )}
 
       {/* Sidebar: icon rail from 768px, 240px labels from 1024px unless collapsed */}
-      <div className={`no-print hidden md:fixed md:flex md:flex-col md:min-h-0 md:w-20 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
+      <div className={`no-print hidden tab:fixed tab:flex tab:flex-col tab:min-h-0 tab:w-20 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'tab:top-10 tab:bottom-0' : 'tab:inset-y-0'} ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
         <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
           <div className={`flex h-16 shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'justify-between gap-2' : 'justify-center'}`}>
             <Link to="/dashboard" className={`flex min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
@@ -494,7 +494,7 @@ const Layout = () => {
       </div>
 
       {/* Main content - Full viewport after sidebar; pt-10 when impersonation banner visible so content not covered */}
-      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none md:pl-20 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
+      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none tab:pl-20 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
         {backendUnavailable && (
           <div className="px-4 py-2 bg-amber-100 border-b border-warning-border text-amber-900 text-sm">
             Service temporarily unavailable. Try again in a moment, or contact your company administrator.
@@ -504,7 +504,7 @@ const Layout = () => {
         <CloudHostingCostReminder />
         {/* Desktop/tablet top bar — search, alerts, one account menu. Pages own their heading; tenant identity lives in the sidebar only. */}
         {!isPosRoute && (
-        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:block md:left-20 ${isSidebarCollapsed ? 'lg:left-20' : 'lg:left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none tab:block tab:left-20 ${isSidebarCollapsed ? 'lg:left-20' : 'lg:left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
           <div className="flex h-full items-center gap-3 px-4 lg:px-6">
             <button
               type="button"
@@ -590,9 +590,9 @@ const Layout = () => {
         </header>
         )}
         {/* Page content — POS has no top header padding for full viewport */}
-        <main id="main-content" data-shell-title={shellOwnsTitle ? 'page' : undefined} className={`flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC] ${routeShowsBottomNav ? 'pb-[4.75rem]' : 'pb-[env(safe-area-inset-bottom,0px)]'} md:pb-6 ${userIsSystemAdmin && selectedTenantId
-          ? (isPosRoute ? 'pt-24 md:pt-10' : 'pt-24 md:pt-[6.5rem]')
-          : (isPosRoute ? 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-0' : 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-16')
+        <main id="main-content" data-shell-title={shellOwnsTitle ? 'page' : undefined} className={`flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC] ${routeShowsBottomNav ? 'pb-[4.75rem]' : 'pb-[env(safe-area-inset-bottom,0px)]'} tab:pb-6 ${userIsSystemAdmin && selectedTenantId
+          ? (isPosRoute ? 'pt-24 tab:pt-10' : 'pt-24 tab:pt-[6.5rem]')
+          : (isPosRoute ? 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] tab:pt-0' : 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] tab:pt-16')
           }`}>
           <div className={`flex-1 min-h-0 ${isViewportShellRoute ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
             <div className={`w-full max-w-full mx-auto px-3 sm:px-4 ${isViewportShellRoute ? 'py-2 lg:py-3 min-h-0 flex-1 flex flex-col' : 'min-h-full py-2 lg:py-3'}`}>
@@ -601,7 +601,7 @@ const Layout = () => {
           </div>
         </main>
         {/* Mobile Bottom Navigation */}
-        <div className="md:hidden">
+        <div className="tab:hidden">
           {bottomNavVisible && (
             <BottomNav moreOpen={moreOpen} onOpenMore={() => setMoreOpen(true)} onCloseMore={closeMore} onOpenCreate={() => setCreateOpen(true)} />
           )}
