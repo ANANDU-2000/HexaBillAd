@@ -100,15 +100,15 @@ Add one line per fact. Delete a line when it is no longer true.
 
 `[ ]` todo · `[~]` doing/blocked · `[x]` done · `STUCK` · `BLOCKED-BACKEND`
 
-- Perf: P-00 [x] P-01 [ ] P-02 [ ] P-03 [ ] P-04 [ ] P-05 [ ] P-06 [ ] P-07 [ ] P-08 [ ] P-09 [ ] P-10 [ ]
-- A: A01 [x] A02 BLOCKED-BACKEND (D-A02 decided; waits for `grounded` on ChatReply) A03 [x] (A03b [x] open: useUnsavedChangesGuard.js still uses window.confirm) A04 [x] A05 [x] A06 [x]
+- Perf: P-00 [x] P-01 [x] P-02 [x] P-03 [x] P-04 [~] (client side done; backend paging BLOCKED-BACKEND) P-05 [ ] P-06 [ ] P-07 [ ] P-08 [ ] P-09 [ ] P-10 [ ]
+- A: A01 [x] A02 BLOCKED-BACKEND (D-A02 decided; waits for `grounded` on ChatReply) A03 [x] A03b [x] (guard uses app dialog) A04 [x] A05 [x] A06 [x]
 - B: B01 [ ] B02 [ ] B03 [ ] B04 [ ] B05 [ ] B06 [ ]
 - C: C01 [ ] C02 [ ] C03 [ ] C04 [ ] C05 [ ] C06 [ ] C07 [ ] C08 [ ] C09 [ ]
 - D: D01 [ ] D02 [ ] D03 [ ]
-- E: E01 [ ] E02 [ ] E03 [ ] E04 [ ] E05 [ ] E06 [ ]
-- F: F01 [ ] F02 [ ] F03 [ ] F04 [ ] F05 [ ]
+- E: E01 [x] E02 [x] E03 [~] (adapter built; backend stream BLOCKED-BACKEND) E04 [x] E05 [~] (adapter; backend voice BLOCKED-BACKEND) E06 [~] (More sheet + invoice/ledger entries done; ledger row prefill read pending)
+- F: F01 [x] F02 [x] F03 [x] F04 [x] F05 [x]
 - G: G01 [ ] G02 [ ] G03 [ ] G04 [ ] G05 [ ] G06 [ ] G07 [ ] G08 [ ] G09 [ ] G10 [ ]
-- H / E2E gates: H01 [ ] H02 [ ] H03 [ ] E2E-G1 [ ] E2E-G2 [ ] E2E-G3 [ ]
+- H / E2E gates: H01 [ ] H02 [x] H03 [~] (harness done; snapshot compare needs fix) E2E-G1 [~] (FAIL on H03 snapshot; J3 flake; perf regressions) E2E-G2 [ ] E2E-G3 [ ]
 
 ## 6. Iteration history (append; newest at the bottom)
 

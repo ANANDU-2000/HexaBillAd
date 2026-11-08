@@ -40,7 +40,7 @@ test('J1 login through the form lands on the Dashboard with KPIs matching the se
   expect(bad, 'console errors on the dashboard').toEqual([])
 })
 
-test('BUG: J1 "Needs attention" block is missing from the Dashboard (the page shows "Critical alerts" and "Operational status" instead)', async ({ page }) => {
+test('J1 Dashboard always shows a "Needs attention" block (BUG-45 fixed)', async ({ page }) => {
   await page.goto(`${feOrigin(SLUG)}/login`, { waitUntil: 'domcontentloaded' })
   const { signIn } = await import('../session.js')
   await signIn(page, SLUG)

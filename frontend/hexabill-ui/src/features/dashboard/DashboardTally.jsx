@@ -929,11 +929,16 @@ const DashboardTally = () => {
             )}
 
             {/* Additional Needs Attention Rows (e.g. Overdue or Damage) */}
-            {hasFigures && attention.filter(a => a.key === 'overdue' || a.key === 'damage').length > 0 && (
-            <section className="space-y-2">
-                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Critical alerts</h2>
+            {hasFigures && (() => {
+              const urgentRows = attention.filter(a => a.key === 'overdue' || a.key === 'damage')
+              return (
+            <section className="space-y-2" aria-label="Needs attention">
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Needs attention</h2>
+                {urgentRows.length === 0 && (
+                  <p className="text-sm text-[var(--text-secondary)]">Nothing needs attention right now.</p>
+                )}
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    {attention.filter(a => a.key === 'overdue' || a.key === 'damage').map((row) => (
+                    {urgentRows.map((row) => (
                         <AttentionRow
                             key={row.key}
                             label={row.label}
@@ -947,7 +952,8 @@ const DashboardTally = () => {
                     ))}
                 </div>
             </section>
-            )}
+              )
+            })()}
 
             {showGetStarted && (
                 <div className={`${surfaceClass} relative p-4`}>
