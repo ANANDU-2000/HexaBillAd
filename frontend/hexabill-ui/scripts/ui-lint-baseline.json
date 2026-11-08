@@ -1,0 +1,152 @@
+{
+ "src/features/assistant/AssistantPanel.jsx": {
+  "offPalette": 10,
+  "borderL4": 8,
+  "emoji": 10
+ },
+ "src/features/branches/BranchDetailPage.jsx": {
+  "borderL4": 1
+ },
+ "src/features/branches/DriverRoutePage.jsx": {
+  "borderL4": 2
+ },
+ "src/features/branches/RouteDetailPage.jsx": {
+  "offPalette": 4,
+  "borderL4": 1,
+  "emoji": 1
+ },
+ "src/features/customers/CustomerLedgerPage.jsx": {
+  "offPalette": 21,
+  "borderL4": 6,
+  "emoji": 2
+ },
+ "src/features/dailyClose/DailyClosePage.jsx": {
+  "borderL4": 1
+ },
+ "src/features/dashboard/DashboardTally.jsx": {
+  "offPalette": 15,
+  "borderL4": 6
+ },
+ "src/features/documents/AgreementEditorPage.jsx": {
+  "borderL4": 1,
+  "emoji": 1
+ },
+ "src/features/documents/AgreementsPage.jsx": {
+  "borderL4": 1
+ },
+ "src/features/documents/QuotationEditorPage.jsx": {
+  "borderL4": 1
+ },
+ "src/features/documents/QuotationsPage.jsx": {
+  "offPalette": 2,
+  "borderL4": 1
+ },
+ "src/features/documents/SalaryCertificateEditorPage.jsx": {
+  "offPalette": 1,
+  "borderL4": 1
+ },
+ "src/features/documents/SalaryCertificatesPage.jsx": {
+  "borderL4": 1
+ },
+ "src/features/expenses/ExpensesPage.jsx": {
+  "offPalette": 8,
+  "borderL4": 2,
+  "emoji": 2
+ },
+ "src/features/payments/PaymentsPage.jsx": {
+  "offPalette": 11,
+  "borderL4": 2,
+  "emoji": 1
+ },
+ "src/features/products/PriceList.jsx": {
+  "offPalette": 5,
+  "borderL4": 1
+ },
+ "src/features/products/ProductsPage.jsx": {
+  "offPalette": 1,
+  "borderL4": 2,
+  "emoji": 1
+ },
+ "src/features/products/ProductsTable.jsx": {
+  "offPalette": 1
+ },
+ "src/features/purchases/PurchasesPage.jsx": {
+  "offPalette": 4
+ },
+ "src/features/purchases/SuppliersPage.jsx": {
+  "borderL4": 1
+ },
+ "src/features/reports/ReportsPage.jsx": {
+  "offPalette": 43,
+  "borderL4": 14,
+  "emoji": 1
+ },
+ "src/features/reports/VatReturnPage.jsx": {
+  "borderL4": 10
+ },
+ "src/features/routes/StopDetail.jsx": {
+  "borderL4": 2
+ },
+ "src/features/sales/DeliveryNotesPage.jsx": {
+  "borderL4": 1
+ },
+ "src/features/sales/pos/PosContinuousScanPanel.jsx": {
+  "emoji": 1
+ },
+ "src/features/sales/pos/PosEnterprisePage.jsx": {
+  "offPalette": 9,
+  "borderL4": 1,
+  "emoji": 2
+ },
+ "src/features/sales/PosPageLegacy.jsx": {
+  "offPalette": 11,
+  "borderL4": 1,
+  "emoji": 2
+ },
+ "src/features/sales/SalesLedgerPage.jsx": {
+  "offPalette": 26,
+  "borderL4": 1
+ },
+ "src/features/settings/SettingsPage.jsx": {
+  "offPalette": 19,
+  "borderL4": 7,
+  "emoji": 2
+ },
+ "src/pages/company/AuditLogPage.jsx": {
+  "borderL4": 2
+ },
+ "src/pages/company/BackupPage.jsx": {
+  "offPalette": 5
+ },
+ "src/pages/company/DataImportPage.jsx": {
+  "borderL4": 1
+ },
+ "src/pages/company/UsersPage.jsx": {
+  "offPalette": 33,
+  "borderL4": 1
+ },
+ "src/pages/HelpPage.jsx": {
+  "borderL4": 2
+ },
+ "src/components/ConfirmDangerModal.jsx": {
+  "nativeDialog": 2
+ },
+ "src/components/CustomerPinField.jsx": {
+  "borderL4": 1
+ },
+ "src/components/EditPaymentModal.jsx": {
+  "offPalette": 2,
+  "borderL4": 1
+ },
+ "src/components/Layout.jsx": {
+  "offPalette": 3
+ },
+ "src/components/PaymentModal.jsx": {
+  "offPalette": 1,
+  "borderL4": 3
+ },
+ "src/components/ReceiptPreviewModal.jsx": {
+  "offPalette": 3,
+  "borderL4": 2
+ }
+}
