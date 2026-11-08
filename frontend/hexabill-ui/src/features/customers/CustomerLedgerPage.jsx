@@ -34,6 +34,8 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { useRequestControl } from '../../hooks/useRequestControl'
+import LoadStatusNotice from '../../components/LoadStatusNotice'
 import { readApiErrorReason, saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import { formatCurrency, formatBalance, roundMoney } from '../../utils/currency'
@@ -1117,6 +1119,7 @@ const CustomerLedgerPage = () => {
     }
   }
 
+  const ledgerRequest = useRequestControl({ timeoutMs: 60000 }) // each GET still times out at 15 s
   const loadCustomerData = async (customerId) => {
     // Handle cash customer (customerId is null or special flag)
     const isCashCustomer = !customerId || customerId === 'cash' || customerId === 0
@@ -1137,8 +1140,10 @@ const CustomerLedgerPage = () => {
     const loadKey = String(normalizedId)
     ledgerLoadInProgressRef.current = loadKey
 
+    // P-01: 3 s / 15 s notice and Cancel; a Cancel or timeout aborts the in-flight calls and makes this load stale.
+    const ticket = ledgerRequest.start()
     const isStale = () =>
-      seq !== ledgerLoadSeqRef.current || selectedCustomerIdRef.current !== normalizedId
+      seq !== ledgerLoadSeqRef.current || selectedCustomerIdRef.current !== normalizedId || ticket.signal.aborted
 
     if (isCashCustomer) {
       // Load cash customer ledger, invoices, and payments
@@ -1163,9 +1168,9 @@ const CustomerLedgerPage = () => {
 
         // Load ledger, sales, and payments in parallel
         const [ledgerRes, salesRes, paymentsRes] = await Promise.all([
-          customersAPI.getCashCustomerLedger(),
-          salesAPI.getSales({ page: 1, pageSize: 1000 }),
-          paymentsAPI.getPayments({ page: 1, pageSize: 1000, customerId: 0 })
+          customersAPI.getCashCustomerLedger({ signal: ticket.signal }),
+          salesAPI.getSales({ page: 1, pageSize: 1000 }, { signal: ticket.signal }),
+          paymentsAPI.getPayments({ page: 1, pageSize: 1000, customerId: 0 }, { signal: ticket.signal })
         ])
 
         if (isStale()) return
@@ -1227,7 +1232,7 @@ const CustomerLedgerPage = () => {
         })
         setLoadedForCustomerId('cash')
       } catch (error) {
-        if (!isStale()) {
+        if (!isStale() && ticket.classify(error) === 'error') {
           console.error('Failed to load cash customer data:', error)
           if (!error?._handledByInterceptor) toast.error('Failed to load cash customer ledger')
         }
@@ -1236,6 +1241,7 @@ const CustomerLedgerPage = () => {
           ledgerLoadInProgressRef.current = null
           setLoading(false)
         }
+        ticket.finish()
       }
       return
     }
@@ -1290,7 +1296,7 @@ const CustomerLedgerPage = () => {
           fromDate: dateRange.from,
           toDate: dateRange.to
           // branchId, routeId, staffId intentionally omitted - full ledger
-        }),
+        }, { signal: ticket.signal }),
         // includeLegacy=false: historical invoices come only from the legacy list below (no second copy).
         reportsAPI.getSalesReport({
           page: 1,
@@ -1299,9 +1305,9 @@ const CustomerLedgerPage = () => {
           fromDate: billWindow.fromDate,
           toDate: billWindow.toDate,
           includeLegacy: false
-        }),
-        customersAPI.getOutstandingInvoices(customerId),
-        customersAPI.getCustomer(customerId),
+        }, { signal: ticket.signal }),
+        customersAPI.getOutstandingInvoices(customerId, { signal: ticket.signal }),
+        customersAPI.getCustomer(customerId, { signal: ticket.signal }),
         legacyInvoicesPromise,
         legacyPaymentsPromise
       ])
@@ -1434,7 +1440,7 @@ const CustomerLedgerPage = () => {
       }
 
       // Load payments separately
-      const paymentsRes = await paymentsAPI.getPayments({ page: 1, pageSize: 1000, customerId })
+      const paymentsRes = await paymentsAPI.getPayments({ page: 1, pageSize: 1000, customerId }, { signal: ticket.signal })
 
       if (isStale()) return
 
@@ -1523,7 +1529,9 @@ const CustomerLedgerPage = () => {
         setLoadedForCustomerId(normalizedId)
       }
     } catch (error) {
+      ticket.classify(error) // marks a read timeout so the notice shows
       if (isStale()) return
+      if (ticket.classify(error) !== 'error') return
 
       // CRITICAL: Prevent error flooding - only show error once
       if (!error._logged) {
@@ -1568,6 +1576,7 @@ const CustomerLedgerPage = () => {
         ledgerLoadInProgressRef.current = null
         setLoading(false)
       }
+      ticket.finish()
     }
   }
 
@@ -2345,6 +2354,15 @@ const CustomerLedgerPage = () => {
     )
   }
 
+  const ledgerNotice = (
+    <LoadStatusNotice
+      phase={ledgerRequest.phase}
+      onCancel={ledgerRequest.cancel}
+      onRetry={() => loadCustomerData(selectedCustomerIdRef.current ?? 'cash')}
+      className="mx-3 mt-2 shrink-0"
+    />
+  )
+
   if (loading && !selectedCustomer) {
     return <LoadingCard message="Loading customers..." />
   }
@@ -2464,6 +2482,7 @@ const CustomerLedgerPage = () => {
 
   return (
     <div className={`h-full min-h-0 flex flex-col bg-neutral-50 overflow-x-hidden w-full max-w-full ${mobilePageShellClass}`}>
+      {ledgerNotice}
       {/* TOP BAR (UX-L01): back + title; record actions live in one menu once a customer is open.
           Phones show it only for an open customer — the shell top bar already names the page. */}
       <div className="hidden md:block bg-white border-b border-neutral-200 px-3 sm:px-6 py-2 shrink-0">

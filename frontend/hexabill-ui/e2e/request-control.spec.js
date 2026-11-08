@@ -63,3 +63,26 @@ test('a slow ledger shows Still loading with Cancel, then Retry', async ({ page 
   await expect(visible(page.getByText('RECOVERED')).first()).toBeVisible()
   await expect(notice).toHaveCount(0)
 })
+
+// Customer Ledger and Reports: a slow read shows Still loading with Cancel (phone and desktop), Cancel then Retry.
+for (const [name, route, matcher] of [
+  ['Customer Ledger', '/ledger?customerId=1', (url) => /\/api\/customers\/\d+\/ledger$/.test(url.pathname)],
+  ['Reports', '/reports', (url) => url.pathname.endsWith('/api/reports/summary')],
+]) {
+  test(`${name}: slow load shows Still loading with Cancel, Cancel then Retry`, async ({ page }) => {
+    await signIn(page, SLUG)
+    let slow = true
+    await page.route(matcher, async (route) => {
+      if (slow) await new Promise((r) => setTimeout(r, 7000))
+      try { await route.continue() } catch { /* aborted */ }
+    })
+    await page.goto(`${feOrigin(SLUG)}${route}`, { waitUntil: 'commit' })
+    const notice = page.getByTestId('load-status-notice')
+    await expect(notice).toContainText('Still loading', { timeout: 9000 })
+    await visible(page.getByRole('button', { name: 'Cancel' })).click()
+    await expect(notice).toContainText('Loading cancelled')
+    slow = false
+    await notice.getByRole('button', { name: 'Retry' }).click()
+    await expect(notice).toHaveCount(0, { timeout: 15000 })
+  })
+}

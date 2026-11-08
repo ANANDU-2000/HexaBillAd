@@ -328,7 +328,8 @@ const ReportsPage = () => {
   }
 
   // Define fetchReportData FIRST before any useEffect that uses it
-  const reportRequest = useRequestControl()
+  // Whole multi-call tab load may legitimately exceed 15 s; each GET still times out at 15 s on its own.
+  const reportRequest = useRequestControl({ timeoutMs: 60000 })
   const fetchReportData = useCallback(async (force = false) => {
     // AGGRESSIVE: Prevent ALL requests if one is in flight (unless forced)
     if (!force && isFetchingRef.current) {
@@ -462,7 +463,7 @@ const ReportsPage = () => {
             fromDate: dateRange.from,
             toDate: `${dateRange.to}T23:59:59`,
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined
-          })
+          }, { signal: ticket.signal })
           if (expensesResponse?.success && expensesResponse?.data) {
             const expenses = (expensesResponse.data || []).map((e, index) => ({
               categoryId: e.categoryId ?? e.CategoryId ?? e.id ?? index,
@@ -484,7 +485,7 @@ const ReportsPage = () => {
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
             routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined,
             pageSize: 100
-          })
+          }, { signal: ticket.signal })
           if (summarySalesResp?.success && summarySalesResp?.data?.items) {
             const salesItems = summarySalesResp.data.items || []
             const salesByDate = salesItems.reduce((acc, sale) => {
@@ -519,12 +520,12 @@ const ReportsPage = () => {
             search: appliedFilters.search || undefined, // BUG #2.5 FIX: Add search parameter
             pageSize: SALES_PAGE_SIZE
           }
-          const salesResponse = await reportsAPI.getSalesReport({ ...salesParams, page: 1 })
+          const salesResponse = await reportsAPI.getSalesReport({ ...salesParams, page: 1 }, { signal: ticket.signal })
           let allSalesItems = salesResponse?.data?.items || []
           const salesTotalPages = salesResponse?.data?.totalPages || 1
           const salesTotalCount = salesResponse?.data?.totalCount ?? allSalesItems.length
           for (let pageNo = 2; pageNo <= Math.min(salesTotalPages, SALES_MAX_PAGES); pageNo += 1) {
-            const nextPage = await reportsAPI.getSalesReport({ ...salesParams, page: pageNo })
+            const nextPage = await reportsAPI.getSalesReport({ ...salesParams, page: pageNo }, { signal: ticket.signal })
             allSalesItems = allSalesItems.concat(nextPage?.data?.items || [])
           }
           if (salesResponse?.success && salesResponse?.data) {
@@ -603,7 +604,7 @@ const ReportsPage = () => {
             productId: appliedFilters.product ? parseInt(appliedFilters.product) : undefined,
             category: appliedFilters.category || undefined,
             top: 20
-          })
+          }, { signal: ticket.signal })
 
           console.log('Product Analysis response:', productsResponse)
 
@@ -632,7 +633,7 @@ const ReportsPage = () => {
         try {
           setLoading(true)
           const daysParam = activeTab === 'overdue' ? 30 : 1
-          const customersResponse = await reportsAPI.getOutstandingCustomers({ days: daysParam, page: 1, pageSize: 100 })
+          const customersResponse = await reportsAPI.getOutstandingCustomers({ days: daysParam, page: 1, pageSize: 100 }, { signal: ticket.signal })
 
           if (customersResponse?.success && customersResponse?.data) {
             // PagedResponse: data has { items, totalCount, page } - use items array
@@ -678,7 +679,7 @@ const ReportsPage = () => {
             fromDate: dateRange.from,
             toDate: `${dateRange.to}T23:59:59`,
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined
-          })
+          }, { signal: ticket.signal })
 
           console.log('Expenses response:', expensesResponse)
 
@@ -718,7 +719,7 @@ const ReportsPage = () => {
             toDate: dateRange.to
           }
           if (appliedFilters.branch) branchParams.branchId = parseInt(appliedFilters.branch, 10)
-          const branchRes = await reportsAPI.getBranchComparison(branchParams)
+          const branchRes = await reportsAPI.getBranchComparison(branchParams, { signal: ticket.signal })
           if (branchRes?.success && branchRes?.data) {
             const branchData = Array.isArray(branchRes.data)
               ? branchRes.data
@@ -742,7 +743,7 @@ const ReportsPage = () => {
           // FIX: Use agingAsOfDate instead of dateRange.to for historical aging analysis
           const agingRes = await reportsAPI.getAgingReport({
             asOfDate: agingAsOfDate || localDateString(new Date())
-          })
+          }, { signal: ticket.signal })
           if (agingRes?.success && agingRes?.data) {
             setReportData(prev => ({ ...prev, agingReport: agingRes.data }))
           } else {
@@ -759,7 +760,7 @@ const ReportsPage = () => {
           setLoading(true)
           const apRes = await reportsAPI.getApAgingReport({
             asOfDate: agingAsOfDate || localDateString(new Date())
-          })
+          }, { signal: ticket.signal })
           if (apRes?.success && apRes?.data) {
             setReportData(prev => ({ ...prev, apAgingReport: apRes.data }))
           } else {
@@ -778,7 +779,7 @@ const ReportsPage = () => {
           const chequeRes = await reportsAPI.getChequeReport({
             fromDate: dateRange.from,
             toDate: dateRange.to
-          })
+          }, { signal: ticket.signal })
           if (chequeRes?.success && chequeRes?.data) {
             setReportData(prev => ({ ...prev, chequeReport: chequeRes.data || [] }))
           } else {
@@ -795,7 +796,7 @@ const ReportsPage = () => {
           setLoading(true)
           console.log('Loading Profit & Loss report:', { from: dateRange.from, to: dateRange.to })
 
-          const profitResponse = await profitAPI.getProfitReport(dateRange.from, dateRange.to)
+          const profitResponse = await profitAPI.getProfitReport(dateRange.from, dateRange.to, { signal: ticket.signal })
 
           console.log('Profit & Loss response:', profitResponse)
 
@@ -848,7 +849,7 @@ const ReportsPage = () => {
       } else if (activeTab === 'branch-profit') {
         try {
           setLoading(true)
-          const res = await profitAPI.getBranchProfit(dateRange.from, dateRange.to)
+          const res = await profitAPI.getBranchProfit(dateRange.from, dateRange.to, { signal: ticket.signal })
           const raw = res?.data ?? res ?? []
           const branchData = Array.isArray(raw)
             ? raw
@@ -867,7 +868,7 @@ const ReportsPage = () => {
           // Backend returns all pending/partial invoices when from/to omitted
           const pendingBillsResponse = await reportsAPI.getPendingBills({
             status: 'all'
-          })
+          }, { signal: ticket.signal })
           console.log('Outstanding bills response:', pendingBillsResponse)
           // API returns { success, data: { items: [...], totalCount, page, pageSize, totalPages } }
           const rawData = pendingBillsResponse?.data
@@ -891,7 +892,7 @@ const ReportsPage = () => {
       } else if (activeTab === 'collections') {
         try {
           setLoading(true)
-          const res = await reportsAPI.getOutstandingCustomers({ days: 365 })
+          const res = await reportsAPI.getOutstandingCustomers({ days: 365 }, { signal: ticket.signal })
           const list = (res?.success && res?.data) ? res.data : (Array.isArray(res?.data) ? res.data : [])
           setReportData(prev => ({ ...prev, collectionsList: list }))
         } catch (error) {
@@ -908,7 +909,7 @@ const ReportsPage = () => {
             fromDate: dateRange.from,
             toDate: dateRange.to,
             routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined
-          })
+          }, { signal: ticket.signal })
           if (staffRes?.success && staffRes?.data) {
             setReportData(prev => ({ ...prev, staffReport: staffRes.data || [] }))
           } else {
@@ -940,9 +941,9 @@ const ReportsPage = () => {
               staffId: appliedFilters.staffId ? parseInt(appliedFilters.staffId, 10) : undefined,
               page: 1,
               pageSize: 50
-            }),
-            returnsAPI.getDamageCategories().catch(() => ({ success: true, data: [] })),
-            returnsAPI.getFeatureFlags().catch(() => ({ success: true, data: {} }))
+            }, { signal: ticket.signal }),
+            returnsAPI.getDamageCategories({ signal: ticket.signal }).catch(() => ({ success: true, data: [] })),
+            returnsAPI.getFeatureFlags({ signal: ticket.signal }).catch(() => ({ success: true, data: {} }))
           ])
           const retData = returnsRes?.success && returnsRes?.data ? returnsRes.data : { items: [], totalCount: 0, page: 1, pageSize: 50, totalPages: 0 }
           const cats = (categoriesRes?.success && categoriesRes?.data) ? categoriesRes.data : []
@@ -982,7 +983,7 @@ const ReportsPage = () => {
             toDate: effectiveDateRange.to,
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
             routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined
-          })
+          }, { signal: ticket.signal })
           const list = (res?.success && res?.data) ? res.data : []
           setReportData(prev => ({ ...prev, damageReport: Array.isArray(list) ? list : [] }))
         } catch (error) {
@@ -998,7 +999,7 @@ const ReportsPage = () => {
             fromDate: dateRange.from,
             toDate: dateRange.to,
             customerId: appliedFilters.customer ? parseInt(appliedFilters.customer, 10) : undefined
-          })
+          }, { signal: ticket.signal })
           const list = (res?.success && res?.data) ? res.data : []
           setReportData(prev => ({ ...prev, creditNotesReport: Array.isArray(list) ? list : [] }))
         } catch (error) {
@@ -1015,7 +1016,7 @@ const ReportsPage = () => {
             toDate: dateRange.to,
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
             routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined
-          })
+          }, { signal: ticket.signal })
           const d = (res?.success && res?.data) ? res.data : null
           const totalSales = d ? (parseFloat(d.totalSales ?? d.TotalSales ?? d.salesToday ?? d.SalesToday) || 0) : 0
           const totalReturns = d ? (parseFloat(d.totalReturns ?? d.TotalReturns ?? d.returnsToday ?? d.ReturnsToday) || 0) : 0
@@ -1032,7 +1033,7 @@ const ReportsPage = () => {
         }
       } else if (activeTab === 'ai') {
         try {
-          const aiResponse = await reportsAPI.getAISuggestions({ periodDays: 30 })
+          const aiResponse = await reportsAPI.getAISuggestions({ periodDays: 30 }, { signal: ticket.signal })
           if (aiResponse?.success && aiResponse?.data) {
             const suggestions = []
             const aiData = aiResponse.data
