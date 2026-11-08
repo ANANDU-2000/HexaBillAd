@@ -93,7 +93,7 @@ export default function AgreementEditorPage() {
 
   const isDirty = Boolean(baseline) && currentSnapshot !== baseline
   isDirtyRef.current = isDirty
-  useUnsavedChangesGuard(isDirty)
+  const unsavedDialog = useUnsavedChangesGuard(isDirty)
 
   useEffect(() => {
     const onBeforeUnload = (e) => {
@@ -279,6 +279,7 @@ export default function AgreementEditorPage() {
 
   return (
     <div className="p-2 md:p-3 w-full max-w-full flex flex-col gap-2">
+      {unsavedDialog}
       <BackLink to="/agreements" label="Back to agreements" />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>

@@ -141,7 +141,7 @@ export default function SalaryCertificateEditorPage() {
 
   const isDirty = Boolean(baseline) && currentSnapshot !== baseline
   isDirtyRef.current = isDirty
-  useUnsavedChangesGuard(isDirty)
+  const unsavedDialog = useUnsavedChangesGuard(isDirty)
 
   useEffect(() => {
     const onBeforeUnload = (e) => {
@@ -377,6 +377,7 @@ export default function SalaryCertificateEditorPage() {
 
   return (
     <div className="p-2 md:p-3 w-full max-w-full flex flex-col gap-2">
+      {unsavedDialog}
       <BackLink to="/salary-certificates" label="Back to salary certificates" />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
