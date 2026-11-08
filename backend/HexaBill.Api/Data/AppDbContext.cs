@@ -65,6 +65,14 @@ namespace HexaBill.Api.Data
 
         private void ValidateTenantWrites()
         {
+            // The business audit trail is append-only through the ORM: saved rows can be added, never edited or removed.
+            // Set-based ExecuteDelete/raw SQL bypasses this guard on purpose (system reset and tenant purge are
+            // platform-admin operations); a database trigger is a separate, approved migration.
+            foreach (var entry in ChangeTracker.Entries<AuditLog>())
+            {
+                if (entry.State is EntityState.Modified or EntityState.Deleted)
+                    throw new InvalidOperationException("Audit log rows are immutable. Append a new audit entry instead.");
+            }
             foreach (var entry in ChangeTracker.Entries<SaleItem>().Where(e => e.State == EntityState.Modified))
             {
                 if (entry.Property(i => i.CostCapturedAt).OriginalValue.HasValue &&
