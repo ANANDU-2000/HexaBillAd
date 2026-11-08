@@ -18,6 +18,7 @@ namespace HexaBill.Tests;
 /// logos are generated in code, settings copy the FrozenHub field shapes with a synthetic TRN and no customer data.
 /// PDFs are written under the test output directory (print-v3) for visual inspection.
 /// </summary>
+[Collection("HttpIntegration")]
 public class FrozenHubHeaderReproTests
 {
     private const int TenantId = 9020;

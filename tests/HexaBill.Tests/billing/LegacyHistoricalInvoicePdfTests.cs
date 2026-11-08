@@ -18,6 +18,7 @@ namespace HexaBill.Tests;
 /// while keeping the ORIGINAL issuer's legal name and TRN. FrozenHub logo, bank, address and
 /// header policy must never print on a historical invoice. Synthetic data only.
 /// </summary>
+[Collection("HttpIntegration")]
 public class LegacyHistoricalInvoicePdfTests
 {
     private const int Fh1 = 20;

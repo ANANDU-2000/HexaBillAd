@@ -19,6 +19,7 @@ namespace HexaBill.Tests;
 /// Known gap: A5/80mm/58mm body mode has no receiver block (asserted absent). 80mm/58mm ignore body mode and print the header.
 /// Skipped: preprinted(body) with logo missing (body layout never prints the logo, so it duplicates logo present).
 /// </summary>
+[Collection("HttpIntegration")]
 public class PrintQaMatrixTests
 {
     private const string VatEffective = "2026-11-01";

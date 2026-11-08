@@ -14,6 +14,7 @@ namespace HexaBill.Tests;
 /// prefix) always print "TAX INVOICE" with a real TRN, regardless of VAT_EFFECTIVE_DATE. Non-imported sales unchanged.
 /// Synthetic data only. The internal marker must never appear in printed output.
 /// </summary>
+[Collection("HttpIntegration")]
 public class ImportedSaleTaxInvoiceTitleTests
 {
     private const int TenantId = 89311;

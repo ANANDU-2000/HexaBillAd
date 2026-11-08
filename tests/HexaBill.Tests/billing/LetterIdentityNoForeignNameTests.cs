@@ -13,6 +13,7 @@ namespace HexaBill.Tests;
 /// P0-PRINT-010 (release blocker): agreements and salary certificates for a tenant with a blank company name must print
 /// no company name at all, never the hard-coded ZAYOGA identity or another tenant's name. Two made-up tenants only.
 /// </summary>
+[Collection("HttpIntegration")]
 public class LetterIdentityNoForeignNameTests
 {
     private const int BlankTenant = 9101;

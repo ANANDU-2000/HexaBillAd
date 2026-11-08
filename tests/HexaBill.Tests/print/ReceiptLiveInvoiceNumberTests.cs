@@ -11,6 +11,7 @@ using UglyToad.PdfPig;
 namespace HexaBill.Tests;
 
 /// <summary>P0-PRINT-013: reprinted receipts show the sale's current invoice number (after a P0-NUM-004 renumber); the snapshot is never rewritten.</summary>
+[Collection("HttpIntegration")]
 public class ReceiptLiveInvoiceNumberTests
 {
     internal const int TenantId = 20;

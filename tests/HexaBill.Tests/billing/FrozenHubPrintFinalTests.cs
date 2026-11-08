@@ -20,6 +20,7 @@ namespace HexaBill.Tests;
 /// Synthetic data only. The IBAN is the published ISO 13616 example (not a real account).
 /// PDFs are written to print-final/ under the test output directory for visual inspection.
 /// </summary>
+[Collection("HttpIntegration")]
 public class FrozenHubPrintFinalTests
 {
     private const int Fh1 = 20;

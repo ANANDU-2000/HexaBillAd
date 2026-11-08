@@ -15,6 +15,7 @@ namespace HexaBill.Tests;
 /// <summary>
 /// Renders every PdfService-backed Gulf Harvest document family for visual/isolation proof.
 /// </summary>
+[Collection("HttpIntegration")]
 public class GulfHarvestDocumentFamilyTests
 {
     private const int TenantId = 2206;

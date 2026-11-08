@@ -16,6 +16,7 @@ namespace HexaBill.Tests;
 /// approved bilingual header). Synthetic data; the IBAN is the ISO 13616 example, not a real account.
 /// PDFs are written to print-p7/ under the test output directory for visual inspection.
 /// </summary>
+[Collection("HttpIntegration")]
 public class FrozenHubPrintReadabilityTests
 {
     private const int Fh1 = 20;

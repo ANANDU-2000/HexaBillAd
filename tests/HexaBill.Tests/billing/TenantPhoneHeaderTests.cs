@@ -14,6 +14,7 @@ namespace HexaBill.Tests;
 /// P0-PRINT-005: each tenant's own saved COMPANY_PHONE prints in the invoice header on A4/A5/80mm/58mm; when no phone is
 /// saved there is no phone line, no "Mob:" label and no dangling separator. Settings are never modified. Synthetic data only.
 /// </summary>
+[Collection("HttpIntegration")]
 public class TenantPhoneHeaderTests
 {
     public static TheoryData<string, string, string, bool> Cases()

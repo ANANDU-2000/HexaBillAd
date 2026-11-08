@@ -14,6 +14,7 @@ namespace HexaBill.Tests;
 /// P0-PRINT-006 staging defects, synthetic data only: (a) A4 with ~10-20 items must keep the receiver block on page 1;
 /// (b) A5 Qty column must keep decimal quantities such as 12.44 and 129.5 on one line.
 /// </summary>
+[Collection("HttpIntegration")]
 public class PrintPageFitTests
 {
     private const int TenantId = 9060;

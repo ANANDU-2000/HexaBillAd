@@ -16,6 +16,7 @@ namespace HexaBill.Tests;
 /// Header proofs for frozenhub1 / frozenhub2 / gulfharvest synthetic fixtures (A4, A5, 80mm, 58mm, receipt).
 /// Empty TRN → INVOICE; sample TRN → SAMPLE INVOICE. Zayogya covered by ZayogyaRegressionSnapshotTests.
 /// </summary>
+[Collection("HttpIntegration")]
 public class TenantHeaderParityTests
 {
     public static TheoryData<string, string?, string> Tenants()

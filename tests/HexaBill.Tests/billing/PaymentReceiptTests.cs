@@ -17,6 +17,7 @@ using System.Text.Json;
 
 namespace HexaBill.Tests;
 
+[Collection("HttpIntegration")]
 public class PaymentReceiptTests
 {
     [Theory]

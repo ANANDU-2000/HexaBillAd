@@ -9,6 +9,7 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace HexaBill.Tests;
 
+[Collection("HttpIntegration")]
 public class DocumentHeaderTests
 {
     private static byte[] ColorLogo()

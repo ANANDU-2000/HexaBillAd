@@ -10,6 +10,7 @@ using UglyToad.PdfPig;
 namespace HexaBill.Tests;
 
 /// <summary>The tenant logo must print large and centred on the A4 bilingual invoice header.</summary>
+[Collection("HttpIntegration")]
 public class LetterheadLogoSizeTests
 {
     private const int TenantId = 2207;

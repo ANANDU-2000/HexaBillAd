@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace HexaBill.Tests;
 
 /// <summary>Quotation create / edit / delete persistence and multi-item PDF rendering.</summary>
+[Collection("HttpIntegration")]
 public class QuotationModuleTests
 {
     private const int TenantA = 7101;

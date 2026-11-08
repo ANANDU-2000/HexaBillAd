@@ -13,6 +13,7 @@ namespace HexaBill.Tests;
 /// D6: Zayogya tax behavior and print layout must stay stable across Master Loop slices.
 /// Absolute PDF SHA pins are brittle across font/runtime hosts; this suite pins behavior instead.
 /// </summary>
+[Collection("HttpIntegration")]
 public class ZayogyaRegressionSnapshotTests
 {
     [Fact]

@@ -16,6 +16,7 @@ namespace HexaBill.Tests;
 
 /// <summary>P0-NUM-003: imported Starplus receipts (SnapshotJson '{"marker": "starplus:...') are preserved history.
 /// Synthetic data only, in the importer's exact key shape.</summary>
+[Collection("HttpIntegration")]
 public class StarplusImportedReceiptTests
 {
     private static string ImportedSnapshot(int sourceId, string number, params int[] targetPayments) =>

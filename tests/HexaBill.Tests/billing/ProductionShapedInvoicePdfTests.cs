@@ -14,6 +14,7 @@ namespace HexaBill.Tests;
 /// no header lock, letterhead-only off with 52/35 mm stored margins, customer with TRN and a running balance, and the
 /// two lines of sale 1632 that failed with QuestPDF "conflicting size constraints" at 06:48 UTC.
 /// </summary>
+[Collection("HttpIntegration")]
 public class ProductionShapedInvoicePdfTests
 {
     private const int TenantId = 2320;
