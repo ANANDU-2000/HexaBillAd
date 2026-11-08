@@ -106,6 +106,7 @@ const CustomerLedgerPage = () => {
   const [balanceRefreshSkeleton, setBalanceRefreshSkeleton] = useState(false) // "Refreshing balance…" after payment
   const [settlementAdjustmentsEnabled, setSettlementAdjustmentsEnabled] = useState(false)
   const [customers, setCustomers] = useState([])
+  const [customersTotal, setCustomersTotal] = useState(0) // P-04: server total; the list itself is only a first page
   const [filteredCustomers, setFilteredCustomers] = useState([]) // Kept for backwards compat; search uses searchDropdownResults
   const [searchDropdownResults, setSearchDropdownResults] = useState([])
   const [searchDropdownLoading, setSearchDropdownLoading] = useState(false)
@@ -865,12 +866,14 @@ const CustomerLedgerPage = () => {
   const fetchCustomers = async (opts = {}) => {
     try {
       setLoading(true)
-      const params = { page: 1, pageSize: 1000 }
+      // P-04: first page of 20 only. The switcher searches on the server and a deep link loads its own customer.
+      const params = { page: 1, pageSize: 20 }
       if (opts.branchId) params.branchId = typeof opts.branchId === 'number' ? opts.branchId : parseInt(opts.branchId, 10)
       if (opts.routeId) params.routeId = typeof opts.routeId === 'number' ? opts.routeId : parseInt(opts.routeId, 10)
       const response = await customersAPI.getCustomers(params)
       if (response.success && response.data) {
         setCustomers(response.data.items || [])
+        setCustomersTotal(response.data.totalCount ?? (response.data.items || []).length)
       }
     } catch (error) {
       console.error('Failed to load customers:', error)
@@ -2012,12 +2015,14 @@ const CustomerLedgerPage = () => {
       if (scope !== paymentScopeRef.current) return
       await loadCustomerData(customerId)
       const refreshCustomers = async () => {
-        const result = await customersAPI.getCustomers({ page: 1, pageSize: 1000 })
+        // P-04: refresh only the paying customer (fresh balance), not a 1,000-row customer list.
+        if (customerId === 'cash') return
+        const result = await customersAPI.getCustomer(customerId)
         if (scope !== paymentScopeRef.current) return
-        if (result?.success && result?.data?.items) {
-          setCustomers(result.data.items)
-          const updated = result.data.items.find(customer => customer.id === customerId)
-          if (updated) setSelectedCustomer(updated)
+        const updated = result?.success ? result.data : null
+        if (updated) {
+          setCustomers(prev => prev.map(customer => (customer.id === updated.id ? updated : customer)))
+          setSelectedCustomer(updated)
         }
       }
       await refreshCustomers()
@@ -2623,7 +2628,7 @@ const CustomerLedgerPage = () => {
               <span className="hidden md:inline min-w-0 truncate font-semibold text-primary-800" title={selectedCustomer.name}>{selectedCustomer.name}</span>
             )}
             <span className="ml-auto whitespace-nowrap" aria-live="polite">
-              {searchDropdownLoading ? 'Searching…' : (searchTerm ? `${searchDropdownTotal} customer(s)` : `Total: ${customers.length}`)}
+              {searchDropdownLoading ? 'Searching…' : (searchTerm ? `${searchDropdownTotal} customer(s)` : `Total: ${customersTotal || customers.length}`)}
             </span>
           </div>
         </div>

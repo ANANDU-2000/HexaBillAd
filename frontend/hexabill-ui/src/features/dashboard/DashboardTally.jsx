@@ -15,6 +15,8 @@ import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
 import Button from '../../components/ui/Button'
 import DailyCloseStatusCard from './DailyCloseStatusCard'
+import LoadStatusNotice from '../../components/LoadStatusNotice'
+import { useRequestControl } from '../../hooks/useRequestControl'
 import { localDateString } from '../../utils/dateFormat'
 
 const GET_STARTED_DISMISSED_KEY = 'hexabill_get_started_dismissed'
@@ -233,7 +235,10 @@ const DashboardTally = () => {
         }
     }
 
+    const summaryRequest = useRequestControl()
     const fetchStats = async (skipCache = false) => {
+        // P-01: a newer fetch aborts this one; only the latest response is applied.
+        const ticket = summaryRequest.start()
         try {
             setRefreshing(true)
             const { from, to } = getDateRange()
@@ -243,7 +248,8 @@ const DashboardTally = () => {
             if (selectedBranchId && !isAdminOrOwner(user)) params.branchId = selectedBranchId
             if (skipCache) params.refresh = true
 
-            const response = await reportsAPI.getSummaryReport(params)
+            const response = await reportsAPI.getSummaryReport(params, { signal: ticket.signal })
+            if (!ticket.isCurrent()) return
 
             if (response?.success && response?.data) {
                 const data = response.data
@@ -278,13 +284,15 @@ const DashboardTally = () => {
                 setBranchBreakdown([])
                 setSummaryError(true)
             }
-        } catch {
+        } catch (error) {
+            if (ticket.classify(error) === 'superseded') return
             console.error('Failed to fetch dashboard stats')
             setHasFigures(false)
             setBranchBreakdown([])
             setSummaryError(true)
         } finally {
-            setRefreshing(false)
+            if (ticket.isCurrent()) setRefreshing(false)
+            ticket.finish()
         }
     }
 
@@ -638,6 +646,8 @@ const DashboardTally = () => {
                     />
                 </div>
             )}
+
+            <LoadStatusNotice phase={summaryRequest.phase} onCancel={summaryRequest.cancel} onRetry={handleRefresh} />
 
             {summaryError && (
                 <div className={`${surfaceClass} flex flex-wrap items-center justify-between gap-3 p-4`} role="alert">
