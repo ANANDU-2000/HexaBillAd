@@ -126,7 +126,7 @@ Add one line per fact. Delete a line when it is no longer true.
 | 10 | 2026-11-08 | BUG-6 bell on phone/portrait tablet (S2) | PASS | 93d742fe | unit 416/416, lint 0, build 0, e2e notifications-language 3/3 (d1440, t768, m360) | docs/uiux/evidence/2026-11-08/BUG6-*.png | Bell added to mobile header; panel = fixed full-width sheet <640 px. Closes the A05 m360 gap |
 | 11 | 2026-11-08 | T4 bug hunt 1 (tests only) | MERGED | fad3343f | 29/31 new e2e pass; 2 fail on purpose (BUG-8, BUG-9) | docs/uiux/evidence/2026-11-08/bug-hunt-1.md | 6 features, 4 viewports. Render logs BLOCKED (account cannot see HexaBill workspace). Vercel: no failed prod deploys, static SPA |
 | | | | | | | | |
-
+| 12 | 2026-11-08 | H02 slop lint; P-01 request control; P-03 POS data; P-04 client side; T5 concurrency C1-C9 | MERGED | a4447296 | lint 0 errors, unit 430/430, build 0; POS idle requests 11 -> 1 (d1440), 9 -> 1 (m360); concurrency 8 tests x3 runs | docs/uiux/evidence/concurrency/2026-11-08.md | BUG-20 (S1) and BUG-21 (S2) found. P-04 backend part, Reports cancel wiring and ledger tab split still open |
 
 ## 6b. Claims (files a team is editing; release on merge)
 
@@ -151,6 +151,9 @@ Format: BUG-n | feature | severity | repro | failing test | suspected file | sta
 
 - BUG-8 | Products/Stock backend | S1 authorization | Staff can POST /api/products/recompute-stock (200) and rewrite tenant stock from movement history; sibling reset-all-stock is Admin/Owner only | e2e/bughunt/roles-permissions.spec.js (BUG-8) | ProductsController.cs:723 `Roles = "Admin,Owner,Staff"` | NEEDS-BACKEND / REVIEW-INBOX (auth change is owner's; loop adds tests only)
 - BUG-9 | Purchases backend | S3 latent | Owner gets 403 on POST /api/purchases/{id}/upload (`Roles = "Admin,Staff"`); no UI calls it today | same spec (BUG-9) | PurchasesController.cs:527 | NEEDS-BACKEND
+
+- BUG-20 | Payments backend | S1 money | Concurrent payments without saleId: all 201 but cached Customers.Balance drops only a fraction (C2: 961/965/979 vs expected 905). PaymentService.cs:596-600 reads customer row unlocked, recomputes in memory | tests/concurrency (C2, c2-diag.mjs) | NEEDS-BACKEND, owner decision (money path)
+- BUG-21 | Reports backend | S2 perf | /api/reports/summary p50 408-504 ms with 15 users vs 8-11 ms solo; cache key includes user id (ReportService.cs:92) | tests/concurrency C7 | NEEDS-BACKEND
 
 ## 7. Stuck log
 
