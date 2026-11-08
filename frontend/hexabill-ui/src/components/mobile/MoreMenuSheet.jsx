@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight, Search } from 'lucide-react'
 import MobileSheet from './MobileSheet'
 import { useAuth } from '../../hooks/useAuth'
+import { openAssistant } from '../../features/assistant/assistantStore'
 import { visibleMoreMenu, isItemActive } from '../../navigation/moreMenuConfig'
 
 /**
@@ -104,6 +105,23 @@ const MoreMenuSheet = ({ open, onClose }) => {
             />
           </div>
         </div>
+
+        {!q && (
+          <div className="px-4 pt-3">
+            <button
+              type="button"
+              data-testid="more-ask-agent"
+              onClick={() => { sentinelRef.current = false; close(); openAssistant() }}
+              className="flex w-full items-center justify-between min-h-14 px-3 py-2.5 rounded-xl border border-primary-300 bg-primary-50 text-left"
+            >
+              <span>
+                <span className="block text-sm font-medium text-text-primary">Ask the agent</span>
+                <span className="block text-xs text-text-secondary">Find a customer, check a balance, draft an entry</span>
+              </span>
+              <ChevronRight className="h-4 w-4 text-neutral-400" aria-hidden />
+            </button>
+          </div>
+        )}
 
         {visible.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-text-secondary">No results match your search.</p>
