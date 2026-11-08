@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "perf": "node scripts/perf-report.mjs",
-    "perf:bundle": "node scripts/bundle-size.mjs"
+    "perf:bundle": "node scripts/bundle-size.mjs",
+    "gate:g1": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/gate-g1.ps1"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.6",
