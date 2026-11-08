@@ -97,36 +97,38 @@ test('route: owner orders stops, driver runs the route in order, nothing asks fo
     const list = driverPage.getByTestId('stop-list').locator('> li')
     await expect(list).toHaveCount(3)
     await expect(list.nth(0)).toContainText(names[2])
-    await expect(list.nth(0)).toContainText('Street 3')
     await expect(list.nth(1)).toContainText(names[0])
-    // Navigation link only for stops with a saved location; the third (first in order) has none.
-    await expect(list.nth(0).getByRole('link', { name: /Open in maps/ })).toHaveCount(0)
-    await expect(list.nth(1).getByRole('link', { name: /Open in maps/ })).toHaveCount(1)
+    await expect(driverPage.getByTestId('route-progress')).toHaveText('0 / 3 done')
     await expect(driverPage.getByTestId('location-needed')).toContainText(names[2])
     await expect(driverPage.getByTestId('payments-note')).toBeVisible()
-    await expect(driverPage.getByRole('link', { name: /Record payment/ })).toHaveCount(0)
+    await expect(driverPage.getByRole('link', { name: /Collect|Record payment/ })).toHaveCount(0)
 
+    // Start asks once, with one sentence; "without location" never touches the geolocation API.
     await driverPage.getByRole('button', { name: 'Start route' }).click()
+    await expect(driverPage.getByTestId('start-route-dialog')).toContainText('shares your position with the office')
+    await driverPage.getByRole('button', { name: 'Start without location' }).click()
     await expect(driverPage.getByTestId('run-phase')).toHaveText('In progress')
 
-    // Stop 1 (no location): arrived, then delivered.
-    const stop = (name) => driverPage.getByTestId('stop-list').locator('> li').filter({ hasText: name })
-    await stop(names[2]).getByRole('button', { name: 'Arrived' }).click()
-    await expect(stop(names[2]).getByTestId(`stop-status-${customerIds[2]}`)).toHaveText('Arrived')
-    await stop(names[2]).getByRole('button', { name: 'Delivered' }).click()
-    await expect(stop(names[2]).getByTestId(`stop-status-${customerIds[2]}`)).toHaveText('Delivered')
-    // Stop 2: failed needs a reason.
-    await stop(names[0]).getByRole('button', { name: 'Failed' }).click()
-    const save = stop(names[0]).getByRole('button', { name: /Save failed/ })
-    await expect(save).toBeDisabled()
-    await stop(names[0]).getByRole('textbox').fill('ab')
-    await expect(save).toBeDisabled()
-    await stop(names[0]).getByRole('textbox').fill('Shop closed for stocktake')
-    await expect(save).toBeEnabled()
-    await save.click()
-    await expect(stop(names[0]).getByTestId(`stop-status-${customerIds[0]}`)).toHaveText('Failed')
+    // Only the next stop is expanded, with at most three buttons (Navigate shows only for stops with a pin).
+    const next = driverPage.getByTestId('next-stop')
+    await expect(next).toContainText(names[2])
+    await expect(next).toContainText('Street 3')
+    await expect(next.getByRole('button')).toHaveCount(2) // Delivered + Problem (no pin, so no Navigate link)
+    await expect(driverPage.getByTestId('stop-list').locator('> li')).toHaveCount(2)
+
+    // Stop 1 (no location): Delivered in one tap.
+    await next.getByRole('button', { name: 'Delivered' }).click()
+    await expect(driverPage.getByTestId(`stop-status-${customerIds[2]}`)).toHaveText('Delivered')
+    await expect(driverPage.getByTestId('route-progress')).toHaveText('1 / 3 done')
+    // Stop 2 is now next: Problem opens a sheet of preset reasons; the preset text is the stored reason.
+    await expect(driverPage.getByTestId('next-stop')).toContainText(names[0])
+    await driverPage.getByTestId('next-stop').getByRole('button', { name: 'Problem' }).click()
+    const sheet = driverPage.getByTestId('problem-sheet')
+    for (const label of ['Shop closed', 'No one to receive', 'Customer refused', 'Skip for now', 'Other']) await expect(sheet.getByRole('button', { name: label })).toBeVisible()
+    await sheet.getByRole('button', { name: 'Shop closed' }).click()
+    await expect(driverPage.getByTestId(`stop-status-${customerIds[0]}`)).toHaveText('Failed')
     // Stop 3 stays unvisited. End the route: the dialog warns about the missed stop.
-    await driverPage.getByRole('button', { name: 'End route' }).click()
+    await driverPage.getByRole('button', { name: 'End route' }).first().click()
     const dialog = driverPage.getByTestId('end-route-dialog')
     await expect(dialog).toContainText('1 stop has not been visited')
     await dialog.getByLabel(/Note for the office/).fill('Back at depot')

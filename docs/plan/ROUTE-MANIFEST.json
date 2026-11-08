@@ -1,7 +1,7 @@
 {
   "source": "frontend/hexabill-ui/src/app/App.jsx",
   "verifiedAt": "2026-10-18",
-  "uniqueRoutePathCount": 68,
+  "uniqueRoutePathCount": 69,
   "paths": [
     "*",
     "/",
@@ -9,6 +9,7 @@
     "/agreements",
     "/agreements/:id",
     "/agreements/new",
+    "/assistant",
     "/audit",
     "/backup",
     "/billing-history",
