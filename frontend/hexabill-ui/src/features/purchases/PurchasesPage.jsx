@@ -193,46 +193,62 @@ const PurchasesPage = () => {
   // Supplier autocomplete — require ≥2 chars (match backend), debounce
   useEffect(() => {
     const q = (formData.supplierName || '').trim()
-    if (!q || q.length < 2) {
+    if (!q) {
       setSupplierSuggestions([])
       setShowSupplierSuggestions(false)
-      if (!q) setSupplierBalance(null)
+      setSupplierBalance(null)
       return
     }
+    // A name just picked from the list needs no new search (it would reopen the list).
+    if (supplierPickedRef.current) return
+    let cancelled = false
     const t = setTimeout(async () => {
       try {
-        const res = await suppliersAPI.searchSuppliers(q, 10)
+        const res = await suppliersAPI.searchSuppliers(q, 8)
+        if (cancelled) return
         if (res?.success && res?.data?.length) {
           setSupplierSuggestions(res.data)
           setShowSupplierSuggestions(true)
         } else {
           setSupplierSuggestions([])
+          setShowSupplierSuggestions(false)
         }
       } catch {
-        setSupplierSuggestions([])
+        if (!cancelled) setSupplierSuggestions([])
       }
-    }, 300)
-    return () => clearTimeout(t)
+    }, 200)
+    return () => { cancelled = true; clearTimeout(t) }
   }, [formData.supplierName])
 
-  // Fetch supplier balance when supplier selected (Phase 7.4)
+  // Supplier balance: only for a name picked from the directory or an exact match, never for
+  // half-typed letters (each lookup runs several database queries).
   useEffect(() => {
     const name = (formData.supplierName || '').trim()
     if (!name) {
       setSupplierBalance(null)
       return
     }
+    const exact = supplierSuggestions.some((s) => {
+      const label = typeof s === 'string' ? s : (s?.name || '')
+      return label.trim().toLowerCase() === name.toLowerCase()
+    })
+    if (!supplierPickedRef.current && !supplierPickedFromList && !exact && !(editingPurchase && editingPurchase.supplierName === name)) {
+      setSupplierBalance(null)
+      return
+    }
+    let cancelled = false
     const t = setTimeout(async () => {
       try {
         const res = await suppliersAPI.getSupplierBalance(name)
+        if (cancelled) return
         if (res?.success && res?.data) setSupplierBalance(res.data)
         else setSupplierBalance(null)
       } catch {
-        setSupplierBalance(null)
+        if (!cancelled) setSupplierBalance(null)
       }
-    }, 400)
-    return () => clearTimeout(t)
-  }, [formData.supplierName])
+    }, 300)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [formData.supplierName, supplierSuggestions, supplierPickedFromList, editingPurchase])
 
   // Fetch VAT from company settings (no hardcoded 5% — TODO #5)
   useEffect(() => {
@@ -776,6 +792,8 @@ const PurchasesPage = () => {
   }
 
   const handleNewPurchase = () => {
+    supplierPickedRef.current = false
+    setSupplierPickedFromList(false)
     setEditingPurchase(null)
     setFormData({
       supplierName: '',
@@ -798,6 +816,8 @@ const PurchasesPage = () => {
   }
 
   const handleEditPurchase = (purchase) => {
+    supplierPickedRef.current = true
+    setShowSupplierSuggestions(false)
     setEditingPurchase(purchase)
     setFormData({
       supplierName: purchase.supplierName || '',
@@ -835,7 +855,7 @@ const PurchasesPage = () => {
         try {
           const response = await purchasesAPI.deletePurchase(purchase.id)
           if (response.success) {
-            toast.success(`Purchase deleted! Stock reversed for ${response.data.itemsCount} items.`, { id: 'purchase-delete', duration: 4000 })
+            toast.success(`Purchase deleted! Stock reversed for ${response.data?.itemsCount ?? purchase.items?.length ?? 0} items.`, { id: 'purchase-delete', duration: 4000 })
             loadPurchases()
             loadAnalytics()
             loadPendingSummary()

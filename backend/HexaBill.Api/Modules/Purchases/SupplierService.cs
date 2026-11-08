@@ -417,15 +417,19 @@ namespace HexaBill.Api.Modules.Purchases
 
         public async Task<List<string>> SearchSupplierNamesAsync(int tenantId, string query, int limit = 20)
         {
-            if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+            if (string.IsNullOrWhiteSpace(query))
                 return new List<string>();
 
             var term = query.Trim().ToLower();
+            limit = Math.Clamp(limit, 1, 50);
 
             // Active directory only — do not union raw Purchases.SupplierName (reintroduces merged/typo names).
+            // Names that start with the typed letters come first, so one letter already gives useful suggestions.
             var fromSuppliers = await _context.Suppliers
+                .AsNoTracking()
                 .Where(s => s.TenantId == tenantId && s.IsActive && s.Name.ToLower().Contains(term))
-                .OrderBy(s => s.Name)
+                .OrderBy(s => s.Name.ToLower().StartsWith(term) ? 0 : 1)
+                .ThenBy(s => s.Name)
                 .Select(s => s.Name)
                 .Take(limit)
                 .ToListAsync();
