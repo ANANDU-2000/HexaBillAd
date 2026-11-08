@@ -20,19 +20,22 @@ public static class AiServiceRegistration
             string.Equals(configuration["Ai:UsageLedger"], "memory", StringComparison.OrdinalIgnoreCase)
                 ? sp.GetRequiredService<InMemoryAiUsageLedger>()
                 : sp.GetRequiredService<PersistentAiUsageLedger>());
+        services.AddSingleton<AiRuntimeSettingsStore>();
+        services.AddSingleton<IAiRuntimeSettings>(sp => sp.GetRequiredService<AiRuntimeSettingsStore>());
         services.AddSingleton(sp =>
         {
             var options = sp.GetRequiredService<IOptions<AiOptions>>();
             var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var runtime = sp.GetRequiredService<IAiRuntimeSettings>();
             var providers = new List<IAiProvider> { new MockAiProvider() };
             foreach (var (key, provider) in options.Value.Providers)
             {
                 if (key.Equals("mock", StringComparison.OrdinalIgnoreCase)) continue;
                 var http = factory.CreateClient("ai-" + key);
                 if (provider.Kind.Equals("gemini", StringComparison.OrdinalIgnoreCase)) providers.Add(new GeminiProvider(key, provider, http));
-                else if (provider.Kind.Equals("openai-compatible", StringComparison.OrdinalIgnoreCase)) providers.Add(new OpenAiCompatibleProvider(key, provider, http));
+                else if (provider.Kind.Equals("openai-compatible", StringComparison.OrdinalIgnoreCase)) providers.Add(new OpenAiCompatibleProvider(key, provider, http, runtime));
             }
-            return new AiGateway(options, providers, sp.GetRequiredService<IAiUsageLedger>(), sp.GetRequiredService<ILogger<AiGateway>>());
+            return new AiGateway(options, providers, sp.GetRequiredService<IAiUsageLedger>(), sp.GetRequiredService<ILogger<AiGateway>>(), runtime: runtime);
         });
         return services;
     }

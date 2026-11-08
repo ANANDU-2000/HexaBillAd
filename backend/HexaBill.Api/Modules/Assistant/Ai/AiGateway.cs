@@ -26,6 +26,9 @@ public sealed class AiOptions
     /// <summary>Optional second provider, used only when the first fails. A paid fallback also needs <see cref="AllowPaidFallback"/>.</summary>
     public string FallbackProvider { get; set; } = string.Empty;
 
+    /// <summary>More providers tried in order after the primary and <see cref="FallbackProvider"/>, comma separated.</summary>
+    public string FallbackProviders { get; set; } = string.Empty;
+
     public bool AllowPaidFallback { get; set; }
 
     /// <summary>Must be set by the owner after a provider's data-use, retention and region terms were approved. Default false.</summary>
@@ -48,6 +51,8 @@ public sealed class AiProviderOptions
     public string Kind { get; set; } = string.Empty;
     public string BaseUrl { get; set; } = string.Empty;
     public string Model { get; set; } = string.Empty;
+    /// <summary>Optional extra models tried in order when the previous one is rate limited or fails, comma separated (for example a pool of free OpenRouter models).</summary>
+    public string ModelPool { get; set; } = string.Empty;
     /// <summary>Set through server configuration only. Never put a real value in a file under source control.</summary>
     public string ApiKey { get; set; } = string.Empty;
     /// <summary>True when calls cost money. A paid provider is never used as a silent fallback.</summary>
@@ -55,8 +60,15 @@ public sealed class AiProviderOptions
     public int MaxOutputTokens { get; set; } = 512;
     public int EffectiveMaxOutputTokens => Math.Clamp(MaxOutputTokens, 64, 2048);
 
+    /// <summary>The configured models in order: <see cref="Model"/> first, then the pool, no duplicates.</summary>
+    public IReadOnlyList<string> ConfiguredModels() => SplitModels(Model + "," + ModelPool);
+
+    public static IReadOnlyList<string> SplitModels(string? list) =>
+        (list ?? string.Empty).Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase).Take(30).ToList();
+
     public bool IsConfigured =>
-        !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(Model) && !string.IsNullOrWhiteSpace(BaseUrl)
+        !string.IsNullOrWhiteSpace(ApiKey) && ConfiguredModels().Count > 0 && !string.IsNullOrWhiteSpace(BaseUrl)
         && (Kind.Equals("openai-compatible", StringComparison.OrdinalIgnoreCase) || Kind.Equals("gemini", StringComparison.OrdinalIgnoreCase));
 }
 
@@ -65,15 +77,27 @@ public sealed record AiCall(int TenantId, int UserId, string Purpose, string Pro
 public enum AiOutcome { Ok, Disabled, Refused, Unavailable }
 
 /// <summary>Result of a call. The text is non-authoritative output; callers must never post it to the books without a person confirming.</summary>
-public sealed record AiResult(AiOutcome Outcome, string? Text, string? Provider, string? Reason, int InputTokens = 0, int OutputTokens = 0, bool TokensEstimated = false)
+public sealed record AiResult(AiOutcome Outcome, string? Text, string? Provider, string? Reason, int InputTokens = 0, int OutputTokens = 0, bool TokensEstimated = false, string? Model = null)
 {
     public bool Ok => Outcome == AiOutcome.Ok;
 }
 
-public sealed record ProviderReply(string Text, int? InputTokens, int? OutputTokens);
+public sealed record ProviderReply(string Text, int? InputTokens, int? OutputTokens, string? Model = null);
 
 /// <summary>What a platform administrator may see about a provider. Never the key, never a prompt.</summary>
-public sealed record AiProviderStatus(string Key, string Kind, string Model, bool Configured, bool Paid, bool IsPrimary, bool IsFallback);
+public sealed record AiProviderStatus(string Key, string Kind, string Model, bool Configured, bool Paid, bool IsPrimary, bool IsFallback, IReadOnlyList<string>? Models = null);
+
+/// <summary>
+/// What a platform administrator may change at run time without a redeploy. It can only narrow or re-order what the server
+/// environment already allows: it can never switch AI on, add a provider, change a key or allow customer data.
+/// </summary>
+public sealed record AiRuntime(bool? Enabled = null, string? Provider = null, string[]? Fallbacks = null, bool? AllowPaidFallback = null,
+    int? DailyCalls = null, int? DailyTokens = null, Dictionary<string, string[]>? Models = null);
+
+public interface IAiRuntimeSettings
+{
+    AiRuntime Current { get; }
+}
 
 /// <summary>Outcome of a connectivity test with a fixed synthetic prompt. Failure is a short category, never a response body.</summary>
 public sealed record AiProviderTest(string Provider, bool Configured, bool Ok, long LatencyMs, string? Model, string? Failure);
@@ -130,35 +154,92 @@ public sealed class OpenAiCompatibleProvider : IAiProvider
 {
     private readonly HttpClient _http;
     private readonly AiProviderOptions _options;
+    private readonly IAiRuntimeSettings? _runtime;
+    private readonly ConcurrentDictionary<string, DateTime> _cooldown = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Func<DateTime> _clock;
     public string Key { get; }
     public bool Paid => _options.Paid;
     public bool IsConfigured => _options.IsConfigured;
     public int MaxOutputTokens => _options.EffectiveMaxOutputTokens;
+    /// <summary>Longest one model may take before the next one is tried.</summary>
+    public int PerModelSeconds { get; set; } = 10;
 
-    public OpenAiCompatibleProvider(string key, AiProviderOptions options, HttpClient http) { Key = key; _options = options; _http = http; }
+    public OpenAiCompatibleProvider(string key, AiProviderOptions options, HttpClient http, IAiRuntimeSettings? runtime = null, Func<DateTime>? clock = null)
+    { Key = key; _options = options; _http = http; _runtime = runtime; _clock = clock ?? (() => DateTime.UtcNow); }
+
+    /// <summary>Models in the order they are tried: the administrator's runtime choice if any, else the configured list.</summary>
+    public IReadOnlyList<string> Models()
+    {
+        var chosen = _runtime?.Current.Models;
+        if (chosen != null && chosen.TryGetValue(Key, out var list))
+        {
+            var cleaned = list.Where(m => !string.IsNullOrWhiteSpace(m)).Select(m => m.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Take(30).ToList();
+            if (cleaned.Count > 0) return cleaned;
+        }
+        return _options.ConfiguredModels();
+    }
 
     public async Task<ProviderReply> CompleteAsync(string? system, string prompt, CancellationToken ct)
+    {
+        var models = Models();
+        var now = _clock();
+        var ready = models.Where(m => !_cooldown.TryGetValue(m, out var until) || until <= now).ToList();
+        if (ready.Count == 0) ready = models.ToList(); // everything is resting: try anyway rather than fail without a call
+        Exception? last = null;
+        foreach (var model in ready)
+        {
+            try
+            {
+                using var per = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                per.CancelAfter(TimeSpan.FromSeconds(Math.Max(2, PerModelSeconds)));
+                var reply = await CallAsync(model, system, prompt, per.Token);
+                if (string.IsNullOrWhiteSpace(reply.Text)) throw new InvalidOperationException("Empty answer.");
+                return reply;
+            }
+            catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or JsonException or KeyNotFoundException or OperationCanceledException)
+            {
+                if (ct.IsCancellationRequested) throw;
+                last = ex;
+                var status = (ex as HttpRequestException)?.StatusCode;
+                // Rate limited: rest this model longer. Missing: longer still. Anything else: a short rest so a dead model is not hit on every call.
+                var rest = status == System.Net.HttpStatusCode.TooManyRequests ? TimeSpan.FromMinutes(2)
+                    : status == System.Net.HttpStatusCode.NotFound ? TimeSpan.FromMinutes(10) : TimeSpan.FromSeconds(45);
+                _cooldown[model] = _clock() + rest;
+            }
+        }
+        throw last ?? new InvalidOperationException("No model available.");
+    }
+
+    private async Task<ProviderReply> CallAsync(string model, string? system, string prompt, CancellationToken ct)
     {
         var messages = new List<object>();
         if (!string.IsNullOrWhiteSpace(system)) messages.Add(new { role = "system", content = system });
         messages.Add(new { role = "user", content = prompt });
         using var request = new HttpRequestMessage(HttpMethod.Post, _options.BaseUrl.TrimEnd('/') + "/chat/completions")
         {
-            Content = new StringContent(JsonSerializer.Serialize(new { model = _options.Model, messages, max_tokens = MaxOutputTokens }), Encoding.UTF8, "application/json"),
+            Content = new StringContent(JsonSerializer.Serialize(new { model, messages, max_tokens = MaxOutputTokens }), Encoding.UTF8, "application/json"),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+        if (_options.BaseUrl.Contains("openrouter.ai", StringComparison.OrdinalIgnoreCase))
+        {
+            request.Headers.TryAddWithoutValidation("HTTP-Referer", "https://hexabill.company");
+            request.Headers.TryAddWithoutValidation("X-Title", "HexaBill");
+        }
         using var response = await _http.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
         var root = doc.RootElement;
-        var text = root.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString() ?? string.Empty;
+        // OpenRouter can return 200 with an error object and no choices when the upstream model fails.
+        if (root.TryGetProperty("error", out _) || !root.TryGetProperty("choices", out var choices) || choices.ValueKind != JsonValueKind.Array || choices.GetArrayLength() == 0)
+            throw new InvalidOperationException("The model returned no answer.");
+        var text = choices[0].GetProperty("message").TryGetProperty("content", out var c0) && c0.ValueKind == JsonValueKind.String ? c0.GetString() ?? string.Empty : string.Empty;
         int? input = null, output = null;
         if (root.TryGetProperty("usage", out var usage))
         {
             if (usage.TryGetProperty("prompt_tokens", out var p) && p.TryGetInt32(out var pi)) input = pi;
             if (usage.TryGetProperty("completion_tokens", out var c) && c.TryGetInt32(out var ci)) output = ci;
         }
-        return new ProviderReply(text, input, output);
+        return new ProviderReply(text, input, output, model);
     }
 }
 
@@ -226,21 +307,56 @@ public sealed class AiGateway
     private readonly IAiUsageLedger _ledger;
     private readonly ILogger<AiGateway> _logger;
     private readonly Func<DateTime> _clock;
+    private readonly IAiRuntimeSettings? _runtime;
 
-    public AiGateway(IOptions<AiOptions> options, IEnumerable<IAiProvider> providers, IAiUsageLedger ledger, ILogger<AiGateway> logger, Func<DateTime>? clock = null)
+    public AiGateway(IOptions<AiOptions> options, IEnumerable<IAiProvider> providers, IAiUsageLedger ledger, ILogger<AiGateway> logger, Func<DateTime>? clock = null, IAiRuntimeSettings? runtime = null)
     {
         _options = options.Value;
         _providers = providers.ToDictionary(p => p.Key, StringComparer.OrdinalIgnoreCase);
         _ledger = ledger;
         _logger = logger;
         _clock = clock ?? (() => DateTime.UtcNow);
+        _runtime = runtime;
+    }
+
+    private AiRuntime Runtime => _runtime?.Current ?? new AiRuntime();
+
+    /// <summary>Environment switch AND the administrator's switch: the administrator can turn AI off but never on.</summary>
+    private bool EffectiveEnabled => _options.Enabled && (Runtime.Enabled ?? true);
+    private bool EffectiveAllowPaid => Runtime.AllowPaidFallback ?? _options.AllowPaidFallback;
+    // Runtime values are already clamped when saved; the environment's own values are used as configured.
+    private int CallLimit => Runtime.DailyCalls ?? _options.DailyCallLimitPerTenant;
+    private int TokenLimit => Runtime.DailyTokens ?? _options.DailyTokenLimitPerTenant;
+
+    /// <summary>Primary first, then the fallbacks in order. Only providers that exist and are configured; paid ones after the primary only when allowed.</summary>
+    private IReadOnlyList<IAiProvider> Chain()
+    {
+        var rt = Runtime;
+        var keys = new List<string>();
+        void Add(string? k) { if (!string.IsNullOrWhiteSpace(k) && !keys.Contains(k.Trim(), StringComparer.OrdinalIgnoreCase)) keys.Add(k.Trim()); }
+        Add(string.IsNullOrWhiteSpace(rt.Provider) ? _options.Provider : rt.Provider);
+        if (rt.Fallbacks != null) foreach (var k in rt.Fallbacks) Add(k);
+        else
+        {
+            Add(_options.FallbackProvider);
+            foreach (var k in (_options.FallbackProviders ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) Add(k);
+        }
+        var chain = new List<IAiProvider>();
+        for (var i = 0; i < keys.Count; i++)
+        {
+            var p = Resolve(keys[i]);
+            if (p == null) continue;
+            if (chain.Count > 0 && p.Paid && !EffectiveAllowPaid) continue;
+            chain.Add(p);
+        }
+        return chain;
     }
 
     private static int EstimateTokens(AiCall call, int maxOutputTokens) => Math.Max(1, ((call.Prompt?.Length ?? 0) + (call.System?.Length ?? 0)) / 4) + Math.Clamp(maxOutputTokens, 64, 2048); // estimated input plus the bounded answer
 
     public async Task<AiResult> CompleteAsync(AiCall call, CancellationToken ct = default)
     {
-        if (!_options.Enabled) return new AiResult(AiOutcome.Disabled, null, null, "AI is not enabled.");
+        if (!EffectiveEnabled) return new AiResult(AiOutcome.Disabled, null, null, "AI is not enabled.");
         if (call.TenantId <= 0) return new AiResult(AiOutcome.Refused, null, null, "No company scope.");
         if (call.UserId <= 0) return new AiResult(AiOutcome.Refused, null, null, "No user scope.");
         if (string.IsNullOrWhiteSpace(call.Prompt)) return new AiResult(AiOutcome.Refused, null, null, "Empty request.");
@@ -248,17 +364,16 @@ public sealed class AiGateway
         if (call.ContainsCustomerData && !_options.AllowCustomerData)
             return new AiResult(AiOutcome.Refused, null, null, "Customer data may not be sent to an AI provider until the owner approves its terms.");
 
-        var primary = Resolve(_options.Provider);
-        if (primary == null) return new AiResult(AiOutcome.Unavailable, null, null, "No AI provider is configured.");
+        var chain = Chain();
+        if (chain.Count == 0) return new AiResult(AiOutcome.Unavailable, null, null, "No AI provider is configured.");
+        var primary = chain[0];
 
         var now = _clock();
-        var fallback = Resolve(_options.FallbackProvider);
-        var canFallback = fallback != null && !ReferenceEquals(fallback, primary) && (!fallback.Paid || _options.AllowPaidFallback);
-        var estimate = EstimateTokens(call, Math.Max(primary.MaxOutputTokens, canFallback ? fallback!.MaxOutputTokens : 0));
+        var estimate = EstimateTokens(call, chain.Max(p => p.MaxOutputTokens));
         bool reserved;
         try
         {
-            reserved = _ledger.TryReserve(call.TenantId, estimate, _options.DailyCallLimitPerTenant, _options.DailyTokenLimitPerTenant, now);
+            reserved = _ledger.TryReserve(call.TenantId, estimate, CallLimit, TokenLimit, now);
         }
         catch (Exception ex)
         {
@@ -269,11 +384,12 @@ public sealed class AiGateway
         if (!reserved)
             return new AiResult(AiOutcome.Refused, null, primary.Key, "The daily AI limit for this company is used up.");
 
-        var attempt = await TryProviderAsync(primary, call, ct);
-        if (attempt == null)
+        (IAiProvider, ProviderReply)? attempt = null;
+        foreach (var candidate in chain)
         {
-            if (canFallback)
-                attempt = await TryProviderAsync(fallback!, call, ct);
+            attempt = await TryProviderAsync(candidate, call, ct);
+            if (attempt != null) break;
+            if (ct.IsCancellationRequested) break;
         }
 
         if (attempt == null)
@@ -286,7 +402,7 @@ public sealed class AiGateway
         var estimated = reply.InputTokens == null || reply.OutputTokens == null;
         var actual = estimated ? estimate : reply.InputTokens!.Value + reply.OutputTokens!.Value;
         SafeSettle(call.TenantId, estimate, actual, now);
-        return new AiResult(AiOutcome.Ok, reply.Text, provider.Key, null, reply.InputTokens ?? estimate, reply.OutputTokens ?? 0, estimated);
+        return new AiResult(AiOutcome.Ok, reply.Text, provider.Key, null, reply.InputTokens ?? estimate, reply.OutputTokens ?? 0, estimated, reply.Model);
     }
 
     private void SafeSettle(int tenantId, int estimated, int actual, DateTime now)
@@ -300,21 +416,33 @@ public sealed class AiGateway
         _providers.Values.OrderBy(p => p.Key, StringComparer.OrdinalIgnoreCase).Select(p =>
         {
             _options.Providers.TryGetValue(p.Key, out var o);
+            var chain = Chain();
+            var models = p is OpenAiCompatibleProvider oc ? oc.Models() : (IReadOnlyList<string>)(o?.ConfiguredModels() ?? new List<string>());
             return new AiProviderStatus(p.Key, o?.Kind ?? "mock", o?.Model ?? "mock", p.IsConfigured, p.Paid,
-                p.Key.Equals(_options.Provider, StringComparison.OrdinalIgnoreCase), p.Key.Equals(_options.FallbackProvider, StringComparison.OrdinalIgnoreCase));
+                chain.Count > 0 && ReferenceEquals(chain[0], p), chain.Skip(1).Any(c => ReferenceEquals(c, p)), models);
         }).ToList();
 
-    public bool IsEnabled => _options.Enabled;
+    public bool IsEnabled => EffectiveEnabled;
     /// <summary>True when the primary provider is fully configured.</summary>
-    public bool HasProvider => Resolve(_options.Provider) != null;
+    public bool HasProvider => Chain().Count > 0;
     public bool AllowsCustomerData => _options.AllowCustomerData;
+
+    /// <summary>The limits and switches in force right now (environment plus the administrator's runtime choice).</summary>
+    public object Effective() => new { enabled = EffectiveEnabled, envEnabled = _options.Enabled, allowPaidFallback = EffectiveAllowPaid, dailyCallLimit = CallLimit, dailyTokenLimit = TokenLimit, chain = Chain().Select(c => c.Key).ToArray() };
+
+    private IEnumerable<string> EnvChainKeys() =>
+        new[] { _options.Provider, _options.FallbackProvider }
+            .Concat((_options.FallbackProviders ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Where(k => !string.IsNullOrWhiteSpace(k)).Distinct(StringComparer.OrdinalIgnoreCase);
 
     public (string? Fingerprint, string Notice) ConsentPolicy()
     {
         if (string.IsNullOrWhiteSpace(_options.DataPolicyVersion) || string.IsNullOrWhiteSpace(_options.DataPolicyNotice))
             return (null, "The provider privacy policy is not ready. Use the Look up tab.");
         var providers = new List<object>();
-        foreach (var key in new[] { _options.Provider, _options.FallbackProvider }.Where(k => !string.IsNullOrWhiteSpace(k)))
+        // Consent covers the providers the server environment names, not the administrator's runtime model choice, so rotating
+        // free models never forces every owner to approve again. Adding or changing a provider in the environment does.
+        foreach (var key in EnvChainKeys())
         {
             if (_options.Providers.TryGetValue(key, out var p))
             {
@@ -326,7 +454,7 @@ public sealed class AiGateway
         }
         if (providers.Count == 0) return (null, "The provider configuration is not ready. Use the Look up tab.");
         var policy = JsonSerializer.Serialize(new { _options.DataPolicyVersion, _options.DataPolicyNotice, _options.AllowPaidFallback, providers });
-        var names = string.Join("; ", new[] { _options.Provider, _options.FallbackProvider }.Where(k => !string.IsNullOrWhiteSpace(k))
+        var names = string.Join("; ", EnvChainKeys()
             .Select(k => _options.Providers.TryGetValue(k, out var p) ? $"{k}: {p.Model} (up to {p.EffectiveMaxOutputTokens} output tokens)" : k));
         return (Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(policy))).ToLowerInvariant(),
             $"{_options.DataPolicyNotice}\nProviders in order: {names}. Policy: {_options.DataPolicyVersion}.");
@@ -367,7 +495,7 @@ public sealed class AiGateway
             }
             var reply = await work;
             _logger.LogInformation("AI provider test ok. Provider {Provider}, {Ms} ms", provider.Key, clock.ElapsedMilliseconds);
-            return new AiProviderTest(provider.Key, true, !string.IsNullOrWhiteSpace(reply.Text), clock.ElapsedMilliseconds, model,
+            return new AiProviderTest(provider.Key, true, !string.IsNullOrWhiteSpace(reply.Text), clock.ElapsedMilliseconds, reply.Model ?? model,
                 string.IsNullOrWhiteSpace(reply.Text) ? "The provider answered with nothing." : null);
         }
         catch (HttpRequestException ex)

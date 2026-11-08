@@ -50,6 +50,7 @@ const SuperAdminHealthPage = lazy(() => import('../platform/SuperAdminHealthPage
 const SuperAdminErrorLogsPage = lazy(() => import('../platform/SuperAdminErrorLogsPage'))
 const SuperAdminAuditLogsPage = lazy(() => import('../platform/SuperAdminAuditLogsPage'))
 const SuperAdminSettingsPage = lazy(() => import('../platform/SuperAdminSettingsPage'))
+const SuperAdminAiPage = lazy(() => import('../platform/SuperAdminAiPage'))
 const SuperAdminGlobalSearchPage = lazy(() => import('../platform/SuperAdminGlobalSearchPage'))
 const SuperAdminSqlConsolePage = lazy(() => import('../platform/SuperAdminSqlConsolePage'))
 const BranchesPage = lazy(() => import('../features/branches/BranchesPage'))
@@ -239,6 +240,7 @@ function App() {
             <Route path="/superadmin/error-logs" element={<SuperAdminErrorLogsPage />} />
             <Route path="/superadmin/audit-logs" element={<SuperAdminAuditLogsPage />} />
             <Route path="/superadmin/settings" element={<SuperAdminSettingsPage />} />
+            <Route path="/superadmin/ai" element={<SuperAdminAiPage />} />
             <Route path="/superadmin/search" element={<SuperAdminGlobalSearchPage />} />
             <Route path="/superadmin/sql-console" element={<SuperAdminSqlConsolePage />} />
             <Route path="/help" element={<HelpPage />} />

@@ -17,7 +17,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Search,
-  Bell
+  Bell,
+  Sparkles
 } from 'lucide-react'
 import Logo from './Logo'
 import { connectionManager } from '../services/connectionManager'
@@ -96,6 +97,7 @@ const SuperAdminLayout = () => {
     { name: 'Audit Logs', href: '/superadmin/audit-logs', icon: ClipboardList },
     { name: 'Error Logs', href: '/superadmin/error-logs', icon: AlertCircle },
     { name: 'Infrastructure', href: '/superadmin/health', icon: Activity },
+    { name: 'AI Control', href: '/superadmin/ai', icon: Sparkles },
     { name: 'Settings', href: '/superadmin/settings', icon: Shield },
   ]
 

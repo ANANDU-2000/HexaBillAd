@@ -2302,6 +2302,14 @@ export const superAdminAPI = {
     return response.data
   },
 
+  // AI control (platform administrator only). Keys live in the server environment and are never sent here.
+  getAiProviders: async () => (await api.get('/superadmin/ai/providers')).data,
+  testAiProvider: async (key) => (await api.post(`/superadmin/ai/providers/${encodeURIComponent(key)}/test`)).data,
+  saveAiRuntime: async (body) => (await api.put('/superadmin/ai/runtime', body)).data,
+  resetAiRuntime: async () => (await api.delete('/superadmin/ai/runtime')).data,
+  getOpenRouterModels: async (freeOnly = true) => (await api.get('/superadmin/ai/openrouter/models', { params: { freeOnly } })).data,
+  getAiUsage: async () => (await api.get('/superadmin/ai/usage')).data,
+
   updatePlatformSettings: async (data) => {
     const response = await api.put('/superadmin/platform-settings', data)
     return response.data
