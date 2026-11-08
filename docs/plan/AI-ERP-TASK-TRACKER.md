@@ -1241,3 +1241,10 @@ STOP HERE — do not begin next phase automatically.
 - The run-1 failure was caused by the append-only AuditLog guard (ee040f30): `ProductStockConcurrencyPostgreSqlTests` cleanup deleted audit rows through the ORM. Fixed the test cleanup to use `ExecuteDeleteAsync` (test-only). The earlier 469-test PostgreSQL pass pre-dated the guard.
 - Skip = opt-in `MigrationRehearsalPostgreSqlTests`. Run explicitly with `HEXABILL_MIGRATION_REHEARSAL=1` it FAILS as documented (OPS-01: history alone cannot build an empty PostgreSQL DB; `InitialPostgreSQL`/`Customers already exists`). Pre-existing, not caused by this work. NOT TESTED as a pass.
 - Not pushed. Nothing run against production.
+
+### 2026-11-08 — Remote MCP server, per-company (first slice, ahead of plan order at the user's request)
+- Added `Modules/Assistant/McpController.cs`: JSON-RPC 2.0 over HTTP POST at `/api/mcp` (passes the existing Vercel `/api` proxy). Methods: initialize, ping, tools/list, tools/call, notifications. Company, user and role come only from the login token; platform admins get 403, no token 401.
+- Tools: the 8 existing read tools (role-redacted, strict arguments) plus `draft_customer` and `draft_expense`, which only create a draft. There is deliberately NO confirm tool: a person confirms in the app. No SQL tool.
+- Audit: `McpToolCall` row with the tool name only.
+- Evidence: `McpHttpTests` 14/14 (isolation, staff redaction, forged tenantId/ownerId refused, draft changes nothing in the books, audit has no arguments, 401/403). Full suite on PostgreSQL: 2356 pass / 0 fail / 1 skip (opt-in rehearsal). Real-socket check (synthetic host + PostgreSQL + real login, separate Node client): 10/10, including company B unable to see company A's customer.
+- NOT DONE: per-company long-lived MCP tokens (clients use the user's login token, which expires), the outbound MCP client (connecting to a company's own remote MCP servers + SSRF guard), AI-consent gate on this endpoint, rate limit per company, Vercel/Render deployment, any production run. Not pushed.
