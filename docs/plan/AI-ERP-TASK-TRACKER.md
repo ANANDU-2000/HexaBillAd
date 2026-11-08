@@ -1223,3 +1223,9 @@ STOP HERE — do not begin next phase automatically.
 - Change: `[Collection("HttpIntegration")]` (non-parallel) on those 19 classes. Test-only; no production code touched.
 - Evidence: before 1 failure in 4 full runs; after 0 failures in 5 full runs (2228 pass / 115 skipped / 0 fail, ~2m36s each; was ~2m). PASS (moderate evidence; the failure rate was ~25%).
 - Not verified: DailyCloseExpectedCash flake was not reproduced in these runs, so it is not shown to be fixed.
+
+### 2026-11-08 — AI Intelligence Layer: Phase 0 CSP (report-only)
+- Added `Content-Security-Policy-Report-Only`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` to both `vercel.json` files (root and frontend/hexabill-ui) for all paths. Report-only: nothing is blocked.
+- Policy: script-src 'self' (built index.html has no inline scripts), style-src 'self' 'unsafe-inline', img-src self/data/blob/https, connect-src self + hexabill.onrender.com, object-src none, frame-ancestors none.
+- Verified: both JSON files parse; `npm run build` OK; dist/index.html has only two external scripts.
+- NOT TESTED: real browser console on a Vercel preview (no violation check yet), no report-uri collector. Enforcing mode is a later step after reviewing violations.
