@@ -3,5 +3,5 @@
 export {
   AlertCircle, AlertTriangle, ArrowRight, ArrowUpRight, BarChart3, Check, CheckCircle2, ChevronDown, ChevronUp, CreditCard,
   ExternalLink, Loader2, Maximize2, MessageSquare, Mic, MicOff, Minimize2, Navigation, Package, Phone, Receipt, RefreshCw, Send,
-  SlidersHorizontal, Sparkles, TrendingUp, UserPlus, Volume2, Wallet, X, Pencil, MapPin, Undo2, Play, Square, PanelRight,
+  SlidersHorizontal, Sparkles, TrendingUp, UserPlus, Volume2, Wallet, X, Pencil, MapPin, Undo2, Play, Square, PanelRight, LocateFixed, MapPinned, ChevronRight, Route as RouteIcon,
 } from 'lucide-react'
