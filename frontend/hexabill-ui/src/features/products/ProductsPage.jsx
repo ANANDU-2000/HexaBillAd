@@ -1074,7 +1074,7 @@ const ProductsPage = () => {
 
       {/* Modern Products Table — shown from 1280px; narrower screens use the card list below (its row actions fit) */}
       {canManageInventory && products.length > 0 && (
-        <label className="xl:hidden flex min-h-[44px] items-center gap-2 text-sm text-neutral-700">
+        <label className="md:hidden flex min-h-[44px] items-center gap-2 text-sm text-neutral-700">
           <input type="checkbox" aria-label="Select all products on this page" checked={products.every(p => selectedIds.has(p.id))} onChange={(e) => togglePage(e.target.checked)} className="h-5 w-5 rounded border-neutral-400" />
           Select page ({products.length}) — only the products shown here
         </label>
@@ -1091,7 +1091,7 @@ const ProductsPage = () => {
         </div>
       )}
 
-      <div className="hidden xl:block">
+      <div className="hidden md:block">
         <ProductsTable
           products={products}
           loading={loading}
@@ -1108,13 +1108,13 @@ const ProductsPage = () => {
         />
       </div>
 
-      {/* Product cards (below 1280px: phones, tablets, small laptops) */}
+      {/* Product cards (phones only; tablets and up use the table) */}
       {loading ? (
-        <div className="xl:hidden">
+        <div className="md:hidden">
           <ListSkeleton count={4} />
         </div>
       ) : products.length > 0 && (
-        <div className="xl:hidden space-y-2.5">
+        <div className="md:hidden space-y-2.5">
           {products.map((product) => {
             const lowStock = (product.stockQty ?? 0) <= (product.reorderLevel || 0)
             const outOfStock = (product.stockQty ?? 0) <= 0

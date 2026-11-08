@@ -13,7 +13,7 @@ import {
   HelpCircle,
   Keyboard,
   MoreHorizontal,
-  Search, Sparkles
+  Search, Sparkles, ArrowLeft
 } from 'lucide-react'
 import BottomNav from './BottomNav'
 import MoreMenuSheet from './mobile/MoreMenuSheet'
@@ -53,7 +53,7 @@ const Layout = () => {
     }
   })
   const [isDesktopNav, setIsDesktopNav] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 640px)').matches
   )
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
@@ -104,7 +104,8 @@ const Layout = () => {
   }, [location.pathname, closeMore])
 
   useEffect(() => {
-    const media = window.matchMedia('(min-width: 1024px)')
+    // Tablet shell starts at 640px (matches the Tailwind `md` screen): labelled sidebar on every tablet, portrait included.
+    const media = window.matchMedia('(min-width: 640px)')
     const onChange = () => setIsDesktopNav(media.matches)
     onChange()
     media.addEventListener('change', onChange)
@@ -302,6 +303,19 @@ const Layout = () => {
   // below md (index.css). Detail pages keep theirs: the h1 carries the record name.
   const shellOwnsTitle = Boolean(PAGE_TITLES[location.pathname])
 
+  // Global back control (phone + tablet top bars). Real history first; falls back to the parent route
+  // so a page opened from a link or after a reload still has a way back.
+  const showShellBack = !['/dashboard', '/pos', '/', '/login'].includes(location.pathname)
+  const goBack = () => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1)
+      return
+    }
+    const parent = location.pathname.replace(/\/[^/]+\/?$/, '')
+    navigate(parent && parent !== location.pathname ? parent : '/dashboard')
+  }
+  const backButtonClass = 'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md text-neutral-700 transition-colors hover:bg-neutral-100 active:bg-neutral-200 touch-manipulation'
+
   const isSalesLedger = location.pathname === '/sales-ledger'
   const isExpensesLedger = location.pathname === '/expenses'
   const isPosRoute = location.pathname === '/pos'
@@ -388,7 +402,12 @@ const Layout = () => {
           >
             <Menu className="h-5 w-5" strokeWidth={1.75} />
           </button>
-          ) : <span className="w-3 shrink-0" aria-hidden />}
+          ) : null}
+          {showShellBack ? (
+            <button type="button" onClick={goBack} className={backButtonClass} aria-label="Go back" data-testid="shell-back">
+              <ArrowLeft className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+            </button>
+          ) : (!routeShowsBottomNav ? null : <span className="w-3 shrink-0" aria-hidden />)}
           <p className="min-w-0 flex-1 truncate px-1 text-base font-semibold">{mobilePageTitle || companyName}</p>
           {assistantEnabled && (
             <button
@@ -412,8 +431,8 @@ const Layout = () => {
       </header>
       )}
 
-      {/* Sidebar: icon rail from 768px, 240px labels from 1024px unless collapsed */}
-      <div className={`no-print hidden md:fixed md:flex md:flex-col md:min-h-0 md:w-24 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${isSidebarCollapsed ? 'lg:w-24' : 'lg:w-60'}`}>
+      {/* Sidebar: labelled 192px from 640px (tablets), 240px from 1024px; icon rail only when the user collapses it */}
+      <div className={`no-print hidden md:fixed md:flex md:flex-col md:min-h-0 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${isSidebarCollapsed ? 'md:w-24' : 'md:w-48 lg:w-60'}`}>
         <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
           <div className={`flex h-16 shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'justify-between gap-2' : 'justify-center'}`}>
             <Link to="/dashboard" className={`flex min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
@@ -425,7 +444,7 @@ const Layout = () => {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="hidden min-h-9 min-w-9 items-center justify-center rounded-md text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white motion-reduce:transition-none lg:flex"
+              className="hidden min-h-9 min-w-9 items-center justify-center rounded-md text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white motion-reduce:transition-none md:flex"
               title={isSidebarCollapsed ? 'Expand sidebar (Ctrl+\\)' : 'Collapse sidebar (Ctrl+\\)'}
               aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
@@ -507,7 +526,7 @@ const Layout = () => {
       </div>
 
       {/* Main content - Full viewport after sidebar; pt-10 when impersonation banner visible so content not covered */}
-      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none md:pl-24 ${isSidebarCollapsed ? 'lg:pl-24' : 'lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
+      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none ${isSidebarCollapsed ? 'md:pl-24' : 'md:pl-48 lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
         {backendUnavailable && (
           <div className="px-4 py-2 bg-amber-100 border-b border-warning-border text-amber-900 text-sm">
             Service temporarily unavailable. Try again in a moment, or contact your company administrator.
@@ -517,8 +536,14 @@ const Layout = () => {
         <CloudHostingCostReminder />
         {/* Desktop/tablet top bar — search, alerts, one account menu. Pages own their heading; tenant identity lives in the sidebar only. */}
         {!isPosRoute && (
-        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:block md:left-24 ${isSidebarCollapsed ? 'lg:left-24' : 'lg:left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:block ${isSidebarCollapsed ? 'md:left-24' : 'md:left-48 lg:left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
           <div className="flex h-full items-center gap-3 px-4 lg:px-6">
+            {showShellBack && (
+              <button type="button" onClick={goBack} className={`${backButtonClass} gap-1 pr-3 text-sm font-medium`} aria-label="Go back" data-testid="shell-back">
+                <ArrowLeft className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                <span>Back</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}

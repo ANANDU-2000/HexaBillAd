@@ -16,14 +16,15 @@ const expiryCell = (expiryDate) => {
 }
 
 const COLUMNS = [
-  { key: 'sku', label: 'SKU', className: 'w-36' },
+  // `hide` drops low-priority columns on tablets (SKU moves under the name) so rows stay readable without sideways scroll.
+  { key: 'sku', label: 'SKU', className: 'w-36', hide: 'hidden lg:table-cell' },
   { key: 'nameEn', label: 'Product', className: '' },
-  { key: 'barcode', label: 'Barcode', className: 'w-40' },
-  { key: 'categoryName', label: 'Category', className: 'w-36' },
-  { key: 'unitType', label: 'Unit', className: 'w-20' },
+  { key: 'barcode', label: 'Barcode', className: 'w-40', hide: 'hidden xl:table-cell' },
+  { key: 'categoryName', label: 'Category', className: 'w-36', hide: 'hidden lg:table-cell' },
+  { key: 'unitType', label: 'Unit', className: 'w-20', hide: 'hidden lg:table-cell' },
   { key: 'stockQty', label: 'Stock', className: 'w-24', align: 'right' },
   { key: 'sellPrice', label: 'Price', className: 'w-28', align: 'right' },
-  { key: 'expiryDate', label: 'Expiry', className: 'w-28' },
+  { key: 'expiryDate', label: 'Expiry', className: 'w-28', hide: 'hidden xl:table-cell' },
 ]
 
 /**
@@ -60,25 +61,25 @@ export default function ProductsTable({
 
   return (
     <div className="rounded-lg border border-neutral-300 bg-white">
-      <table className="w-full table-fixed border-collapse text-[13px]">
+      <table className="w-full table-fixed border-collapse text-[15px] lg:text-[13px] [@media(pointer:coarse)]:lg:text-[15px]">
         <thead className="sticky top-0 z-10 bg-neutral-100">
-          <tr className="border-b border-neutral-300 text-[11px] uppercase tracking-wide text-neutral-600">
-            <th className="w-10 px-3 py-2 text-left">
+          <tr className="border-b border-neutral-300 text-xs lg:text-[11px] uppercase tracking-wide text-neutral-600">
+            <th className="w-12 px-3 py-3 lg:w-10 lg:py-2 text-left">
               <input
                 type="checkbox"
                 aria-label="Select all products on this page"
-                className="h-4 w-4 rounded border-neutral-400 text-primary-600 focus:ring-primary-500"
+                className="h-5 w-5 lg:h-4 lg:w-4 rounded border-neutral-400 text-primary-600 focus:ring-primary-500"
                 checked={allOnPage}
                 ref={(el) => { if (el) el.indeterminate = someOnPage }}
                 onChange={(e) => onTogglePage(e.target.checked)}
                 disabled={!canManageInventory || products.length === 0}
               />
             </th>
-            <th className="w-12 px-1 py-2" aria-label="Image" />
+            <th className="hidden w-12 px-1 py-2 lg:table-cell" aria-label="Image" />
             {COLUMNS.map((c) => (
               <th
                 key={c.key}
-                className={`px-2 py-2 font-semibold ${c.className} ${c.align === 'right' ? 'text-right' : 'text-left'}`}
+                className={`px-2 py-3 lg:py-2 font-semibold ${c.className} ${c.hide || ''} ${c.align === 'right' ? 'text-right' : 'text-left'}`}
                 aria-sort={sort.key === c.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
                 <button
@@ -91,7 +92,7 @@ export default function ProductsTable({
                 </button>
               </th>
             ))}
-            <th className="w-[8.5rem] px-2 py-2 text-right font-semibold">Actions</th>
+            <th className="w-[12.5rem] px-2 py-3 text-right font-semibold lg:w-[8.5rem] lg:py-2">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -112,46 +113,47 @@ export default function ProductsTable({
                 onClick={() => navigate(`/products/${p.id}`)}
                 className={`cursor-pointer border-b border-neutral-200 last:border-b-0 hover:bg-primary-50/50 ${selected ? 'bg-primary-50' : 'odd:bg-white even:bg-neutral-50/60'} ${inactive ? 'text-neutral-500' : 'text-neutral-900'}`}
               >
-                <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
+                <td className="px-3 py-3 lg:py-1.5" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     aria-label={`Select ${p.nameEn || p.sku}`}
-                    className="h-4 w-4 rounded border-neutral-400 text-primary-600 focus:ring-primary-500"
+                    className="h-5 w-5 lg:h-4 lg:w-4 rounded border-neutral-400 text-primary-600 focus:ring-primary-500"
                     checked={selected}
                     disabled={!canManageInventory}
                     onChange={() => onToggleOne(p.id)}
                   />
                 </td>
-                <td className="px-1 py-1.5">
+                <td className="hidden px-1 py-1.5 lg:table-cell">
                   {p.imageUrl ? (
                     <ProductImage productId={p.id} src={imageSrc(p.imageUrl)} alt="" className="h-8 w-8 rounded border border-neutral-200 object-cover" onError={(e) => { e.target.style.visibility = 'hidden' }} />
                   ) : (
                     <span className="flex h-8 w-8 items-center justify-center rounded border border-neutral-200 bg-neutral-100"><ImageIcon className="h-4 w-4 text-neutral-400" /></span>
                   )}
                 </td>
-                <td className="truncate px-2 py-1.5 font-mono text-xs" title={p.sku}>{p.sku || '—'}</td>
-                <td className="px-2 py-1.5">
+                <td className="hidden truncate px-2 py-1.5 font-mono text-xs lg:table-cell" title={p.sku}>{p.sku || '—'}</td>
+                <td className="px-2 py-3 lg:py-1.5">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="truncate font-medium text-primary-700" title={p.nameEn}>{p.nameEn}</span>
                     {inactive && <span className="shrink-0 rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-neutral-600">Inactive</span>}
                   </div>
+                  <div className="truncate font-mono text-xs text-neutral-500 lg:hidden">{p.sku || '-'}{p.unitType ? ` · ${p.unitType}` : ''}</div>
                 </td>
-                <td className="truncate px-2 py-1.5 font-mono text-xs text-neutral-600" title={p.barcode || ''}>{p.barcode || <span className="text-neutral-400">—</span>}</td>
-                <td className="truncate px-2 py-1.5" title={p.categoryName || ''}>{p.categoryName || <span className="text-neutral-400">—</span>}</td>
-                <td className="px-2 py-1.5">{p.unitType || '—'}</td>
-                <td className={`px-2 py-1.5 text-right tabular-nums ${low ? 'font-semibold text-error' : ''}`}>
+                <td className="hidden truncate px-2 py-1.5 font-mono text-xs text-neutral-600 xl:table-cell" title={p.barcode || ''}>{p.barcode || <span className="text-neutral-400">—</span>}</td>
+                <td className="hidden truncate px-2 py-1.5 lg:table-cell" title={p.categoryName || ''}>{p.categoryName || <span className="text-neutral-400">—</span>}</td>
+                <td className="hidden px-2 py-1.5 lg:table-cell">{p.unitType || '—'}</td>
+                <td className={`px-2 py-3 lg:py-1.5 text-right tabular-nums ${low ? 'font-semibold text-error' : ''}`}>
                   <span className="inline-flex items-center justify-end gap-1">
-                    {low && <AlertTriangle className="h-3.5 w-3.5" aria-label="Low stock" />}
+                    {low && <AlertTriangle className="h-4 w-4 lg:h-3.5 lg:w-3.5" aria-label="Low stock" />}
                     {stock}
                   </span>
                 </td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{currency} {Number(p.sellPrice || 0).toFixed(2)}</td>
-                <td className="px-2 py-1.5 text-xs">{expiryCell(p.expiryDate)}</td>
-                <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-end gap-0.5">
-                    <IconBtn label="View" onClick={() => navigate(`/products/${p.id}`)}><Eye className="h-4 w-4" /></IconBtn>
-                    {canManageInventory && <IconBtn label="Edit" onClick={() => navigate(`/products/${p.id}?edit=1`)}><Edit className="h-4 w-4" /></IconBtn>}
-                    {canAdjustStock && <IconBtn label="Adjust stock" onClick={() => onAdjustStock(p)}><Package className="h-4 w-4" /></IconBtn>}
+                <td className="px-2 py-3 lg:py-1.5 text-right tabular-nums">{currency} {Number(p.sellPrice || 0).toFixed(2)}</td>
+                <td className="hidden px-2 py-1.5 text-xs xl:table-cell">{expiryCell(p.expiryDate)}</td>
+                <td className="px-2 py-2 lg:py-1.5" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-1 lg:gap-0.5">
+                    <IconBtn label="View" onClick={() => navigate(`/products/${p.id}`)}><Eye className="h-5 w-5 lg:h-4 lg:w-4" /></IconBtn>
+                    {canManageInventory && <IconBtn label="Edit" onClick={() => navigate(`/products/${p.id}?edit=1`)}><Edit className="h-5 w-5 lg:h-4 lg:w-4" /></IconBtn>}
+                    {canAdjustStock && <IconBtn label="Adjust stock" onClick={() => onAdjustStock(p)}><Package className="h-5 w-5 lg:h-4 lg:w-4" /></IconBtn>}
                     <OverflowMenu
                       label={`More actions for ${p.nameEn}`}
                       items={[
@@ -180,7 +182,7 @@ function IconBtn({ label, onClick, children }) {
       title={label}
       aria-label={label}
       onClick={onClick}
-      className="inline-flex h-8 w-8 items-center justify-center rounded text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+      className="inline-flex h-11 w-11 lg:h-8 lg:w-8 items-center justify-center rounded text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
     >
       {children}
     </button>

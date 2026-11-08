@@ -6,6 +6,7 @@ import { defineConfig } from '@playwright/test'
 export const VIEWPORTS = [
   { name: 'm360', width: 360, height: 800 },
   { name: 'm390', width: 390, height: 844 },
+  { name: 'tab752', width: 752, height: 1254 }, // HONOR Pad portrait, the client staff tablet
   { name: 't768', width: 768, height: 1024 },
   { name: 'd1024', width: 1024, height: 768 },
   { name: 'd1440', width: 1440, height: 900 },

@@ -522,19 +522,19 @@ const SuppliersPage = () => {
           </div>
         ) : (
           <>
-            <div className="hidden xl:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-neutral-50 text-neutral-500">
                   <tr>
                     <th className="text-left font-medium px-2 py-2">Supplier</th>
-                    <th className="text-left font-medium px-2 py-2">Phone</th>
-                    <th className="text-right font-medium px-2 py-2">Purchases</th>
-                    <th className="text-right font-medium px-2 py-2">Paid</th>
+                    <th className="hidden xl:table-cell text-left font-medium px-2 py-2">Phone</th>
+                    <th className="hidden xl:table-cell text-right font-medium px-2 py-2">Purchases</th>
+                    <th className="hidden xl:table-cell text-right font-medium px-2 py-2">Paid</th>
                     <th className="text-right font-medium px-2 py-2">Outstanding</th>
                     <th className="text-right font-medium px-2 py-2">Overdue</th>
-                    <th className="text-left font-medium px-2 py-2">Last purchase</th>
-                    <th className="text-right font-medium px-2 py-2">Invoices</th>
-                    <th className="text-left font-medium px-2 py-2">Last payment</th>
+                    <th className="hidden xl:table-cell text-left font-medium px-2 py-2">Last purchase</th>
+                    <th className="hidden xl:table-cell text-right font-medium px-2 py-2">Invoices</th>
+                    <th className="hidden xl:table-cell text-left font-medium px-2 py-2">Last payment</th>
                     <th className="text-right font-medium px-2 py-2">Actions</th>
                   </tr>
                 </thead>
@@ -571,14 +571,14 @@ const SuppliersPage = () => {
                           {s.isActive === false && <span className="px-1.5 py-0.5 text-micro font-medium rounded bg-warning-bg text-amber-800 border border-warning-border">Deactivated</span>}
                         </span>
                       </td>
-                      <td className="px-2 h-10 text-neutral-600">{s.phone || '—'}</td>
-                      <td className="px-2 h-10 text-right tabular-nums">{formatCurrency(s.totalPurchases || 0)}</td>
-                      <td className={`px-2 h-10 text-right tabular-nums ${moneyTone('paid', s.totalPaid)}`}>{formatCurrency(s.totalPaid || 0)}</td>
+                      <td className="hidden xl:table-cell px-2 h-10 text-neutral-600">{s.phone || '—'}</td>
+                      <td className="hidden xl:table-cell px-2 h-10 text-right tabular-nums">{formatCurrency(s.totalPurchases || 0)}</td>
+                      <td className={`hidden xl:table-cell px-2 h-10 text-right tabular-nums ${moneyTone('paid', s.totalPaid)}`}>{formatCurrency(s.totalPaid || 0)}</td>
                       <td className={`px-2 h-10 text-right tabular-nums font-medium ${moneyTone('due', s.netPayable)}`}>{formatCurrency(s.netPayable || 0)}{moneyWord('due', s.netPayable) && <span className="ml-1 text-xs font-normal">{moneyWord('due', s.netPayable)}</span>}</td>
                       <td className={`px-2 h-10 text-right tabular-nums ${moneyTone('overdue', s.overdue)}`}>{formatCurrency(s.overdue || 0)}</td>
-                      <td className="px-2 h-10 text-neutral-700">{formatDate(s.lastPurchaseDate)}</td>
-                      <td className="px-2 h-10 text-right tabular-nums">{s.invoiceCount ?? '—'}</td>
-                      <td className="px-2 h-10 text-neutral-700">{formatDate(s.lastPaymentDate)}</td>
+                      <td className="hidden xl:table-cell px-2 h-10 text-neutral-700">{formatDate(s.lastPurchaseDate)}</td>
+                      <td className="hidden xl:table-cell px-2 h-10 text-right tabular-nums">{s.invoiceCount ?? '—'}</td>
+                      <td className="hidden xl:table-cell px-2 h-10 text-neutral-700">{formatDate(s.lastPaymentDate)}</td>
                       <td className="px-2 h-10 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <button type="button" onClick={() => openSupplier(s)} className="inline-flex items-center justify-center h-9 w-9 rounded-md text-neutral-700 hover:bg-neutral-100" title="Open" aria-label={`Open ${s.supplierName}`}>
                           <Eye className="h-4 w-4" />
@@ -601,7 +601,7 @@ const SuppliersPage = () => {
               </table>
             </div>
 
-            <div className="xl:hidden divide-y divide-neutral-100">
+            <div className="md:hidden divide-y divide-neutral-100">
               {pageRows.length === 0 ? (
                 <div className="p-8 text-center text-sm text-neutral-600">
                   <p className="mb-3">No suppliers found.</p>

@@ -18,7 +18,7 @@ const Modal = ({
 
   // Phase 10.4: Auto full-screen on mobile when allowFullscreen
   useEffect(() => {
-    if (isOpen && allowFullscreen && window.matchMedia('(max-width: 767px)').matches) {
+    if (isOpen && allowFullscreen && window.matchMedia('(max-width: 639px)').matches) {
       setIsFullscreen(true)
     }
   }, [isOpen, allowFullscreen])

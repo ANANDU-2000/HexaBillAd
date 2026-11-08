@@ -72,7 +72,8 @@ test('a bulk batch keeps confirmed rows and hands back the rejected and unsent r
   assert.equal(batches.read(scope), null)
   assert.equal(storage.rows.size, 0)
   // The handed-back rows can fill the bulk form again.
-  assert.deepEqual(bulkRowFromSaved(result.rejected.rows[0]), { customerId: '2', amount: '20', method: 'CASH', paymentDate: '2026-10-18', reference: '' })
+  assert.deepEqual(bulkRowFromSaved(result.rejected.rows[0]), { customerId: '2', saleId: 'ACCOUNT', amount: '20', method: 'CASH', paymentDate: '2026-10-18', reference: '' })
+  assert.equal(bulkRowFromSaved({ ...result.rejected.rows[0], request: { ...result.rejected.rows[0].request, saleId: 55 } }).saleId, '55')
 })
 
 test('an uncertain failure keeps the batch for retry exactly as before', async () => {

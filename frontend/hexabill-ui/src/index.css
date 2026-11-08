@@ -26,7 +26,7 @@
 
   /* Compact 14px root only for mouse-class pointers. Tablets (touch, 820/1024/1180px) keep 16px so every rem-based
      control, including min-h-11, stays at the 44px touch minimum. */
-  @media (min-width: 769px) and (pointer: fine) {
+  @media (min-width: 641px) and (pointer: fine) {
     html {
       font-size: 14px;
     }
@@ -39,7 +39,7 @@
     background: var(--surface-page);
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 639px) {
     * {
       min-width: 0;
     }
@@ -63,7 +63,7 @@
 
   /* Phones: the shell top bar names list pages, so their in-page h1 is visually hidden (kept for screen
      readers). Layout sets data-shell-title="page" only on exact list routes. */
-  @media (max-width: 767px) {
+  @media (max-width: 639px) {
     #main-content[data-shell-title='page'] h1:not([data-keep-mobile]) {
       position: absolute;
       width: 1px;
@@ -76,7 +76,7 @@
 
   /* Phones: touch-size floor for page controls. Low specificity (:where) so components can still
      set larger sizes. Opt out with .btn-sm, data-size="sm" or a [data-dense] container. */
-  @media (max-width: 767px) {
+  @media (max-width: 639px) {
     :where(#main-content) :where(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden']), select):not(:where([data-dense] *, [data-size='sm'])) {
       min-height: 44px;
     }
@@ -141,7 +141,7 @@
     @apply bg-white border border-surface-border rounded-lg p-4;
   }
 
-  @media (min-width: 769px) {
+  @media (min-width: 641px) {
     .card {
       @apply p-6;
     }
@@ -153,7 +153,7 @@
   }
 
   /* Phones: buttons reach the 44px touch minimum. */
-  @media (max-width: 767px) {
+  @media (max-width: 639px) {
     .btn {
       min-height: 44px;
     }

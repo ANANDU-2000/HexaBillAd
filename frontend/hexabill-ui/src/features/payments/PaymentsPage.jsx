@@ -184,9 +184,33 @@ const PaymentsPage = () => {
   }
 
   const bulkRows = savedBatch ? savedBatch.rows.map(row => ({
-    ...row.request, method: row.request.mode, paymentDate: JSON.parse(row.form).date,
+    ...row.request, saleId: row.request.saleId ? String(row.request.saleId) : 'ACCOUNT', method: row.request.mode, paymentDate: JSON.parse(row.form).date,
     confirmed: row.confirmed,
   })) : bulkPayments
+
+  // Each bulk row loads its customer's real unpaid invoices so a payment can be applied to a bill, to all bills (oldest first), or on account.
+  const [bulkInvoices, setBulkInvoices] = useState({})
+  const bulkCustomerKey = [...new Set(bulkRows.map(r => String(r.customerId || '')).filter(Boolean))].join(',')
+  useEffect(() => {
+    if (!showBulkPaymentModal) { setBulkInvoices({}); return }
+    const missing = bulkCustomerKey.split(',').filter(id => id && !bulkInvoices[id])
+    if (!missing.length) return
+    setBulkInvoices(prev => { const next = { ...prev }; missing.forEach(id => { next[id] = { loading: true, list: [] } }); return next })
+    missing.forEach(async (id) => {
+      let list = []
+      try {
+        const res = await paymentsAPI.getOutstandingInvoices(id)
+        list = res?.success && Array.isArray(res.data) ? res.data.filter(inv => Number(inv.balanceAmount) > 0.005) : []
+      } catch { list = [] }
+      setBulkInvoices(prev => ({ ...prev, [id]: { loading: false, list } }))
+      const total = list.reduce((sum, inv) => sum + Number(inv.balanceAmount || 0), 0)
+      // Pre-fill untouched rows for this customer: pay all unpaid bills, amount = total owed (editable).
+      setBulkPayments(rows => rows.map(r => (String(r.customerId) === id && !r.saleId && !r.amount)
+        ? { ...r, saleId: list.length ? 'ALL' : 'ACCOUNT', amount: list.length ? total.toFixed(2) : '' }
+        : r))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBulkPaymentModal, bulkCustomerKey])
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -483,13 +507,47 @@ const PaymentsPage = () => {
     const prefix = accountPrefixRef.current
     try {
       if (!savedBatch) {
-        const drafts = bulkPayments.map(data => {
-          // Check the customer first: paymentDraft would otherwise report "customer or an invoice", and this dialog has no invoice field.
-          if (!data.customerId) throw new Error('Select a customer for every bulk payment.')
-          const draft = paymentDraft(data)
-          if (!draft.request.customerId) throw new Error('Select a customer for every bulk payment.')
-          return {...draft,scope:ledgerPaymentScope({...recoveryIdentity,customerId:draft.request.customerId})}
+        // Expand each row into real payments: a chosen invoice -> one payment on it; "all unpaid" -> oldest-first split across the bills; "on account" -> customer only.
+        const used = {} // saleId -> amount already planned in this batch (two rows must not overpay one bill)
+        const drafts = []
+        bulkPayments.forEach((data, rowIndex) => {
+          const label = `Row ${rowIndex + 1}`
+          if (!data.customerId) throw new Error(`${label}: select a customer.`)
+          const base = paymentDraft({ ...data, saleId: '' })
+          if (!base.request.customerId) throw new Error(`${label}: select a customer.`)
+          const scope = ledgerPaymentScope({ ...recoveryIdentity, customerId: base.request.customerId })
+          const list = bulkInvoices[String(data.customerId)]?.list || []
+          const mode = data.saleId || (list.length ? 'ALL' : 'ACCOUNT')
+          const push = (saleId, amount) => {
+            const rounded = Math.round(amount * 100) / 100
+            if (!(rounded > 0)) return
+            const draft = paymentDraft({ ...data, saleId: saleId || '', amount: rounded })
+            drafts.push({ ...draft, scope })
+          }
+          if (mode === 'ACCOUNT') { push(null, base.request.amount); return }
+          if (mode === 'ALL') {
+            let left = base.request.amount
+            const sorted = [...list].sort((a, b) => new Date(a.invoiceDate) - new Date(b.invoiceDate))
+            for (const inv of sorted) {
+              if (left <= 0.004) break
+              const room = Number(inv.balanceAmount) - (used[inv.id] || 0)
+              if (room <= 0.004) continue
+              const part = Math.min(left, room)
+              used[inv.id] = (used[inv.id] || 0) + part
+              push(inv.id, part)
+              left -= part
+            }
+            if (left > 0.01) throw new Error(`${label}: amount is ${left.toFixed(2)} more than all unpaid invoices. Lower it or choose "On account".`)
+            return
+          }
+          const inv = list.find(i => String(i.id) === String(mode))
+          if (!inv) throw new Error(`${label}: the chosen invoice is no longer unpaid. Pick again.`)
+          const room = Number(inv.balanceAmount) - (used[inv.id] || 0)
+          if (base.request.amount > room + 0.01) throw new Error(`${label}: invoice ${inv.invoiceNo} has only ${room.toFixed(2)} left to pay. Type ${room.toFixed(2)} or less.`)
+          used[inv.id] = (used[inv.id] || 0) + base.request.amount
+          push(inv.id, base.request.amount)
         })
+        if (!drafts.length) throw new Error('Enter an amount for at least one payment.')
         batchJournal.begin(bulkScope,drafts)
         refreshRecovery()
       }
@@ -1333,14 +1391,14 @@ const PaymentsPage = () => {
           if (!savedBatch) setBulkPayments([{ customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
         }}
         title="Bulk Payment Entry"
-        size="xl"
+        size="3xl"
       >
         <div className="space-y-4">
           <p className="text-sm text-neutral-600 mb-4">
-            Add multiple payments at once. Each row represents one payment.
+            Pick a customer, then the invoice to pay (or all unpaid invoices, oldest first). The amount fills in and stays editable, so partial payments work. Each row is one receipt entry.
           </p>
-          <div className="hidden gap-2 px-1 text-xs font-medium text-neutral-500 md:grid md:grid-cols-[1.5rem_minmax(0,2fr)_7rem_8rem_9rem_minmax(0,1.2fr)_2rem]">
-            <span aria-hidden>#</span><span>Customer</span><span>Amount</span><span>Method</span><span>Date</span><span>Reference</span><span />
+          <div className="hidden gap-2 px-1 text-xs font-medium text-neutral-500 md:grid md:grid-cols-[1.5rem_minmax(0,1.5fr)_minmax(0,1.6fr)_7rem_8rem_9rem_minmax(0,1fr)_2rem]">
+            <span aria-hidden>#</span><span>Customer</span><span>Invoice</span><span>Amount</span><span>Method</span><span>Date</span><span>Reference</span><span />
           </div>
           {bulkRows.map((payment, index) => {
             const locked = submitting || Boolean(savedBatch)
@@ -1348,8 +1406,41 @@ const PaymentsPage = () => {
             const refRequired = ['CHEQUE', 'ONLINE'].includes(String(payment.method).toUpperCase())
             const cell = 'min-w-0'
             const mini = (text) => <span className="mb-0.5 block text-[11px] font-medium text-neutral-500 md:hidden">{text}</span>
+            const info = bulkInvoices[String(payment.customerId)]
+            const invoices = info?.list || []
+            const owed = invoices.reduce((sum, inv) => sum + Number(inv.balanceAmount || 0), 0)
+            const invoiceMode = payment.saleId || (invoices.length ? 'ALL' : 'ACCOUNT')
+            const chosenInvoice = invoices.find(inv => String(inv.id) === String(invoiceMode))
+            const invoiceOptions = !payment.customerId
+              ? [{ value: '', label: 'Select a customer first' }]
+              : [
+                  ...(invoices.length ? [{ value: 'ALL', label: `All unpaid invoices (oldest first)`, hint: balance(owed), meta: `${invoices.length} unpaid` }] : []),
+                  ...invoices.map(inv => ({
+                    value: String(inv.id),
+                    label: inv.invoiceNo,
+                    meta: `${inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString() : ''}${inv.daysOverdue > 0 ? ` · ${inv.daysOverdue}d overdue` : ''}${Number(inv.paidAmount) > 0 ? ` · part paid` : ''}`,
+                    hint: balance(inv.balanceAmount),
+                    hintClassName: 'text-red-600',
+                  })),
+                  { value: 'ACCOUNT', label: 'On account (no invoice)' },
+                ]
+            const capacity = invoiceMode === 'ALL' ? owed : chosenInvoice ? Number(chosenInvoice.balanceAmount) : null
+            const typed = Number(payment.amount) || 0
+            const overpay = capacity != null && typed > capacity + 0.01
+            const onCustomer = (customerId) => {
+              const cached = bulkInvoices[String(customerId)]
+              const list = cached?.list
+              const total = (list || []).reduce((sum, inv) => sum + Number(inv.balanceAmount || 0), 0)
+              patch(list
+                ? { customerId, saleId: list.length ? 'ALL' : 'ACCOUNT', amount: list.length ? total.toFixed(2) : '' }
+                : { customerId, saleId: '', amount: '' })
+            }
+            const onInvoice = (value) => {
+              const inv = invoices.find(i => String(i.id) === String(value))
+              patch({ saleId: value, amount: value === 'ALL' ? owed.toFixed(2) : inv ? Number(inv.balanceAmount).toFixed(2) : payment.amount })
+            }
             return (
-              <div key={index} className="grid grid-cols-2 items-end gap-2 rounded-lg border border-neutral-200 p-2 md:grid-cols-[1.5rem_minmax(0,2fr)_7rem_8rem_9rem_minmax(0,1.2fr)_2rem] md:items-center md:border-0 md:border-b md:rounded-none md:p-1">
+              <div key={index} className="grid grid-cols-2 items-end gap-2 rounded-lg border border-neutral-200 p-2 md:grid-cols-[1.5rem_minmax(0,1.5fr)_minmax(0,1.6fr)_7rem_8rem_9rem_minmax(0,1fr)_2rem] md:items-center md:border-0 md:border-b md:rounded-none md:p-1">
                 <span className="col-span-2 flex items-center justify-between text-xs font-medium text-neutral-600 md:col-span-1 md:block">
                   <span>{index + 1}</span>
                   {savedBatch && <span className="md:hidden">{payment.confirmed ? 'Confirmed' : 'Awaiting confirmation'}</span>}
@@ -1359,8 +1450,24 @@ const PaymentsPage = () => {
                     aria-label="Customer" className="md:!min-h-9 md:!py-1 text-sm" disabled={locked}
                     options={[{ value: '', label: 'Select Customer' }, ...customers.map(customerOption)]}
                     value={payment.customerId}
-                    onChange={(e) => patch({ customerId: e.target.value })}
+                    onChange={(e) => onCustomer(e.target.value)}
                   />
+                </div>
+                <div className={`col-span-2 md:col-span-1 ${cell}`}>{mini('Invoice')}
+                  <Select
+                    aria-label="Invoice" className="md:!min-h-9 md:!py-1 text-sm" searchable
+                    disabled={locked || !payment.customerId || info?.loading}
+                    options={info?.loading ? [{ value: '', label: 'Loading invoices…' }] : invoiceOptions}
+                    value={info?.loading ? '' : (payment.customerId ? invoiceMode : '')}
+                    onChange={(e) => onInvoice(e.target.value)}
+                  />
+                  {payment.customerId && !info?.loading && (
+                    <p className={`mt-0.5 text-[11px] ${overpay ? 'text-error' : 'text-neutral-500'}`}>
+                      {invoices.length ? `Owes ${balance(owed)} on ${invoices.length} invoice${invoices.length === 1 ? '' : 's'}` : 'No unpaid invoices'}
+                      {capacity != null && typed > 0 && !overpay && typed < capacity - 0.01 ? ` · partial, ${balance(capacity - typed)} stays due` : ''}
+                      {overpay ? ` · more than ${balance(capacity)} due` : ''}
+                    </p>
+                  )}
                 </div>
                 <div className={cell}>{mini('Amount')}
                   <input aria-label="Amount" disabled={locked} type="number" step="0.01" placeholder="0.00" value={payment.amount}
@@ -1394,7 +1501,7 @@ const PaymentsPage = () => {
                   ) : null}
                 </div>
                 {bulkRowErrors[index] && (
-                  <p role="alert" className="col-span-2 border-l-4 border-l-error bg-white py-1 pl-2 text-xs text-neutral-800 md:col-span-7">{bulkRowErrors[index]}</p>
+                  <p role="alert" className="col-span-2 border-l-4 border-l-error bg-white py-1 pl-2 text-xs text-neutral-800 md:col-span-8">{bulkRowErrors[index]}</p>
                 )}
               </div>
             )

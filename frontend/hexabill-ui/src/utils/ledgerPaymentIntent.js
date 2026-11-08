@@ -38,6 +38,7 @@ export function bulkRowFromSaved(row) {
   try { date = JSON.parse(row.form)?.date || '' } catch { /* the form text is ours; keep the date empty if it is damaged */ }
   return {
     customerId: String(row.request.customerId),
+    saleId: row.request.saleId ? String(row.request.saleId) : 'ACCOUNT',
     amount: String(row.request.amount),
     method: mode === 'CREDIT' ? 'PENDING' : mode,
     paymentDate: date,
