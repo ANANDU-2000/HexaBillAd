@@ -14,6 +14,7 @@ import { loadRoadLine } from './routeLine'
 import StopCard from './StopCard'
 import StopDetail from './StopDetail'
 import MapBottomSheet from './MapBottomSheet'
+import { scheduler } from '../../services/scheduler'
 
 const unwrap = (res) => res?.data ?? res
 const selectClass = 'block h-10 w-full border border-neutral-300 bg-white px-2 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30'
@@ -122,8 +123,7 @@ export default function RouteMapPage() {
   useEffect(() => {
     setStops([]); setSelectedId(null); setDrivers([]); setLine({ path: null, source: 'straight' })
     loadStops(false)
-    const timer = setInterval(() => { if (document.visibilityState !== 'hidden') loadStops(true) }, POLL_INTERVAL_MS)
-    return () => clearInterval(timer)
+    return scheduler.register('route-map-stops', () => loadStops(true), { intervalMs: POLL_INTERVAL_MS })
   }, [loadStops])
 
   // Live drivers for this route.
@@ -140,8 +140,8 @@ export default function RouteMapPage() {
       }
     }
     poll()
-    const timer = setInterval(poll, POLL_INTERVAL_MS)
-    return () => { cancelled = true; clearInterval(timer) }
+    const unregister = scheduler.register('route-map-live', poll, { intervalMs: POLL_INTERVAL_MS })
+    return () => { cancelled = true; unregister() }
   }, [liveOn, routeId])
 
   // Road line through the pins in route order; straight dashed line when the service cannot answer.

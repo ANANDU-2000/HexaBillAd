@@ -7,6 +7,7 @@ import {
 import toast from 'react-hot-toast'
 import { isAdminOrOwner } from '../../utils/roles'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import { scheduler } from '../../services/scheduler'
 
 const ZONES = [
   { id: 'Asia/Kolkata', label: 'India Standard Time' },
@@ -87,8 +88,7 @@ const BackupPage = () => {
     if (!isAdmin) return undefined
     loadStatus()
     loadBackups()
-    const timer = setInterval(loadStatus, 60000)
-    return () => clearInterval(timer)
+    return scheduler.register('backup-status', loadStatus, { intervalMs: 60000 })
   }, [isAdmin, loadStatus, loadBackups])
 
   useEffect(() => {

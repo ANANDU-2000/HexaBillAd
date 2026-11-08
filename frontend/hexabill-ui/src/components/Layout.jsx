@@ -33,6 +33,7 @@ import { isAdminOrOwner } from '../utils/roles'
 import { isSystemAdmin } from '../utils/superAdmin'  // Super Admin checking
 import { useBranding } from '../tenant/TenantBrandingContext'
 import { visibleSidebar, isItemActive } from '../navigation/moreMenuConfig'
+import { scheduler } from '../services/scheduler'
 
 const Layout = () => {
   const { user, logout, impersonatedTenantId, stopImpersonation } = useAuth()
@@ -83,8 +84,8 @@ const Layout = () => {
       }
     }
     ping()
-    const interval = setInterval(ping, 180000) // Increased from 90s to 180s (3 minutes) to reduce API requests
-    return () => clearInterval(interval)
+    // P-02: one scheduler (pauses when hidden/offline/modal/typing, jitter, backoff).
+    return scheduler.register('presence-ping', ping, { intervalMs: 180000 })
   }, [user?.id])
 
   const toggleSidebar = useCallback(() => {
