@@ -115,7 +115,7 @@ public class StagingSnapshotMigrationsTests
         Assert.Throws<NotSupportedException>(() => parentPayment.DownOperations);
 
         await db.Database.ExecuteSqlRawAsync(
-            "CREATE TABLE PaymentReceipts (Id INTEGER PRIMARY KEY); CREATE TABLE SaleItems (Id INTEGER PRIMARY KEY, Qty decimal(18,2) NOT NULL); INSERT INTO SaleItems VALUES (1, 1); CREATE TABLE PurchaseItems (Id INTEGER PRIMARY KEY, Qty decimal(18,2) NOT NULL); INSERT INTO PurchaseItems VALUES (1, 2); CREATE TABLE Payments (Id INTEGER PRIMARY KEY); CREATE TABLE Expenses (Id INTEGER PRIMARY KEY, Amount decimal(18,2) NOT NULL);");
+            "CREATE TABLE PaymentReceipts (Id INTEGER PRIMARY KEY, TenantId INTEGER NOT NULL DEFAULT 0, PaymentId INTEGER NOT NULL DEFAULT 0); CREATE TABLE SaleItems (Id INTEGER PRIMARY KEY, Qty decimal(18,2) NOT NULL); INSERT INTO SaleItems VALUES (1, 1); CREATE TABLE PurchaseItems (Id INTEGER PRIMARY KEY, Qty decimal(18,2) NOT NULL); INSERT INTO PurchaseItems VALUES (1, 2); CREATE TABLE Payments (Id INTEGER PRIMARY KEY); CREATE TABLE Expenses (Id INTEGER PRIMARY KEY, Amount decimal(18,2) NOT NULL);");
         var generator = db.GetService<IMigrationsSqlGenerator>();
         foreach (var command in generator.Generate(receipt.UpOperations))
             await db.Database.ExecuteSqlRawAsync(command.CommandText);

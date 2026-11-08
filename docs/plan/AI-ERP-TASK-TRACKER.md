@@ -1229,3 +1229,9 @@ STOP HERE — do not begin next phase automatically.
 - Policy: script-src 'self' (built index.html has no inline scripts), style-src 'self' 'unsafe-inline', img-src self/data/blob/https, connect-src self + hexabill.onrender.com, object-src none, frame-ancestors none.
 - Verified: both JSON files parse; `npm run build` OK; dist/index.html has only two external scripts.
 - NOT TESTED: real browser console on a Vercel preview (no violation check yet), no report-uri collector. Enforcing mode is a later step after reviewing violations.
+
+### 2026-11-08 — AI Intelligence Layer: Phase 0 transitive advisories
+- Pinned `System.Security.Cryptography.Pkcs` 8.0.1 -> 9.0.22 (via EPPlus) and `SQLitePCLRaw.lib.e_sqlite3` 2.1.10 -> 2.1.14 (via EF Sqlite) as direct references in HexaBill.Api.csproj.
+- `dotnet list package --vulnerable --include-transitive`: before 2 packages (High), after none. PASS.
+- Side effect: newer SQLite rejects double-quoted names as string literals. `StagingSnapshotMigrationsTests` had a stub `PaymentReceipts` table missing `TenantId`/`PaymentId`, which old SQLite silently tolerated. Fixed the stub (test-only). Suite after: 2228 pass / 0 fail / 115 skipped (1 run).
+- Not verified: EPPlus Excel export/import against Pkcs 9 beyond what the suite covers; SQLite is dev/test only (prod is PostgreSQL). Not pushed.
