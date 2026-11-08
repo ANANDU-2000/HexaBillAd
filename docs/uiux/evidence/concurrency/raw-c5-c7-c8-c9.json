@@ -1,0 +1,1462 @@
+{
+ "at": "2026-11-07T19:43:51.484Z",
+ "runsPerScenario": 3,
+ "results": [
+  {
+   "id": "c5",
+   "name": "C5 bulk allocation + single payments on same invoices",
+   "runs": [
+    {
+     "run": 1,
+     "n": 12,
+     "p50": 907.43,
+     "p95": 1306.85,
+     "max": 1306.85,
+     "statuses": {
+      "200": 1,
+      "201": 2,
+      "400": 9
+     },
+     "serverErrors": 0,
+     "unexpected": 9,
+     "errorRate": 0,
+     "seconds": 12.18,
+     "checks": [
+      {
+       "name": "no 5xx / network errors (rejections must be 4xx)",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":1,\"201\":2,\"400\":9}"
+      },
+      {
+       "name": "invoice 1: payments <= invoice total and PaidAmount matches",
+       "pass": true,
+       "detail": "total=105 paidAmount=105 sumPayments=105 status=Paid"
+      },
+      {
+       "name": "invoice 2: payments <= invoice total and PaidAmount matches",
+       "pass": true,
+       "detail": "total=105 paidAmount=105 sumPayments=105 status=Paid"
+      },
+      {
+       "name": "invoice 3: payments <= invoice total and PaidAmount matches",
+       "pass": true,
+       "detail": "total=105 paidAmount=0 sumPayments=0 status=Pending"
+      },
+      {
+       "name": "accepted vs rejected recorded",
+       "pass": true,
+       "detail": "statuses={\"200\":1,\"201\":2,\"400\":9}"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=2754 min=1 max=2754 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "ledger debits = sum of invoice totals (customer 48)",
+       "pass": true,
+       "detail": "ledger debit=315 invoices=315 http=200"
+      },
+      {
+       "name": "ledger credits = cleared payments (customer 48)",
+       "pass": true,
+       "detail": "ledger credit=210 payments=210"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 2,
+     "n": 12,
+     "p50": 295.29,
+     "p95": 354.27,
+     "max": 354.27,
+     "statuses": {
+      "200": 2,
+      "400": 10
+     },
+     "serverErrors": 0,
+     "unexpected": 10,
+     "errorRate": 0,
+     "seconds": 4.51,
+     "checks": [
+      {
+       "name": "no 5xx / network errors (rejections must be 4xx)",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":2,\"400\":10}"
+      },
+      {
+       "name": "invoice 1: payments <= invoice total and PaidAmount matches",
+       "pass": true,
+       "detail": "total=105 paidAmount=105 sumPayments=105 status=Paid"
+      },
+      {
+       "name": "invoice 2: payments <= invoice total and PaidAmount matches",
+       "pass": true,
+       "detail": "total=105 paidAmount=105 sumPayments=105 status=Paid"
+      },
+      {
+       "name": "invoice 3: payments <= invoice total and PaidAmount matches",
+       "pass": true,
+       "detail": "total=105 paidAmount=0 sumPayments=0 status=Pending"
+      },
+      {
+       "name": "accepted vs rejected recorded",
+       "pass": true,
+       "detail": "statuses={\"200\":2,\"400\":10}"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=2757 min=1 max=2757 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "ledger debits = sum of invoice totals (customer 49)",
+       "pass": true,
+       "detail": "ledger debit=315 invoices=315 http=200"
+      },
+      {
+       "name": "ledger credits = cleared payments (customer 49)",
+       "pass": true,
+       "detail": "ledger credit=210 payments=210"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 3,
+     "n": 12,
+     "p50": 354.43,
+     "p95": 412.97,
+     "max": 412.97,
+     "statuses": {
+      "200": 2,
+      "400": 10
+     },
+     "serverErrors": 0,
+     "unexpected": 10,
+     "errorRate": 0,
+     "seconds": 4.42,
+     "checks": [
+      {
+       "name": "no 5xx / network errors (rejections must be 4xx)",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":2,\"400\":10}"
+      },
+      {
+       "name": "invoice 1: payments <= invoice total and PaidAmount matches",
+       "pass": true,
+       "detail": "total=105 paidAmount=105 sumPayments=105 status=Paid"
+      },
+      {
+       "name": "invoice 2: payments <= invoice total and PaidAmount matches",
+       "pass": true,
+       "detail": "total=105 paidAmount=105 sumPayments=105 status=Paid"
+      },
+      {
+       "name": "invoice 3: payments <= invoice total and PaidAmount matches",
+       "pass": true,
+       "detail": "total=105 paidAmount=0 sumPayments=0 status=Pending"
+      },
+      {
+       "name": "accepted vs rejected recorded",
+       "pass": true,
+       "detail": "statuses={\"200\":2,\"400\":10}"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=2760 min=1 max=2760 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "ledger debits = sum of invoice totals (customer 50)",
+       "pass": true,
+       "detail": "ledger debit=315 invoices=315 http=200"
+      },
+      {
+       "name": "ledger credits = cleared payments (customer 50)",
+       "pass": true,
+       "detail": "ledger credit=210 payments=210"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c7",
+   "name": "C7 15 users load ledgers/reports/VAT",
+   "runs": [
+    {
+     "run": 1,
+     "n": 270,
+     "p50": 1165.8,
+     "p95": 1842.16,
+     "max": 1988,
+     "statuses": {
+      "200": 270
+     },
+     "serverErrors": 0,
+     "unexpected": 0,
+     "perEndpoint": {
+      "reportOutstanding": {
+       "n": 9,
+       "p50": 157.27,
+       "p95": 164.25,
+       "max": 164.25,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "salesLedger": {
+       "n": 9,
+       "p50": 259.26,
+       "p95": 296.75,
+       "max": 296.75,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "customerLedger": {
+       "n": 9,
+       "p50": 230.45,
+       "p95": 281.64,
+       "max": 281.64,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "vat": {
+       "n": 9,
+       "p50": 335.02,
+       "p95": 356.64,
+       "max": 356.64,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "reportSummary": {
+       "n": 9,
+       "p50": 504.18,
+       "p95": 525.6,
+       "max": 525.6,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "solo": {
+       "customerLedger": {
+        "n": 5,
+        "p50": 35.14,
+        "p95": 46.56,
+        "max": 46.56,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       },
+       "salesLedger": {
+        "n": 5,
+        "p50": 170.33,
+        "p95": 357.42,
+        "max": 357.42,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       },
+       "reportSummary": {
+        "n": 5,
+        "p50": 11.44,
+        "p95": 1725.4,
+        "max": 1725.4,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       },
+       "reportOutstanding": {
+        "n": 5,
+        "p50": 18.45,
+        "p95": 63.91,
+        "max": 63.91,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       },
+       "vat": {
+        "n": 5,
+        "p50": 137.23,
+        "p95": 177.02,
+        "max": 177.02,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       }
+      },
+      "stress": {
+       "n": 225,
+       "p50": 1318.45,
+       "p95": 1876.18,
+       "max": 1988,
+       "statuses": {
+        "200": 225
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      }
+     },
+     "errorRate": 0,
+     "seconds": 37.67,
+     "checks": [
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":270}"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      },
+      {
+       "name": "C7a reportOutstanding: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=18.45",
+       "pass": true,
+       "detail": "n=9 p50=157.27 p95=164.25 max=164.25 solo_p50=18.45 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7a salesLedger: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=170.33",
+       "pass": true,
+       "detail": "n=9 p50=259.26 p95=296.75 max=296.75 solo_p50=170.33 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7a customerLedger: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=35.14",
+       "pass": true,
+       "detail": "n=9 p50=230.45 p95=281.64 max=281.64 solo_p50=35.14 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7a vat: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=137.23",
+       "pass": true,
+       "detail": "n=9 p50=335.02 p95=356.64 max=356.64 solo_p50=137.23 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7a reportSummary: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=11.44",
+       "pass": true,
+       "detail": "n=9 p50=504.18 p95=525.6 max=525.6 solo_p50=11.44 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7b stress (75 in flight): all 200, no timeouts",
+       "pass": true,
+       "detail": "n=225 p50=1318.45 p95=1876.18 max=1988 statuses={\"200\":225}"
+      },
+      {
+       "name": "ledger debits = sum of invoice totals (customer 51)",
+       "pass": true,
+       "detail": "ledger debit=3150 invoices=3150 http=200"
+      },
+      {
+       "name": "ledger credits = cleared payments (customer 51)",
+       "pass": true,
+       "detail": "ledger credit=0 payments=0"
+      }
+     ]
+    },
+    {
+     "run": 2,
+     "n": 270,
+     "p50": 1198.46,
+     "p95": 1791.03,
+     "max": 1850.92,
+     "statuses": {
+      "200": 270
+     },
+     "serverErrors": 0,
+     "unexpected": 0,
+     "perEndpoint": {
+      "reportOutstanding": {
+       "n": 9,
+       "p50": 111.76,
+       "p95": 149.97,
+       "max": 149.97,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "salesLedger": {
+       "n": 9,
+       "p50": 195.17,
+       "p95": 247.03,
+       "max": 247.03,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "customerLedger": {
+       "n": 9,
+       "p50": 211.87,
+       "p95": 225.03,
+       "max": 225.03,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "vat": {
+       "n": 9,
+       "p50": 289.76,
+       "p95": 305.76,
+       "max": 305.76,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "reportSummary": {
+       "n": 9,
+       "p50": 477.7,
+       "p95": 511.14,
+       "max": 511.14,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "solo": {
+       "customerLedger": {
+        "n": 5,
+        "p50": 31.29,
+        "p95": 37.04,
+        "max": 37.04,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       },
+       "salesLedger": {
+        "n": 5,
+        "p50": 62.93,
+        "p95": 71.22,
+        "max": 71.22,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       },
+       "reportSummary": {
+        "n": 5,
+        "p50": 8.2,
+        "p95": 186.79,
+        "max": 186.79,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       },
+       "reportOutstanding": {
+        "n": 5,
+        "p50": 13.98,
+        "p95": 14.76,
+        "max": 14.76,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       },
+       "vat": {
+        "n": 5,
+        "p50": 125.92,
+        "p95": 134.83,
+        "max": 134.83,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       }
+      },
+      "stress": {
+       "n": 225,
+       "p50": 1255.62,
+       "p95": 1800.69,
+       "max": 1850.92,
+       "statuses": {
+        "200": 225
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      }
+     },
+     "errorRate": 0,
+     "seconds": 36.51,
+     "checks": [
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":270}"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      },
+      {
+       "name": "C7a reportOutstanding: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=13.98",
+       "pass": true,
+       "detail": "n=9 p50=111.76 p95=149.97 max=149.97 solo_p50=13.98 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7a salesLedger: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=62.93",
+       "pass": true,
+       "detail": "n=9 p50=195.17 p95=247.03 max=247.03 solo_p50=62.93 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7a customerLedger: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=31.29",
+       "pass": true,
+       "detail": "n=9 p50=211.87 p95=225.03 max=225.03 solo_p50=31.29 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7a vat: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=125.92",
+       "pass": true,
+       "detail": "n=9 p50=289.76 p95=305.76 max=305.76 solo_p50=125.92 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7a reportSummary: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=8.2",
+       "pass": true,
+       "detail": "n=9 p50=477.7 p95=511.14 max=511.14 solo_p50=8.2 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7b stress (75 in flight): all 200, no timeouts",
+       "pass": true,
+       "detail": "n=225 p50=1255.62 p95=1800.69 max=1850.92 statuses={\"200\":225}"
+      },
+      {
+       "name": "ledger debits = sum of invoice totals (customer 52)",
+       "pass": true,
+       "detail": "ledger debit=3150 invoices=3150 http=200"
+      },
+      {
+       "name": "ledger credits = cleared payments (customer 52)",
+       "pass": true,
+       "detail": "ledger credit=0 payments=0"
+      }
+     ]
+    },
+    {
+     "run": 3,
+     "n": 270,
+     "p50": 1025.31,
+     "p95": 1589.65,
+     "max": 1655.8,
+     "statuses": {
+      "200": 270
+     },
+     "serverErrors": 0,
+     "unexpected": 0,
+     "perEndpoint": {
+      "reportOutstanding": {
+       "n": 9,
+       "p50": 102.6,
+       "p95": 109.48,
+       "max": 109.48,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "customerLedger": {
+       "n": 9,
+       "p50": 162.27,
+       "p95": 256.48,
+       "max": 256.48,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "salesLedger": {
+       "n": 9,
+       "p50": 197.1,
+       "p95": 253.18,
+       "max": 253.18,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "vat": {
+       "n": 9,
+       "p50": 251.56,
+       "p95": 285.6,
+       "max": 285.6,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "reportSummary": {
+       "n": 9,
+       "p50": 407.72,
+       "p95": 436.72,
+       "max": 436.72,
+       "statuses": {
+        "200": 9
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      },
+      "solo": {
+       "customerLedger": {
+        "n": 5,
+        "p50": 24.16,
+        "p95": 27.33,
+        "max": 27.33,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       },
+       "salesLedger": {
+        "n": 5,
+        "p50": 50.19,
+        "p95": 79.08,
+        "max": 79.08,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       },
+       "reportSummary": {
+        "n": 5,
+        "p50": 7.87,
+        "p95": 194.53,
+        "max": 194.53,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       },
+       "reportOutstanding": {
+        "n": 5,
+        "p50": 13.5,
+        "p95": 14.12,
+        "max": 14.12,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       },
+       "vat": {
+        "n": 5,
+        "p50": 122.14,
+        "p95": 172.9,
+        "max": 172.9,
+        "statuses": {
+         "200": 5
+        },
+        "serverErrors": 0,
+        "unexpected": 0
+       }
+      },
+      "stress": {
+       "n": 225,
+       "p50": 1134.17,
+       "p95": 1595.11,
+       "max": 1655.8,
+       "statuses": {
+        "200": 225
+       },
+       "serverErrors": 0,
+       "unexpected": 0
+      }
+     },
+     "errorRate": 0,
+     "seconds": 37.25,
+     "checks": [
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":270}"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      },
+      {
+       "name": "C7a reportOutstanding: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=13.5",
+       "pass": true,
+       "detail": "n=9 p50=102.6 p95=109.48 max=109.48 solo_p50=13.5 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7a customerLedger: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=24.16",
+       "pass": true,
+       "detail": "n=9 p50=162.27 p95=256.48 max=256.48 solo_p50=24.16 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7a salesLedger: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=50.19",
+       "pass": true,
+       "detail": "n=9 p50=197.1 p95=253.18 max=253.18 solo_p50=50.19 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7a vat: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=122.14",
+       "pass": true,
+       "detail": "n=9 p50=251.56 p95=285.6 max=285.6 solo_p50=122.14 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7a reportSummary: all 200 and p95 <= 1000 ms (budget s2 first-data-row, API proxy); solo p50=7.87",
+       "pass": true,
+       "detail": "n=9 p50=407.72 p95=436.72 max=436.72 solo_p50=7.87 statuses={\"200\":9}"
+      },
+      {
+       "name": "C7b stress (75 in flight): all 200, no timeouts",
+       "pass": true,
+       "detail": "n=225 p50=1134.17 p95=1595.11 max=1655.8 statuses={\"200\":225}"
+      },
+      {
+       "name": "ledger debits = sum of invoice totals (customer 53)",
+       "pass": true,
+       "detail": "ledger debit=3150 invoices=3150 http=200"
+      },
+      {
+       "name": "ledger credits = cleared payments (customer 53)",
+       "pass": true,
+       "detail": "ledger credit=0 payments=0"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c8",
+   "name": "C8 two tenants, 15 mixed users",
+   "runs": [
+    {
+     "run": 1,
+     "n": 165,
+     "p50": 144.79,
+     "p95": 805.15,
+     "max": 915.29,
+     "statuses": {
+      "200": 150,
+      "201": 15
+     },
+     "serverErrors": 0,
+     "unexpected": 0,
+     "errorRate": 0,
+     "seconds": 6.95,
+     "checks": [
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":150,\"201\":15}"
+      },
+      {
+       "name": "all reads/writes 2xx for own tenant",
+       "pass": true,
+       "detail": "non-2xx=0 {\"200\":150,\"201\":15}"
+      },
+      {
+       "name": "zero cross-tenant markers (tenant slugs/company names) in any response body",
+       "pass": true,
+       "detail": "responses checked=150 leaking=0 "
+      },
+      {
+       "name": "every id in list responses belongs to the caller tenant (DB check)",
+       "pass": true,
+       "detail": "ids checked=173 wrong-tenant=0"
+      },
+      {
+       "name": "direct GET of the other tenant's ids returns no data (404/403/empty)",
+       "pass": true,
+       "detail": "[{\"ep\":\"/api/customers/55\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/customers/55/ledger\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/products/73\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/sales/3725\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/customers/54\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/customers/54/ledger\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/products/72\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/sales/3724\",\"status\":404,\"leaked\":false}]"
+      },
+      {
+       "name": "tenant A token on tenant B host: rejected or A-only rows",
+       "pass": true,
+       "detail": "http=403 rows=0 foreign=0"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=3668 min=1 max=3668 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=45 min=1 max=45 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 2,
+     "n": 165,
+     "p50": 168.58,
+     "p95": 829.14,
+     "max": 959.59,
+     "statuses": {
+      "200": 150,
+      "201": 15
+     },
+     "serverErrors": 0,
+     "unexpected": 0,
+     "errorRate": 0,
+     "seconds": 6.56,
+     "checks": [
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":150,\"201\":15}"
+      },
+      {
+       "name": "all reads/writes 2xx for own tenant",
+       "pass": true,
+       "detail": "non-2xx=0 {\"200\":150,\"201\":15}"
+      },
+      {
+       "name": "zero cross-tenant markers (tenant slugs/company names) in any response body",
+       "pass": true,
+       "detail": "responses checked=150 leaking=0 "
+      },
+      {
+       "name": "every id in list responses belongs to the caller tenant (DB check)",
+       "pass": true,
+       "detail": "ids checked=175 wrong-tenant=0"
+      },
+      {
+       "name": "direct GET of the other tenant's ids returns no data (404/403/empty)",
+       "pass": true,
+       "detail": "[{\"ep\":\"/api/customers/57\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/customers/57/ledger\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/products/75\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/sales/3742\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/customers/56\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/customers/56/ledger\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/products/74\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/sales/3741\",\"status\":404,\"leaked\":false}]"
+      },
+      {
+       "name": "tenant A token on tenant B host: rejected or A-only rows",
+       "pass": true,
+       "detail": "http=403 rows=0 foreign=0"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=3676 min=1 max=3676 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=54 min=1 max=54 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 3,
+     "n": 165,
+     "p50": 126.01,
+     "p95": 762.63,
+     "max": 834.18,
+     "statuses": {
+      "200": 150,
+      "201": 15
+     },
+     "serverErrors": 0,
+     "unexpected": 0,
+     "errorRate": 0,
+     "seconds": 6.15,
+     "checks": [
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":150,\"201\":15}"
+      },
+      {
+       "name": "all reads/writes 2xx for own tenant",
+       "pass": true,
+       "detail": "non-2xx=0 {\"200\":150,\"201\":15}"
+      },
+      {
+       "name": "zero cross-tenant markers (tenant slugs/company names) in any response body",
+       "pass": true,
+       "detail": "responses checked=150 leaking=0 "
+      },
+      {
+       "name": "every id in list responses belongs to the caller tenant (DB check)",
+       "pass": true,
+       "detail": "ids checked=177 wrong-tenant=0"
+      },
+      {
+       "name": "direct GET of the other tenant's ids returns no data (404/403/empty)",
+       "pass": true,
+       "detail": "[{\"ep\":\"/api/customers/59\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/customers/59/ledger\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/products/77\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/sales/3759\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/customers/58\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/customers/58/ledger\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/products/76\",\"status\":404,\"leaked\":false},{\"ep\":\"/api/sales/3758\",\"status\":404,\"leaked\":false}]"
+      },
+      {
+       "name": "tenant A token on tenant B host: rejected or A-only rows",
+       "pass": true,
+       "detail": "http=403 rows=0 foreign=0"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=3684 min=1 max=3684 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=63 min=1 max=63 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c9",
+   "name": "C9 token expiry storm",
+   "runs": [
+    {
+     "run": 1,
+     "n": 240,
+     "p50": 217.15,
+     "p95": 326.22,
+     "max": 336.43,
+     "statuses": {
+      "200": 150,
+      "401": 90
+     },
+     "serverErrors": 0,
+     "unexpected": 90,
+     "errorRate": 0,
+     "seconds": 3.16,
+     "checks": [
+      {
+       "name": "validate storm with valid tokens: all 200",
+       "pass": true,
+       "detail": "{\"200\":90}"
+      },
+      {
+       "name": "dead-token storm: every request is a clean 401 (no 500, no 200, no 403/429 cascade)",
+       "pass": true,
+       "detail": "{\"401\":90}"
+      },
+      {
+       "name": "simultaneous re-login of 15 sessions: all succeed (no 429/500 lockout)",
+       "pass": true,
+       "detail": "ok=15/15 "
+      },
+      {
+       "name": "after re-login: all requests 200 (no 401 loop)",
+       "pass": true,
+       "detail": "{\"200\":60}"
+      },
+      {
+       "name": "info: pre-existing token still accepted after a newer login (multi-device)",
+       "pass": true,
+       "detail": "http=200"
+      },
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":150,\"401\":90}"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 2,
+     "n": 240,
+     "p50": 226.12,
+     "p95": 302.29,
+     "max": 323.01,
+     "statuses": {
+      "200": 150,
+      "401": 90
+     },
+     "serverErrors": 0,
+     "unexpected": 90,
+     "errorRate": 0,
+     "seconds": 3.1,
+     "checks": [
+      {
+       "name": "validate storm with valid tokens: all 200",
+       "pass": true,
+       "detail": "{\"200\":90}"
+      },
+      {
+       "name": "dead-token storm: every request is a clean 401 (no 500, no 200, no 403/429 cascade)",
+       "pass": true,
+       "detail": "{\"401\":90}"
+      },
+      {
+       "name": "simultaneous re-login of 15 sessions: all succeed (no 429/500 lockout)",
+       "pass": true,
+       "detail": "ok=15/15 "
+      },
+      {
+       "name": "after re-login: all requests 200 (no 401 loop)",
+       "pass": true,
+       "detail": "{\"200\":60}"
+      },
+      {
+       "name": "info: pre-existing token still accepted after a newer login (multi-device)",
+       "pass": true,
+       "detail": "http=200"
+      },
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":150,\"401\":90}"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 3,
+     "n": 240,
+     "p50": 223.18,
+     "p95": 319.47,
+     "max": 331.77,
+     "statuses": {
+      "200": 150,
+      "401": 90
+     },
+     "serverErrors": 0,
+     "unexpected": 90,
+     "errorRate": 0,
+     "seconds": 3.15,
+     "checks": [
+      {
+       "name": "validate storm with valid tokens: all 200",
+       "pass": true,
+       "detail": "{\"200\":90}"
+      },
+      {
+       "name": "dead-token storm: every request is a clean 401 (no 500, no 200, no 403/429 cascade)",
+       "pass": true,
+       "detail": "{\"401\":90}"
+      },
+      {
+       "name": "simultaneous re-login of 15 sessions: all succeed (no 429/500 lockout)",
+       "pass": true,
+       "detail": "ok=15/15 "
+      },
+      {
+       "name": "after re-login: all requests 200 (no 401 loop)",
+       "pass": true,
+       "detail": "{\"200\":60}"
+      },
+      {
+       "name": "info: pre-existing token still accepted after a newer login (multi-device)",
+       "pass": true,
+       "detail": "http=200"
+      },
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":150,\"401\":90}"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
