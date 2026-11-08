@@ -1398,22 +1398,22 @@ const ReportsPage = () => {
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
               <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Historical Total Sales</div>
               <div className="mt-1 text-xl font-bold text-neutral-900">{formatCurrency(legacyMetrics?.activeGrandTotal ?? 0)}</div>
-              <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.activeInvoices?.toLocaleString() || '4,916'} active bills</div>
+              <div className="mt-0.5 text-xs text-neutral-500">{(legacyMetrics?.activeInvoices ?? 0).toLocaleString()} active bills</div>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
               <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Historical Collections</div>
               <div className="mt-1 text-xl font-bold text-emerald-600">{formatCurrency(legacyMetrics?.activePaidTotal ?? 0)}</div>
-              <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.clearedPayments?.toLocaleString() || '5,325'} cleared receipts</div>
+              <div className="mt-0.5 text-xs text-neutral-500">{(legacyMetrics?.clearedPayments ?? 0).toLocaleString()} cleared receipts</div>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
               <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Cutover Receivables (Pending)</div>
               <div className="mt-1 text-xl font-bold text-rose-600">{formatCurrency(legacyMetrics?.positiveOutstandingSum ?? 0)}</div>
-              <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.positiveOutstandingCount || 93} pending bills</div>
+              <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.positiveOutstandingCount ?? 0} pending bills</div>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
               <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Approved Transferred AR</div>
               <div className="mt-1 text-xl font-bold text-blue-600">{formatCurrency(legacyMetrics?.customerOpeningReceivablesTotal ?? 0)}</div>
-              <div className="mt-0.5 text-xs text-neutral-500">21 customers (+ AED 100.80 Inv 2158)</div>
+              <div className="mt-0.5 text-xs text-neutral-500">{legacyArList.length} customers</div>
             </div>
           </div>
 
@@ -1421,7 +1421,7 @@ const ReportsPage = () => {
             <div className="px-5 py-4 border-b border-neutral-200 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider">Top Historical Customer Receivables</h3>
-                <p className="text-xs text-neutral-500">21 customer accounts with approved opening balances transferred at cutover</p>
+                <p className="text-xs text-neutral-500">{legacyArList.length} customer accounts with approved opening balances transferred at cutover</p>
               </div>
               <Link to="/billing-history?status=unpaid" className="text-xs font-semibold text-primary-700 hover:underline">
                 View all pending bills &rarr;
