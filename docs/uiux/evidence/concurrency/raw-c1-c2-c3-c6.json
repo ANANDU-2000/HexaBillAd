@@ -1,0 +1,1083 @@
+{
+ "at": "2026-11-07T19:40:36.028Z",
+ "runsPerScenario": 3,
+ "results": [
+  {
+   "id": "c1",
+   "name": "C1 15 cashiers save POS invoices at once",
+   "runs": [
+    {
+     "run": 1,
+     "n": 60,
+     "p50": 1666.84,
+     "p95": 2983.49,
+     "max": 3791.34,
+     "statuses": {
+      "201": 60
+     },
+     "serverErrors": 0,
+     "unexpected": 0,
+     "errorRate": 0,
+     "seconds": 13.13,
+     "checks": [
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"201\":60}"
+      },
+      {
+       "name": "every save succeeded (200/201)",
+       "pass": true,
+       "detail": "{\"201\":60}"
+      },
+      {
+       "name": "double-click (same externalReference) saved once",
+       "pass": true,
+       "detail": "distinct saved=45/45 refs with >1 row=0"
+      },
+      {
+       "name": "stock = 20000 - qty of saved invoices",
+       "pass": true,
+       "detail": "stock=19910 expected=19910"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=2613 min=1 max=2613 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "ledger debits = sum of invoice totals (customer 42)",
+       "pass": true,
+       "detail": "ledger debit=504 invoices=504 http=200"
+      },
+      {
+       "name": "ledger credits = cleared payments (customer 42)",
+       "pass": true,
+       "detail": "ledger credit=0 payments=0"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 2,
+     "n": 60,
+     "p50": 770.15,
+     "p95": 1217.3,
+     "max": 1274.95,
+     "statuses": {
+      "201": 60
+     },
+     "serverErrors": 0,
+     "unexpected": 0,
+     "errorRate": 0,
+     "seconds": 6.58,
+     "checks": [
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"201\":60}"
+      },
+      {
+       "name": "every save succeeded (200/201)",
+       "pass": true,
+       "detail": "{\"201\":60}"
+      },
+      {
+       "name": "double-click (same externalReference) saved once",
+       "pass": true,
+       "detail": "distinct saved=45/45 refs with >1 row=0"
+      },
+      {
+       "name": "stock = 20000 - qty of saved invoices",
+       "pass": true,
+       "detail": "stock=19910 expected=19910"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=2658 min=1 max=2658 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "ledger debits = sum of invoice totals (customer 43)",
+       "pass": true,
+       "detail": "ledger debit=504 invoices=504 http=200"
+      },
+      {
+       "name": "ledger credits = cleared payments (customer 43)",
+       "pass": true,
+       "detail": "ledger credit=0 payments=0"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 3,
+     "n": 60,
+     "p50": 635.1,
+     "p95": 1291.43,
+     "max": 1416.56,
+     "statuses": {
+      "201": 60
+     },
+     "serverErrors": 0,
+     "unexpected": 0,
+     "errorRate": 0,
+     "seconds": 6.17,
+     "checks": [
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"201\":60}"
+      },
+      {
+       "name": "every save succeeded (200/201)",
+       "pass": true,
+       "detail": "{\"201\":60}"
+      },
+      {
+       "name": "double-click (same externalReference) saved once",
+       "pass": true,
+       "detail": "distinct saved=45/45 refs with >1 row=0"
+      },
+      {
+       "name": "stock = 20000 - qty of saved invoices",
+       "pass": true,
+       "detail": "stock=19910 expected=19910"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=2703 min=1 max=2703 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "ledger debits = sum of invoice totals (customer 44)",
+       "pass": true,
+       "detail": "ledger debit=504 invoices=504 http=200"
+      },
+      {
+       "name": "ledger credits = cleared payments (customer 44)",
+       "pass": true,
+       "detail": "ledger credit=0 payments=0"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c2",
+   "name": "C2 10 users pay the same customer (+double click)",
+   "runs": [
+    {
+     "run": 1,
+     "n": 20,
+     "p50": 408.91,
+     "p95": 592.83,
+     "max": 603.84,
+     "statuses": {
+      "201": 20
+     },
+     "serverErrors": 0,
+     "unexpected": 0,
+     "errorRate": 0,
+     "seconds": 4.14,
+     "checks": [
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"201\":20}"
+      },
+      {
+       "name": "exactly 10 payment rows (no duplicates from double click)",
+       "pass": true,
+       "detail": "rows=10 statuses={\"201\":20}"
+      },
+      {
+       "name": "payments total exact",
+       "pass": true,
+       "detail": "sum=145 expected=145"
+      },
+      {
+       "name": "customer balance exact",
+       "pass": false,
+       "detail": "balance=961 expected=905"
+      },
+      {
+       "name": "invoice PaidAmount = payments attached to it and <= total",
+       "pass": true,
+       "detail": "paid=70 attached=70 total=1050"
+      },
+      {
+       "name": "one idempotency record per payment",
+       "pass": true,
+       "detail": "idempotency rows=10"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=2704 min=1 max=2704 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": false,
+       "detail": "bad customers (id,cached,expected): [[\"45\",\"961.00\",\"905.00\"]]"
+      },
+      {
+       "name": "ledger debits = sum of invoice totals (customer 45)",
+       "pass": true,
+       "detail": "ledger debit=1050 invoices=1050 http=200"
+      },
+      {
+       "name": "ledger credits = cleared payments (customer 45)",
+       "pass": true,
+       "detail": "ledger credit=145 payments=145"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 2,
+     "n": 20,
+     "p50": 355.95,
+     "p95": 511.78,
+     "max": 535.01,
+     "statuses": {
+      "201": 20
+     },
+     "serverErrors": 0,
+     "unexpected": 0,
+     "errorRate": 0,
+     "seconds": 4.84,
+     "checks": [
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"201\":20}"
+      },
+      {
+       "name": "exactly 10 payment rows (no duplicates from double click)",
+       "pass": true,
+       "detail": "rows=10 statuses={\"201\":20}"
+      },
+      {
+       "name": "payments total exact",
+       "pass": true,
+       "detail": "sum=145 expected=145"
+      },
+      {
+       "name": "customer balance exact",
+       "pass": false,
+       "detail": "balance=965 expected=905"
+      },
+      {
+       "name": "invoice PaidAmount = payments attached to it and <= total",
+       "pass": true,
+       "detail": "paid=70 attached=70 total=1050"
+      },
+      {
+       "name": "one idempotency record per payment",
+       "pass": true,
+       "detail": "idempotency rows=10"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=2705 min=1 max=2705 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": false,
+       "detail": "bad customers (id,cached,expected): [[\"46\",\"965.00\",\"905.00\"]]"
+      },
+      {
+       "name": "ledger debits = sum of invoice totals (customer 46)",
+       "pass": true,
+       "detail": "ledger debit=1050 invoices=1050 http=200"
+      },
+      {
+       "name": "ledger credits = cleared payments (customer 46)",
+       "pass": true,
+       "detail": "ledger credit=145 payments=145"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 3,
+     "n": 20,
+     "p50": 266.58,
+     "p95": 414.83,
+     "max": 439.51,
+     "statuses": {
+      "201": 20
+     },
+     "serverErrors": 0,
+     "unexpected": 0,
+     "errorRate": 0,
+     "seconds": 4.19,
+     "checks": [
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"201\":20}"
+      },
+      {
+       "name": "exactly 10 payment rows (no duplicates from double click)",
+       "pass": true,
+       "detail": "rows=10 statuses={\"201\":20}"
+      },
+      {
+       "name": "payments total exact",
+       "pass": true,
+       "detail": "sum=145 expected=145"
+      },
+      {
+       "name": "customer balance exact",
+       "pass": false,
+       "detail": "balance=979 expected=905"
+      },
+      {
+       "name": "invoice PaidAmount = payments attached to it and <= total",
+       "pass": true,
+       "detail": "paid=70 attached=70 total=1050"
+      },
+      {
+       "name": "one idempotency record per payment",
+       "pass": true,
+       "detail": "idempotency rows=10"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=2706 min=1 max=2706 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": false,
+       "detail": "bad customers (id,cached,expected): [[\"47\",\"979.00\",\"905.00\"]]"
+      },
+      {
+       "name": "ledger debits = sum of invoice totals (customer 47)",
+       "pass": true,
+       "detail": "ledger debit=1050 invoices=1050 http=200"
+      },
+      {
+       "name": "ledger credits = cleared payments (customer 47)",
+       "pass": true,
+       "detail": "ledger credit=145 payments=145"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c3",
+   "name": "C3 10 sales of one low-stock product",
+   "runs": [
+    {
+     "run": 1,
+     "n": 20,
+     "p50": 540.04,
+     "p95": 713.9,
+     "max": 773.48,
+     "statuses": {
+      "201": 15,
+      "400": 5
+     },
+     "serverErrors": 0,
+     "unexpected": 5,
+     "errorRate": 0,
+     "seconds": 5.11,
+     "checks": [
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=false: 5 of 10 sales accepted",
+       "pass": true,
+       "detail": "accepted=5 statuses={\"201\":5,\"400\":5}"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=false: final stock correct",
+       "pass": true,
+       "detail": "stock=0 expected=0"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=false: stock = inventory transactions",
+       "pass": true,
+       "detail": "stock=0 txn=0"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=false: rejections are clean 4xx",
+       "pass": true,
+       "detail": "{\"201\":5,\"400\":5}"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=true: 10 of 10 sales accepted",
+       "pass": true,
+       "detail": "accepted=10 statuses={\"201\":10}"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=true: final stock correct",
+       "pass": true,
+       "detail": "stock=-5 expected=-5"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=true: stock = inventory transactions",
+       "pass": true,
+       "detail": "stock=-5 txn=-5"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=true: rejections are clean 4xx",
+       "pass": true,
+       "detail": "{\"201\":10}"
+      },
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"201\":15,\"400\":5}"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=2721 min=1 max=2721 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 2,
+     "n": 20,
+     "p50": 855.67,
+     "p95": 1282.44,
+     "max": 1393.97,
+     "statuses": {
+      "201": 15,
+      "400": 5
+     },
+     "serverErrors": 0,
+     "unexpected": 5,
+     "errorRate": 0,
+     "seconds": 6.76,
+     "checks": [
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=false: 5 of 10 sales accepted",
+       "pass": true,
+       "detail": "accepted=5 statuses={\"201\":5,\"400\":5}"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=false: final stock correct",
+       "pass": true,
+       "detail": "stock=0 expected=0"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=false: stock = inventory transactions",
+       "pass": true,
+       "detail": "stock=0 txn=0"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=false: rejections are clean 4xx",
+       "pass": true,
+       "detail": "{\"201\":5,\"400\":5}"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=true: 10 of 10 sales accepted",
+       "pass": true,
+       "detail": "accepted=10 statuses={\"201\":10}"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=true: final stock correct",
+       "pass": true,
+       "detail": "stock=-5 expected=-5"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=true: stock = inventory transactions",
+       "pass": true,
+       "detail": "stock=-5 txn=-5"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=true: rejections are clean 4xx",
+       "pass": true,
+       "detail": "{\"201\":10}"
+      },
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"201\":15,\"400\":5}"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=2736 min=1 max=2736 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 3,
+     "n": 20,
+     "p50": 356.12,
+     "p95": 533.71,
+     "max": 592.91,
+     "statuses": {
+      "201": 15,
+      "400": 5
+     },
+     "serverErrors": 0,
+     "unexpected": 5,
+     "errorRate": 0,
+     "seconds": 4.51,
+     "checks": [
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=false: 5 of 10 sales accepted",
+       "pass": true,
+       "detail": "accepted=5 statuses={\"201\":5,\"400\":5}"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=false: final stock correct",
+       "pass": true,
+       "detail": "stock=0 expected=0"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=false: stock = inventory transactions",
+       "pass": true,
+       "detail": "stock=0 txn=0"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=false: rejections are clean 4xx",
+       "pass": true,
+       "detail": "{\"201\":5,\"400\":5}"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=true: 10 of 10 sales accepted",
+       "pass": true,
+       "detail": "accepted=10 statuses={\"201\":10}"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=true: final stock correct",
+       "pass": true,
+       "detail": "stock=-5 expected=-5"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=true: stock = inventory transactions",
+       "pass": true,
+       "detail": "stock=-5 txn=-5"
+      },
+      {
+       "name": "ALLOW_NEGATIVE_STOCK=true: rejections are clean 4xx",
+       "pass": true,
+       "detail": "{\"201\":10}"
+      },
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"201\":15,\"400\":5}"
+      },
+      {
+       "name": "unique invoice numbers per tenant",
+       "pass": true,
+       "detail": "duplicate numbers: 0"
+      },
+      {
+       "name": "invoice numbers gapless (numeric series)",
+       "pass": true,
+       "detail": "count=2751 min=1 max=2751 gaps=0"
+      },
+      {
+       "name": "Sale.PaidAmount <= GrandTotal",
+       "pass": true,
+       "detail": "overpaid invoices: 0"
+      },
+      {
+       "name": "sum of cleared payments per invoice <= GrandTotal",
+       "pass": true,
+       "detail": "invoices with payments above total: 0"
+      },
+      {
+       "name": "Sale.PaidAmount = cleared payments on that invoice",
+       "pass": true,
+       "detail": "mismatches: 0"
+      },
+      {
+       "name": "stock = purchases - sales +/- adjustments (all ZZ-T5 products)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "customer balance = invoices - cleared payments (customers created in this run)",
+       "pass": true,
+       "detail": "ok"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c6",
+   "name": "C6 2 users submit the same daily close",
+   "runs": [
+    {
+     "run": 1,
+     "n": 4,
+     "p50": 279.49,
+     "p95": 416.28,
+     "max": 416.28,
+     "statuses": {
+      "200": 2,
+      "400": 2
+     },
+     "serverErrors": 0,
+     "unexpected": 2,
+     "errorRate": 0,
+     "seconds": 3.41,
+     "checks": [
+      {
+       "name": "close no branch 2026-07-10: exactly one Closed row",
+       "pass": true,
+       "detail": "closed rows=1 total rows=1 http=400,200"
+      },
+      {
+       "name": "close no branch 2026-07-10: loser gets a clean 4xx or the same row (no 500)",
+       "pass": true,
+       "detail": "http=400,200 msgs=This business day is closed. Reopen with a reason before mak | Day closed"
+      },
+      {
+       "name": "close branch 2026-07-11: exactly one Closed row",
+       "pass": true,
+       "detail": "closed rows=1 total rows=1 http=400,200"
+      },
+      {
+       "name": "close branch 2026-07-11: loser gets a clean 4xx or the same row (no 500)",
+       "pass": true,
+       "detail": "http=400,200 msgs=This business day is closed. Reopen with a reason before mak | Day closed"
+      },
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":2,\"400\":2}"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 2,
+     "n": 4,
+     "p50": 92.51,
+     "p95": 149.23,
+     "max": 149.23,
+     "statuses": {
+      "200": 2,
+      "400": 2
+     },
+     "serverErrors": 0,
+     "unexpected": 2,
+     "errorRate": 0,
+     "seconds": 2.74,
+     "checks": [
+      {
+       "name": "close no branch 2026-04-26: exactly one Closed row",
+       "pass": true,
+       "detail": "closed rows=1 total rows=1 http=200,400"
+      },
+      {
+       "name": "close no branch 2026-04-26: loser gets a clean 4xx or the same row (no 500)",
+       "pass": true,
+       "detail": "http=200,400 msgs=Day closed | This business day is closed. Reopen with a reason before mak"
+      },
+      {
+       "name": "close branch 2026-04-27: exactly one Closed row",
+       "pass": true,
+       "detail": "closed rows=1 total rows=1 http=400,200"
+      },
+      {
+       "name": "close branch 2026-04-27: loser gets a clean 4xx or the same row (no 500)",
+       "pass": true,
+       "detail": "http=400,200 msgs=This business day is closed. Reopen with a reason before mak | Day closed"
+      },
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":2,\"400\":2}"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    },
+    {
+     "run": 3,
+     "n": 4,
+     "p50": 103.62,
+     "p95": 225.44,
+     "max": 225.44,
+     "statuses": {
+      "200": 2,
+      "400": 2
+     },
+     "serverErrors": 0,
+     "unexpected": 2,
+     "errorRate": 0,
+     "seconds": 2.7,
+     "checks": [
+      {
+       "name": "close no branch 2026-07-03: exactly one Closed row",
+       "pass": true,
+       "detail": "closed rows=1 total rows=1 http=200,400"
+      },
+      {
+       "name": "close no branch 2026-07-03: loser gets a clean 4xx or the same row (no 500)",
+       "pass": true,
+       "detail": "http=200,400 msgs=Day closed | This business day is closed. Reopen with a reason before mak"
+      },
+      {
+       "name": "close branch 2026-07-04: exactly one Closed row",
+       "pass": true,
+       "detail": "closed rows=1 total rows=1 http=400,200"
+      },
+      {
+       "name": "close branch 2026-07-04: loser gets a clean 4xx or the same row (no 500)",
+       "pass": true,
+       "detail": "http=400,200 msgs=This business day is closed. Reopen with a reason before mak | Day closed"
+      },
+      {
+       "name": "no 5xx / network errors",
+       "pass": true,
+       "detail": "5xx/net=0 statuses={\"200\":2,\"400\":2}"
+      },
+      {
+       "name": "no deadlocks (pg_stat_database delta)",
+       "pass": true,
+       "detail": "deadlock=0 serialization=0"
+      },
+      {
+       "name": "no connection errors / timeouts (status 0 or 5xx) in this scenario",
+       "pass": true,
+       "detail": "enforced by the no-5xx check above"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
