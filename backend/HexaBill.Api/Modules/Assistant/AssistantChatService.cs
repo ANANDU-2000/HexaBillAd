@@ -23,7 +23,7 @@ public sealed record ChatReply(string Mode, string? Tool, string? Query, Assista
 public sealed class AssistantChatService
 {
     /// <summary>The only tools the model may pick. Read-only. Writes go through the draft, review and confirm path, not through here.</summary>
-    public static readonly IReadOnlySet<string> ModelCallableTools = new HashSet<string>(StringComparer.Ordinal) { "find_customers", "product_stock", "search_company_documents", "route_overdue", "route_unvisited", "customers_without_pin", "route_summary", "dashboard_summary" };
+    public static readonly IReadOnlySet<string> ModelCallableTools = new HashSet<string>(StringComparer.Ordinal) { "find_customers", "product_stock", "low_stock_products", "search_company_documents", "route_overdue", "route_unvisited", "customers_without_pin", "route_summary", "dashboard_summary" };
 
     /// <summary>The two forms the model may help fill in. They only pre-fill the existing screens; confirming is always the person's own step.</summary>
     public static readonly IReadOnlySet<string> SuggestionKinds = new HashSet<string>(StringComparer.Ordinal) { "new_customer", "new_expense", "new_payment", "new_sale" };
@@ -74,7 +74,9 @@ public sealed class AssistantChatService
         if (choice.Tool == null)
             return new ChatReply("reply", null, null, null, choice.Reply ?? "I can look up customers and product stock, summarize today's business figures, answer questions about routes, search documents, or prepare a payment, invoice, customer, or expense. Try asking for one of those.", result.Provider);
 
-        var args = JsonSerializer.SerializeToElement(new Dictionary<string, object> { ["query"] = choice.Query!, ["limit"] = 5 });
+        var args = choice.Tool == "low_stock_products"
+            ? JsonSerializer.SerializeToElement(new Dictionary<string, object> { ["limit"] = 10 })
+            : JsonSerializer.SerializeToElement(new Dictionary<string, object> { ["query"] = choice.Query!, ["limit"] = 5 });
         var tool = await _registry.RunAsync(caller, choice.Tool, args, ct);
         return new ChatReply("tool", choice.Tool, choice.Query, tool, null, result.Provider);
     }

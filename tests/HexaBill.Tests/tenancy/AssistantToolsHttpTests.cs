@@ -118,7 +118,19 @@ public class AssistantToolsHttpTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
         var names = json.GetProperty("data").EnumerateArray().Select(t => t.GetProperty("name").GetString()).OrderBy(n => n).ToArray();
-        Assert.Equal(new[] { "customers_without_pin", "dashboard_summary", "find_customers", "product_stock", "route_overdue", "route_summary", "route_unvisited", "search_company_documents" }, names);
+        Assert.Equal(new[] { "customers_without_pin", "dashboard_summary", "find_customers", "low_stock_products", "product_stock", "route_overdue", "route_summary", "route_unvisited", "search_company_documents" }, names);
+    }
+
+    [Fact]
+    public async Task LowStock_NeedsNoSearchText_IsTenantScoped_AndRejectsExtraArguments()
+    {
+        using var b = Owner(2, "tenantb");
+        var json = await Run(b, "low_stock_products", new { });
+        Assert.DoesNotContain(Rows(json).EnumerateArray(), r => r.GetProperty("sku").GetString() == "A-SKU");
+        await Run(b, "low_stock_products", new { query = "x" }, HttpStatusCode.BadRequest);
+        await Run(b, "low_stock_products", new { tenantId = 1 }, HttpStatusCode.BadRequest);
+        var capped = await Run(b, "low_stock_products", new { limit = 5000 });
+        Assert.True(Rows(capped).GetArrayLength() <= 25);
     }
 
     [Fact]

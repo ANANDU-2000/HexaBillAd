@@ -16,6 +16,20 @@ import {
   canConfirm, describeConfirmFailure, emptyCustomerForm, emptyExpenseForm, fieldErrorMap, newIdempotencyKey, toDraftRequest, toExpenseDraftRequest,
 } from './assistantDraft'
 import { paymentsAPI, customersAPI } from '../../services'
+import { detectIntent, introFor } from './assistantIntents'
+import { InvoiceCreateCard, ProductCreateCard } from './AssistantCards'
+
+// Quick actions. Each one is resolved on the device (assistantIntents), so it works even when no AI provider answers.
+const QUICK_ACTIONS = [
+  { id: 'summary', icon: '📊', label: 'Summary', text: "Show today's business summary", hint: 'Sales, collections, profit' },
+  { id: 'invoice', icon: '🧾', label: 'New invoice', text: 'Create new sale invoice', hint: 'Pick customer and items' },
+  { id: 'payment', icon: '💰', label: 'Receive payment', text: 'Record payment received', hint: 'From a customer' },
+  { id: 'expense', icon: '💸', label: 'Add expense', text: 'Record expense', hint: 'Fuel, rent, salary…' },
+  { id: 'lowstock', icon: '⚠️', label: 'Low stock', text: 'Show low stock products', hint: 'What to reorder' },
+  { id: 'overdue', icon: '⏰', label: 'Overdue', text: 'Which customers are overdue on routes?', hint: 'Who to collect from' },
+  { id: 'product', icon: '📦', label: 'New product', text: 'Add new product', hint: 'Price, unit, stock' },
+  { id: 'customer', icon: '🏢', label: 'New customer', text: 'Add new customer', hint: 'Name and phone' },
+]
 
 const inputClass = 'block w-full min-h-10 rounded-md border border-neutral-300 bg-white px-3 text-sm focus:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-500'
 const surfaceCardClass = 'rounded-lg border border-neutral-200 bg-white p-3.5 shadow-sm text-neutral-900'
@@ -896,7 +910,7 @@ function ToolResultRows({ tool, rows, asOf }) {
 // VOICE INPUT COMPONENT
 // ==========================================
 
-function VoiceMicButton({ onTranscript, language, onListeningChange }) {
+function VoiceMicButton({ onTranscript, onInterim, language, onListeningChange }) {
   const [listening, setListening] = useState(false)
   const recognizer = useRef(null)
   const Ctor = recognitionCtor(globalThis)
@@ -918,15 +932,18 @@ function VoiceMicButton({ onTranscript, language, onListeningChange }) {
       stop()
       return
     }
+    try { globalThis.speechSynthesis?.cancel() } catch {}
     const rec = new Ctor()
     rec.lang = localeFor(language)
-    rec.interimResults = false
+    rec.interimResults = true
     rec.continuous = false
     rec.maxAlternatives = 1
     let heard = ''
 
     rec.onresult = (e) => {
-      heard = Array.from(e.results).map((r) => r[0]?.transcript || '').join(' ')
+      const all = Array.from(e.results).map((r) => r[0]?.transcript || '').join(' ')
+      heard = all
+      onInterim && onInterim(all)
     }
     rec.onerror = (e) => {
       const err = describeVoiceError(e?.error)
@@ -936,7 +953,8 @@ function VoiceMicButton({ onTranscript, language, onListeningChange }) {
       recognizer.current = null
       setListening(false)
       onListeningChange && onListeningChange(false)
-      if (heard.trim()) onTranscript(heard)
+      onInterim && onInterim('')
+      if (heard.trim()) onTranscript(heard.trim())
     }
 
     recognizer.current = rec
@@ -955,21 +973,17 @@ function VoiceMicButton({ onTranscript, language, onListeningChange }) {
     <button
       type="button"
       onClick={start}
-      aria-label={listening ? 'Stop listening' : 'Speak voice action'}
-      title={listening ? 'Listening... Tap to finish' : 'Tap to speak'}
-      className={`relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
+      aria-label={listening ? 'Stop listening' : 'Speak'}
+      aria-pressed={listening}
+      title={listening ? 'Listening... tap to finish' : 'Tap and speak'}
+      className={`relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-all ${
         listening
-          ? 'bg-rose-600 text-white animate-pulse shadow-md ring-4 ring-rose-200'
-          : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+          ? 'bg-rose-600 text-white shadow-lg ring-4 ring-rose-200'
+          : 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
       }`}
     >
-      <Mic className={`h-5 w-5 ${listening ? 'text-white' : 'text-neutral-700'}`} />
-      {listening && (
-        <span className="absolute -top-1 -right-1 flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
-        </span>
-      )}
+      <Mic className="h-6 w-6" />
+      {listening && <span className="absolute inset-0 animate-ping rounded-full bg-rose-400/40" aria-hidden="true" />}
     </button>
   )
 }
@@ -987,6 +1001,8 @@ export default function AssistantPanel({ open, onClose }) {
   const [sending, setSending] = useState(false)
   const [showDrawer, setShowDrawer] = useState(false)
   const [consentInfo, setConsentInfo] = useState(null)
+  const [listening, setListening] = useState(false)
+  const [interim, setInterim] = useState('')
 
   const streamEndRef = useRef(null)
   const closeRef = useRef(null)
@@ -1015,7 +1031,7 @@ export default function AssistantPanel({ open, onClose }) {
 
   // Scroll to bottom on new message
   useEffect(() => {
-    streamEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messages.length > 0 || sending) streamEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, sending])
 
   if (!open) return null
@@ -1041,6 +1057,36 @@ export default function AssistantPanel({ open, onClose }) {
     setMessages((prev) => [...prev, userMsg])
     if (!rawMessage) setInputText('')
     setSending(true)
+
+    const push = (view) => setMessages((prev) => [...prev, { id: `assist-${Date.now()}-${prev.length}`, sender: 'assistant', view, timestamp: new Date() }])
+
+    // 1. Everyday actions are understood on the device: instant, no AI provider needed.
+    const intent = detectIntent(text)
+    if (intent?.type === 'form') {
+      push({ kind: 'suggestion', formKind: intent.kind, fields: intent.fields, heading: introFor(intent), note: 'Nothing is saved until you tap Confirm.' })
+      setSending(false)
+      return
+    }
+    if (intent?.type === 'tool') {
+      try {
+        const res = await assistantApi.runTool(intent.tool, intent.args)
+        if (res.ok && res.data) {
+          const rows = Array.isArray(res.data.data) ? res.data.data : []
+          if (intent.tool === 'dashboard_summary') {
+            push({ kind: 'dashboard_summary', tool: intent.tool, heading: intent.label, summary: rows[0] || null, rows, asOf: res.data.asOf, note: 'Figures are calculated from your company records.' })
+          } else {
+            push({ kind: 'tool', tool: intent.tool, heading: intent.label, rows, asOf: res.data.asOf, emptyText: rows.length === 0 ? 'Nothing to show. All good.' : null })
+          }
+          setSending(false)
+          return
+        }
+        if (res.status === 403 || res.status === 401) {
+          push({ kind: 'refused', text: res.message || 'You do not have access to this.' })
+          setSending(false)
+          return
+        }
+      } catch { /* fall through to the AI route below */ }
+    }
 
     try {
       const res = await assistantApi.chat(text)
@@ -1088,55 +1134,48 @@ export default function AssistantPanel({ open, onClose }) {
   return (
     <aside
       role="dialog"
-      aria-label="HexaBill ERP Copilot"
+      aria-label="HexaBill Assistant"
       data-shell-hides-nav
-      className={`fixed inset-0 z-[70] flex flex-col bg-neutral-100 shadow-2xl transition-all md:left-auto md:right-0 ${
-        expanded ? 'md:w-full' : 'md:w-[28rem] lg:w-[32rem]'
+      className={`fixed inset-0 z-[70] flex flex-col bg-neutral-50 shadow-2xl transition-all md:left-auto md:right-0 md:border-l md:border-neutral-200 ${
+        expanded ? 'md:w-full' : 'md:w-[30rem] lg:w-[34rem] xl:w-[38rem]'
       }`}
     >
       {/* 1. Header */}
-      <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm">
-            <Sparkles className="h-4 w-4" />
+      <header className="flex items-center justify-between gap-2 border-b border-neutral-200 bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-600 to-indigo-600 text-white shadow-sm">
+            <Sparkles className="h-5 w-5" />
           </div>
-          <div>
-            <h2 className="text-sm font-bold text-neutral-900 leading-tight">HexaBill Copilot</h2>
-            <p className="text-[11px] text-neutral-500">Action ERP AI Agent</p>
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-bold leading-tight text-neutral-900">HexaBill Assistant</h2>
+            <p className="truncate text-xs text-neutral-500">Say it or type it. I prepare it, you confirm.</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {/* Language selector */}
+        <div className="flex shrink-0 items-center gap-1.5">
           <select
-            aria-label="Voice & Chat Language"
+            aria-label="Voice and chat language"
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            className="h-8 rounded-md border border-neutral-300 bg-neutral-50 px-2 text-xs font-medium text-neutral-700 hover:bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="h-10 rounded-lg border border-neutral-300 bg-white px-2 text-sm font-medium text-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary-500/40"
           >
             {VOICE_LANGUAGES.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.id.toUpperCase()} · {l.label.split(' ')[0]}
-              </option>
+              <option key={l.id} value={l.id}>{l.label.split(' ')[0]}</option>
             ))}
           </select>
-
-          {/* Expand toggle */}
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="hidden h-8 w-8 items-center justify-center rounded-md hover:bg-neutral-100 text-neutral-600 md:inline-flex"
+            className="hidden h-10 w-10 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100 md:inline-flex"
             aria-label={expanded ? 'Minimize side panel' : 'Full screen'}
           >
-            {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            {expanded ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
           </button>
-
-          {/* Close */}
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-neutral-100 text-neutral-600"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100"
             aria-label="Close assistant"
           >
             <X className="h-5 w-5" />
@@ -1144,97 +1183,57 @@ export default function AssistantPanel({ open, onClose }) {
         </div>
       </header>
 
-      {/* 2. Quick Suggestion Chips */}
-      <div className="flex gap-1.5 overflow-x-auto border-b border-neutral-200 bg-white px-3 py-2 scrollbar-none">
-        <button
-          type="button"
-          onClick={() => handleSendMessage("Show today's business summary")}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
-        >
-          <span>📊</span> Summary
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSendMessage("Which customers are overdue on routes?")}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
-        >
-          <span>💸</span> Overdue
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSendMessage("Show low stock products")}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
-        >
-          <span>⚠️</span> Low Stock
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSendMessage("Record payment received")}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
-        >
-          <span>💰</span> Payment
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSendMessage("Create new sale invoice")}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
-        >
-          <span>🧾</span> Invoice
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSendMessage("Record expense")}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
-        >
-          <span>💸</span> Expense
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSendMessage("Add new customer")}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
-        >
-          <span>🏢</span> Customer
-        </button>
-      </div>
+      {/* 2. Quick actions (compact row once a conversation has started) */}
+      {messages.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto border-b border-neutral-200 bg-white px-3 py-2 scrollbar-none">
+          {QUICK_ACTIONS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              disabled={sending}
+              onClick={() => handleSendMessage(a.text)}
+              className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-3.5 text-sm font-medium text-neutral-800 hover:border-primary-400 hover:bg-primary-50 disabled:opacity-50"
+            >
+              <span aria-hidden="true">{a.icon}</span>{a.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* 3. Action & Conversation Stream */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* 3. Conversation */}
+      <div className="flex-1 overflow-y-auto">
+       <div className={`mx-auto w-full space-y-4 p-4 ${expanded ? 'max-w-3xl' : ''}`}>
         {messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center p-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 mb-3 shadow-inner">
-              <Sparkles className="h-6 w-6" />
-            </div>
-            <h3 className="text-base font-bold text-neutral-900">Talk & Do ERP Copilot</h3>
-            <p className="mt-1 text-xs text-neutral-600 max-w-sm">
-              Speak or type actions in English, മലയാളം, हिन्दी, or العربية.
-              Review calculated action cards with 1-tap confirmation.
-            </p>
+          <div className="flex flex-col items-center pt-4 text-center">
+            <h3 className="text-xl font-bold text-neutral-900">What do you want to do?</h3>
+            <p className="mt-1 max-w-sm text-sm text-neutral-600">Tap an action, or press the mic and just say it, in English or Malayalam.</p>
 
-            <div className="mt-4 grid grid-cols-1 gap-2 w-full max-w-xs text-left">
-              <button
-                type="button"
-                onClick={() => handleSendMessage("Received 500 AED from Al Noor")}
-                className="rounded-lg border border-neutral-200 bg-white p-2 text-xs hover:border-primary-500 hover:bg-neutral-50"
-              >
-                <p className="font-semibold text-neutral-900">💰 "Received 500 AED from Al Noor"</p>
-                <p className="text-[11px] text-neutral-500">Prepares a payment receipt card</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSendMessage("Show today's business summary")}
-                className="rounded-lg border border-neutral-200 bg-white p-2 text-xs hover:border-primary-500 hover:bg-neutral-50"
-              >
-                <p className="font-semibold text-neutral-900">📊 "Show today's business summary"</p>
-                <p className="text-[11px] text-neutral-500">Live sales, collections, profit & receivables</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSendMessage("Record 80 AED fuel expense")}
-                className="rounded-lg border border-neutral-200 bg-white p-2 text-xs hover:border-primary-500 hover:bg-neutral-50"
-              >
-                <p className="font-semibold text-neutral-900">💸 "Record 80 AED fuel expense"</p>
-                <p className="text-[11px] text-neutral-500">Matches category and prepares expense</p>
-              </button>
+            <div className="mt-5 grid w-full max-w-xl grid-cols-2 gap-3 text-left">
+              {QUICK_ACTIONS.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => handleSendMessage(a.text)}
+                  className="flex min-h-[4.5rem] items-center gap-3 text-left rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm transition hover:border-primary-400 hover:shadow-md active:scale-[0.98]"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-2xl" aria-hidden="true">{a.icon}</span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-neutral-900">{a.label}</span>
+                    <span className="block truncate text-xs text-neutral-500">{a.hint}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-6 w-full max-w-xl rounded-2xl bg-white p-4 text-left text-sm text-neutral-700 shadow-sm ring-1 ring-neutral-200">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">Try saying</p>
+              <ul className="space-y-1">
+                {['Received 500 from Al Noor in cash', 'Record 80 fuel expense', 'How much stock of rice?', 'ഇന്നത്തെ വിൽപ്പന കാണിക്കൂ'].map((ex) => (
+                  <li key={ex}>
+                    <button type="button" onClick={() => handleSendMessage(ex)} className="w-full rounded-lg px-2 py-2 text-left hover:bg-neutral-50">&ldquo;{ex}&rdquo;</button>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         ) : (
@@ -1242,7 +1241,7 @@ export default function AssistantPanel({ open, onClose }) {
             if (m.sender === 'user') {
               return (
                 <div key={m.id} className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl rounded-tr-none bg-primary-600 px-3.5 py-2 text-xs font-medium text-white shadow-sm">
+                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-primary-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm">
                     {m.text}
                   </div>
                 </div>
@@ -1252,9 +1251,9 @@ export default function AssistantPanel({ open, onClose }) {
             const view = m.view
             return (
               <div key={m.id} className="flex justify-start">
-                <div className="w-full max-w-[95%] space-y-2">
+                <div className="w-full max-w-full sm:max-w-[95%] space-y-2">
                   {view.heading && (
-                    <p className="text-xs font-semibold text-neutral-700 px-1">
+                    <p className="text-sm font-semibold text-neutral-800 px-1">
                       {view.heading}
                     </p>
                   )}
@@ -1274,7 +1273,11 @@ export default function AssistantPanel({ open, onClose }) {
                   )}
 
                   {view.kind === 'suggestion' && view.formKind === 'new_sale' && (
-                    <InvoiceDraftActionCard fields={view.fields} language={language} />
+                    <InvoiceCreateCard fields={view.fields} />
+                  )}
+
+                  {view.kind === 'suggestion' && view.formKind === 'new_product' && (
+                    <ProductCreateCard fields={view.fields} />
                   )}
 
                   {view.kind === 'suggestion' && view.formKind === 'new_expense' && (
@@ -1287,12 +1290,14 @@ export default function AssistantPanel({ open, onClose }) {
 
                   {/* Tool Read Rows */}
                   {view.kind === 'tool' && (
-                    <ToolResultRows tool={view.tool} rows={view.rows} asOf={view.asOf} />
+                    view.emptyText
+                      ? <p className="rounded-2xl rounded-tl-md border border-neutral-200 bg-white p-3.5 text-sm text-neutral-700 shadow-sm">{view.emptyText}</p>
+                      : <ToolResultRows tool={view.tool} rows={view.rows} asOf={view.asOf} />
                   )}
 
                   {/* Fallback text reply */}
                   {view.text && (
-                    <div className="rounded-xl rounded-tl-none border border-neutral-200 bg-white p-3 text-xs text-neutral-800 shadow-sm leading-relaxed">
+                    <div className="rounded-2xl rounded-tl-md border border-neutral-200 bg-white p-3.5 text-sm text-neutral-800 shadow-sm leading-relaxed">
                       {view.text}
                     </div>
                   )}
@@ -1310,14 +1315,15 @@ export default function AssistantPanel({ open, onClose }) {
 
         {sending && (
           <div className="flex justify-start">
-            <div className="inline-flex items-center gap-2 rounded-xl rounded-tl-none border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-500 shadow-sm">
-              <Sparkles className="h-3.5 w-3.5 text-primary-600 animate-spin" />
-              <span>Thinking & checking books...</span>
+            <div className="inline-flex items-center gap-2 rounded-2xl rounded-tl-md border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-600 shadow-sm">
+              <Sparkles className="h-4 w-4 text-primary-600 animate-pulse" />
+              <span>Working on it…</span>
             </div>
           </div>
         )}
 
         <div ref={streamEndRef} />
+       </div>
       </div>
 
       {/* 4. Manual Drawer / AI Privacy Collapsible */}
@@ -1357,33 +1363,39 @@ export default function AssistantPanel({ open, onClose }) {
         )}
       </div>
 
-      {/* 5. Bottom Input & Voice Action Bar */}
-      <footer className="border-t border-neutral-200 bg-white p-3">
+      {/* 5. Input and voice */}
+      <footer className="border-t border-neutral-200 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        {(listening || interim) && (
+          <div role="status" aria-live="polite" className="mx-auto mb-2 flex w-full max-w-3xl items-center gap-2 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-800">
+            <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-rose-600" aria-hidden="true" />
+            <span className="min-w-0 truncate">{interim ? interim : 'Listening… speak now'}</span>
+          </div>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault()
             handleSendMessage()
           }}
-          className="flex items-center gap-2"
+          className="mx-auto flex w-full max-w-3xl items-center gap-2"
         >
           <VoiceMicButton
             language={language}
-            onTranscript={(spokenText) => {
-              setInputText((cur) => appendTranscript(cur, spokenText, CHAT_MAX_CHARS))
-            }}
+            onListeningChange={setListening}
+            onInterim={setInterim}
+            onTranscript={(spokenText) => handleSendMessage(spokenText)}
           />
 
           <input
             type="text"
-            className="flex-1 min-h-10 rounded-full border border-neutral-300 bg-neutral-50 px-4 text-xs md:text-sm text-neutral-900 placeholder:text-neutral-400 focus:bg-white focus:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="min-h-12 flex-1 rounded-full border border-neutral-300 bg-neutral-50 px-4 text-base text-neutral-900 placeholder:text-neutral-400 focus:border-primary-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/30"
             placeholder={
               language === 'ml'
-                ? "ചോദ്യമോ നിർദ്ദേശമോ പറയുക അല്ലെങ്കിൽ ടൈപ്പ് ചെയ്യുക..."
+                ? 'പറയുക അല്ലെങ്കിൽ ടൈപ്പ് ചെയ്യുക…'
                 : language === 'ar'
-                ? "تحدث أو اكتب أمرك هنا..."
+                ? 'تحدث أو اكتب هنا…'
                 : language === 'hi'
-                ? "बोलें या लिखें (जैसे '500 AED payment received')..."
-                : "Speak or type an action (e.g. 'Received 500 AED from Al Noor')..."
+                ? 'बोलें या लिखें…'
+                : 'Say or type, e.g. \u201cReceived 500 from Al Noor\u201d'
             }
             value={inputText}
             maxLength={CHAT_MAX_CHARS}
@@ -1393,10 +1405,10 @@ export default function AssistantPanel({ open, onClose }) {
           <button
             type="submit"
             disabled={!inputText.trim() || sending}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm hover:bg-primary-700 disabled:opacity-40 disabled:hover:bg-primary-600"
-            aria-label="Send action"
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm hover:bg-primary-700 disabled:opacity-40"
+            aria-label="Send"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-5 w-5" />
           </button>
         </form>
       </footer>

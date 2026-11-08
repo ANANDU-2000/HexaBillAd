@@ -1,7 +1,7 @@
 {
   "source": "frontend/hexabill-ui/src/app/App.jsx",
   "verifiedAt": "2026-10-18",
-  "uniqueRoutePathCount": 68,
+  "uniqueRoutePathCount": 69,
   "paths": [
     "*",
     "/",
@@ -56,6 +56,7 @@
     "/settings",
     "/signup",
     "/stock-adjustments",
+    "/superadmin/ai",
     "/superadmin/audit-logs",
     "/superadmin/dashboard",
     "/superadmin/demo-requests",

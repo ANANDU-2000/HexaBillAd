@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Modules.Products;
@@ -86,6 +87,43 @@ internal static class ToolArgs
         if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var n) || n < 1)
             throw new AssistantToolException(400, "'limit' must be a positive whole number.");
         return Math.Min(n, max);
+    }
+}
+
+/// <summary>Active products that are out of stock or at/below their reorder level, lowest stock first.</summary>
+public sealed class LowStockProductsTool : IAssistantTool
+{
+    private readonly HexaBill.Api.Data.AppDbContext _db;
+    public LowStockProductsTool(HexaBill.Api.Data.AppDbContext db) => _db = db;
+
+    public string Name => "low_stock_products";
+    public string Description => "List products that are out of stock or low (at or below reorder level). No search text needed.";
+    public IReadOnlyList<string> Arguments { get; } = new[] { "limit" };
+    public bool AllowedFor(AssistantCaller caller) => caller.TenantId > 0;
+
+    public async Task<AssistantToolResult> RunAsync(AssistantCaller caller, JsonElement args, CancellationToken ct)
+    {
+        var limit = ToolArgs.Limit(args, 10, 25);
+        var asOf = DateTime.UtcNow;
+        var tenantId = caller.TenantId;
+        // Bounded read; ordered in memory so the same code works on every database.
+        var candidates = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
+            _db.Products.AsNoTracking().Where(p => p.TenantId == tenantId && p.IsActive && (p.StockQty <= 0 || (p.ReorderLevel > 0 && p.StockQty <= p.ReorderLevel))).Take(500), ct);
+        var items = candidates.OrderBy(p => p.StockQty).ThenBy(p => p.NameEn, StringComparer.OrdinalIgnoreCase).Take(limit).ToList();
+        var rows = items.Select(p => new Dictionary<string, object?>
+        {
+            ["id"] = p.Id,
+            ["sku"] = p.Sku,
+            ["name"] = p.NameEn,
+            ["unit"] = p.UnitType,
+            ["stockQty"] = p.StockQty,
+            ["reorderLevel"] = p.ReorderLevel,
+            ["lowStock"] = true,
+            ["costPrice"] = caller.IsOwnerOrAdmin ? p.CostPrice : null,
+            ["sellPrice"] = p.SellPrice,
+        }).ToList();
+        var sources = items.Select(p => new AssistantSource("product", p.Id.ToString(), $"{p.Sku} {p.NameEn}", asOf)).ToList();
+        return new AssistantToolResult(Name, rows, sources, asOf);
     }
 }
 
