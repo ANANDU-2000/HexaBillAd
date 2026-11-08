@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import RoutesSetupGuide from '../branches/RoutesSetupGuide'
 import { useSearchParams } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -319,7 +320,8 @@ export default function RouteMapPage() {
   if (!routes.length) {
     return (
       <div className="p-4" data-testid="route-map-page">
-        <Alert tone="info" title="No routes yet">Routes you can see will appear here with their customers on a map.</Alert>
+        <RoutesSetupGuide branchCount={undefined} routeCount={0} />
+        <p className="mt-2 text-sm text-neutral-700">Routes you can see appear here with their customers on a map.</p>
       </div>
     )
   }
