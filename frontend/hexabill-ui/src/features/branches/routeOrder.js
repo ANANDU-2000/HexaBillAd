@@ -52,3 +52,11 @@ export function applyOrder (stops, ids) {
 }
 
 export const sameOrder = (a, b) => a.length === b.length && a.every((v, i) => v === b[i])
+
+/** Ids after dragging `dragId` to sit just before `targetId`; unchanged when either is missing or they are the same. */
+export function moveBefore (ids, dragId, targetId) {
+  if (dragId === targetId || !ids.includes(dragId) || !ids.includes(targetId)) return [...ids]
+  const rest = ids.filter((id) => id !== dragId)
+  rest.splice(rest.indexOf(targetId), 0, dragId)
+  return rest
+}

@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { askAgentItem } from '../assistant/askAgent'
+import { isAssistantEnabled } from '../assistant/assistantDraft'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import {
   Search,
@@ -385,6 +387,7 @@ const BillingHistoryPage = () => {
     return [
       { label: inv.isLegacy ? 'View invoice & items' : 'View invoice', icon: Eye, hidden: !inv.isLegacy && inv.isDeleted, onClick: () => openInvoice(inv) },
       { label: 'Customer ledger', icon: Wallet, hidden: !inv.customerId, onClick: () => openCustomerLedger(inv) },
+      askAgentItem({ kind: 'invoice', label: inv.invoiceNumber }, { hidden: !isAssistantEnabled(import.meta.env) || !inv.invoiceNumber }),
       { label: 'Print receipt', icon: Printer, hidden: !hasReceipt(inv), disabled: loadingReceiptSaleId === sale.id, onClick: () => handlePrintPaymentReceipt(inv) },
       { label: 'Edit invoice', icon: Edit, hidden: !canEdit || inv.isLegacy || inv.isDeleted, onClick: () => handleEditSale(inv) },
       { label: 'Delete invoice', icon: Trash2, hidden: !isAdmin || inv.isLegacy || inv.isDeleted, danger: true, separatorBefore: true, onClick: () => setSaleToDelete(inv.operatingSaleId) }

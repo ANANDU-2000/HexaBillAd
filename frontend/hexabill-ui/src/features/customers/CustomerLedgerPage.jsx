@@ -1,4 +1,6 @@
 import { DatePresetChips } from '../../components/ui/DateRangeFilter'
+import { askAgentItem } from '../assistant/askAgent'
+import { isAssistantEnabled } from '../assistant/assistantDraft'
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { loadAllCustomerPages } from '../../utils/loadAllPages'
 import { statusTone } from '../../utils/statusTone'
@@ -2822,7 +2824,8 @@ const CustomerLedgerPage = () => {
                         { label: 'Statement PDF (F5)', icon: FileText, disabled: pdfLoading, onClick: handleExportStatement },
                         { label: 'Pending bills PDF', icon: DollarSign, disabled: pdfLoading, onClick: handlePendingBillsPdf },
                         { label: 'Full ledger PDF (F7)', icon: Download, disabled: pdfLoading, onClick: handleExportPDF },
-                        { label: 'Share on WhatsApp', icon: Send, separatorBefore: true, onClick: handleShareWhatsApp },
+                        askAgentItem({ kind: 'customer', label: selectedCustomer.name }, { hidden: selectedCustomer.id === 'cash' || !isAssistantEnabled(import.meta.env), separatorBefore: true }),
+                        { label: 'Share on WhatsApp', icon: Send, onClick: handleShareWhatsApp },
                         { label: 'Send statement…', icon: Send, disabled: customerLedger.length === 0, onClick: () => setShowSendStatementModal(true) },
                         {
                           label: 'Refresh',
