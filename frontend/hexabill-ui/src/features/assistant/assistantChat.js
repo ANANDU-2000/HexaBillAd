@@ -87,6 +87,16 @@ export function prefillFor (kind, fields = {}, categories = []) {
   return out
 }
 
+/** Sources of a grounded reply: strings or { label, href }. Only same-app paths become links; at most 5. */
+export function normalizeSources (sources) {
+  if (!Array.isArray(sources)) return []
+  return sources
+    .map((s) => (typeof s === 'string' ? { label: s } : { label: s?.label || s?.title, href: s?.href }))
+    .filter((s) => typeof s.label === 'string' && s.label.trim())
+    .map((s) => ({ label: s.label.trim(), href: typeof s.href === 'string' && /^\/[A-Za-z0-9/_\-?=&.]*$/.test(s.href) && !s.href.startsWith('//') ? s.href : null }))
+    .slice(0, 5)
+}
+
 /**
  * data: the `data` of POST /assistant/chat ({ mode, tool, query, result, text, provider }).
  * kind: tool (rows from the books), reply (fixed guidance), unavailable / refused (a plain explanation).
@@ -132,6 +142,20 @@ export function describeChatReply (data) {
     }
   }
   if (mode === 'reply') {
+    // D-A02: model text is shown only when the server vouches for it (grounded === true). Anything else keeps the fixed help below.
+    if (data.grounded === true && typeof data.text === 'string' && data.text.trim()) {
+      return {
+        kind: 'reply',
+        grounded: true,
+        tool: null,
+        heading: null,
+        rows: [],
+        text: data.text.trim(),
+        sources: normalizeSources(data.sources),
+        asOf: data.asOf || null,
+        note: 'Based on your company records. Check the figures before you act on them.',
+      }
+    }
     return { kind: 'reply', tool: null, heading: 'Assistant help', rows: [], text: 'I can look up customers and product stock, answer questions about your routes (overdue, not visited, no map pin), search your documents, or help fill in a new customer or expense. Try asking for one of those.', note: 'Use the Look up tab for records from your company.' }
   }
   if (mode === 'refused') {

@@ -17,6 +17,8 @@ export const assistantApi = {
   consent: () => wrap(() => api.get('/assistant/consent')),
   setConsent: (enabled, policyFingerprint) => wrap(() => api.put('/assistant/consent', { enabled, policyFingerprint })),
   chat: (message) => wrap(() => api.post('/assistant/chat', { message })),
+  // NEEDS-BACKEND (UX-E05): -> { url, token, room, expiresAt, provider }
+  voiceSession: () => wrap(() => api.post('/assistant/voice/session')),
   runTool: (name, args) => wrap(() => api.post(`/assistant/tools/${name}`, args)),
   createCustomerDraft: (body) => wrap(() => api.post('/assistant/drafts/customer', body)),
   createExpenseDraft: (body) => wrap(() => api.post('/assistant/drafts/expense', body)),
