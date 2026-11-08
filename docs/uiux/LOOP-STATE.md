@@ -171,6 +171,11 @@ Format: BUG-n | feature | severity | repro | failing test | suspected file | sta
 - BUG-43 | Add Product | S3 | No beforeunload warning on unsaved form | hunt-2 | FE (T1)
 - BUG-44 | POS | S3 perf | 56.9 s on slow 3G, over 45 s limit | hunt-2 | FE (T2)
 
+- BUG-45 | Dashboard | S2 UX | No 'Needs attention' block; shows 'Critical alerts' and 'Operational status' (DashboardTally.jsx ~L919/L827) | e2e/gate/j1-login-dashboard.spec.js | FE (T1)
+- GATE-G1 | Gate | S2 | H03 money snapshot compare fails on as-of-today fields (worksheet.pendingAmount, VAT outside-period count); snapshot definition needs fixing | scripts/money-snapshot.mjs | OWNER-DECISION
+- J3-FLAKE | Ledger receipt | S3 | d1440 run left invoice pending 21.00 not 12.60 once; passed on rerun. Suspect async invoice list in receipt modal | e2e/gate/j3* | investigate
+| 13 | 2026-11-08 | Gate G1 (tests only) | MERGED, GATE FAIL | 7046a74d | lint 0 err, unit 459/459; J1 FAIL (BUG-45), J2 PASS, J3 FAIL once (flake) then PASS, J4 PASS, J11 PASS, H03 FAIL, perf 27 regressions | docs/uiux/evidence/2026-11-08/gate-g1/README.md | G2 and phase B blocked until G1 green |
+
 ## 7. Stuck log
 
 | Task | Attempts | Last error | Root-cause guess | What a human should check |
