@@ -53,39 +53,40 @@ const PendingBillsPage = () => {
   }, [load])
 
   return (
-    <div className={`min-h-0 flex-1 space-y-4 overflow-y-auto ${mobilePageShellClass}`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Wallet className="h-5 w-5 text-primary-600" aria-hidden />
-          <h1 className="text-xl font-bold text-neutral-900">Pending Bills</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            to="/payments?bulk=1"
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50"
-            title="Record payments for several customers in one batch"
-          >
-            <Layers className="h-4 w-4" aria-hidden />
-            Bulk payment
-          </Link>
-          <button
-            type="button"
-            onClick={() => load()}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50"
-          >
-            <RefreshCw className="h-4 w-4" aria-hidden />
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      <p className="text-sm text-neutral-600">
-        Customers with open bills. Choose a customer to record a partial or full payment for one or more bills.
-      </p>
-
-      <div className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
-        <CustomerPendingBillsTable rows={rows} loading={loading} error={error} onRetry={() => load()} />
-      </div>
+    <div className={`min-h-0 flex-1 overflow-y-auto ${mobilePageShellClass}`}>
+      {/* One row: title, search, total due and the two page buttons. Press "Pay" on a row to record a payment. */}
+      <CustomerPendingBillsTable
+        rows={rows}
+        loading={loading}
+        error={error}
+        onRetry={() => load()}
+        leading={(
+          <h1 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
+            <Wallet className="h-5 w-5 text-primary-600" aria-hidden />
+            Pending Bills
+          </h1>
+        )}
+        trailing={(
+          <>
+            <Link
+              to="/payments?bulk=1"
+              className="inline-flex min-h-[40px] items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50"
+              title="Record payments for several customers in one batch"
+            >
+              <Layers className="h-4 w-4" aria-hidden />
+              Bulk payment
+            </Link>
+            <button
+              type="button"
+              onClick={() => load()}
+              className="inline-flex min-h-[40px] items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden />
+              Refresh
+            </button>
+          </>
+        )}
+      />
     </div>
   )
 }
