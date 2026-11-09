@@ -683,19 +683,28 @@ namespace HexaBill.Api.Modules.Products
 
         public async Task<List<ProductDto>> SearchProductsAsync(string query, int tenantId, int limit = 20)
         {
-            var searchTerm = query.ToLower();
+            // Multi-word search: every whitespace-separated token must match name/SKU/barcode/category,
+            // so "1000 seara" finds "FROZEN CHICKEN 1000GM SEARA".
+            var tokens = (query ?? string.Empty).ToLower()
+                .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            limit = Math.Clamp(limit, 1, 100);
             // CRITICAL: Filter by tenantId and only active products (for POS/search)
             List<ProductDto> products;
             try
             {
-                products = await _context.Products
+                var q1 = _context.Products
                     .Include(p => p.Category)
-                    .Where(p => p.TenantId == tenantId && p.IsActive &&
-                               (p.NameEn.ToLower().Contains(searchTerm) || 
-                               (p.NameAr != null && p.NameAr.ToLower().Contains(searchTerm)) || 
-                               p.Sku.ToLower().Contains(searchTerm) ||
-                               (p.Barcode != null && p.Barcode.ToLower().Contains(searchTerm)) ||
-                               (p.Category != null && p.Category.Name.ToLower().Contains(searchTerm))))
+                    .Where(p => p.TenantId == tenantId && p.IsActive);
+                foreach (var token in tokens)
+                {
+                    var t = token;
+                    q1 = q1.Where(p => p.NameEn.ToLower().Contains(t) ||
+                               (p.NameAr != null && p.NameAr.ToLower().Contains(t)) ||
+                               p.Sku.ToLower().Contains(t) ||
+                               (p.Barcode != null && p.Barcode.ToLower().Contains(t)) ||
+                               (p.Category != null && p.Category.Name.ToLower().Contains(t)));
+                }
+                products = await q1
                     .OrderBy(p => p.NameEn)
                     .Take(limit)
                     .Select(p => new ProductDto
@@ -724,12 +733,17 @@ namespace HexaBill.Api.Modules.Products
             catch
             {
                 // Fallback if Category navigation doesn't exist
-                products = await _context.Products
-                    .Where(p => p.TenantId == tenantId && p.IsActive &&
-                               (p.NameEn.ToLower().Contains(searchTerm) || 
-                               (p.NameAr != null && p.NameAr.ToLower().Contains(searchTerm)) || 
-                               p.Sku.ToLower().Contains(searchTerm) ||
-                               (p.Barcode != null && p.Barcode.ToLower().Contains(searchTerm))))
+                var q2 = _context.Products
+                    .Where(p => p.TenantId == tenantId && p.IsActive);
+                foreach (var token in tokens)
+                {
+                    var t = token;
+                    q2 = q2.Where(p => p.NameEn.ToLower().Contains(t) ||
+                               (p.NameAr != null && p.NameAr.ToLower().Contains(t)) ||
+                               p.Sku.ToLower().Contains(t) ||
+                               (p.Barcode != null && p.Barcode.ToLower().Contains(t)));
+                }
+                products = await q2
                     .OrderBy(p => p.NameEn)
                     .Take(limit)
                     .Select(p => new ProductDto

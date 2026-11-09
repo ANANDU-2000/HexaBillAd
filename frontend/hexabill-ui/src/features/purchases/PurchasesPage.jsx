@@ -511,7 +511,7 @@ const PurchasesPage = () => {
     }
     const seq = ++searchSeqRef.current
     try {
-      const response = await productsAPI.searchProducts(query, 20)
+      const response = await productsAPI.searchProducts(query, 60)
       // Ignore out-of-order responses for an older term
       if (response.success && seq === searchSeqRef.current) {
         setProducts(response.data || [])
@@ -575,9 +575,9 @@ const PurchasesPage = () => {
   }, [productSearchTerm])
 
   const addItem = (product) => {
-    // CRITICAL FIX: Use sellPrice for purchase cost if costPrice is not available
-    // This ensures price auto-fills correctly when product is selected
-    const unitCost = product.costPrice || product.sellPrice || 0
+    // Pre-fill the last known cost. Never fall back to sell price (that would book a selling
+    // price as purchase cost); leave it blank so the user types it and validation catches 0.
+    const unitCost = product.costPrice > 0 ? product.costPrice : ''
 
     const newItem = {
       productId: product.id,
@@ -1261,8 +1261,8 @@ const PurchasesPage = () => {
                   <h3 className="text-sm font-bold text-primary-800">Items</h3>
                 </div>
 
-                {/* Mobile: compact cards per item */}
-                <div className="md:hidden space-y-2 border-2 border-neutral-200 border-t-0 rounded-b-lg p-2">
+                {/* Mobile + tablet (<1024px): cards keep the full product name above its numbers, no sideways scroll */}
+                <div className="lg:hidden space-y-2 border-2 border-neutral-200 border-t-0 rounded-b-lg p-2">
                   {formData.items.length === 0 ? (
                     <p className="text-center text-primary-500 text-sm py-4">No items. Search and add products above.</p>
                   ) : (
@@ -1276,7 +1276,7 @@ const PurchasesPage = () => {
                         <div key={index} className="bg-neutral-50 rounded-lg border border-neutral-200 px-3 pt-3 pb-2">
                           <div className="flex justify-between items-start gap-2">
                             <div className="min-w-0 flex-1">
-                              <p className="font-medium text-primary-800 text-sm leading-snug break-words">{item.productName}</p>
+                              <p className="font-bold text-primary-900 text-[15px] leading-snug break-words"><span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold align-middle">{index + 1}</span>{item.productName}</p>
                               <p className="text-xs text-primary-500">{item.sku}</p>
                             </div>
                             <button type="button" onClick={() => removeItem(index)} className="shrink-0 text-error p-1" aria-label="Remove">
@@ -1306,6 +1306,7 @@ const PurchasesPage = () => {
                             </div>
                             <div className="flex flex-col justify-end">
                               <span className="text-xs text-primary-500">Total</span>
+                              <span className="text-[11px] text-primary-500 tabular-nums">Net {formatCurrency(subtotal)} + VAT {formatCurrency(vat)}</span>
                               <span className="text-sm font-bold text-success-fg">{formatCurrency(total)}</span>
                             </div>
                           </div>
@@ -1340,8 +1341,8 @@ const PurchasesPage = () => {
                   )}
                 </div>
 
-                {/* Desktop: table */}
-                <div className="hidden md:block overflow-x-auto overflow-y-auto min-h-[160px] w-full max-w-full border-2 border-neutral-200 border-t-0 rounded-b-lg" style={{ WebkitOverflowScrolling: 'touch' }}>
+                {/* Desktop (>=1024px): table */}
+                <div className="hidden lg:block overflow-x-auto overflow-y-auto min-h-[160px] w-full max-w-full border-2 border-neutral-200 border-t-0 rounded-b-lg" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <table className="w-full text-xs border-collapse min-w-[640px]">
                     <thead className="bg-neutral-50 sticky top-0 z-10">
                       <tr>

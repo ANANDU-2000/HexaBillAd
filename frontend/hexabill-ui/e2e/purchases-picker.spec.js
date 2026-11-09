@@ -48,7 +48,7 @@ test('pick focuses Qty, Enter goes to Unit cost then back to search; re-pick mar
   const input = await openPicker(page, 'a')
   const option = page.getByRole('listbox').getByRole('option').first()
   await expect(option).toBeVisible()
-  await option.dispatchEvent('pointerdown')
+  await option.click()
   await expect(page.getByRole('listbox')).toHaveCount(0)
 
   const qty = page.locator('input[type="number"]:visible').first()
@@ -65,7 +65,7 @@ test('pick focuses Qty, Enter goes to Unit cost then back to search; re-pick mar
   // Same product again: badge shown, qty incremented, still one row.
   const again = page.getByRole('listbox').getByRole('option').first()
   await expect(again).toContainText('Added (Qty: 3)')
-  await again.dispatchEvent('pointerdown')
+  await again.click()
   await expect(page.locator('input[type="number"]:visible').first()).toHaveValue('4')
 })
 

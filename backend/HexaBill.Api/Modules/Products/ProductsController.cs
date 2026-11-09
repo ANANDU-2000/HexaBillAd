@@ -551,7 +551,7 @@ namespace HexaBill.Api.Modules.Products
         [HttpGet("search")]
         public async Task<ActionResult<ApiResponse<List<ProductDto>>>> SearchProducts(
             [FromQuery] string q,
-            [FromQuery] int limit = 20)
+            [FromQuery] int limit = 60)
         {
             try
             {
