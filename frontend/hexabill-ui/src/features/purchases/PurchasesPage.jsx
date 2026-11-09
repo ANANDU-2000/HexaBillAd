@@ -1537,7 +1537,7 @@ const PurchasesPage = () => {
                       <th className="hidden xl:table-cell px-3 py-2 border-r border-neutral-200 text-center" title="VAT Return: Tax claimable (ITC)">ITC</th>
                       <th className="px-3 py-2 border-r border-neutral-200 text-right">Total</th>
                       <th className="hidden xl:table-cell px-3 py-2 border-r border-neutral-200 text-right" title="Vendor discount / ledger credits">V.Disc</th>
-                      <th className="px-3 py-2 border-r border-neutral-200 text-right">Paid</th>
+                      <th className="hidden xl:table-cell px-3 py-2 border-r border-neutral-200 text-right">Paid</th>
                       <th className="px-3 py-2 border-r border-neutral-200 text-right">Balance</th>
                       <th className="px-3 py-2 border-r border-neutral-200 text-center">Status</th>
                       <th className="hidden xl:table-cell px-3 py-2 border-r border-neutral-200 text-center">Items</th>
@@ -1604,7 +1604,7 @@ const PurchasesPage = () => {
                           <td className="hidden xl:table-cell whitespace-nowrap px-3 py-2 text-right tabular-nums text-neutral-900">
                             {(purchase.vendorDiscountAmount ?? 0) > 0 ? formatCurrency(purchase.vendorDiscountAmount) : <span className="text-primary-400">-</span>}
                           </td>
-                          <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-neutral-900">{formatCurrency(purchase.paidAmount ?? 0)}</td>
+                          <td className="hidden xl:table-cell whitespace-nowrap px-3 py-2 text-right tabular-nums text-neutral-900">{formatCurrency(purchase.paidAmount ?? 0)}</td>
                           <td className="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums text-neutral-900">{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}</td>
                           <td className="px-3 py-2 text-center">
                             <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${

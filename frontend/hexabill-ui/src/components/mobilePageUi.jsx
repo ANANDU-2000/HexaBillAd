@@ -34,7 +34,7 @@ export const MobileIconTabBar = ({ tabs, activeId, onChange, className = '' }) =
           }`}
         >
           <Icon className={`w-5 h-5 shrink-0 ${active ? 'text-primary-600' : 'text-neutral-500'}`} aria-hidden />
-          <span className={`text-micro font-medium truncate max-w-full ${active ? 'font-semibold' : ''}`}>
+          <span className={`text-xs md:text-sm font-medium truncate max-w-full ${active ? 'font-semibold' : ''}`}>
             {tab.shortLabel || tab.label}
           </span>
         </button>

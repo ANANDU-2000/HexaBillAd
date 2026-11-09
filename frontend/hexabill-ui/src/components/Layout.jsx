@@ -41,8 +41,12 @@ const Layout = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-    try { return localStorage.getItem('sidebar_collapsed') === 'true' }
-    catch { return false }
+    // Tablets (<1024px) start as an icons-only rail until the user chooses otherwise; desktops start expanded.
+    try {
+      const saved = localStorage.getItem('sidebar_collapsed')
+      if (saved === null) return typeof window !== 'undefined' && window.innerWidth < 1024
+      return saved === 'true'
+    } catch { return false }
   })
   const [groupOpen, setGroupOpen] = useState(() => {
     try {
@@ -305,7 +309,7 @@ const Layout = () => {
 
   // Global back control (phone + tablet top bars). Real history first; falls back to the parent route
   // so a page opened from a link or after a reload still has a way back.
-  const showShellBack = !['/dashboard', '/pos', '/', '/login'].includes(location.pathname)
+  const showShellBack = !['/dashboard', '/pos', '/', '/login', '/ledger'].includes(location.pathname)
   const goBack = () => {
     if (window.history.state && window.history.state.idx > 0) {
       navigate(-1)
@@ -432,9 +436,9 @@ const Layout = () => {
       )}
 
       {/* Sidebar: labelled 192px from 640px (tablets), 240px from 1024px; icon rail only when the user collapses it */}
-      <div className={`no-print hidden md:fixed md:flex md:flex-col md:min-h-0 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${isSidebarCollapsed ? 'md:w-24' : 'md:w-48 lg:w-60'}`}>
+      <div className={`no-print hidden md:fixed md:flex md:flex-col md:min-h-0 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${isSidebarCollapsed ? 'md:w-16' : 'md:w-48 lg:w-60'}`}>
         <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
-          <div className={`flex h-16 shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'justify-between gap-2' : 'justify-center'}`}>
+          <div className={`flex shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'h-16 justify-between gap-2' : 'min-h-16 flex-col justify-center gap-1 py-2'}`}>
             <Link to="/dashboard" className={`flex min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
               <Logo size="small" showText={false} className="!space-x-0" />
               {labelsVisible && (
@@ -479,7 +483,7 @@ const Layout = () => {
                         className={`group/nav relative flex rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${
                           labelsVisible
                             ? 'items-center min-h-11 lg:min-h-10 px-3'
-                            : 'flex-col items-center justify-center gap-0.5 min-h-[52px] px-1'
+                            : 'flex-col items-center justify-center gap-0.5 min-h-[48px] px-1'
                         } ${
                           active ? 'bg-primary-600 text-white shadow-sm ring-1 ring-white/10' : 'text-primary-100/80 hover:bg-primary-800 hover:text-white'
                         }`}
@@ -493,7 +497,7 @@ const Layout = () => {
                       >
                         <Icon className={`shrink-0 ${labelsVisible ? 'mr-3 h-[18px] w-[18px]' : 'mb-0.5 h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
                         {labelsVisible && <span className="truncate">{item.label}</span>}
-                        {!labelsVisible && <span className="w-full px-0.5 text-xs font-semibold leading-tight text-center break-normal text-primary-100/70">{item.label}</span>}
+                        {!labelsVisible && <span className="sr-only">{item.label}</span>}
                       </Link>
                     )
                   })}
@@ -505,7 +509,7 @@ const Layout = () => {
               className={`group/nav relative flex rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${
                 labelsVisible
                   ? 'items-center min-h-11 lg:min-h-10 px-3'
-                  : 'flex-col items-center justify-center gap-0.5 min-h-[52px] px-1'
+                  : 'flex-col items-center justify-center gap-0.5 min-h-[48px] px-1'
               } ${
                 location.pathname === '/more' ? 'bg-primary-600 text-white shadow-sm ring-1 ring-white/10' : 'border border-dashed border-primary-700 text-primary-100/80 hover:border-primary-500 hover:bg-primary-800 hover:text-white'
               }`}
@@ -519,14 +523,14 @@ const Layout = () => {
             >
               <MoreHorizontal className={`shrink-0 ${labelsVisible ? 'mr-3 h-[18px] w-[18px]' : 'mb-0.5 h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
               {labelsVisible && <span className="truncate">More tools</span>}
-              {!labelsVisible && <span className="w-full px-0.5 text-xs font-semibold leading-tight text-center break-normal text-primary-100/70">More</span>}
+              {!labelsVisible && <span className="sr-only">More</span>}
             </Link>
           </nav>
         </div>
       </div>
 
       {/* Main content - Full viewport after sidebar; pt-10 when impersonation banner visible so content not covered */}
-      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none ${isSidebarCollapsed ? 'md:pl-24' : 'md:pl-48 lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
+      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none ${isSidebarCollapsed ? 'md:pl-16' : 'md:pl-48 lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
         {backendUnavailable && (
           <div className="px-4 py-2 bg-amber-100 border-b border-warning-border text-amber-900 text-sm">
             Service temporarily unavailable. Try again in a moment, or contact your company administrator.
@@ -536,7 +540,7 @@ const Layout = () => {
         <CloudHostingCostReminder />
         {/* Desktop/tablet top bar — search, alerts, one account menu. Pages own their heading; tenant identity lives in the sidebar only. */}
         {!isPosRoute && (
-        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:block ${isSidebarCollapsed ? 'md:left-24' : 'md:left-48 lg:left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:block ${isSidebarCollapsed ? 'md:left-16' : 'md:left-48 lg:left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
           <div className="flex h-full items-center gap-3 px-4 lg:px-6">
             {showShellBack && (
               <button type="button" onClick={goBack} className={`${backButtonClass} gap-1 pr-3 text-sm font-medium`} aria-label="Go back" data-testid="shell-back">

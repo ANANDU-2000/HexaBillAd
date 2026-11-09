@@ -2716,11 +2716,11 @@ const CustomerLedgerPage = () => {
               {/* Compact customer + balance + actions */}
               <div className="sticky top-0 z-20 shrink-0 bg-white border-b border-neutral-200 px-3 py-2 sm:px-4">
                 <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 sm:items-center">
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1 basis-full xl:basis-0">
                     <button
                       type="button"
                       onClick={() => clearSelectedCustomer({ keepSearch: false })}
-                      className="inline-flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-md border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
+                      className="inline-flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-md border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 md:hidden"
                       title="Back to customer list"
                       aria-label="Back to customer list"
                     >
@@ -2890,7 +2890,7 @@ const CustomerLedgerPage = () => {
 
               <div className="shrink-0 bg-slate-50 border-b border-neutral-200 px-3 py-2 flex flex-wrap items-center gap-2">
                   <DatePresetChips from={filterDraft.from} to={filterDraft.to} onChange={(r) => setFilterDraft(prev => ({ ...prev, from: r.from, to: r.to }))} />
-                  <label className="flex items-center gap-1 text-xs text-neutral-600">
+                  <label className="hidden xl:flex items-center gap-1 text-xs text-neutral-600">
                     <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">From</span>
                     <input
                       type="date"
@@ -2899,7 +2899,7 @@ const CustomerLedgerPage = () => {
                       className="h-8 text-xs px-2 rounded-md border bg-white"
                     />
                   </label>
-                  <label className="flex items-center gap-1 text-xs text-neutral-600">
+                  <label className="hidden xl:flex items-center gap-1 text-xs text-neutral-600">
                     <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">To</span>
                     <input
                       type="date"
@@ -2919,6 +2919,14 @@ const CustomerLedgerPage = () => {
                   </button>
                   {ledgerFiltersOpen && (
                     <div className="flex flex-wrap items-center gap-2 w-full">
+                      <label className="flex items-center gap-1 text-xs text-neutral-600 xl:hidden">
+                        <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">From</span>
+                        <input type="date" value={filterDraft.from} onChange={(e) => setFilterDraft(prev => ({ ...prev, from: e.target.value }))} className="h-9 text-sm px-2 rounded-md border bg-white" />
+                      </label>
+                      <label className="flex items-center gap-1 text-xs text-neutral-600 xl:hidden">
+                        <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">To</span>
+                        <input type="date" value={filterDraft.to} onChange={(e) => setFilterDraft(prev => ({ ...prev, to: e.target.value }))} className="h-9 text-sm px-2 rounded-md border bg-white" />
+                      </label>
                       <select
                         value={filterDraft.branchId}
                         onChange={(e) => setFilterDraft(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
@@ -4623,7 +4631,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                 <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Date</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700 uppercase">Invoice No</th>
                 <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Amount</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Paid</th>
+                <th className="hidden px-3 py-2 text-right text-xs font-medium text-neutral-700 uppercase whitespace-nowrap lg:table-cell">Paid</th>
                 <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Balance</th>
                 <th className="px-3 py-2 text-center text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Status</th>
                 <th className="px-3 py-2 text-center text-xs font-medium text-neutral-700 uppercase whitespace-nowrap sticky right-0 bg-neutral-50 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)]">Action</th>
@@ -4684,7 +4692,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-neutral-900">
                         {formatCurrency(invoice.grandTotal || invoice.total || 0)}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-neutral-900">
+                      <td className="hidden px-3 py-2 whitespace-nowrap text-sm text-right text-neutral-900 lg:table-cell">
                         {formatCurrency(paidAmount)}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-neutral-900">
@@ -4718,6 +4726,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                           >
                             <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </button>
+                          <div className="hidden lg:contents">
                           {canEdit && onEditInvoice && !invoice.isLegacy && !invoice.isLocked && (
                             <button
                               onClick={() => onEditInvoice(invoice.id)}
@@ -4754,6 +4763,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                               <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
                           )}
+                          </div>
                           <button
                             onClick={() => onViewPDF(invoice.id, invoice)}
                             className="text-success hover:text-green-900 hover:bg-success-bg p-1 rounded transition-colors"
@@ -4761,6 +4771,17 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                           >
                             <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </button>
+                          <div className="lg:hidden">
+                            <OverflowMenu
+                              label={`More actions for invoice ${invoice.invoiceNo || invoice.id}`}
+                              items={[
+                                { label: 'Edit', icon: Edit, hidden: !(canEdit && onEditInvoice && !invoice.isLegacy && !invoice.isLocked), onClick: () => onEditInvoice(invoice.id) },
+                                { label: 'Create return', icon: RotateCcw, hidden: !(onReturnInvoice && !invoice.isLegacy), onClick: () => onReturnInvoice(invoice.id) },
+                                { label: 'Unlock (admin)', icon: Unlock, hidden: !(isAdmin && invoice.isLocked && onUnlockInvoice), onClick: () => onUnlockInvoice(invoice.id) },
+                                { label: 'Delete (admin)', icon: Trash2, danger: true, separatorBefore: true, hidden: !(isAdmin && onDeleteInvoice && !invoice.isLegacy), onClick: () => onDeleteInvoice(invoice.id) },
+                              ]}
+                            />
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -4774,7 +4795,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                   Total Invoices: {totalInvoices}
                 </td>
                 <td className="px-3 py-2"></td>
-                <td className="px-3 py-2 text-right text-sm font-bold text-success">
+                <td className="hidden px-3 py-2 text-right text-sm font-bold text-success lg:table-cell">
                   Total Paid: {formatCurrency(totalPaid)}
                 </td>
                 <td className="px-3 py-2 text-right text-sm font-bold text-error">
@@ -5260,14 +5281,73 @@ const PendingPartialTab = ({ outstandingInvoices, onPayInvoice, onViewInvoice, o
 
   return (
     <div className="space-y-3 p-1">
-      <div className="rounded-lg border border-neutral-200 bg-white p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-lg border border-neutral-200 bg-white px-4 py-2.5">
         <p className="text-sm font-semibold text-neutral-900">
-          {rows.length} unpaid / partially-paid invoice{rows.length === 1 ? '' : 's'} open
+          {rows.length} unpaid invoice{rows.length === 1 ? '' : 's'}
         </p>
-        <p className="text-xl font-bold text-red-600 tabular-nums">Total Due: {formatCurrency(totalDue)}</p>
+        <p className="text-lg font-bold text-red-600 tabular-nums">Total due: {formatCurrency(totalDue)}</p>
       </div>
 
-      <ul className="space-y-2">
+      {/* Tablet and up: one dense table so many invoices fit on screen (phones keep the card list below). */}
+      <div className="hidden md:block overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <table className="w-full table-fixed border-collapse text-[15px]">
+          <thead className="bg-neutral-100 text-xs uppercase tracking-wide text-neutral-600">
+            <tr className="border-b border-neutral-300">
+              <th className="px-3 py-2.5 text-left font-semibold">Invoice</th>
+              <th className="w-28 px-2 py-2.5 text-left font-semibold">Date</th>
+              <th className="hidden w-24 px-2 py-2.5 text-right font-semibold lg:table-cell">Total</th>
+              <th className="hidden w-24 px-2 py-2.5 text-right font-semibold lg:table-cell">Paid</th>
+              <th className="w-28 px-2 py-2.5 text-right font-semibold">Balance</th>
+              <th className="w-[11.5rem] px-2 py-2.5 text-right font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((inv) => {
+              const paid = Number(inv.paidAmount) || 0
+              const total = Number(inv.grandTotal || inv.total) || 0
+              const balance = Number(inv.balanceAmount) || Math.max(0, total - paid)
+              const daysOverdue = daysDueOf(inv)
+              const no = inv.invoiceNo || inv.invoiceNumber || inv.legacyInvoiceNumber || `#${inv.id}`
+              return (
+                <tr key={inv.id} className="border-b border-neutral-200 last:border-b-0 odd:bg-white even:bg-neutral-50/60">
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="truncate font-bold text-neutral-900">{no}</span>
+                      {inv.isLegacy ? <span className="shrink-0 rounded bg-neutral-200 px-1.5 py-0.5 text-[11px] font-semibold text-neutral-700">Old</span> : null}
+                      {paid > 0 ? <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">Partial</span> : null}
+                    </div>
+                    {daysOverdue > 0 ? <div className="text-xs font-semibold text-red-700">{daysOverdue} days overdue</div> : null}
+                  </td>
+                  <td className="px-2 py-2.5 text-neutral-700">{fmtDate(inv.invoiceDate || inv.date)}</td>
+                  <td className="hidden px-2 py-2.5 text-right tabular-nums text-neutral-800 lg:table-cell">{formatCurrency(total)}</td>
+                  <td className="hidden px-2 py-2.5 text-right tabular-nums text-emerald-700 lg:table-cell">{formatCurrency(paid)}</td>
+                  <td className="px-2 py-2.5 text-right font-bold tabular-nums text-red-600">{formatCurrency(balance)}</td>
+                  <td className="px-2 py-1.5">
+                    <div className="flex items-center justify-end gap-1">
+                      {!inv.isLegacy ? (
+                        <button type="button" onClick={() => onPayInvoice(inv.id)}
+                          className="inline-flex min-h-[44px] items-center justify-center rounded-md bg-emerald-600 px-3.5 text-sm font-bold text-white">
+                          Pay
+                        </button>
+                      ) : null}
+                      <button type="button" onClick={() => onViewInvoice(inv.id, inv)} title="View invoice" aria-label={`View invoice ${no}`}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-neutral-300 text-neutral-700">
+                        <Eye className="h-5 w-5" aria-hidden />
+                      </button>
+                      <button type="button" onClick={() => onViewPDF(inv.id, inv)} title="Print / PDF" aria-label={`PDF for invoice ${no}`}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-neutral-300 text-neutral-700">
+                        <Printer className="h-5 w-5" aria-hidden />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <ul className="space-y-2 md:hidden">
         {rows.map((inv) => {
           const paid = Number(inv.paidAmount) || 0
           const total = Number(inv.grandTotal || inv.total) || 0

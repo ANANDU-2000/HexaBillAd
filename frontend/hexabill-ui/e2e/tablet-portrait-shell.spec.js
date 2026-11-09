@@ -7,16 +7,14 @@ const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 
 test.use({ viewport: { width: 752, height: 1254 }, hasTouch: true })
 
-test('tablet portrait gets a labelled sidebar and no bottom nav', async ({ page }) => {
+test('tablet portrait gets an icons-only rail and no bottom nav', async ({ page }) => {
   await signIn(page, SLUG)
   await page.goto(`${feOrigin(SLUG)}/dashboard`, { waitUntil: 'networkidle' })
   const nav = page.getByRole('navigation', { name: 'Main' })
   await expect(nav).toBeVisible()
   await expect(nav.getByRole('link', { name: 'Products' })).toBeVisible()
-  // Label text is rendered inside the link (not just a tooltip).
-  await expect(nav.getByText('Products', { exact: true }).first()).toBeVisible()
   const box = await nav.boundingBox()
-  expect(box.width).toBeGreaterThan(150)
+  expect(box.width).toBeLessThan(80)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
 
