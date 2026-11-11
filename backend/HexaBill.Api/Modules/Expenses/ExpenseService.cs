@@ -447,7 +447,10 @@ namespace HexaBill.Api.Modules.Expenses
                         isEnt = request.IsEntertainment;
                         partialPct = request.PartialCreditPct;
                     }
-                    var isInclusive = request.VatInclusive == true;
+                    // Profit-based tenants pay 5% on net profit only: expenses carry the full amount and no VAT split.
+                    var profitOnlyVat = await VatBasisResolver.ResolveProfitBasisAsync(_context, tenantId, DateTime.UtcNow) == VatCalculationBasis.ProfitBased;
+                    if (profitOnlyVat) { withVat = false; isClaimable = false; isEnt = false; }
+                    var isInclusive = request.VatInclusive == true && !profitOnlyVat;
                     var isPetroleum = string.Equals(taxType, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase);
                     var vatResult = withVat && !isPetroleum
                         ? (isInclusive
@@ -480,6 +483,7 @@ namespace HexaBill.Api.Modules.Expenses
                         VatInclusive = request.VatInclusive,
                         PaidFrom = ParsePaidFrom(request.PaidFrom)
                     };
+                    if (profitOnlyVat) ApplyProfitOnlyVat(expense);
 
                     // Auto-approve if owner/admin
                     if (!isStaff)
@@ -624,7 +628,10 @@ namespace HexaBill.Api.Modules.Expenses
                         isEnt = request.IsEntertainment;
                         partialPct = request.PartialCreditPct;
                     }
-                    var isInclusive = request.VatInclusive == true;
+                    // Profit-based tenants pay 5% on net profit only: expenses carry the full amount and no VAT split.
+                    var profitOnlyVat = await VatBasisResolver.ResolveProfitBasisAsync(_context, tenantId, DateTime.UtcNow) == VatCalculationBasis.ProfitBased;
+                    if (profitOnlyVat) { withVat = false; isClaimable = false; isEnt = false; }
+                    var isInclusive = request.VatInclusive == true && !profitOnlyVat;
                     var isPetroleum = string.Equals(taxType, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase);
                     var vatResult = withVat && !isPetroleum
                         ? (isInclusive
@@ -642,6 +649,7 @@ namespace HexaBill.Api.Modules.Expenses
                     expense.ClaimableVat = vatResult?.ClaimableVat ?? (withVat && isPetroleum ? 0m : (decimal?)null);
                     expense.VatInclusive = request.VatInclusive;
                     expense.PaidFrom = ParsePaidFrom(request.PaidFrom);
+                    if (profitOnlyVat) ApplyProfitOnlyVat(expense);
 
                     await _context.SaveChangesAsync();
 
@@ -960,6 +968,18 @@ namespace HexaBill.Api.Modules.Expenses
 
             await _context.SaveChangesAsync();
             return result;
+        }
+
+        /// <summary>Full amount, no VAT split, nothing claimable.</summary>
+        internal static void ApplyProfitOnlyVat(Expense expense)
+        {
+            expense.VatRate = 0m;
+            expense.VatAmount = 0m;
+            expense.ClaimableVat = 0m;
+            expense.TotalAmount = expense.Amount;
+            expense.IsTaxClaimable = false;
+            expense.IsEntertainment = false;
+            expense.VatInclusive = false;
         }
 
         private static ExpensePaidFrom ParsePaidFrom(string? value) =>

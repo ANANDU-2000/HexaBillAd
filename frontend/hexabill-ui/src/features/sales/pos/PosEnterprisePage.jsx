@@ -649,15 +649,14 @@ const PosEnterprisePage = () => {
       return products.slice(0, 50)
     }
 
-    const term = searchTerm.toLowerCase()
-    const filtered = products.filter(product =>
-      product.nameEn?.toLowerCase().includes(term) ||
-      product.nameAr?.toLowerCase().includes(term) ||
-      product.sku?.toLowerCase().includes(term) ||
-      product.barcode?.toLowerCase().includes(term)
-    )
-    // Show up to 50 results for better visibility
-    return filtered.slice(0, 50)
+    // Every word must match somewhere, in any order: "1000 seara" finds "FROZEN CHICKEN 1000GM SEARA".
+    const tokens = searchTerm.toLowerCase().split(/\s+/).filter(Boolean)
+    const filtered = products.filter(product => {
+      const haystack = [product.nameEn, product.nameAr, product.sku, product.barcode]
+        .filter(Boolean).join(' ').toLowerCase()
+      return tokens.every(t => haystack.includes(t))
+    })
+    return filtered.slice(0, 200)
   }
 
   /** Unique products already in this cart session (most recently added first). Client-side only. */

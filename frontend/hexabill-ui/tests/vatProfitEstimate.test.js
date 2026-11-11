@@ -25,13 +25,13 @@ function render(report) {
   return JSON.stringify(renderer.toJSON())
 }
 
-test('profit view shows the server-calculated five-percent estimate with filing distinction', () => {
+test('profit view shows the server-calculated five-percent estimate ', () => {
   const text = render({ vatCalculationBasis: 'ProfitBased', profitSales: 1050, profitCogs: 700,
     profitExpenses: 50, profitAmount: 300, profitVatEstimate: 15, profitVat: 999, box13a: 37 })
-  assert.match(text, /Profit-based VAT estimate · 5%/)
+  assert.match(text, /5% VAT on net profit/)
   assert.match(text, /15\.00 AED/)
   assert.match(text, /300\.00 AED/)
-  assert.match(text, /not for VAT filing/)
+  assert.match(text, /Gross profit from sales/)
   assert.doesNotMatch(text, /999\.00|37\.00/)
 })
 
@@ -50,7 +50,7 @@ test('missing server estimate requests refresh instead of inventing a zero', () 
 test('PascalCase response renders a zero estimate for a loss without a VAT refund', () => {
   const text = render({ VatCalculationBasis: 'ProfitBased', ProfitAmount: -30, ProfitVatEstimate: 0 })
   assert.match(text, /-30\.00 AED/)
-  assert.match(text, /zero when profit is zero or negative/)
+  assert.match(text, /zero when profit is zero or negative/i)
   assert.doesNotMatch(text, /Refund|Payable/)
 })
 

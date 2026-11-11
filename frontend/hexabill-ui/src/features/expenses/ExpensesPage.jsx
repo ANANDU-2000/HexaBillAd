@@ -236,6 +236,10 @@ const ExpensesPage = () => {
   const [selectedExpense, setSelectedExpense] = useState(null)
   const [creatingCategory, setCreatingCategory] = useState(false)
   const [expenseSummary, setExpenseSummary] = useState(null)
+  // Profit-based tenants pay VAT on net profit only, so their expenses carry no VAT. Hide the VAT columns unless some row has VAT.
+  const showVatCols = expenseSummary
+    ? (Number(expenseSummary.totalVat || 0) > 0 || Number(expenseSummary.totalClaimableVat || 0) > 0)
+    : expenses.some(e => Number(e.vatAmount || 0) > 0 || Number(e.claimableVat || 0) > 0)
   const [categoryPeriod, setCategoryPeriod] = useState([])
   const [expenseView, setExpenseView] = useState('ledger')
   const [currentPage, setCurrentPage] = useState(1)
@@ -1290,8 +1294,8 @@ const ExpensesPage = () => {
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <p className="flex flex-wrap gap-x-4 gap-y-1">
               <span className="text-xs font-medium text-neutral-500">Total <span className="text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(expenseSummary.total)}</span></span>
-              <span className="text-xs font-medium text-neutral-500">VAT <span className="text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(expenseSummary.totalVat || 0)}</span></span>
-              <span className="text-xs font-medium text-neutral-500">Claimable VAT <span className="text-sm font-semibold tabular-nums text-success-fg">{formatCurrency(expenseSummary.totalClaimableVat || 0)}</span></span>
+              {showVatCols && <span className="text-xs font-medium text-neutral-500">VAT <span className="text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(expenseSummary.totalVat || 0)}</span></span>}
+              {showVatCols && <span className="text-xs font-medium text-neutral-500">Claimable VAT <span className="text-sm font-semibold tabular-nums text-success-fg">{formatCurrency(expenseSummary.totalClaimableVat || 0)}</span></span>}
             </p>
             <div className="flex shrink-0 gap-2" role="tablist" aria-label="Expense view">
               <button type="button" role="tab" aria-selected={expenseView === 'ledger'} onClick={() => setExpenseView('ledger')} className={`min-h-[44px] rounded-md px-3 text-sm font-medium ${expenseView === 'ledger' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>Ledger</button>
@@ -1334,7 +1338,7 @@ const ExpensesPage = () => {
         )}
         {vatReadiness && (vatReadiness.vatReturnEligible > 0 || vatReadiness.petroleum > 0 || vatReadiness.exempt > 0 || vatReadiness.pending > 0 || vatReadiness.rejected > 0) && (
           <p className="mb-3 text-xs text-neutral-500">
-            {vatReadiness.vatReturnEligible > 0 && <span>{vatReadiness.vatReturnEligible} eligible for VAT return. </span>}
+            {showVatCols && vatReadiness.vatReturnEligible > 0 && <span>{vatReadiness.vatReturnEligible} eligible for VAT return. </span>}
             {vatReadiness.petroleum > 0 && <span>{vatReadiness.petroleum} petroleum, excluded from box 9b. </span>}
             {vatReadiness.exempt > 0 && <span>{vatReadiness.exempt} exempt. </span>}
             {vatReadiness.pending > 0 && <span>{vatReadiness.pending} pending. </span>}
@@ -1607,8 +1611,8 @@ const ExpensesPage = () => {
                     <th className="px-2 py-2 text-left font-semibold text-neutral-700">Branch</th>
                     <th className="hidden px-2 py-2 text-left font-semibold text-neutral-700 xl:table-cell">Route</th>
                     <th className="px-2 py-2 text-right font-semibold text-neutral-700">Amount</th>
-                    <th className="px-2 py-2 text-right font-semibold text-neutral-700">VAT</th>
-                    <th className="px-2 py-2 text-right font-semibold text-neutral-700">Claimable VAT</th>
+                    {showVatCols && <th className="px-2 py-2 text-right font-semibold text-neutral-700">VAT</th>}
+                    {showVatCols && <th className="px-2 py-2 text-right font-semibold text-neutral-700">Claimable VAT</th>}
                     <th className="px-2 py-2 text-right font-semibold text-neutral-700">Total</th>
                     <th className="px-2 py-2 text-left font-semibold text-neutral-700">Date</th>
                     <th className="hidden px-2 py-2 text-center font-semibold text-neutral-700 xl:table-cell">VAT Period</th>
@@ -1688,15 +1692,15 @@ const ExpensesPage = () => {
                             </span>
                           )}
                         </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-right text-neutral-700">
+                        {showVatCols && <td className="px-2 py-2 whitespace-nowrap text-right text-neutral-700">
                           {expense.vatAmount != null && expense.vatAmount !== 0 ? formatCurrency(expense.vatAmount) : ''}
-                        </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-right text-success-fg">
+                        </td>}
+                        {showVatCols && <td className="px-2 py-2 whitespace-nowrap text-right text-success-fg">
                           {expense.claimableVat != null || expense.ClaimableVat != null ? formatCurrency(expense.claimableVat ?? expense.ClaimableVat) : '-'}
                           {expense.isEntertainment && (expense.claimableVat != null || expense.ClaimableVat != null) && (
                             <span className="ml-1 text-xs text-warning" title="50% cap">50%</span>
                           )}
-                        </td>
+                        </td>}
                         <td className="px-2 py-2 whitespace-nowrap text-right font-medium text-neutral-900">
                           {expense.totalAmount != null ? formatCurrency(expense.totalAmount) : (expense.vatAmount != null ? formatCurrency((Number(expense.amount) || 0) + (Number(expense.vatAmount) || 0)) : formatCurrency(expense.amount))}
                         </td>

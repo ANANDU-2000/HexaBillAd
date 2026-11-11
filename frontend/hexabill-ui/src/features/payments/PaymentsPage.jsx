@@ -421,7 +421,7 @@ const PaymentsPage = () => {
       if (prefix !== accountPrefixRef.current) return
       const paymentResult = response?.data?.payment || response?.data
       const voided = String(paymentResult?.status || '').toUpperCase() === 'VOID'
-      toast.success(voided ? 'Previous payment is void. No new payment was recorded.' : 'Payment confirmed successfully!')
+      toast.success(voided ? 'Previous payment is void. No new payment was recorded.' : 'Payment Successful!')
       if (!voided) offerReceiptPreviewAfterPayment(paymentResult, (paymentId) => {
         setReceiptPreviewPaymentIds([paymentId])
         setShowReceiptPreviewModal(true)

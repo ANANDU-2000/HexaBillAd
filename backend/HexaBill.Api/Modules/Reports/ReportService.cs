@@ -1110,7 +1110,10 @@ namespace HexaBill.Api.Modules.Reports
                 {
                     throw new InvalidOperationException("VAT estimate is unavailable because the VAT calculation could not be completed.");
                 }
-                var netVatPayablePeriod = vatReturn.Box13a - vatReturn.Box13b;
+                // Profit-based tenants: the VAT estimate is 5% of net profit, not output minus input VAT.
+                var netVatPayablePeriod = string.Equals(vatReturn.VatCalculationBasis, nameof(VatCalculationBasis.ProfitBased), StringComparison.OrdinalIgnoreCase)
+                    ? (vatReturn.ProfitVatEstimate ?? 0m)
+                    : vatReturn.Box13a - vatReturn.Box13b;
 
                 var result = new SummaryReportDto
                 {

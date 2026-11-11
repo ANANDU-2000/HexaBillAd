@@ -507,6 +507,41 @@ namespace HexaBill.Api.Modules.Reports
                 .Where(r => r.Status == ReturnStatus.Approved && r.ReturnDate >= from && r.ReturnDate < to)
                 .SumAsync(r => (decimal?)r.Subtotal) ?? 0;
             var profit = profitSales - returns - cogs - expenses;
+            // Daily rows: net sales excl. VAT, product cost, full expenses, net profit and 5% VAT (never below zero).
+            var saleDates = await sales.Select(x => new { x.Id, x.InvoiceDate, x.Subtotal }).ToListAsync();
+            var dateOfSale = saleDates.ToDictionary(x => x.Id, x => x.InvoiceDate.Date);
+            var daily = new Dictionary<DateTime, (decimal Sales, decimal Cogs, decimal Exp)>();
+            void Add(DateTime d, decimal sl, decimal cg, decimal ex)
+            {
+                daily.TryGetValue(d, out var cur);
+                daily[d] = (cur.Sales + sl, cur.Cogs + cg, cur.Exp + ex);
+            }
+            foreach (var x in saleDates) Add(x.InvoiceDate.Date, x.Subtotal, 0m, 0m);
+            foreach (var g in saleItems.GroupBy(si => si.SaleId))
+                if (dateOfSale.TryGetValue(g.Key, out var sd)) Add(sd, 0m, g.Sum(SaleCostBasis.Calculate), 0m);
+            var returnRows = await _context.SaleReturns.AsNoTracking().ForTenant(tenantId)
+                .Where(r => r.Status == ReturnStatus.Approved && r.ReturnDate >= from && r.ReturnDate < to)
+                .Select(r => new { r.ReturnDate, r.Subtotal }).ToListAsync();
+            foreach (var r in returnRows) Add(r.ReturnDate.Date, -r.Subtotal, 0m, 0m);
+            var expenseRows = await _context.Expenses.AsNoTracking().ForTenant(tenantId)
+                .Where(e => e.Status == ExpenseStatus.Approved && e.Date >= from && e.Date < to)
+                .Select(e => new { e.Date, e.Amount }).ToListAsync();
+            foreach (var e in expenseRows) Add(e.Date.Date, 0m, 0m, e.Amount);
+            dto.ProfitDaily = daily.OrderBy(kv => kv.Key).Select(kv =>
+            {
+                var gross = kv.Value.Sales - kv.Value.Cogs;
+                var net = gross - kv.Value.Exp;
+                return new ProfitVatDayDto
+                {
+                    Date = kv.Key,
+                    Sales = VatCalculator.Round(kv.Value.Sales),
+                    Cogs = VatCalculator.Round(kv.Value.Cogs),
+                    GrossProfit = VatCalculator.Round(gross),
+                    Expenses = VatCalculator.Round(kv.Value.Exp),
+                    NetProfit = VatCalculator.Round(net),
+                    Vat = VatCalculator.Round(Math.Max(0m, net) * VatCalculator.StandardRate)
+                };
+            }).ToList();
             dto.ProfitSales = VatCalculator.Round(profitSales - returns);
             dto.ProfitCogs = VatCalculator.Round(cogs);
             dto.EstimatedCostLineCount = saleItems.Count(si => !SaleCostBasis.HasSnapshot(si));

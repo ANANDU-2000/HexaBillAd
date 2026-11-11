@@ -268,18 +268,28 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
           : ''
         const voided = String(paymentResult?.status || '').toUpperCase() === 'VOID'
         toast.success(voided ? 'Previous payment is void. No new payment was recorded.' :
-          `Payment recorded: ${money(amount)}${adjPart} (${mode})${statusMsg}`, { id: 'payment-success', duration: 5000 })
+          `Payment Successful! ${money(amount)}${adjPart} (${mode})${statusMsg}`, { id: 'payment-success', duration: 5000 })
 
-        if (typeof onReceiptPreview === 'function') {
-          offerReceiptPreviewAfterPayment(paymentResult, onReceiptPreview)
-        } else {
-          const blocked = receiptOfferBlockedMessage(paymentResult)
-          if (blocked) {
-            toast(blocked, { duration: 7000, id: 'payment-receipt-blocked' })
+        // The payment is already saved. Nothing below may turn into an error toast.
+        try {
+          if (typeof onReceiptPreview === 'function') {
+            offerReceiptPreviewAfterPayment(paymentResult, onReceiptPreview)
+          } else {
+            const blocked = receiptOfferBlockedMessage(paymentResult)
+            if (blocked) {
+              toast(blocked, { duration: 7000, id: 'payment-receipt-blocked' })
+            }
           }
+        } catch (postErr) {
+          console.warn('Receipt offer failed after a saved payment', postErr)
         }
 
-        onPaymentSuccess?.(response?.data || response)
+        try {
+          // Not awaited into the catch below: a failing page refresh must not look like a failed payment.
+          Promise.resolve(onPaymentSuccess?.(response?.data || response)).catch(e => console.warn('Refresh after payment failed', e))
+        } catch (refreshErr) {
+          console.warn('Refresh after payment failed', refreshErr)
+        }
         onClose()
         
         // Reset form and confirmation

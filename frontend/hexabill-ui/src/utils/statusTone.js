@@ -30,3 +30,16 @@ export function statusTone (status, context = 'invoice', { border = false } = {}
   const kind = statusKind(status, context)
   return border ? `${TONES[kind]} ${BORDERS[kind]}` : TONES[kind]
 }
+
+/** Plain label for an invoice payment status: red Unpaid, amber Partial, green Paid. */
+export function statusLabel (status, context = 'invoice') {
+  const kind = statusKind(status, context)
+  const raw = String(status || '').trim()
+  const lower = raw.toLowerCase()
+  if (context === 'invoice') {
+    if (kind === 'success') return '✓ Paid'
+    if (lower === 'partial' || lower === 'partially paid') return '● Partial'
+    if (lower === 'pending' || lower === 'unpaid') return '● Unpaid / Pending'
+  }
+  return raw
+}

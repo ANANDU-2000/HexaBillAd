@@ -1,7 +1,7 @@
 import { DatePresetChips } from '../../components/ui/DateRangeFilter'
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { loadAllCustomerPages } from '../../utils/loadAllPages'
-import { statusTone } from '../../utils/statusTone'
+import { statusTone, statusLabel } from '../../utils/statusTone'
 import { useForm } from 'react-hook-form'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -1997,7 +1997,7 @@ const CustomerLedgerPage = () => {
       const adjustment = response?.data?.settlementAdjustment?.amount
       const allocationText = intent.kind === 'allocate' ? ` across ${request.allocations.length} invoice(s)` : ''
       toast.success(voided ? 'Previous payment is void. No new payment was recorded.' :
-        `Payment confirmed: ${formatCurrency(request.amount)} (${request.mode})${allocationText}${adjustment > 0 ? ` + ${formatCurrency(adjustment)} adjustment` : ''}`,
+        `Payment Successful! ${formatCurrency(request.amount)} (${request.mode})${allocationText}${adjustment > 0 ? ` + ${formatCurrency(adjustment)} adjustment` : ''}`,
       { id: 'payment-success', duration: 5000 })
       if (!voided) onPaymentReceiptOffer(payment)
       showReturnToPrompt(navigate, returnTo)
@@ -2047,7 +2047,16 @@ const CustomerLedgerPage = () => {
       }
       if (scope !== paymentScopeRef.current) return
       if (confirmed) {
-        toast.error('Payment was confirmed, but the ledger could not refresh. Refresh the ledger before recording another payment.', { id: 'payment-error', duration: 5000 })
+        // The payment is saved. A failed refresh is not a failed payment: no error toast, retry the refresh quietly.
+        console.warn('Ledger refresh after confirmed payment failed:', error?.message)
+        setBalanceRefreshSkeleton(false)
+        try {
+          const cid = intent?.request?.customerId
+          if (cid) { await loadCustomerData(cid) }
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
+        } catch (retryError) {
+          console.warn('Ledger refresh retry failed:', retryError?.message)
+        }
         return
       }
       if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || error.message || 'Payment is unconfirmed. Retry the previous payment.',
@@ -4696,12 +4705,12 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                         {formatCurrency(paidAmount)}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-neutral-900">
-                        {formatCurrency(balance)}
+                        <span className={balance > 0 && paidAmount <= 0 ? 'font-bold text-red-600' : balance > 0 ? 'font-semibold text-amber-700' : ''}>{formatCurrency(balance)}</span>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center flex-wrap gap-1">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoiceStatus)}`}>
-                            {getStatusIcon(invoiceStatus)} {invoiceStatus}
+                            {statusLabel(invoiceStatus)}
                           </span>
                           {getAgingBadge(getDaysOverdue(invoice))}
                         </div>
@@ -4716,7 +4725,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                               title="Pay Invoice"
                             >
                               <Wallet className="h-3 w-3" />
-                              <span className="hidden sm:inline">Pay</span>
+                              <span className="hidden sm:inline">{paidAmount > 0 ? 'Pay Balance' : 'Pay'}</span>
                             </button>
                           )}
                           <button
@@ -4901,12 +4910,13 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                     {getAgingBadge(getDaysOverdue(invoice))}
                   </div>
                   <span className={`text-sm font-bold ${getStatusColor(invoiceStatus)} px-2 py-0.5 rounded`}>
-                    {invoiceStatus}
+                    {statusLabel(invoiceStatus)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm text-neutral-600 border-t border-neutral-100 pt-2 mb-3">
                   <span>Amount: {formatCurrency(grandTotal)}</span>
-                  <span>Balance: {formatCurrency(balance)}</span>
+                  {paidAmount > 0 && <span>Paid: {formatCurrency(paidAmount)}</span>}
+                  <span className={balance > 0 && paidAmount <= 0 ? 'font-bold text-red-600' : balance > 0 ? 'font-semibold text-amber-700' : ''}>Bal: {formatCurrency(balance)}</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {balance > 0 && onPayInvoice && (
@@ -4914,7 +4924,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                       onClick={() => onPayInvoice(invoice.isLegacy ? -invoice.id : invoice.id)}
                       className="flex-1 min-w-0 px-3 py-2 bg-success hover:bg-green-700 text-white rounded-md text-xs font-medium flex items-center justify-center gap-1"
                     >
-                      <Wallet className="h-3.5 w-3.5" /> Pay
+                      <Wallet className="h-3.5 w-3.5" /> {paidAmount > 0 ? 'Pay Balance' : 'Pay'}
                     </button>
                   )}
                   <button

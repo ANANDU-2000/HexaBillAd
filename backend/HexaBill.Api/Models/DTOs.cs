@@ -1842,6 +1842,8 @@ namespace HexaBill.Api.Models
         public decimal? ProfitVatEstimate { get; set; }
         /// <summary>When true, ProfitAmount is an operating estimate only and must not be labelled as VAT.</summary>
         public bool ProfitEstimateNotForFiling { get; set; }
+        /// <summary>Per-day sales, cost, expenses, net profit and 5% VAT for profit-based tenants. Empty otherwise.</summary>
+        public List<ProfitVatDayDto> ProfitDaily { get; set; } = new();
         public DateTime? CalculatedAt { get; set; }
         public int? PeriodId { get; set; }
         public decimal Box1a { get; set; }
@@ -1998,3 +2000,18 @@ namespace HexaBill.Api.Models
     }
 }
 
+
+namespace HexaBill.Api.Models
+{
+    /// <summary>One day of the profit-based VAT breakdown.</summary>
+    public class ProfitVatDayDto
+    {
+        public DateTime Date { get; set; }
+        public decimal Sales { get; set; }
+        public decimal Cogs { get; set; }
+        public decimal GrossProfit { get; set; }
+        public decimal Expenses { get; set; }
+        public decimal NetProfit { get; set; }
+        public decimal Vat { get; set; }
+    }
+}
