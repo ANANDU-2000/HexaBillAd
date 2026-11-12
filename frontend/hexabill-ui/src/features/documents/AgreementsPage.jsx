@@ -123,7 +123,7 @@ export default function AgreementsPage() {
               {rows.map((r) => (
                 <tr key={r.id} className="border-t hover:bg-slate-50">
                   <td className="px-2 py-1">
-                    <Link className="text-primary font-medium" to={`/agreements/${r.id}`}>{r.agreementNo}</Link>
+                    <Link className="inline-flex min-h-touch items-center text-primary font-medium" to={`/agreements/${r.id}`}>{r.agreementNo}</Link>
                   </td>
                   <td className="px-2 py-1">{String(r.agreementDate || '').slice(0, 10)}</td>
                   <td className="px-2 py-1">{r.secondPartyName || '—'}</td>

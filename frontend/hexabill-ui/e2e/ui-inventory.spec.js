@@ -62,8 +62,10 @@ test('ui inventory', async ({ page }, info) => {
         const inBigLabel = !!lab && lab.getBoundingClientRect().height >= 44
         // Native checkboxes/radios keep a 20px visual with a 44px ::after hit area (index.css).
         const nativeCheck = el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')
-        return { l: label(el), w: Math.round(r.width), h: Math.round(r.height), inBigLabel, nativeCheck }
-      }).filter((c) => (c.w < 44 || c.h < 44) && !c.inBigLabel && !c.nativeCheck)
+        // Map attribution links are legally required small print, not actions.
+        const attribution = !!el.closest('.leaflet-control-attribution')
+        return { l: label(el), w: Math.round(r.width), h: Math.round(r.height), inBigLabel, nativeCheck, attribution }
+      }).filter((c) => (c.w < 44 || c.h < 44) && !c.inBigLabel && !c.nativeCheck && !c.attribution)
 
       const tiny = [...document.querySelectorAll('p,span,div,label,td,th,li,small')].filter(vis)
         .filter((el) => parseFloat(getComputedStyle(el).fontSize) < 12 && (el.textContent || '').trim())

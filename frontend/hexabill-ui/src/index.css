@@ -504,4 +504,6 @@ button, a, select, input, textarea, [role="button"], [role="tab"] {
     position: absolute;
     inset: -12px;
   }
+  /* Leaflet zoom controls: 44px targets on touch widths instead of the default 30px. */
+  .leaflet-control-zoom a { width: 44px !important; height: 44px !important; line-height: 44px !important; font-size: 22px !important; }
 }

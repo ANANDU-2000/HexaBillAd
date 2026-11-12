@@ -146,7 +146,7 @@ export default function DeliveryNotesPage() {
                   <li key={r.id} className="px-3 py-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <Link className="font-semibold text-primary" to={`/delivery-notes/${r.id}`}>DN-{r.invoiceNo}</Link>
+                        <Link className="inline-flex min-h-touch items-center font-semibold text-primary" to={`/delivery-notes/${r.id}`}>DN-{r.invoiceNo}</Link>
                         <p className="break-words text-sm text-slate-800">{r.customerName || 'Cash Customer'}</p>
                         <p className="text-xs text-slate-500">
                           {r.invoiceDate ? new Date(r.invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'} · {itemCount} items

@@ -121,6 +121,11 @@ Tablet measurements at 768 after the sweep: dashboard, pos, ledger, sales-ledger
 pending-bills, payments, expenses, purchases, suppliers, customers, products → **0 controls under
 44 px, 0 horizontal overflow**.
 
+Final phone sweep (42 routes at 390): **0 controls under 44 px, 0 text under 12 px, 0 horizontal
+overflow**. Document-number links (agreements, salary certificates, delivery notes) now carry a 44 px
+hit height, Leaflet zoom buttons are 44 px on touch widths, and the sweep ignores map attribution
+(required small print, not an action).
+
 ---
 
 ## Plan

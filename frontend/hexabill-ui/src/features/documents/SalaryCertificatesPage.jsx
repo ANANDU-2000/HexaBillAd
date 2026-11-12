@@ -152,7 +152,7 @@ export default function SalaryCertificatesPage() {
             <ul className="md:hidden divide-y" aria-label="Salary certificates">
               {filtered.map((r) => (
                 <li key={r.id} className="px-3 py-3">
-                  <Link className="font-semibold text-primary" to={`/salary-certificates/${r.id}`}>{r.certificateNo}</Link>
+                  <Link className="inline-flex min-h-touch items-center font-semibold text-primary" to={`/salary-certificates/${r.id}`}>{r.certificateNo}</Link>
                   <p className="break-words text-sm text-slate-800">{r.employeeName || '—'}</p>
                   <p className="text-xs text-slate-500">
                     {String(r.certificateDate || '').slice(0, 10)} · {r.designation || '—'} · {r.status}
