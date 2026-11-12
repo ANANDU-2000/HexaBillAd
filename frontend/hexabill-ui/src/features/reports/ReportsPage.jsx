@@ -1323,13 +1323,13 @@ const ReportsPage = () => {
       {isFrozenHub1 && (
       <div className="flex items-center justify-between flex-wrap gap-2 bg-white border border-neutral-200 rounded-lg p-2.5 shrink-0 shadow-sm">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 mr-1 hidden sm:inline">Data Source:</span>
+          <span className="text-xs font-bold text-neutral-500 mr-1 hidden sm:inline">Data Source:</span>
           <button
             type="button"
             onClick={() => setReportSource('operating')}
             className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
-              reportSource === 'operating'
-                ? 'bg-primary-600 text-white shadow-sm'
+ reportSource === 'operating'
+ ? 'bg-primary-600 text-white shadow-sm'
                 : 'text-neutral-700 bg-neutral-100 hover:bg-neutral-200'
             }`}
           >
@@ -1339,25 +1339,25 @@ const ReportsPage = () => {
             type="button"
             onClick={() => setReportSource('legacy')}
             className={`px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
-              reportSource === 'legacy'
-                ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-amber-800 bg-amber-50 hover:bg-amber-100'
+ reportSource === 'legacy'
+ ? 'bg-warning text-white shadow-sm'
+                : 'text-warning-fg bg-warning-bg hover:bg-warning-border'
             }`}
           >
             <span>Legacy Starplus (Historical)</span>
-            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${reportSource === 'legacy' ? 'bg-amber-700 text-amber-100' : 'bg-amber-100 text-amber-800'}`}>Archive</span>
+            <span className={`text-xs font-bold px-1.5 py-0.2 rounded-full ${reportSource === 'legacy' ? 'bg-warning text-white' : 'bg-warning-bg text-warning-fg'}`}>Archive</span>
           </button>
           <button
             type="button"
             onClick={() => setReportSource('comparative')}
             className={`px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
-              reportSource === 'comparative'
-                ? 'bg-purple-600 text-white shadow-sm'
-                : 'text-purple-800 bg-purple-50 hover:bg-purple-100'
+ reportSource === 'comparative'
+ ? 'bg-primary-600 text-white shadow-sm'
+                : 'text-slate-700 bg-slate-50 hover:bg-slate-100'
             }`}
           >
             <span>Comparative Overview</span>
-            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${reportSource === 'comparative' ? 'bg-purple-700 text-purple-100' : 'bg-purple-100 text-purple-800'}`}>Side-by-Side</span>
+            <span className={`text-xs font-bold px-1.5 py-0.2 rounded-full ${reportSource === 'comparative' ? 'bg-primary-600 text-white' : 'bg-slate-50 text-slate-700'}`}>Side-by-Side</span>
           </button>
         </div>
       </div>
@@ -1365,11 +1365,11 @@ const ReportsPage = () => {
 
       {reportSource === 'legacy' && (
         <div className="space-y-4 p-1">
-          <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-xs text-amber-900 flex items-start gap-3 shadow-sm">
-            <TrendingUp className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="rounded-xl border border-warning-border bg-warning-bg/80 p-4 text-xs text-warning-fg flex items-start gap-3 shadow-sm">
+            <TrendingUp className="h-5 w-5 text-warning-fg shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-bold text-sm text-amber-900 uppercase tracking-wide">Starplus Foodstuff Trading — Historical Analytics Suite</h3>
-              <p className="mt-1 text-amber-800 leading-relaxed">
+              <h3 className="font-bold text-sm text-warning-fg ">Starplus Foodstuff Trading — Historical Analytics Suite</h3>
+              <p className="mt-1 text-warning-fg leading-relaxed">
                 Aggregated performance metrics from Starplus legacy archive (TRN 100366253100003). Preserved for business intelligence,
                 auditing, and customer opening receivables reconciliation.
               </p>
@@ -1378,22 +1378,22 @@ const ReportsPage = () => {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
-              <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Historical Total Sales</div>
+              <div className="text-xs font-semibold text-neutral-500 ">Historical Total Sales</div>
               <div className="mt-1 text-xl font-bold text-neutral-900">{formatCurrency(legacyMetrics?.activeGrandTotal ?? 0)}</div>
               <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.activeInvoices?.toLocaleString() || '4,916'} active bills</div>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
-              <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Historical Collections</div>
+              <div className="text-xs font-semibold text-neutral-500 ">Historical Collections</div>
               <div className="mt-1 text-xl font-bold text-emerald-600">{formatCurrency(legacyMetrics?.activePaidTotal ?? 0)}</div>
               <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.clearedPayments?.toLocaleString() || '5,325'} cleared receipts</div>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
-              <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Cutover Receivables (Pending)</div>
+              <div className="text-xs font-semibold text-neutral-500 ">Cutover Receivables (Pending)</div>
               <div className="mt-1 text-xl font-bold text-rose-600">{formatCurrency(legacyMetrics?.positiveOutstandingSum ?? 0)}</div>
               <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.positiveOutstandingCount || 93} pending bills</div>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
-              <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Approved Transferred AR</div>
+              <div className="text-xs font-semibold text-neutral-500 ">Approved Transferred AR</div>
               <div className="mt-1 text-xl font-bold text-blue-600">{formatCurrency(legacyMetrics?.customerOpeningReceivablesTotal ?? 0)}</div>
               <div className="mt-0.5 text-xs text-neutral-500">21 customers (+ AED 100.80 Inv 2158)</div>
             </div>
@@ -1402,7 +1402,7 @@ const ReportsPage = () => {
           <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm">
             <div className="px-5 py-4 border-b border-neutral-200 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider">Top Historical Customer Receivables</h3>
+                <h3 className="text-sm font-bold text-neutral-900 ">Top Historical Customer Receivables</h3>
                 <p className="text-xs text-neutral-500">21 customer accounts with approved opening balances transferred at cutover</p>
               </div>
               <Link to="/billing-history?status=unpaid" className="text-xs font-semibold text-primary-700 hover:underline">
@@ -1437,11 +1437,11 @@ const ReportsPage = () => {
 
       {reportSource === 'comparative' && (
         <div className="space-y-4 p-1">
-          <div className="rounded-xl border border-purple-200 bg-purple-50/80 p-4 text-xs text-purple-900 flex items-start gap-3 shadow-sm">
-            <TrendingUp className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-xs text-slate-700 flex items-start gap-3 shadow-sm">
+            <TrendingUp className="h-5 w-5 text-slate-700 shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-bold text-sm text-purple-900 uppercase tracking-wide">Comparative Performance Overview</h3>
-              <p className="mt-1 text-purple-800 leading-relaxed">
+              <h3 className="font-bold text-sm text-slate-700 ">Comparative Performance Overview</h3>
+              <p className="mt-1 text-slate-700 leading-relaxed">
                 Direct side-by-side comparison between current FrozenHub 1 operating activity and Starplus legacy history.
               </p>
             </div>
@@ -1451,41 +1451,41 @@ const ReportsPage = () => {
             <table className="min-w-full divide-y divide-neutral-200 text-xs">
               <thead className="bg-neutral-50 text-neutral-600 font-semibold">
                 <tr>
-                  <th className="px-4 py-3 text-left uppercase">Metric</th>
-                  <th className="px-4 py-3 text-right uppercase text-blue-700">Current FrozenHub 1</th>
-                  <th className="px-4 py-3 text-right uppercase text-amber-700">Historical Starplus</th>
-                  <th className="px-4 py-3 text-right uppercase text-neutral-900 font-bold">Combined Lifetime ERP</th>
+                  <th className="px-4 py-3 text-left ">Metric</th>
+                  <th className="px-4 py-3 text-right text-blue-700">Current FrozenHub 1</th>
+                  <th className="px-4 py-3 text-right text-warning-fg">Historical Starplus</th>
+                  <th className="px-4 py-3 text-right text-neutral-900 font-bold">Combined Lifetime ERP</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 bg-white">
                 <tr className="hover:bg-neutral-50">
                   <td className="px-4 py-3 font-semibold text-neutral-900">Total Invoices Issued</td>
                   <td className="px-4 py-3 text-right font-medium text-blue-800">26 bills</td>
-                  <td className="px-4 py-3 text-right font-medium text-amber-800">5,109 bills</td>
+                  <td className="px-4 py-3 text-right font-medium text-warning-fg">5,109 bills</td>
                   <td className="px-4 py-3 text-right font-bold text-neutral-900">5,135 bills</td>
                 </tr>
                 <tr className="hover:bg-neutral-50">
                   <td className="px-4 py-3 font-semibold text-neutral-900">Active Sales Revenue</td>
                   <td className="px-4 py-3 text-right font-medium text-blue-800">{formatCurrency(reportData.summary?.totalSales || 2106)}</td>
-                  <td className="px-4 py-3 text-right font-medium text-amber-800">{legacyMetrics ? formatCurrency(legacyMetrics.activeGrandTotal ?? 0) : '—'}</td>
+                  <td className="px-4 py-3 text-right font-medium text-warning-fg">{legacyMetrics ? formatCurrency(legacyMetrics.activeGrandTotal ?? 0) : '—'}</td>
                   <td className="px-4 py-3 text-right font-bold text-neutral-900">{formatCurrency(3819462.88)}</td>
                 </tr>
                 <tr className="hover:bg-neutral-50">
                   <td className="px-4 py-3 font-semibold text-neutral-900">Collections Received</td>
                   <td className="px-4 py-3 text-right font-medium text-blue-800">{formatCurrency(23)}</td>
-                  <td className="px-4 py-3 text-right font-medium text-amber-800">{legacyMetrics ? formatCurrency(legacyMetrics.activePaidTotal ?? 0) : '—'}</td>
+                  <td className="px-4 py-3 text-right font-medium text-warning-fg">{legacyMetrics ? formatCurrency(legacyMetrics.activePaidTotal ?? 0) : '—'}</td>
                   <td className="px-4 py-3 text-right font-bold text-neutral-900">{formatCurrency(3747205.98)}</td>
                 </tr>
                 <tr className="hover:bg-neutral-50">
                   <td className="px-4 py-3 font-semibold text-neutral-900">Receivables Outstanding</td>
                   <td className="px-4 py-3 text-right font-bold text-rose-600">{formatCurrency(2106)}</td>
-                  <td className="px-4 py-3 text-right font-bold text-amber-800">{legacyMetrics ? formatCurrency(legacyMetrics.positiveOutstandingSum ?? 0) : '—'}</td>
+                  <td className="px-4 py-3 text-right font-bold text-warning-fg">{legacyMetrics ? formatCurrency(legacyMetrics.positiveOutstandingSum ?? 0) : '—'}</td>
                   <td className="px-4 py-3 text-right font-bold text-rose-700">{formatCurrency(72284.09)}</td>
                 </tr>
                 <tr className="hover:bg-neutral-50">
                   <td className="px-4 py-3 font-semibold text-neutral-900">Customer Base</td>
                   <td className="px-4 py-3 text-right font-medium text-blue-800">81 mapped accounts</td>
-                  <td className="px-4 py-3 text-right font-medium text-amber-800">81 accounts</td>
+                  <td className="px-4 py-3 text-right font-medium text-warning-fg">81 accounts</td>
                   <td className="px-4 py-3 text-right font-bold text-neutral-900">81 verified accounts</td>
                 </tr>
               </tbody>
@@ -1551,10 +1551,10 @@ const ReportsPage = () => {
             className="inline-flex h-9 items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 text-[13px] font-medium text-neutral-700 hover:bg-neutral-50">
             <Filter className="h-3.5 w-3.5" />
             More
-            {moreFilterCount > 0 && <span className="rounded-full bg-primary-600 px-1.5 text-[11px] font-semibold text-white">{moreFilterCount}</span>}
+            {moreFilterCount > 0 && <span className="rounded-full bg-primary-600 px-1.5 text-xs font-semibold text-white">{moreFilterCount}</span>}
           </button>
           {filtersExpanded && (
-            <div className="absolute left-0 top-full z-40 mt-1 w-72 space-y-2 rounded-md border border-neutral-200 bg-white p-3 shadow-lg">
+            <div className="absolute left-0 top-full z-40 mt-1 w-72 space-y-2 rounded-md border border-neutral-200 bg-white p-3 shadow-sm">
               <label className="block text-xs font-medium text-neutral-600">Product
                 <select value={filters.product} onChange={(e) => setFilter({ product: e.target.value })} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] mt-1 w-full">
                   <option value="">All products</option>
@@ -1610,48 +1610,48 @@ const ReportsPage = () => {
           {activeTab === 'summary' && reportData.summary && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-                <div className="bg-success-bg rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
+                <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
                   <div className="flex items-center">
-                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-success flex-shrink-0" />
+                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-slate-500 flex-shrink-0" />
                     <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-success">Total Sales</p>
-                      <p className="text-base sm:text-xl lg:text-xl font-bold text-green-900 truncate">
+                      <p className="text-xs sm:text-sm font-medium text-slate-600">Total Sales</p>
+                      <p className="text-base sm:text-xl lg:text-xl font-semibold text-slate-900 truncate">
                         {formatCurrency(reportData.summary.totalSales || 0)}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-primary-50 rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
+                <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
                   <div className="flex items-center">
-                    <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-primary-600 flex-shrink-0" />
+                    <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-slate-500 flex-shrink-0" />
                     <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-primary-600">Total Purchases</p>
-                      <p className="text-base sm:text-xl lg:text-xl font-bold text-primary-900 truncate">
+                      <p className="text-xs sm:text-sm font-medium text-slate-600">Total Purchases</p>
+                      <p className="text-base sm:text-xl lg:text-xl font-semibold text-slate-900 truncate">
                         {formatCurrency(reportData.summary.totalPurchases || 0)}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-error-bg rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
+                <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
                   <div className="flex items-center">
-                    <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-error flex-shrink-0" />
+                    <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-slate-500 flex-shrink-0" />
                     <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-error">Total Expenses</p>
-                      <p className="text-base sm:text-xl lg:text-xl font-bold text-red-900 truncate">
+                      <p className="text-xs sm:text-sm font-medium text-slate-600">Total Expenses</p>
+                      <p className="text-base sm:text-xl lg:text-xl font-semibold text-slate-900 truncate">
                         {formatCurrency(reportData.summary.totalExpenses || 0)}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-purple-50 rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
+                <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
                   <div className="flex items-center">
-                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-purple-600 flex-shrink-0" />
+                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-slate-500 flex-shrink-0" />
                     <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-purple-600">Net Profit</p>
-                      <p className="text-base sm:text-xl lg:text-xl font-bold text-purple-900 truncate">
+                      <p className="text-xs sm:text-sm font-medium text-slate-600">Net Profit</p>
+                      <p className="text-base sm:text-xl lg:text-xl font-semibold text-slate-900 truncate">
                         {formatCurrency(reportData.summary.netProfit || 0)}
                       </p>
                     </div>
@@ -1741,13 +1741,13 @@ const ReportsPage = () => {
                         <table className="w-full divide-y divide-neutral-200">
                           <thead className="bg-neutral-50">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Invoice No</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Customer</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Total</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Paid</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Balance</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-neutral-500 uppercase">Status</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Invoice No</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Customer</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Total</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Paid</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Balance</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-neutral-500 ">Status</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-neutral-200">
@@ -1759,7 +1759,7 @@ const ReportsPage = () => {
                                   ? 'bg-red-100 text-red-800'
                                   : sale.status === 'Partial'
                                     ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-orange-100 text-orange-800'
+                                    : 'bg-slate-50 text-slate-700'
 
                               return (
                                 <tr key={idx} className="hover:bg-neutral-50">
@@ -1909,8 +1909,8 @@ const ReportsPage = () => {
                         </div>
                         <div className="text-right">
                           <p className={`font-semibold text-lg ${customer.total > (customer.creditLimit * 0.8)
-                            ? 'text-error'
-                            : customer.total > (customer.creditLimit * 0.5)
+ ? 'text-error'
+ : customer.total > (customer.creditLimit * 0.5)
                               ? 'text-yellow-600'
                               : 'text-neutral-900'
                             }`}>
@@ -2051,7 +2051,7 @@ const ReportsPage = () => {
               </div>
 
               {reportData.summary && reportData.summary.totalExpenses > 0 && (
-                <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-6">
+                <div className="from-red-50 rounded-lg p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-error">Total Expenses for Selected Period</p>
@@ -2106,15 +2106,15 @@ const ReportsPage = () => {
                     )
                     const isTopByMargin = topBranch.branchId === topByMargin.branchId
                     return (
-                      <div className={`rounded-lg p-6 border-2 ${isTopByMargin ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-success-border' : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-warning-border'}`}>
+                      <div className={`rounded-lg p-6 border-2 ${isTopByMargin ? 'from-green-50 border-success-border' : 'to-yellow-50 border-warning-border'}`}>
                         <p className="text-sm font-medium text-warning-fg">🏆 Top Branch {isTopByMargin ? '(by Profitability)' : '(by Sales Volume)'}</p>
-                        <p className="text-xl font-bold text-amber-900 mt-1">{topBranch.branchName}</p>
-                        <p className="text-2xl font-bold text-amber-800 mt-2">{formatCurrency(topBranch.totalSales || 0)}</p>
+                        <p className="text-xl font-bold text-warning-fg mt-1">{topBranch.branchName}</p>
+                        <p className="text-2xl font-bold text-warning-fg mt-2">{formatCurrency(topBranch.totalSales || 0)}</p>
                         {topBranch.totalSales > 0 && (
                           <p className="text-sm text-neutral-600 mt-1">
                             Profit Margin: <span className={`font-semibold ${
-                              ((topBranch.profit || 0) / topBranch.totalSales * 100) >= 20 ? 'text-success' :
-                              ((topBranch.profit || 0) / topBranch.totalSales * 100) >= 10 ? 'text-yellow-600' :
+ ((topBranch.profit || 0) / topBranch.totalSales * 100) >= 20 ? 'text-success' :
+ ((topBranch.profit || 0) / topBranch.totalSales * 100) >= 10 ? 'text-yellow-600' :
                               'text-error'
                             }`}>
                               {((topBranch.profit || 0) / topBranch.totalSales * 100).toFixed(1)}%
@@ -2134,15 +2134,15 @@ const ReportsPage = () => {
                       <table className="min-w-full divide-y divide-neutral-200">
                         <thead className="bg-neutral-50">
                           <tr>
-                            <th className="px-2 py-3 text-left text-xs font-medium text-neutral-500 uppercase w-8" />
-                            <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Rank</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Branch</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Sales</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">COGS</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Expenses</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Profit</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Margin %</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Growth</th>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-neutral-500 w-8" />
+                            <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Rank</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Branch</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Sales</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">COGS</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Expenses</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Profit</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Margin %</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Growth</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-200">
@@ -2177,8 +2177,8 @@ const ReportsPage = () => {
                                     {/* FIX: Add profitability/margin metric instead of just sales volume */}
                                     {row.totalSales > 0 ? (
                                       <span className={`font-medium ${
-                                        ((row.profit || 0) / row.totalSales * 100) >= 20 ? 'text-success' :
-                                        ((row.profit || 0) / row.totalSales * 100) >= 10 ? 'text-yellow-600' :
+ ((row.profit || 0) / row.totalSales * 100) >= 20 ? 'text-success' :
+ ((row.profit || 0) / row.totalSales * 100) >= 10 ? 'text-yellow-600' :
                                         'text-error'
                                       }`}>
                                         {((row.profit || 0) / row.totalSales * 100).toFixed(1)}%
@@ -2276,12 +2276,12 @@ const ReportsPage = () => {
                         <table className="min-w-full divide-y divide-neutral-200">
                           <thead className="bg-neutral-50">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Branch</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Route</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Sales</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">COGS</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Expenses</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Profit</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Branch</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Route</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Sales</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">COGS</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Expenses</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Profit</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-neutral-200">
@@ -2379,22 +2379,22 @@ const ReportsPage = () => {
               {reportData.agingReport ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-success">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 ">
                       <p className="text-xs font-medium text-success-fg">0-30 Days</p>
                       <p className="text-lg font-bold text-green-900">{formatCurrency(reportData.agingReport.bucket0_30?.total || 0)}</p>
                       <p className="text-xs text-success">{reportData.agingReport.bucket0_30?.count || 0} invoices</p>
                     </div>
-                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-warning">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 ">
                       <p className="text-xs font-medium text-yellow-700">31-60 Days</p>
                       <p className="text-lg font-bold text-yellow-900">{formatCurrency(reportData.agingReport.bucket31_60?.total || 0)}</p>
                       <p className="text-xs text-yellow-600">{reportData.agingReport.bucket31_60?.count || 0} invoices</p>
                     </div>
-                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-warning">
-                      <p className="text-xs font-medium text-orange-700">61-90 Days</p>
-                      <p className="text-lg font-bold text-orange-900">{formatCurrency(reportData.agingReport.bucket61_90?.total || 0)}</p>
-                      <p className="text-xs text-orange-600">{reportData.agingReport.bucket61_90?.count || 0} invoices</p>
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 ">
+                      <p className="text-xs font-medium text-slate-700">61-90 Days</p>
+                      <p className="text-lg font-bold text-slate-700">{formatCurrency(reportData.agingReport.bucket61_90?.total || 0)}</p>
+                      <p className="text-xs text-slate-700">{reportData.agingReport.bucket61_90?.count || 0} invoices</p>
                     </div>
-                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-error">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 ">
                       <p className="text-xs font-medium text-error-fg">90+ Days</p>
                       <p className="text-lg font-bold text-red-900">{formatCurrency(reportData.agingReport.bucket90Plus?.total || 0)}</p>
                       <p className="text-xs text-error">{reportData.agingReport.bucket90Plus?.count || 0} invoices</p>
@@ -2410,11 +2410,11 @@ const ReportsPage = () => {
                       <table className="min-w-full divide-y divide-neutral-200">
                         <thead className="bg-neutral-50">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Invoice</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Customer</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Balance</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Days Overdue</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 ">Invoice</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 ">Customer</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 ">Date</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500 ">Balance</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500 ">Days Overdue</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-200">
@@ -2479,22 +2479,22 @@ const ReportsPage = () => {
               {reportData.apAgingReport ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-success">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 ">
                       <p className="text-xs font-medium text-success-fg">0-30 Days</p>
                       <p className="text-lg font-bold text-green-900">{formatCurrency(reportData.apAgingReport.bucket0_30?.total || 0)}</p>
                       <p className="text-xs text-success">{reportData.apAgingReport.bucket0_30?.count || 0} suppliers</p>
                     </div>
-                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-warning">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 ">
                       <p className="text-xs font-medium text-yellow-700">31-60 Days</p>
                       <p className="text-lg font-bold text-yellow-900">{formatCurrency(reportData.apAgingReport.bucket31_60?.total || 0)}</p>
                       <p className="text-xs text-yellow-600">{reportData.apAgingReport.bucket31_60?.count || 0} suppliers</p>
                     </div>
-                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-warning">
-                      <p className="text-xs font-medium text-orange-700">61-90 Days</p>
-                      <p className="text-lg font-bold text-orange-900">{formatCurrency(reportData.apAgingReport.bucket61_90?.total || 0)}</p>
-                      <p className="text-xs text-orange-600">{reportData.apAgingReport.bucket61_90?.count || 0} suppliers</p>
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 ">
+                      <p className="text-xs font-medium text-slate-700">61-90 Days</p>
+                      <p className="text-lg font-bold text-slate-700">{formatCurrency(reportData.apAgingReport.bucket61_90?.total || 0)}</p>
+                      <p className="text-xs text-slate-700">{reportData.apAgingReport.bucket61_90?.count || 0} suppliers</p>
                     </div>
-                    <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-error">
+                    <div className="bg-white rounded-sm p-4 border border-neutral-200 ">
                       <p className="text-xs font-medium text-error-fg">90+ Days</p>
                       <p className="text-lg font-bold text-red-900">{formatCurrency(reportData.apAgingReport.bucket90Plus?.total || 0)}</p>
                       <p className="text-xs text-error">{reportData.apAgingReport.bucket90Plus?.count || 0} suppliers</p>
@@ -2510,10 +2510,10 @@ const ReportsPage = () => {
                       <table className="min-w-full divide-y divide-neutral-200">
                         <thead className="bg-neutral-50">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Supplier</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Balance</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Days</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Bucket</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 ">Supplier</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500 ">Balance</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500 ">Days</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 ">Bucket</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-200">
@@ -2577,7 +2577,7 @@ const ReportsPage = () => {
                     </button>
                   </div>
                   {reportData.profitLoss.estimatedCostLineCount > 0 && (
-                    <div role="status" className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-3 text-sm text-neutral-800">
+                    <div role="status" className="rounded-sm border border-neutral-200 bg-white p-3 text-sm text-neutral-800">
                       Cost estimates are included for {reportData.profitLoss.estimatedCostLineCount} invoice lines without saved historical costs. Those estimates use current product costs and may change when products are updated.
                     </div>
                   )}
@@ -2594,12 +2594,12 @@ const ReportsPage = () => {
                         {formatCurrency(reportData.profitLoss.totalPurchases || 0)}
                       </p>
                     </div>
-                    <div className="bg-purple-50 rounded-lg p-6 border border-purple-200">
-                      <p className="text-sm font-medium text-purple-600">Gross Profit</p>
-                      <p className="text-2xl font-bold text-purple-900 mt-2">
+                    <div className="bg-slate-50 rounded-lg p-6 border border-slate-200">
+                      <p className="text-sm font-medium text-slate-700">Gross Profit</p>
+                      <p className="text-2xl font-bold text-slate-700 mt-2">
                         {formatCurrency(reportData.profitLoss.grossProfit || 0)}
                       </p>
-                      <p className="text-xs text-purple-600 mt-1">
+                      <p className="text-xs text-slate-700 mt-1">
                         Margin: {reportData.profitLoss.grossProfitMargin?.toFixed(1) || (reportData.profitLoss.totalSales > 0
                           ? ((reportData.profitLoss.grossProfit / reportData.profitLoss.totalSales) * 100).toFixed(1)
                           : '0.0')}%
@@ -2613,12 +2613,12 @@ const ReportsPage = () => {
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-r from-green-50 to-primary-50 rounded-lg p-6 border-2 border-green-300">
+                  <div className="from-green-50 to-primary-50 rounded-lg p-6 border-2 border-green-300">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-neutral-600">Net Profit / Loss</p>
                         <p className={`text-4xl font-bold mt-2 ${(reportData.profitLoss.netProfit || 0) >= 0 ? 'text-success-fg' : 'text-error-fg'
-                          }`}>
+ }`}>
                           {formatCurrency(reportData.profitLoss.netProfit || 0)}
                         </p>
                         <p className="text-sm text-neutral-600 mt-2">
@@ -2700,7 +2700,7 @@ const ReportsPage = () => {
                       <div className="flex justify-between items-center py-3 border-t-2 border-neutral-400 bg-neutral-50 rounded px-3">
                         <span className="font-bold text-lg text-neutral-900">Net Profit / Loss</span>
                         <span className={`font-bold text-2xl ${(reportData.profitLoss.netProfit || 0) >= 0 ? 'text-success-fg' : 'text-error-fg'
-                          }`}>
+ }`}>
                           {formatCurrency(reportData.profitLoss.netProfit || 0)}
                         </span>
                       </div>
@@ -2835,7 +2835,7 @@ const ReportsPage = () => {
                 </p>
               </div>
               <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-red-50 to-orange-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
+                <div className="from-red-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-neutral-900">Pending Bills & Outstanding Invoices</h3>
                     <p className="text-sm text-neutral-600 mt-1">
@@ -2884,15 +2884,15 @@ const ReportsPage = () => {
                     <table className="min-w-[1000px] w-full divide-y divide-neutral-200">
                       <thead className="bg-neutral-50 sticky top-0 z-10">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Invoice No</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Customer</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Total</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Paid</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Balance</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Days Overdue</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-neutral-700 uppercase tracking-wider">Actions</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Invoice No</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Customer</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Date</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 ">Total</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 ">Paid</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 ">Balance</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Days Overdue</th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-neutral-700 ">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-neutral-200">
@@ -2918,8 +2918,8 @@ const ReportsPage = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bill.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800' :
-                                bill.paymentStatus === 'Partial' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-red-100 text-red-800'
+ bill.paymentStatus === 'Partial' ? 'bg-yellow-100 text-yellow-800' :
+ 'bg-red-100 text-red-800'
                                 }`}>
                                 {bill.paymentStatus}
                               </span>
@@ -2932,8 +2932,8 @@ const ReportsPage = () => {
                                   : 0)
                                 return daysOverdue > 0 ? (
                                   <span className={`font-medium ${daysOverdue > 90 ? 'text-error' :
-                                    daysOverdue > 60 ? 'text-orange-600' :
-                                      'text-yellow-600'
+ daysOverdue > 60 ? 'text-slate-700' :
+ 'text-yellow-600'
                                     }`}>
                                     {daysOverdue} days
                                   </span>
@@ -2989,7 +2989,7 @@ const ReportsPage = () => {
                           </div>
                           <p className="text-xs text-neutral-500 mb-2">{new Date(bill.invoiceDate).toLocaleDateString('en-GB')}
                             {daysOverdue > 0 && (
-                              <span className={`ml-2 font-medium ${daysOverdue > 90 ? 'text-error' : daysOverdue > 60 ? 'text-orange-600' : 'text-yellow-600'}`}>
+                              <span className={`ml-2 font-medium ${daysOverdue > 90 ? 'text-error' : daysOverdue > 60 ? 'text-slate-700' : 'text-yellow-600'}`}>
                                 {daysOverdue} days overdue
                               </span>
                             )}
@@ -3037,7 +3037,7 @@ const ReportsPage = () => {
           {activeTab === 'returns' && (
             <div className="space-y-6">
               {!returnsFeatureFlags.returnsEnabled ? (
-                <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4 text-neutral-800">
+                <div className="bg-white border border-neutral-200 rounded-sm p-4 text-neutral-800">
                   <p className="font-medium">Sales returns are disabled</p>
                   <p className="text-sm mt-1">Contact your administrator to enable returns.</p>
                 </div>
@@ -3045,7 +3045,7 @@ const ReportsPage = () => {
                 <>
               <p className="text-sm text-neutral-600">Sales returns for the selected date range. Use filters to narrow by branch, route, damage category, or staff.</p>
               <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-orange-50 to-amber-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
+                <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <h3 className="text-lg font-semibold text-neutral-900">Sales Returns</h3>
                     <p className="text-sm text-neutral-600 mt-1">
@@ -3264,7 +3264,7 @@ const ReportsPage = () => {
           {activeTab === 'damage' && (
             <div className="space-y-6">
               <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
+                <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <h3 className="text-lg font-semibold text-neutral-900">Damage Report</h3>
                     <p className="text-sm text-neutral-600 mt-1">
@@ -3303,7 +3303,7 @@ const ReportsPage = () => {
                         URL.revokeObjectURL(url)
                         toast.success('Damage report exported to CSV')
                       }}
-                      className="px-4 py-2 bg-warning text-white rounded-lg hover:bg-amber-700 flex items-center gap-2"
+                      className="px-4 py-2 bg-warning text-white rounded-lg hover:bg-warning-fg flex items-center gap-2"
                       disabled={!reportData.damageReport?.length}
                     >
                       <Download className="h-4 w-4" />
@@ -3343,7 +3343,7 @@ const ReportsPage = () => {
                             <td className="px-4 py-3 whitespace-nowrap">{r.customerName ?? '—'}</td>
                             <td className="px-4 py-3">{r.productName ?? '—'}</td>
                             <td className="px-4 py-3 text-right">{Number(r.qty ?? 0)}</td>
-                            <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium ${(r.condition || '').toLowerCase() === 'writeoff' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{r.condition ?? '—'}</span></td>
+                            <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium ${(r.condition || '').toLowerCase() === 'writeoff' ? 'bg-red-100 text-red-800' : 'bg-warning-bg text-warning-fg'}`}>{r.condition ?? '—'}</span></td>
                             <td className="px-4 py-3 text-right font-medium">{formatCurrency(r.lineTotal ?? 0)}</td>
                             <td className="px-4 py-3">{r.branchName ?? '—'}</td>
                             <td className="px-4 py-3">{r.routeName ?? '—'}</td>
@@ -3366,7 +3366,7 @@ const ReportsPage = () => {
           {activeTab === 'credit-notes' && (
             <div className="space-y-6">
               <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-indigo-50 to-primary-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
+                <div className="to-primary-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <h3 className="text-lg font-semibold text-neutral-900">Credit Note Report</h3>
                     <p className="text-sm text-neutral-600 mt-1">
@@ -3402,7 +3402,7 @@ const ReportsPage = () => {
                         URL.revokeObjectURL(url)
                         toast.success('Credit notes exported to CSV')
                       }}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2"
                       disabled={!reportData.creditNotesReport?.length}
                     >
                       <Download className="h-4 w-4" />
@@ -3438,7 +3438,7 @@ const ReportsPage = () => {
                             <td className="px-4 py-3 whitespace-nowrap">{c.linkedReturnNo ?? '—'}</td>
                             <td className="px-4 py-3 text-right font-medium">{formatCurrency(c.amount ?? 0)}</td>
                             <td className="px-4 py-3">{c.currency ?? 'AED'}</td>
-                            <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium ${(c.status || '').toLowerCase() === 'used' ? 'bg-green-100 text-green-800' : (c.status || '').toLowerCase() === 'cancelled' ? 'bg-neutral-100 text-neutral-800' : 'bg-indigo-100 text-indigo-800'}`}>{c.status ?? 'unused'}</span></td>
+                            <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium ${(c.status || '').toLowerCase() === 'used' ? 'bg-green-100 text-green-800' : (c.status || '').toLowerCase() === 'cancelled' ? 'bg-neutral-100 text-neutral-800' : 'bg-slate-50 text-slate-700'}`}>{c.status ?? 'unused'}</span></td>
                             <td className="px-4 py-3">{c.createdByName ?? '—'}</td>
                           </tr>
                         ))}
@@ -3470,19 +3470,19 @@ const ReportsPage = () => {
                 ) : reportData.netSalesReport ? (
                   <div className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                      <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-success">
+                      <div className="bg-white rounded-sm p-4 border border-neutral-200 ">
                         <p className="text-sm font-medium text-success-fg">Total Sales</p>
                         <p className="text-2xl font-bold text-green-900 mt-1">{formatCurrency(reportData.netSalesReport.totalSales ?? 0)}</p>
                       </div>
-                      <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-warning">
+                      <div className="bg-white rounded-sm p-4 border border-neutral-200 ">
                         <p className="text-sm font-medium text-warning-fg">Total Returns</p>
-                        <p className="text-2xl font-bold text-amber-900 mt-1">{formatCurrency(reportData.netSalesReport.totalReturns ?? 0)}</p>
+                        <p className="text-2xl font-bold text-warning-fg mt-1">{formatCurrency(reportData.netSalesReport.totalReturns ?? 0)}</p>
                       </div>
                       <div className="bg-primary-50 rounded-lg p-4 border border-primary-100">
                         <p className="text-sm font-medium text-primary-700">Net Sales</p>
                         <p className="text-2xl font-bold text-primary-900 mt-1">{formatCurrency(reportData.netSalesReport.netSales ?? 0)}</p>
                       </div>
-                      <div className="bg-white rounded-sm p-4 border border-neutral-200 border-l-4 border-l-error">
+                      <div className="bg-white rounded-sm p-4 border border-neutral-200 ">
                         <p className="text-sm font-medium text-error-fg">Refunds Paid</p>
                         <p className="text-2xl font-bold text-red-900 mt-1">{formatCurrency(reportData.netSalesReport.refundsPaid ?? 0)}</p>
                       </div>
@@ -3502,7 +3502,7 @@ const ReportsPage = () => {
           {activeTab === 'collections' && (
             <div className="space-y-6">
               <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
+                <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <h3 className="text-lg font-semibold text-neutral-900">Outstanding Collections</h3>
                     <p className="text-sm text-neutral-600 mt-1">
@@ -3535,7 +3535,7 @@ const ReportsPage = () => {
                         URL.revokeObjectURL(url)
                         toast.success('CSV downloaded')
                       }}
-                      className="px-4 py-2 bg-warning text-white rounded-lg hover:bg-amber-700 flex items-center gap-2"
+                      className="px-4 py-2 bg-warning text-white rounded-lg hover:bg-warning-fg flex items-center gap-2"
                       disabled={!reportData.collectionsList?.length}
                     >
                       <Download className="h-4 w-4" />
@@ -3558,11 +3558,11 @@ const ReportsPage = () => {
                     <table className="min-w-full divide-y divide-neutral-200">
                       <thead className="bg-neutral-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Customer</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Phone</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Balance</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase hidden sm:table-cell">Address</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-neutral-700 uppercase">Actions</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Customer</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Phone</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 ">Balance</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 hidden sm:table-cell">Address</th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-neutral-700 ">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-neutral-200">
@@ -3652,13 +3652,13 @@ const ReportsPage = () => {
                     <table className="min-w-full divide-y divide-neutral-200">
                       <thead className="bg-neutral-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Cheque No</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Customer</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Invoice</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Amount</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Cheque Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Actions</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Cheque No</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Customer</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Invoice</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 ">Amount</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Cheque Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-neutral-200">
@@ -3681,8 +3681,8 @@ const ReportsPage = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                cheque.status === 'CLEARED' ? 'bg-green-100 text-green-800' :
-                                cheque.status === 'BOUNCED' ? 'bg-red-100 text-red-800' :
+ cheque.status === 'CLEARED' ? 'bg-green-100 text-green-800' :
+ cheque.status === 'BOUNCED' ? 'bg-red-100 text-red-800' :
                                 'bg-yellow-100 text-yellow-800'
                               }`}>
                                 {cheque.status || 'PENDING'}
@@ -3759,13 +3759,13 @@ const ReportsPage = () => {
                   <table className="min-w-full divide-y divide-neutral-200">
                     <thead className="bg-neutral-50 sticky top-0">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Staff Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Assigned Routes</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Invoices</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Total Billed</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Collected</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Collection Rate</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Avg Days to Pay</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Staff Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 ">Assigned Routes</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 ">Invoices</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 ">Total Billed</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 ">Collected</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 ">Collection Rate</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 ">Avg Days to Pay</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-neutral-200">
@@ -3849,9 +3849,9 @@ const ReportsPage = () => {
                 {reportData.aiSuggestions && reportData.aiSuggestions.length > 0 ? (
                   <div className="space-y-4">
                     {reportData.aiSuggestions.map((suggestion, index) => (
-                      <div key={index} className={`p-4 rounded-lg border-l-4 ${suggestion.priority === 'high' ? 'bg-error-bg border-red-400' :
-                        suggestion.priority === 'medium' ? 'bg-yellow-50 border-yellow-400' :
-                          'bg-success-bg border-green-400'
+                      <div key={index} className={`p-4 rounded-lg ${suggestion.priority === 'high' ? 'bg-error-bg border-red-400' :
+ suggestion.priority === 'medium' ? 'bg-yellow-50 border-yellow-400' :
+ 'bg-success-bg border-green-400'
                         }`}>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">

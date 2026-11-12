@@ -28,6 +28,7 @@ const RULES = [
   ['banned hue (violet/purple/indigo/teal/pink/orange)', /\b(?:bg|text|border|ring|from|to)-(?:violet|purple|indigo|teal|pink|orange)-\d/g],
   ['raw amber-* (use the warning token)', /\b(?:bg|text|border|ring)-amber-\d/g],
   ['text under 12px', /text-\[(?:9|10|11)px\]/g],
+  ['tinted KPI/card background (use white + border)', /\bbg-(?:emerald|blue|red|rose|green|sky|cyan|lime|yellow)-(?:50|100)\b/g],
   ['ALL-CAPS label', /\buppercase\b/g],
   ['card shadow (md/lg/xl)', /\bshadow-(?:md|lg|xl)\b/g],
   ['gradient', /\bbg-gradient-/g],
