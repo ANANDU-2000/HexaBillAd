@@ -138,7 +138,7 @@ const BillingHistoryPage = () => {
       if (range.to) params.toDate = range.to
       if (status !== 'all') params.status = status
       if (sort !== 'newest') params.sort = sort
-      const response = await legacyAPI.getUnifiedInvoices(params, { signal: ticket.signal })
+      const response = await legacyAPI.getUnifiedInvoices(params, { signal: ticket.signal, silent: true })
       if (!ticket.isCurrent()) return // a newer request superseded this one
       if (response?.success && response.data) {
         setRows(response.data.items || [])
@@ -517,7 +517,7 @@ const BillingHistoryPage = () => {
           </div>
         ) : (
           <>
-            <div className={`hidden md:block overflow-x-auto ${loading ? 'opacity-60' : ''}`}>
+            <div className={`hidden xl:block overflow-x-auto ${loading ? 'opacity-60' : ''}`}>
               <table className="min-w-full divide-y divide-neutral-200 text-xs">
                 <thead className="bg-neutral-50 sticky top-0 z-20">
                   <tr>
@@ -607,7 +607,7 @@ const BillingHistoryPage = () => {
               </table>
             </div>
 
-            <ul className={`md:hidden divide-y divide-neutral-200 ${loading ? 'opacity-60' : ''}`}>
+            <ul className={`xl:hidden divide-y divide-neutral-200 ${loading ? 'opacity-60' : ''}`}>
               {rows.map((inv) => {
                 const badge = rowBadge(inv)
                 const outstanding = Number(inv.outstandingBalance) || 0

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronRight, Search } from 'lucide-react'
+import { AlertCircle, ChevronDown, ChevronRight, RefreshCw, Search } from 'lucide-react'
 import { formatCurrency } from '../utils/currency'
 import { billKey, filterPendingRows, isLiveBill, overdueLabel, paySelectedPath, receivePaymentPath, selectedBillsTotal, totalOutstanding } from '../utils/pendingBills'
 
@@ -49,9 +49,18 @@ const CustomerPendingBillsTable = ({ rows = [], loading = false, error = null, o
     return (
       <div className="space-y-2">
         {toolbar}
-        <div className="p-3 text-sm text-error">
-          <p>{error}</p>
-          {onRetry && <button type="button" onClick={onRetry} className="mt-2 min-h-[44px] rounded border border-neutral-300 px-4">Retry</button>}
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-10 text-center shadow-sm">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-error-bg text-error-fg" aria-hidden>
+            <AlertCircle className="h-5 w-5" />
+          </span>
+          <p className="text-sm font-semibold text-neutral-900">Pending bills could not be loaded</p>
+          <p className="max-w-xs text-xs text-neutral-500">{error}</p>
+          {onRetry && (
+            <button type="button" onClick={onRetry} className="mt-1 inline-flex min-h-touch items-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 active:scale-[0.99]">
+              <RefreshCw className="h-4 w-4" aria-hidden />
+              Try again
+            </button>
+          )}
         </div>
       </div>
     )

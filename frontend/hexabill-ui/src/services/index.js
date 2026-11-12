@@ -526,9 +526,9 @@ export const purchasesAPI = {
 }
 
 export const customersAPI = {
-  /** Customers with open bills (live + historical), largest balance first. */
-  getPendingSummary: async () => {
-    const response = await api.get('/customers/pending-summary')
+  /** Customers with open bills (live + historical), largest balance first. The page renders its own error card. */
+  getPendingSummary: async (config = {}) => {
+    const response = await api.get('/customers/pending-summary', { silent: true, ...config })
     return response.data
   },
   getCustomers: async (params = {}, config = {}) => {
