@@ -870,7 +870,10 @@ const CustomersPage = () => {
           <div className="min-w-0 lg:w-44 lg:shrink-0">
             <h1 className="text-lg font-semibold text-text-primary">Customers</h1>
             <p className="text-sm text-neutral-600 tabular-nums" aria-live="polite">
-              {filterCounts ? `${filterCounts.all} customers` : `${totalCount} customers`}
+              {(() => {
+                const n = filterCounts ? filterCounts.all : totalCount
+                return `${n} ${n === 1 ? 'customer' : 'customers'}`
+              })()}
             </p>
           </div>
           <div className="relative order-last min-w-0 basis-full lg:order-none lg:basis-0 lg:flex-1">
