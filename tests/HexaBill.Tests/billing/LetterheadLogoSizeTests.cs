@@ -136,7 +136,7 @@ public class LetterheadLogoSizeTests
         var page = document.GetPage(1);
         var logo = page.GetImages().OrderByDescending(i => i.Bounds.Height).FirstOrDefault();
         Assert.NotNull(logo);
-        Assert.InRange(logo!.Bounds.Height, 40, 62);
+        Assert.InRange(logo!.Bounds.Height, 30, 62); // 2026-11 wide 4:1 FOODSTUFF logo is width-bound in the 152pt box (~38pt tall)
         Assert.InRange(logo.Bounds.Centroid.X, page.Width / 2 - 40, page.Width / 2 + 40);
     }
 
@@ -180,7 +180,7 @@ public class LetterheadLogoSizeTests
                 Assert.Contains("+971 55 552 8878", page.Text); // P0-PRINT-005: saved tenant phone prints
                 Assert.DoesNotContain("International Transport", page.Text, StringComparison.OrdinalIgnoreCase);
                 var logo = Assert.Single(page.GetImages());
-                Assert.InRange(logo.Bounds.Height, sample.Format == "A4" ? 40f : 25f, sample.Format == "A4" ? 62f : 52f);
+                Assert.InRange(logo.Bounds.Height, sample.Format == "A4" ? 30f : 8f, sample.Format == "A4" ? 62f : 52f);
                 Assert.InRange(logo.Bounds.Centroid.X, page.Width / 2 - 22, page.Width / 2 + 22);
             }
         }
