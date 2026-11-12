@@ -414,7 +414,7 @@ const BillingHistoryPage = () => {
           <div>
             <h1 className="text-lg sm:text-xl font-bold text-neutral-900">Billing History</h1>
             <p className="text-xs text-neutral-500" aria-live="polite">
-              {loading ? 'Loading…' : listError ? 'Could not load invoices' : `${totalCount.toLocaleString('en-US')} invoice${totalCount === 1 ? '' : 's'}`}
+              {loading ? 'Loading…' : listError ? '' : `${totalCount.toLocaleString('en-US')} invoice${totalCount === 1 ? '' : 's'}`}
             </p>
           </div>
           {selectedInvoices.length > 0 && (
@@ -502,10 +502,16 @@ const BillingHistoryPage = () => {
         {loading && rows.length === 0 ? (
           <TableSkeleton rows={10} className="border-0 rounded-none" />
         ) : listError ? (
-          <div className="text-center py-12" role="alert">
-            <AlertTriangle className="h-8 w-8 mx-auto text-rose-500" />
-            <p className="mt-2 text-sm text-neutral-700">Billing history could not be loaded. No totals are shown until it loads.</p>
-            <button type="button" className="mt-2 text-sm text-primary-700 font-semibold" onClick={() => fetchDataRef.current()}>Retry</button>
+          <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center" role="alert">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-error-bg text-error-fg" aria-hidden>
+              <AlertTriangle className="h-5 w-5" />
+            </span>
+            <p className="text-sm font-semibold text-neutral-900">Billing history could not be loaded</p>
+            <p className="max-w-xs text-xs text-neutral-500">No totals are shown until it loads.</p>
+            <button type="button" className="mt-1 inline-flex min-h-touch items-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 active:scale-[0.99]" onClick={() => fetchDataRef.current()}>
+              <RefreshCw className="h-4 w-4" aria-hidden />
+              Try again
+            </button>
           </div>
         ) : rows.length === 0 ? (
           <div className="text-center py-12">
@@ -517,7 +523,7 @@ const BillingHistoryPage = () => {
           </div>
         ) : (
           <>
-            <div className={`hidden xl:block overflow-x-auto ${loading ? 'opacity-60' : ''}`}>
+            <div className={`hidden md:block overflow-x-auto ${loading ? 'opacity-60' : ''}`}>
               <table className="min-w-full divide-y divide-neutral-200 text-xs">
                 <thead className="bg-neutral-50 sticky top-0 z-20">
                   <tr>
@@ -529,10 +535,10 @@ const BillingHistoryPage = () => {
                     <th className="px-2 py-1.5 text-left font-semibold text-neutral-600">Invoice #</th>
                     <th className="px-2 py-1.5 text-left font-semibold text-neutral-600">Date</th>
                     <th className="px-2 py-1.5 text-left font-semibold text-neutral-600">Customer</th>
-                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600">Subtotal</th>
-                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600">VAT</th>
+                    <th className="hidden xl:table-cell px-2 py-1.5 text-right font-semibold text-neutral-600">Subtotal</th>
+                    <th className="hidden xl:table-cell px-2 py-1.5 text-right font-semibold text-neutral-600">VAT</th>
                     <th className="px-2 py-1.5 text-right font-semibold text-neutral-600">Total</th>
-                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600">Paid</th>
+                    <th className="hidden xl:table-cell px-2 py-1.5 text-right font-semibold text-neutral-600">Paid</th>
                     <th className="px-2 py-1.5 text-right font-semibold text-neutral-600">Outstanding</th>
                     <th className="px-2 py-1.5 text-left font-semibold text-neutral-600">Status</th>
                     <th className="px-2 py-1.5 text-right font-semibold text-neutral-600 lg:sticky lg:right-0 bg-neutral-50">Actions</th>
@@ -561,10 +567,10 @@ const BillingHistoryPage = () => {
                         <td className="px-2 py-1.5 font-medium text-neutral-900 max-w-[200px] truncate" title={inv.customerName || ''}>
                           {inv.customerName || <span className="text-neutral-400 italic">Cash customer</span>}
                         </td>
-                        <td className="px-2 py-1.5 whitespace-nowrap text-right text-neutral-800 tabular-nums">{formatCurrency(inv.subtotal || 0)}</td>
-                        <td className="px-2 py-1.5 whitespace-nowrap text-right text-neutral-800 tabular-nums">{formatCurrency(inv.vatTotal || 0)}</td>
+                        <td className="hidden xl:table-cell px-2 py-1.5 whitespace-nowrap text-right text-neutral-800 tabular-nums">{formatCurrency(inv.subtotal || 0)}</td>
+                        <td className="hidden xl:table-cell px-2 py-1.5 whitespace-nowrap text-right text-neutral-800 tabular-nums">{formatCurrency(inv.vatTotal || 0)}</td>
                         <td className="px-2 py-1.5 whitespace-nowrap text-right font-bold text-neutral-900 tabular-nums">{formatCurrency(inv.grandTotal || 0)}</td>
-                        <td className="px-2 py-1.5 whitespace-nowrap text-right text-neutral-700 tabular-nums">{formatCurrency(inv.paidAmount || 0)}</td>
+                        <td className="hidden xl:table-cell px-2 py-1.5 whitespace-nowrap text-right text-neutral-700 tabular-nums">{formatCurrency(inv.paidAmount || 0)}</td>
                         <td className={`px-2 py-1.5 whitespace-nowrap text-right tabular-nums ${outstanding > 0 && !inv.isDeleted ? 'font-semibold text-neutral-900' : 'text-neutral-400'}`}>
                           {formatCurrency(inv.isDeleted ? 0 : outstanding)}
                         </td>
@@ -607,7 +613,7 @@ const BillingHistoryPage = () => {
               </table>
             </div>
 
-            <ul className={`xl:hidden divide-y divide-neutral-200 ${loading ? 'opacity-60' : ''}`}>
+            <ul className={`md:hidden divide-y divide-neutral-200 ${loading ? 'opacity-60' : ''}`}>
               {rows.map((inv) => {
                 const badge = rowBadge(inv)
                 const outstanding = Number(inv.outstandingBalance) || 0
