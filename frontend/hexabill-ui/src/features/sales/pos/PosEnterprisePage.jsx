@@ -2726,7 +2726,7 @@ const PosEnterprisePage = () => {
             type="button"
             onClick={() => setShowMetaSheet(true)}
             disabled={isFormDisabled}
-            className="lg:hidden flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-neutral-300 bg-white px-3 text-left text-sm disabled:opacity-50"
+            className="md:hidden flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-neutral-300 bg-white px-3 text-left text-sm disabled:opacity-50"
             aria-label={`Change branch, route and date. Now ${metaSummary}`}
           >
             <span className="min-w-0 truncate">{staffHasNoAssignments ? (invoiceDate || 'Date') : metaSummary}</span>
@@ -2738,7 +2738,7 @@ const PosEnterprisePage = () => {
             </span>
           )}
           {!staffHasNoAssignments && (
-            <div className="hidden lg:contents">
+            <div className="hidden md:contents">
               <div className="relative inline-flex items-center">
                 <select
                   aria-label="Branch"
@@ -2782,14 +2782,14 @@ const PosEnterprisePage = () => {
             type="date"
             value={invoiceDate}
             onChange={(e) => setInvoiceDate(e.target.value)}
-            className="hidden lg:block h-11 lg:h-9 px-1.5 border border-neutral-300 rounded-md text-xs font-medium bg-white"
+            className="hidden md:block h-11 lg:h-9 px-1.5 border border-neutral-300 rounded-md text-xs font-medium bg-white"
             title="Invoice date"
           />
           <button
             type="button"
             onClick={addEmptyRow}
             disabled={isFormDisabled}
-            className="hidden lg:inline-flex h-11 lg:h-9 px-2.5 text-xs font-semibold bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 items-center gap-1"
+            className="hidden md:inline-flex h-11 lg:h-9 px-2.5 text-xs font-semibold bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 items-center gap-1"
             title="Add row (F3)"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -2814,7 +2814,7 @@ const PosEnterprisePage = () => {
             type="button"
             onClick={handleRefreshData}
             disabled={refreshingData}
-            className="hidden lg:inline-flex h-11 lg:h-9 px-2 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60 items-center"
+            className="hidden md:inline-flex h-11 lg:h-9 px-2 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60 items-center"
             title="Refresh"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshingData ? 'animate-spin' : ''}`} />
@@ -2856,21 +2856,21 @@ const PosEnterprisePage = () => {
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
           <div ref={tableScrollRef} className="flex-1 min-w-0 overflow-y-auto px-1 py-0.5 md:pb-0">
             {/* Desktop Table View */}
-            <div className="hidden lg:block bg-white rounded-lg border border-neutral-300 shadow-sm overflow-x-auto">
+            <div className="hidden md:block bg-white rounded-lg border border-neutral-300 shadow-sm overflow-x-auto">
               <div>
                 <table className="w-full text-xs sm:text-sm border-collapse" style={{ tableLayout: 'auto' }}>
                   <thead className="bg-neutral-100 border-b border-neutral-300 sticky top-0 z-20">
                     <tr>
-                      <th className="px-1 sm:px-1.5 py-1 text-left font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-10 text-xs sticky left-0 z-[2] bg-neutral-100">SL<br /><span className="text-micro font-normal text-neutral-600">رقم</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-left font-bold text-neutral-900 border-r border-neutral-300 text-xs w-[28%] max-w-xs sticky left-10 z-[2] bg-neutral-100">Description<br /><span className="text-micro font-normal text-neutral-600">التفاصيل</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-28 text-xs">Qty<br /><span className="text-micro font-normal text-neutral-600">الكمية</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-16 text-xs">Unit<br /><span className="text-micro font-normal text-neutral-600">الوحدة</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-32 text-xs">Unit Price<br /><span className="text-micro font-normal text-neutral-600">سعر الوحدة</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-20 text-xs">Total<br /><span className="text-micro font-normal text-neutral-600">الإجمالي</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-28 text-xs">Discount<br /><span className="text-micro font-normal text-neutral-600">خصم</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-20 text-xs">Vat:{vatPercent}%<br /><span className="text-micro font-normal text-neutral-600">ضريبة {vatPercent}%</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-24 text-xs">Amount<br /><span className="text-micro font-normal text-neutral-600">المبلغ</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-14 text-xs">Actions<br /><span className="text-micro font-normal text-neutral-600">إجراءات</span></th>
+                      <th className="hidden lg:table-cell px-1 sm:px-1.5 py-1 text-left font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-10 text-xs sticky left-0 z-[2] bg-neutral-100">SL<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">رقم</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-left font-bold text-neutral-900 border-r border-neutral-300 text-xs lg:w-[28%] max-w-xs lg:sticky lg:left-10 z-[2] bg-neutral-100">Description<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">التفاصيل</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-20 lg:w-28 text-xs">Qty<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">الكمية</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-16 text-xs">Unit<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">الوحدة</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-24 lg:w-32 text-xs">Unit Price<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">سعر الوحدة</span></th>
+                      <th className="hidden lg:table-cell px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-20 text-xs">Total<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">الإجمالي</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-20 lg:w-28 text-xs">Discount<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">خصم</span></th>
+                      <th className="hidden lg:table-cell px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-20 text-xs">Vat:{vatPercent}%<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">ضريبة {vatPercent}%</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-24 text-xs">Amount<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">المبلغ</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-14 text-xs">Actions<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">إجراءات</span></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-200">
@@ -2919,8 +2919,8 @@ const PosEnterprisePage = () => {
                           }}
                           onMouseEnter={() => selection.setSelection({ hoverRow: index })}
                         >
-                          <td className={`px-1 sm:px-1.5 py-0.5 text-center border-r border-neutral-200 font-medium text-xs align-middle sticky left-0 z-[1] ${(item.rowId && (item.rowId === activeInvoiceRowId || item.rowId === drawerOwnerRowId)) ? 'bg-primary-50' : 'bg-white'}`}>{index + 1}</td>
-                          <td className={`px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-[28%] max-w-xs sticky left-10 z-[1] ${(item.rowId && (item.rowId === activeInvoiceRowId || item.rowId === drawerOwnerRowId)) ? 'bg-primary-50' : 'bg-white'}`}>
+                          <td className={`hidden lg:table-cell px-1 sm:px-1.5 py-0.5 text-center border-r border-neutral-200 font-medium text-xs align-middle sticky left-0 z-[1] ${(item.rowId && (item.rowId === activeInvoiceRowId || item.rowId === drawerOwnerRowId)) ? 'bg-primary-50' : 'bg-white'}`}>{index + 1}</td>
+                          <td className={`px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle lg:w-[28%] max-w-xs lg:sticky lg:left-10 z-[1] ${(item.rowId && (item.rowId === activeInvoiceRowId || item.rowId === drawerOwnerRowId)) ? 'bg-primary-50' : 'bg-white'}`}>
                             <div className="relative product-dropdown-container max-w-xs">
                               {item.productId ? (
                                 <div className="py-0.5 flex items-center gap-1.5">
@@ -2999,7 +2999,7 @@ const PosEnterprisePage = () => {
                             </div>
                           </td>
                           {/* Qty */}
-                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-28">
+                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-20 lg:w-28">
                             <input
                               type="number"
                               min="0"
@@ -3040,7 +3040,7 @@ const PosEnterprisePage = () => {
                               </select>
                             )}
                           </td>
-                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-32">
+                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-24 lg:w-32">
                             <div className="flex flex-col gap-0.5">
                               <input
                                 type="number"
@@ -3060,7 +3060,7 @@ const PosEnterprisePage = () => {
                               )}
                             </div>
                           </td>
-                          <td className="px-1 sm:px-1.5 py-0.5 text-right border-r border-neutral-200 font-semibold text-xs align-middle w-20">
+                          <td className="hidden lg:table-cell px-1 sm:px-1.5 py-0.5 text-right border-r border-neutral-200 font-semibold text-xs align-middle w-20">
                             {(() => {
                               const qty = typeof item.qty === 'number' ? item.qty : 0
                               const price = typeof item.unitPrice === 'number' ? item.unitPrice : 0
@@ -3068,7 +3068,7 @@ const PosEnterprisePage = () => {
                               return ((qty * price) - itemDiscount).toFixed(2)
                             })()}
                           </td>
-                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-28">
+                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-20 lg:w-28">
                             <input
                               type="number"
                               min="0"
@@ -3084,7 +3084,7 @@ const PosEnterprisePage = () => {
                               placeholder="0.00"
                             />
                           </td>
-                          <td className="px-1 sm:px-1.5 py-0.5 text-right border-r border-neutral-200 font-semibold text-xs align-middle">
+                          <td className="hidden lg:table-cell px-1 sm:px-1.5 py-0.5 text-right border-r border-neutral-200 font-semibold text-xs align-middle">
                             {item.vatAmount.toFixed(2)}
                           </td>
                           <td className="px-1 sm:px-1.5 py-0.5 text-right font-bold border-r border-neutral-200 text-xs align-middle">
@@ -3120,7 +3120,7 @@ const PosEnterprisePage = () => {
             </div>
 
             {/* Mobile Card Layout - design lock: border only, 44px touch, auto-scroll on add */}
-            <div className="lg:hidden space-y-3">
+            <div className="md:hidden space-y-3">
               <button
                 onClick={addEmptyRow}
                 disabled={isFormDisabled}
@@ -3201,16 +3201,16 @@ const PosEnterprisePage = () => {
                             disabled={isFormDisabled}
                             onFocus={() => openProductPicker(item.rowId || index)}
                             placeholder="Tap to search…"
-                            className="product-search w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            className="product-search w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                           />
                         </div>
                       )}
                     </div>
 
                     {/* Body: Input Fields - Large Touch Targets - Mobile Only */}
-                    <div className="p-3 space-y-2">
+                    <div className="p-2 grid grid-cols-4 gap-2">
                       {/* Row 1: Quantity and Unit - min-h-11 (44px) touch targets */}
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="col-span-2 grid grid-cols-2 gap-2">
                         <div>
                           <label className="block text-xs font-bold text-neutral-700 mb-1">Quantity</label>
                           <input
@@ -3221,7 +3221,7 @@ const PosEnterprisePage = () => {
                             data-pos-control="qty"
                             data-pos-row-id={item.rowId || ''}
                             disabled={isFormDisabled}
-                            className="w-full min-h-[44px] px-3 py-2.5 border border-neutral-300 rounded-lg text-center text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full min-h-[44px] px-2 py-2 border border-neutral-300 rounded-lg text-center text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             value={item.qty === '' ? '' : item.qty}
                             onChange={(e) => updateCartItem(index, 'qty', e.target.value)}
                             onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'qty')}
@@ -3249,7 +3249,7 @@ const PosEnterprisePage = () => {
                       </div>
 
                       {/* Row 2: Unit Price */}
-                      <div>
+                      <div className="col-span-2">
                         <label className="block text-xs font-bold text-neutral-700 mb-1">Unit Price ({currency})</label>
                         <input
                           type="number"
@@ -3259,7 +3259,7 @@ const PosEnterprisePage = () => {
                           data-pos-control="unitPrice"
                           data-pos-row-id={item.rowId || ''}
                           disabled={isFormDisabled}
-                          className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-right text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-right text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                           value={item.unitPrice === '' ? '' : item.unitPrice}
                           onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
                           onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'unitPrice')}
@@ -3268,7 +3268,7 @@ const PosEnterprisePage = () => {
                       </div>
 
                       {/* Row 3: Calculated Values - Read Only */}
-                      <div className="bg-neutral-50 rounded-lg p-2 border border-neutral-200">
+                      <div className="col-span-4 bg-neutral-50 rounded-lg p-2 border border-neutral-200">
                         <div className="grid grid-cols-3 gap-2 text-xs">
                           <div className="text-center">
                             <p className="text-neutral-600 font-medium">Total</p>
@@ -3336,7 +3336,7 @@ const PosEnterprisePage = () => {
             disabled={isFormDisabled}
           />
 
-          <div className="hidden lg:block px-2 py-1 shrink-0">
+          <div className="hidden md:block px-2 py-1 shrink-0">
             <p className="text-xs text-neutral-600 leading-relaxed" aria-label="Keyboard shortcuts">
               <span className="font-semibold text-neutral-700">Shortcuts:</span>{' '}
               F2 customer · F3/Ctrl+L products · Tab/Enter next field · F4 payment · F6 hold · F8 discount · F9/Ctrl+S save · F10 new · Del row · Ctrl+\ menu · Scan toggle for camera
@@ -3350,7 +3350,7 @@ const PosEnterprisePage = () => {
 
   const posFooter = (
         <div className="bg-white border-t border-[#E5E7EB] p-1.5 sm:p-2 shrink-0 z-20 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
-          <div className="hidden lg:block rounded-lg border border-neutral-200 bg-neutral-50/80 p-2">
+          <div className="hidden md:block rounded-lg border border-neutral-200 bg-neutral-50/80 p-2">
           <div className="md:flex md:flex-col lg:grid lg:grid-cols-3 gap-2 lg:gap-3">
             <div className="space-y-2 min-w-0">
               <h3 className="text-xs font-bold text-neutral-900 border-b border-neutral-200 pb-1.5">Totals</h3>
@@ -3575,7 +3575,7 @@ const PosEnterprisePage = () => {
     />
 
       {/* Mobile: Sticky bottom bar — single total + one CTA (opens payment sheet) */}
-      <div className="lg:hidden fixed bottom-[var(--hb-bottom-nav-h,4.75rem)] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
+      <div className="md:hidden fixed bottom-[var(--hb-bottom-nav-h,4.75rem)] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
         <div>
           <span className="text-xs font-semibold uppercase tracking-wide text-primary-700 block">Grand Total</span>
           <span className="text-lg font-semibold text-neutral-900 tabular-nums">{currency} {totals.grandTotal.toFixed(2)}</span>
@@ -3597,7 +3597,7 @@ const PosEnterprisePage = () => {
 
       {/* Mobile: Branch / route / date sheet. Native full-width selects, so nothing is clipped at the screen edge. */}
       {showMetaSheet && (
-        <div className="lg:hidden fixed inset-0 z-[60] flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="Bill details">
+        <div className="md:hidden fixed inset-0 z-[60] flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="Bill details">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowMetaSheet(false)} aria-hidden />
           <div className="relative flex max-h-[90dvh] flex-col rounded-t-xl bg-white shadow-xl animate-slideUp">
             <div className="flex flex-shrink-0 items-center justify-between px-4 pt-4 pb-2">
@@ -3670,7 +3670,7 @@ const PosEnterprisePage = () => {
 
       {/* Mobile: Payment bottom sheet (discount, payment, notes, confirm) — CTA always visible above bottom nav */}
       {showPaymentSheet && (
-        <div className="lg:hidden fixed inset-0 z-[60] flex flex-col justify-end">
+        <div className="md:hidden fixed inset-0 z-[60] flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowPaymentSheet(false)} aria-hidden />
           <div className="relative bg-white rounded-t-xl shadow-xl max-h-[90vh] flex flex-col animate-slideUp">
             <div className="flex-shrink-0 px-4 pt-4 pb-2">
