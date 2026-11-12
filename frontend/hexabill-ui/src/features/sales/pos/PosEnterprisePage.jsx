@@ -2950,7 +2950,7 @@ const PosEnterprisePage = () => {
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
           <div ref={tableScrollRef} className="flex-1 min-w-0 overflow-y-auto px-1 py-0.5 md:pb-0">
             {/* Desktop Table View */}
-            <div className="hidden md:block bg-white rounded-lg border border-neutral-300 shadow-sm overflow-x-hidden lg:overflow-x-auto">
+            <div className="hidden md:flex md:flex-col md:h-full bg-white rounded-lg border border-neutral-300 shadow-sm overflow-x-hidden lg:overflow-x-auto">
               <div>
                 <table className="w-full text-xs sm:text-sm border-collapse" style={{ tableLayout: 'auto' }}>
                   <thead className="bg-neutral-100 border-b border-neutral-300 sticky top-0 z-20">
