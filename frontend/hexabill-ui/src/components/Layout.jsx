@@ -13,7 +13,7 @@ import {
   HelpCircle,
   Keyboard,
   MoreHorizontal,
-  Search, Sparkles, ArrowLeft
+  Search, Sparkles, ArrowLeft, X
 } from 'lucide-react'
 import BottomNav from './BottomNav'
 import MoreMenuSheet from './mobile/MoreMenuSheet'
@@ -60,6 +60,10 @@ const Layout = () => {
   const [isDesktopNav, setIsDesktopNav] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(min-width: 640px)').matches
   )
+  // Below 1280 the sidebar is a drawer opened from the header menu button (tablet) or the More tab (phone).
+  const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false)
+  const closeSidebarDrawer = useCallback(() => setSidebarDrawerOpen(false), [])
+  useEffect(() => { setSidebarDrawerOpen(false) }, [location.pathname])
   // Tablet portrait/landscape (<1024px): the rail shows a short text label under every icon (older users cannot decode icons alone).
   const [isTabletWidth, setIsTabletWidth] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches)
   useEffect(() => {
@@ -253,7 +257,8 @@ const Layout = () => {
   const navGroups = visibleSidebar(user, { isImpersonating: !!selectedTenantId })
   const posCompact = location.pathname === '/pos' && isNarrowPos
   const sidebarCollapsed = isSidebarCollapsed || posCompact
-  const labelsVisible = isDesktopNav && !sidebarCollapsed
+  // The drawer always shows labels: on a phone/tablet the rail icons alone are unreadable.
+  const labelsVisible = sidebarDrawerOpen || (isDesktopNav && !sidebarCollapsed)
   const railLabels = !labelsVisible && isTabletWidth && !posCompact
 
   const groupIsOpen = (group) => {
@@ -463,7 +468,10 @@ const Layout = () => {
       )}
 
       {/* Sidebar: labelled 192px from 640px (tablets), 240px from 1024px; icon rail only when the user collapses it */}
-      <div className={`no-print hidden ${posCompact ? '' : 'xl:fixed xl:flex'} xl:flex-col xl:min-h-0 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'xl:top-10 xl:bottom-0' : 'xl:inset-y-0'} ${sidebarCollapsed ? (railLabels ? 'xl:w-24' : 'xl:w-16') : 'xl:w-56 2xl:w-64'}`}>
+      {!posCompact && sidebarDrawerOpen && (
+        <div className="fixed inset-0 z-[75] bg-black/40 xl:hidden" onClick={closeSidebarDrawer} aria-hidden />
+      )}
+      <div className={`no-print ${posCompact ? 'hidden xl:flex' : 'flex'} fixed inset-y-0 left-0 z-[80] flex-col transition-transform duration-200 ease-out motion-reduce:transition-none ${sidebarDrawerOpen ? 'translate-x-0' : '-translate-x-full'} xl:translate-x-0 xl:transition-none ${userIsSystemAdmin && selectedTenantId ? 'top-10' : ''} ${sidebarCollapsed ? 'xl:w-24' : 'xl:w-56 2xl:w-64'} ${posCompact ? '' : 'w-72'} xl:min-h-0`}>
         <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
           <div className={`flex shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'h-16 justify-between gap-2' : 'min-h-16 flex-col justify-center gap-1 py-2'}`}>
             <Link to="/dashboard" className={`flex min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
@@ -475,11 +483,19 @@ const Layout = () => {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="hidden min-h-11 min-w-11 items-center justify-center rounded-md text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white motion-reduce:transition-none md:flex"
+              className="hidden min-h-touch min-w-touch items-center justify-center rounded-md text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white motion-reduce:transition-none xl:flex"
               title={isSidebarCollapsed ? 'Expand sidebar (Ctrl+\\)' : 'Collapse sidebar (Ctrl+\\)'}
               aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={closeSidebarDrawer}
+              className="flex min-h-touch min-w-touch items-center justify-center rounded-md text-primary-200 transition-colors hover:bg-primary-800 hover:text-white xl:hidden"
+              aria-label="Close menu"
+            >
+              <X className="h-5 w-5" aria-hidden />
             </button>
           </div>
           <nav className={`sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain py-4 ${labelsVisible ? 'px-3' : 'px-2'}`} aria-label="Main">
@@ -569,6 +585,15 @@ const Layout = () => {
         {!isPosRoute && (
         <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:left-0 md:block ${sidebarCollapsed ? (railLabels ? 'xl:left-24' : 'xl:left-16') : 'xl:left-56 2xl:left-64'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
           <div className="flex h-full items-center gap-3 px-4 lg:px-6">
+            <button
+              type="button"
+              onClick={() => setSidebarDrawerOpen(true)}
+              className="flex min-h-touch min-w-touch items-center justify-center rounded-md text-neutral-700 transition-colors hover:bg-neutral-100 xl:hidden"
+              aria-label="Open menu"
+              aria-expanded={sidebarDrawerOpen}
+            >
+              <Menu className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+            </button>
             {showShellBack && (
               <button type="button" onClick={goBack} className={`${backButtonClass} gap-1 pr-3 text-sm font-medium`} aria-label="Go back" data-testid="shell-back">
                 <ArrowLeft className="h-5 w-5" strokeWidth={1.75} aria-hidden />
@@ -672,7 +697,7 @@ const Layout = () => {
         {/* Mobile Bottom Navigation */}
         <div className="xl:hidden">
           {bottomNavVisible && (
-            <BottomNav moreOpen={moreOpen} onOpenMore={() => setMoreOpen(true)} onCloseMore={closeMore} onOpenCreate={() => setCreateOpen(true)} />
+            <BottomNav moreOpen={moreOpen || sidebarDrawerOpen} onOpenMore={() => setSidebarDrawerOpen(true)} onCloseMore={closeMore} onOpenCreate={() => setCreateOpen(true)} />
           )}
           <MoreMenuSheet open={moreOpen} onClose={closeMore} />
           <QuickCreateSheet open={createOpen} onClose={() => setCreateOpen(false)} />
