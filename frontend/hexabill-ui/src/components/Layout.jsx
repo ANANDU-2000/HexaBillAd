@@ -393,7 +393,7 @@ const Layout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 overflow-x-hidden" style={{ '--hb-bottom-nav-h': bottomNavVisible && isPhoneWidth ? '4.75rem' : '0px' }}>
+    <div className="min-h-screen bg-neutral-50 overflow-x-hidden" style={{ '--hb-bottom-nav-h': bottomNavVisible ? '4.75rem' : '0px' }}>
       <div key={location.pathname} aria-hidden="true" className="hb-route-bar pointer-events-none fixed inset-x-0 top-0 z-[70] h-0.5 bg-primary-600" />
       {/* Skip Link */}
       <a
@@ -463,7 +463,7 @@ const Layout = () => {
       )}
 
       {/* Sidebar: labelled 192px from 640px (tablets), 240px from 1024px; icon rail only when the user collapses it */}
-      <div className={`no-print hidden ${posCompact ? '' : 'md:fixed md:flex'} md:flex-col md:min-h-0 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${sidebarCollapsed ? (railLabels ? 'md:w-24' : 'md:w-16') : 'md:w-48 lg:w-60'}`}>
+      <div className={`no-print hidden ${posCompact ? '' : 'xl:fixed xl:flex'} xl:flex-col xl:min-h-0 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'xl:top-10 xl:bottom-0' : 'xl:inset-y-0'} ${sidebarCollapsed ? (railLabels ? 'xl:w-24' : 'xl:w-16') : 'xl:w-56 2xl:w-64'}`}>
         <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
           <div className={`flex shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'h-16 justify-between gap-2' : 'min-h-16 flex-col justify-center gap-1 py-2'}`}>
             <Link to="/dashboard" className={`flex min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
@@ -557,7 +557,7 @@ const Layout = () => {
       </div>
 
       {/* Main content - Full viewport after sidebar; pt-10 when impersonation banner visible so content not covered */}
-      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none ${posCompact ? 'md:pl-0' : sidebarCollapsed ? (railLabels ? 'md:pl-24' : 'md:pl-16') : 'md:pl-48 lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
+      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none ${posCompact ? 'xl:pl-0' : sidebarCollapsed ? (railLabels ? 'xl:pl-24' : 'xl:pl-16') : 'xl:pl-56 2xl:pl-64'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
         {backendUnavailable && (
           <div className="px-4 py-2 bg-warning-bg border-b border-warning-border text-warning-fg text-sm">
             Service temporarily unavailable. Try again in a moment, or contact your company administrator.
@@ -567,7 +567,7 @@ const Layout = () => {
         <CloudHostingCostReminder />
         {/* Desktop/tablet top bar — search, alerts, one account menu. Pages own their heading; tenant identity lives in the sidebar only. */}
         {!isPosRoute && (
-        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:block ${sidebarCollapsed ? (railLabels ? 'md:left-24' : 'md:left-16') : 'md:left-48 lg:left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:left-0 md:block ${sidebarCollapsed ? (railLabels ? 'xl:left-24' : 'xl:left-16') : 'xl:left-56 2xl:left-64'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
           <div className="flex h-full items-center gap-3 px-4 lg:px-6">
             {showShellBack && (
               <button type="button" onClick={goBack} className={`${backButtonClass} gap-1 pr-3 text-sm font-medium`} aria-label="Go back" data-testid="shell-back">
@@ -670,7 +670,7 @@ const Layout = () => {
           </div>
         </main>
         {/* Mobile Bottom Navigation */}
-        <div className="tab:hidden">
+        <div className="xl:hidden">
           {bottomNavVisible && (
             <BottomNav moreOpen={moreOpen} onOpenMore={() => setMoreOpen(true)} onCloseMore={closeMore} onOpenCreate={() => setCreateOpen(true)} />
           )}

@@ -1040,19 +1040,19 @@ const SalesLedgerPage = () => {
           />
           <DatePresetChips from={dateRange.from} to={dateRange.to} onChange={(r) => setDateRange(r)} className="col-span-2" />
         </div>}
-        <MobileActionStrip className="md:flex-wrap md:overflow-visible">
-            <div className="hidden md:flex md:flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
+        <MobileActionStrip className="md:flex-nowrap md:overflow-x-auto">
+            <div className="hidden md:flex md:flex-nowrap items-center gap-1.5 sm:gap-2 min-w-0 overflow-x-auto">
               <input aria-label="Date"
                 type="date"
                 value={dateRange.from}
                 onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
-                className={`${mobileFormFieldClass} md:min-h-0 md:py-1.5 md:text-xs md:w-36`}
+                className={`${mobileFormFieldClass} hidden xl:block xl:min-h-0 xl:py-1.5 xl:text-xs xl:w-36`}
               />
               <input aria-label="Date"
                 type="date"
                 value={dateRange.to}
                 onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
-                className={`${mobileFormFieldClass} md:min-h-0 md:py-1.5 md:text-xs md:w-36`}
+                className={`${mobileFormFieldClass} hidden xl:block xl:min-h-0 xl:py-1.5 xl:text-xs xl:w-36`}
               />
               <DatePresetChips from={dateRange.from} to={dateRange.to} onChange={(r) => setDateRange(r)} presets={['today', '7d', 'month', 'lastmonth', 'all']} className="items-center" />
             </div>
@@ -1300,8 +1300,8 @@ const SalesLedgerPage = () => {
         </div>
       ) : (
         <div className="flex flex-col md:flex-1 md:min-h-0 md:overflow-hidden bg-white w-full rounded-lg border border-neutral-200">
-          {/* Desktop Table — sticky header; Actions column sticky right */}
-          <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0 w-full">
+          {/* Desktop Table — sticky header; Actions column sticky right. Below 1280 the card list is used so no inner horizontal scrollbar. */}
+          <div className="hidden xl:flex xl:flex-col xl:flex-1 xl:min-h-0 w-full">
             <div className="flex-1 min-h-0 overflow-auto w-full">
             <table className="w-full min-w-[1100px] divide-y divide-neutral-200 text-xs lg:text-sm">
               <thead className="bg-neutral-100 sticky top-0 z-20 border-b-2 border-neutral-300">
@@ -1443,8 +1443,6 @@ const SalesLedgerPage = () => {
                       const statusColor = `${statusTone(displayStatus, 'invoice', { border: true })} border`
 
                       // For Sale rows show remaining balance for this invoice (0 when Paid); for Payment/Return show running balance
-                      const customerBalance = entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)
-
                       rows.push(
                         <tr key={ledgerRowKey(entry, idx)} className={rowBgColor}>
                         <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-900 border-r border-neutral-200">
@@ -1696,8 +1694,8 @@ const SalesLedgerPage = () => {
             </div>
           </div>
 
-          {/* Mobile Card View - Shown only on mobile */}
-          <div className="md:hidden px-2 py-2 space-y-2">
+          {/* Card View — phones and tablets (no inner horizontal scroll) */}
+          <div className="xl:hidden px-2 py-2 space-y-2">
             {displayedLedger.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
                 {ledgerLoadFailed ? ledgerLoadFailedNotice : (
