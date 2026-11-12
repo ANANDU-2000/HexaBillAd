@@ -3552,7 +3552,7 @@ const PosEnterprisePage = () => {
                 <div className="mt-2 rounded-xl bg-primary-900 px-4 py-3 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-primary-200">Grand total</p>
+                      <p className="text-micro font-bold uppercase tracking-wider text-primary-200">Grand total</p>
                       <p className="text-micro text-primary-200/80">Total payable</p>
                     </div>
                     <p className="text-3xl font-extrabold leading-none text-white tabular-nums whitespace-nowrap">{currency} {totals.grandTotal.toFixed(2)}</p>
@@ -3725,7 +3725,7 @@ const PosEnterprisePage = () => {
         </div>
         <div className="mt-2 flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-primary-700">Grand total</p>
+            <p className="text-micro font-bold uppercase tracking-wider text-primary-700">Grand total</p>
             <p className="text-3xl font-extrabold leading-tight tabular-nums text-neutral-900">{currency} {totals.grandTotal.toFixed(2)}</p>
           </div>
           <button type="button" onClick={() => setTabletSheetOpen((o) => !o)} aria-expanded={tabletSheetOpen} className="inline-flex h-14 items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3.5 text-sm font-bold text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 active:scale-[0.98]">
@@ -3932,7 +3932,7 @@ const PosEnterprisePage = () => {
                   <div className="mt-2 rounded-xl bg-primary-900 px-4 py-3 shadow-sm">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-primary-200">Grand total</p>
+                        <p className="text-micro font-bold uppercase tracking-wider text-primary-200">Grand total</p>
                         <p className="text-micro text-primary-200/80">Total payable</p>
                       </div>
                       <p className="text-3xl font-extrabold leading-none tabular-nums text-white">{currency} {totals.grandTotal.toFixed(2)}</p>

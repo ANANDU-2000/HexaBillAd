@@ -92,6 +92,37 @@ opened on a phone in this pass. They still need the same visual review before th
 
 ---
 
+## Fixes landed (loop progress)
+
+| commit | area | change |
+|---|---|---|
+| 14f03938 | POS | one tablet/desktop header: branch, route, date, Hold menu, New, overflow |
+| a2559e03 | POS | header fits one row at 752/768, actions at the far right |
+| dd128d1a | POS | premium Payment & discount sheet (cards, navy total, currency fields) |
+| 81129bf4 | POS | phone sheet + tablet save bar match it |
+| 025f6f43 | API/POS | best-effort `me/ping` (killed the random error toast), compact line cards, safe-area |
+| 4af94b63 | Ledger | cards lead with Bill/Balance, one meta line, soft Record payment |
+| 0722df37 | tooling | repeatable inventory sweep + loop protocol |
+| 4c62d3c4 | POS | phone header 6 → 5 controls, all 44 px and labelled |
+| 08f82eee | POS | INV label, Due balance, print only with an invoice |
+| 2edeb157 | POS | real 44 px targets on tablet (`h-touch` token) |
+| f30ca274 | primitives | Button/DateField/toast 44 px at touch widths |
+| e229be56 | POS | desktop cart surface fills the workspace |
+| 3942dc9f | Ledger | 13 aligned columns, no duplicate Balance, no phantom totals row |
+| 8b681ef3 | Billing/Pending | error cards, tablet tables, no duplicate toast |
+| 3828d165 | Dashboard | one arrow per card, short labels, no duplicate empty state |
+| a0c4cb93 | Shell | sidebar back as a drawer (☰ on tablet, More on phone) |
+| 369d6489 | Ledger | tablet table with 7 columns, no inner scrollbar |
+| 5f6d7c48 | Billing | tablet table with 8 columns, premium error card |
+| bd4cd678 | Shell | header/New/toast/date chips 44 px at 768 |
+| cafa5cfb | touch | checkboxes and radios get a 44 px hit area |
+
+Tablet measurements at 768 after the sweep: dashboard, pos, ledger, sales-ledger, billing-history,
+pending-bills, payments, expenses, purchases, suppliers, customers, products → **0 controls under
+44 px, 0 horizontal overflow**.
+
+---
+
 ## Plan
 
 ### Phase 1 — stop the bleeding (P0)
