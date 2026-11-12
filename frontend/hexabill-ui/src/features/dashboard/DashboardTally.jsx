@@ -52,19 +52,13 @@ const MetricCard = ({
     accent = '',
     tooltip = null
 }) => {
-    const accentClass = accent === 'success' ? 'border-l-4 border-l-emerald-600'
-        : accent === 'error' ? 'border-l-4 border-l-rose-600'
-        : accent === 'primary' ? 'border-l-4 border-l-primary-600'
-        : accent === 'warning' ? 'border-l-4 border-l-amber-600'
-        : accent === 'amber' ? 'border-l-4 border-l-amber-500'
-        : accent === 'emerald' ? 'border-l-4 border-l-teal-600'
-        : ''
+    const accentClass = '' // no colored side bars; the value colour carries the meaning
 
     const body = (
         <>
             <div className="flex items-start justify-between gap-1">
                 <div className="flex items-center gap-1 min-w-0">
-                    <p className="truncate text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{label}</p>
+                    <p className="truncate text-sm font-medium text-[var(--text-secondary)]">{label}</p>
                     {tooltip && (
                         <span className="cursor-help text-neutral-400 hover:text-neutral-600 shrink-0" title={tooltip} aria-label={tooltip}>
                             <Info className="h-3 w-3" aria-hidden />
@@ -705,7 +699,7 @@ const DashboardTally = () => {
                         helper="Supplier stock-in"
                         icon={Truck}
                         accent="warning"
-                        valueClass="text-amber-700"
+                        valueClass="text-warning-fg"
                         loading={showSkeleton}
                         onClick={canOpenPurchases ? () => navigate('/purchases') : undefined}
                     />
@@ -717,7 +711,7 @@ const DashboardTally = () => {
                         helper={`${stats.pendingBills} ${stats.pendingBills === 1 ? 'bill' : 'bills'}${stats.overdueAmountTotal > 0 ? ` · Overdue ${formatCurrency(stats.overdueAmountTotal)}` : ''}`}
                         icon={DollarSign}
                         accent="amber"
-                        valueClass="text-amber-800"
+                        valueClass="text-warning-fg"
                         loading={showSkeleton}
                         onClick={canOpenReports ? () => navigate('/reports?tab=outstanding') : undefined}
                     />
@@ -729,7 +723,7 @@ const DashboardTally = () => {
                         helper={stats.creditInvoicedTotal > 0 ? `Credit ${formatCurrency(stats.creditInvoicedTotal)}` : 'Cash & collections'}
                         icon={Banknote}
                         accent="emerald"
-                        valueClass="text-teal-700"
+                        valueClass="text-success-fg"
                         loading={showSkeleton}
                         onClick={canReceivePayment ? () => navigate('/payments') : undefined}
                     />
@@ -744,90 +738,90 @@ const DashboardTally = () => {
                     <button
                         type="button"
                         onClick={() => navigate('/pos')}
-                        className={`flex items-center justify-between p-3 rounded-lg border border-primary-200 bg-primary-50/70 hover:bg-primary-100/70 transition-colors text-left ${focusClass}`}
+                        className={`flex items-center justify-between p-3 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 transition-colors text-left ${focusClass}`}
                         aria-keyshortcuts="F3"
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="p-2 rounded-md bg-primary-600 text-white shrink-0">
+                            <div className="p-2 rounded-md bg-primary-50 text-primary-700 shrink-0">
                                 <ShoppingCart className="h-4 w-4" aria-hidden />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-sm font-bold text-primary-950 truncate">New Invoice</p>
-                                <p className="text-xs text-primary-700">POS checkout</p>
+                                <p className="text-sm font-semibold leading-tight text-neutral-900 break-words">New Invoice</p>
+                                <p className="text-xs text-neutral-600">POS checkout</p>
                             </div>
                         </div>
-                        <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-primary-200/80 text-primary-900">F3</span>
+                        <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded border border-neutral-200 bg-white text-neutral-600">F3</span>
                     </button>
                 )}
                 {canOpenPurchases && (
                     <button
                         type="button"
                         onClick={() => navigate('/purchases?action=create')}
-                        className={`flex items-center justify-between p-3 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/70 transition-colors text-left ${focusClass}`}
+                        className={`flex items-center justify-between p-3 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 transition-colors text-left ${focusClass}`}
                         aria-keyshortcuts="F4"
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="p-2 rounded-md bg-emerald-600 text-white shrink-0">
+                            <div className="p-2 rounded-md bg-primary-50 text-primary-700 shrink-0">
                                 <Truck className="h-4 w-4" aria-hidden />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-sm font-bold text-emerald-950 truncate">New Purchase</p>
-                                <p className="text-xs text-emerald-700">Supplier bill</p>
+                                <p className="text-sm font-semibold leading-tight text-neutral-900 break-words">New Purchase</p>
+                                <p className="text-xs text-neutral-600">Supplier bill</p>
                             </div>
                         </div>
-                        <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-emerald-200/80 text-emerald-900">F4</span>
+                        <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded border border-neutral-200 bg-white text-neutral-600">F4</span>
                     </button>
                 )}
                 {canOpenCustomerLedger && (
                     <button
                         type="button"
                         onClick={() => navigate('/ledger')}
-                        className={`flex items-center justify-between p-3 rounded-lg border border-violet-200 bg-violet-50/70 hover:bg-violet-100/70 transition-colors text-left ${focusClass}`}
+                        className={`flex items-center justify-between p-3 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 transition-colors text-left ${focusClass}`}
                         aria-keyshortcuts="F6"
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="p-2 rounded-md bg-violet-600 text-white shrink-0">
+                            <div className="p-2 rounded-md bg-primary-50 text-primary-700 shrink-0">
                                 <BookOpen className="h-4 w-4" aria-hidden />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-sm font-bold text-violet-950 truncate">Customer Ledger</p>
-                                <p className="text-xs text-violet-700">Accounts & bills</p>
+                                <p className="text-sm font-semibold leading-tight text-neutral-900 break-words">Customer Ledger</p>
+                                <p className="text-xs text-neutral-600">Accounts & bills</p>
                             </div>
                         </div>
-                        <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-violet-200/80 text-violet-900">F6</span>
+                        <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded border border-neutral-200 bg-white text-neutral-600">F6</span>
                     </button>
                 )}
                 {canBackup ? (
                     <button
                         type="button"
                         onClick={() => navigate('/backup')}
-                        className={`flex items-center justify-between p-3 rounded-lg border border-amber-200 bg-amber-50/70 hover:bg-amber-100/70 transition-colors text-left ${focusClass}`}
+                        className={`flex items-center justify-between p-3 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 transition-colors text-left ${focusClass}`}
                         aria-keyshortcuts="Ctrl+B"
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="p-2 rounded-md bg-amber-600 text-white shrink-0">
+                            <div className="p-2 rounded-md bg-primary-50 text-primary-700 shrink-0">
                                 <Database className="h-4 w-4" aria-hidden />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-sm font-bold text-amber-950 truncate">Backup Now</p>
-                                <p className="text-xs text-amber-700">Save snapshot</p>
+                                <p className="text-sm font-semibold leading-tight text-neutral-900 break-words">Backup Now</p>
+                                <p className="text-xs text-neutral-600">Save snapshot</p>
                             </div>
                         </div>
-                        <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-amber-200/80 text-amber-900">Ctrl+B</span>
+                        <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded border border-neutral-200 bg-white text-neutral-600">Ctrl+B</span>
                     </button>
                 ) : canReceivePayment ? (
                     <button
                         type="button"
                         onClick={() => navigate('/payments')}
-                        className={`flex items-center justify-between p-3 rounded-lg border border-teal-200 bg-teal-50/70 hover:bg-teal-100/70 transition-colors text-left ${focusClass}`}
+                        className={`flex items-center justify-between p-3 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 transition-colors text-left ${focusClass}`}
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="p-2 rounded-md bg-teal-600 text-white shrink-0">
+                            <div className="p-2 rounded-md bg-primary-50 text-primary-700 shrink-0">
                                 <Banknote className="h-4 w-4" aria-hidden />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-sm font-bold text-teal-950 truncate">Receive Payment</p>
-                                <p className="text-xs text-teal-700">Record receipt</p>
+                                <p className="text-sm font-semibold leading-tight text-neutral-900 break-words">Receive Payment</p>
+                                <p className="text-xs text-neutral-600">Record receipt</p>
                             </div>
                         </div>
                     </button>
@@ -847,8 +841,8 @@ const DashboardTally = () => {
                             <FileText className="h-4 w-4" aria-hidden />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Sales Ledger</p>
-                            <p className="text-sm font-semibold text-neutral-900 truncate">View Register →</p>
+                            <p className="text-sm font-medium text-neutral-600">Sales Ledger</p>
+                            <p className="text-sm font-semibold leading-tight text-neutral-900 break-words">View Register →</p>
                         </div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" aria-hidden />
@@ -863,8 +857,8 @@ const DashboardTally = () => {
                             <Wallet className="h-4 w-4" aria-hidden />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Expenses</p>
-                            <p className="text-sm font-semibold text-neutral-900 truncate">Manage Expenses →</p>
+                            <p className="text-sm font-medium text-neutral-600">Expenses</p>
+                            <p className="text-sm font-semibold leading-tight text-neutral-900 break-words">Manage Expenses →</p>
                         </div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" aria-hidden />
@@ -872,14 +866,14 @@ const DashboardTally = () => {
 
                 <div
                     onClick={canOpenReports ? () => navigate('/pending-bills') : undefined}
-                    className={`p-3 rounded-lg border ${stats.pendingBills > 0 ? 'border-amber-300 bg-amber-50/80 hover:bg-amber-100/80' : 'border-[var(--border)] bg-[var(--bg-base)] hover:bg-[var(--bg-raised)]'} flex items-center justify-between cursor-pointer transition-colors`}
+                    className={`p-3 rounded-lg border ${stats.pendingBills > 0 ? 'border-warning-border bg-white hover:bg-neutral-50' : 'border-[var(--border)] bg-[var(--bg-base)] hover:bg-[var(--bg-raised)]'} flex items-center justify-between cursor-pointer transition-colors`}
                 >
                     <div className="flex items-center gap-2.5 min-w-0">
-                        <div className={`p-2 rounded-md shrink-0 ${stats.pendingBills > 0 ? 'bg-amber-500 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+                        <div className={`p-2 rounded-md shrink-0 ${stats.pendingBills > 0 ? 'bg-warning-bg text-warning-fg' : 'bg-success-bg text-success-fg'}`}>
                             {stats.pendingBills > 0 ? <AlertTriangle className="h-4 w-4" aria-hidden /> : <CheckCircle className="h-4 w-4" aria-hidden />}
                         </div>
                         <div className="min-w-0">
-                            <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Unpaid Bills</p>
+                            <p className="text-sm font-medium text-neutral-600">Unpaid Bills</p>
                             <p className="text-sm font-bold text-neutral-900 tabular-nums truncate">
                                 {stats.pendingBills} <span className="text-xs font-normal text-neutral-600">({formatCurrency(stats.pendingBillsAmount)})</span>
                             </p>
@@ -890,14 +884,14 @@ const DashboardTally = () => {
 
                 <div
                     onClick={canOpenProducts ? () => navigate('/products?tab=lowStock') : undefined}
-                    className={`p-3 rounded-lg border ${stats.lowStockCount > 0 ? 'border-rose-300 bg-rose-50/80 hover:bg-rose-100/80' : 'border-[var(--border)] bg-[var(--bg-base)] hover:bg-[var(--bg-raised)]'} flex items-center justify-between cursor-pointer transition-colors`}
+                    className={`p-3 rounded-lg border ${stats.lowStockCount > 0 ? 'border-error-border bg-white hover:bg-neutral-50' : 'border-[var(--border)] bg-[var(--bg-base)] hover:bg-[var(--bg-raised)]'} flex items-center justify-between cursor-pointer transition-colors`}
                 >
                     <div className="flex items-center gap-2.5 min-w-0">
-                        <div className={`p-2 rounded-md shrink-0 ${stats.lowStockCount > 0 ? 'bg-rose-500 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+                        <div className={`p-2 rounded-md shrink-0 ${stats.lowStockCount > 0 ? 'bg-error-bg text-error-fg' : 'bg-success-bg text-success-fg'}`}>
                             {stats.lowStockCount > 0 ? <Package className="h-4 w-4" aria-hidden /> : <CheckCircle className="h-4 w-4" aria-hidden />}
                         </div>
                         <div className="min-w-0">
-                            <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Low Stock</p>
+                            <p className="text-sm font-medium text-neutral-600">Low Stock</p>
                             <p className="text-sm font-bold text-neutral-900 tabular-nums truncate">
                                 {stats.lowStockCount} <span className="text-xs font-normal text-neutral-600">{stats.lowStockCount === 1 ? 'item' : 'items'}</span>
                             </p>

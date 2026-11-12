@@ -14,7 +14,6 @@ const baselinePath = join(root, 'scripts', 'ui-lint-baseline.json')
 
 // Owner decision 2026-11-12: Dashboard home cards and every POS / billing / invoice-entry screen are NOT restyled.
 const PROTECTED = [
-  'features/dashboard/DashboardTally.jsx',
   'features/sales/pos/',
   'features/sales/PosPage.jsx',
   'features/sales/PosPageLegacy.jsx',

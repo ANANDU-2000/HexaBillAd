@@ -1568,7 +1568,7 @@ const PurchasesPage = () => {
                             ) : (
                               <>
                                 <p className="font-medium text-primary-700 mb-1">No purchases found</p>
-                                <p className="text-sm">Create your first purchase to get started</p>
+                                <p className="text-sm text-neutral-600">Create your first purchase to get started</p>
                               </>
                             )}
                           </div>
@@ -1673,7 +1673,7 @@ const PurchasesPage = () => {
                       ) : (
                         <>
                           <p className="font-medium text-primary-700 mb-1">No purchases found</p>
-                          <p className="text-sm">Create your first purchase to get started</p>
+                          <p className="text-sm text-neutral-600">Create your first purchase to get started</p>
                         </>
                       )}
                     </div>

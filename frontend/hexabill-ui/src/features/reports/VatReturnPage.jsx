@@ -1351,7 +1351,7 @@ const VatReturnPage = () => {
                   {v?.dueDate ? new Date(v.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                 </p>
                 {daysUntilDue != null && daysUntilDue <= 0 && <p className="text-xs font-medium text-error">Overdue</p>}
-                {daysUntilDue != null && daysUntilDue > 0 && <p className="text-xs text-neutral-500">{daysUntilDue} days left</p>}
+                {daysUntilDue != null && daysUntilDue > 0 && <p className="text-xs text-neutral-600">{daysUntilDue} days left</p>}
               </div>
             </div>
           </div>

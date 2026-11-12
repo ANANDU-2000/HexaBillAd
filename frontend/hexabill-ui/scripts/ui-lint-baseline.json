@@ -46,6 +46,7 @@
   "features/sales/RecurringInvoicesPage.jsx": 1,
   "features/sales/SalesLedgerImportPage.jsx": 1,
   "features/sales/SalesLedgerPage.jsx": 5,
+  "features/settings/McpConnectionsPanel.jsx": 1,
   "features/settings/SettingsPage.jsx": 3,
   "pages/ErrorPage.jsx": 1,
   "pages/company/AuditLogPage.jsx": 1,
