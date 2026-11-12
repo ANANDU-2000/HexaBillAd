@@ -46,8 +46,7 @@ import {
   ChevronRight,
   ScanBarcode,
   Banknote,
-  CalendarDays,
-  Percent
+  CalendarDays
 } from 'lucide-react'
 import { productsAPI, salesAPI, customersAPI, settingsAPI } from '../../../services/index'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../../utils/currency'
@@ -147,6 +146,7 @@ const PosEnterprisePage = () => {
   const [showPaymentSheet, setShowPaymentSheet] = useState(false) // Mobile: payment in bottom sheet
   const [showMetaSheet, setShowMetaSheet] = useState(false) // Mobile: branch, route and date live in one sheet
   const [paymentPanelOpen, setPaymentPanelOpen] = useState(true) // Desktop: payment panel open by default
+  const [posMenu, setPosMenu] = useState(null) // 'hold' | 'more' | null (tablet and desktop header menus)
   const [tabletSheetOpen, setTabletSheetOpen] = useState(false) // Tablet: Payment & discount bottom sheet
   const [showDiscountPopup, setShowDiscountPopup] = useState(false)
   const [discountMode, setDiscountMode] = useState('flat') // 'flat' | 'percent'
@@ -2345,10 +2345,11 @@ const PosEnterprisePage = () => {
   const posHeader = (
       <>
       {/* Compact cashier header max 56px */}
-      <div className="bg-primary-900 text-white px-2 sm:px-3 min-h-14 py-1.5 flex flex-wrap items-center justify-between gap-2 flex-shrink-0 md:h-14 md:max-h-14 md:flex-nowrap md:overflow-x-auto md:py-0">
+      <div className="bg-primary-900 text-white px-2 sm:px-3 min-h-14 py-1.5 flex flex-wrap items-center justify-between gap-2 flex-shrink-0 md:min-h-14 md:py-1.5">
         <div className="min-w-0 flex items-center gap-1.5 sm:gap-3 shrink">
-          <button type="button" onClick={() => navigate('/dashboard')} className="hidden md:inline-flex xl:hidden h-10 w-10 items-center justify-center rounded-md border border-white/30 bg-white/10 hover:bg-white/20" title="Back to Dashboard" aria-label="Back to Dashboard"><ArrowLeft className="h-5 w-5" /></button>
-          <span className="hidden sm:inline text-sm sm:text-base font-bold tracking-wide whitespace-nowrap">Tax Invoice</span>
+          <button type="button" onClick={() => navigate('/dashboard')} className="hidden md:inline-flex xl:hidden h-9 w-9 items-center justify-center rounded-lg border border-white/30 bg-white/10 hover:bg-white/20" title="Back to Dashboard" aria-label="Back to Dashboard"><ArrowLeft className="h-5 w-5" /></button>
+          <span className="hidden sm:inline md:hidden xl:inline text-sm sm:text-base font-bold tracking-wide whitespace-nowrap">Tax Invoice</span>
+          <span className="hidden md:inline xl:hidden text-sm font-bold whitespace-nowrap">Invoice</span>
           {isEditMode ? (
             <span
               className="font-mono text-xs sm:text-sm truncate text-amber-200 max-w-[6rem] sm:max-w-[8rem]"
@@ -2373,7 +2374,7 @@ const PosEnterprisePage = () => {
             onClick={printableSaleId ? () => handlePrintFormat('A4', printableSaleId) : undefined}
             disabled={!printableSaleId}
             title={printableSaleId ? 'Quick print invoice (A4)' : 'Save invoice first to print'}
-            className="min-h-11 min-w-11 lg:min-h-9 lg:min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+            className="md:hidden min-h-11 min-w-11 lg:min-h-9 lg:min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
             aria-label={printableSaleId ? 'Quick print invoice' : 'Save invoice first to print'}
           >
             <Printer className="h-4 w-4" />
@@ -2383,7 +2384,7 @@ const PosEnterprisePage = () => {
             onClick={printableSaleId ? () => handleDeliveryNotePrint('A4', printableSaleId) : undefined}
             disabled={!printableSaleId}
             title={printableSaleId ? 'Print delivery note (packing list, no prices)' : 'Save invoice first for delivery note'}
-            className="min-h-11 min-w-11 lg:min-h-9 lg:min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+            className="md:hidden min-h-11 min-w-11 lg:min-h-9 lg:min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
             aria-label={printableSaleId ? 'Print delivery note' : 'Save invoice first for delivery note'}
           >
             <Package className="h-4 w-4" />
@@ -2393,14 +2394,137 @@ const PosEnterprisePage = () => {
               type="button"
               onClick={() => handleDownloadPdf(printableSaleId, printableInvoiceNo)}
               title="Download invoice PDF"
-              className="min-h-11 min-w-11 lg:min-h-9 lg:min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 text-white"
+              className="md:hidden min-h-11 min-w-11 lg:min-h-9 lg:min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 text-white"
               aria-label="Download invoice PDF"
             >
               <Download className="h-4 w-4" />
             </button>
           )}
+          {!staffHasNoAssignments && (
+            <div className="hidden md:flex items-center gap-1.5">
+              <div className="relative inline-flex items-center">
+                <select
+                  aria-label="Branch"
+                  value={selectedBranchId}
+                  onChange={(e) => {
+                    setSelectedBranchId(e.target.value)
+                    setSelectedRouteId('')
+                  }}
+                  disabled={branchesRoutesLoading || branches.length === 0 || (!isAdminOrOwner(user) && branches.length === 1)}
+                  className="h-9 pl-2.5 pr-7 min-w-[5.5rem] max-w-[9rem] rounded-lg border-0 bg-white text-xs font-bold text-primary-900 disabled:opacity-60 appearance-none truncate"
+                  title="Branch"
+                >
+                  <option value="">{branchesRoutesLoading ? '…' : 'Branch'}</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary-700" aria-hidden />
+              </div>
+              <div className="relative inline-flex items-center">
+                <select
+                  value={selectedRouteId}
+                  aria-label="Route"
+                  onChange={(e) => setSelectedRouteId(e.target.value)}
+                  disabled={branchesRoutesLoading || routes.length === 0 || !selectedBranchId || (!isAdminOrOwner(user) && (selectedBranchId ? routes.filter(r => r.branchId === parseInt(selectedBranchId, 10)) : routes).length <= 1)}
+                  className="h-9 pl-2.5 pr-7 min-w-[5.5rem] max-w-[9rem] rounded-lg border-0 bg-white text-xs font-bold text-primary-900 disabled:opacity-60 appearance-none truncate"
+                  title="Route"
+                >
+                  <option value="">Route</option>
+                  {routes
+                    .filter(r => !selectedBranchId || r.branchId === parseInt(selectedBranchId))
+                    .map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary-700" aria-hidden />
+              </div>
+            </div>
+          )}
+          <label className="relative hidden md:inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-white px-2.5 text-xs font-bold text-primary-900 hover:bg-primary-50" title="Invoice date">
+            <CalendarDays className="h-4 w-4 text-primary-700" aria-hidden />
+            {invoiceDate ? new Date(`${invoiceDate}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : 'Date'}
+            <input
+              type="date"
+              aria-label="Invoice date"
+              value={invoiceDate}
+              onChange={(e) => setInvoiceDate(e.target.value)}
+              onClick={(e) => { try { e.currentTarget.showPicker?.() } catch { /* native picker unavailable */ } }}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+          </label>
         </div>
-        <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+        <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setPosMenu((m) => (m === 'hold' ? null : 'hold'))}
+              aria-haspopup="menu"
+              aria-expanded={posMenu === 'hold'}
+              className="relative inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/40 bg-white/15 px-3 text-sm font-bold text-white hover:bg-white/25"
+              title="Hold (F6), resume a held bill, or repeat the last bill"
+            >
+              Hold
+              <ChevronDown className="h-4 w-4" aria-hidden />
+              {heldInvoices.length > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">{heldInvoices.length}</span>
+              )}
+            </button>
+            {posMenu === 'hold' && (
+              <div role="menu" className="absolute right-0 top-11 z-[80] w-60 rounded-xl border border-neutral-200 bg-white p-1.5 text-neutral-900 shadow-xl">
+                <button role="menuitem" type="button" disabled={isFormDisabled || cart.filter(i => i.productId && (Number(i.qty) > 0)).length === 0} onClick={() => { setPosMenu(null); handleHold() }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-neutral-100 disabled:opacity-40">
+                  <Bookmark className="h-4 w-4 text-neutral-500" aria-hidden /> Hold this bill <span className="ml-auto text-xs font-normal text-neutral-500">F6</span>
+                </button>
+                <button role="menuitem" type="button" disabled={isFormDisabled || heldInvoices.length === 0 || loadingHeldInvoices} onClick={() => { setPosMenu(null); setShowResumeModal(true) }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-neutral-100 disabled:opacity-40">
+                  <RotateCcw className="h-4 w-4 text-neutral-500" aria-hidden /> Resume held bill {heldInvoices.length > 0 && <span className="ml-auto rounded-full bg-red-500 px-2 text-xs font-bold text-white">{heldInvoices.length}</span>}
+                </button>
+                <button role="menuitem" type="button" disabled={isFormDisabled || loadingSale} onClick={() => { setPosMenu(null); handleRepeatLastInvoice() }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-neutral-100 disabled:opacity-40">
+                  <RefreshCw className="h-4 w-4 text-neutral-500" aria-hidden /> Repeat last bill
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleNewInvoice}
+            className="inline-flex h-9 items-center gap-1 rounded-lg bg-white px-4 text-sm font-extrabold text-primary-900 hover:bg-primary-50"
+            title="New invoice (F10)"
+          >
+            <Plus className="h-4 w-4" aria-hidden /> New
+          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setPosMenu((m) => (m === 'more' ? null : 'more'))}
+              aria-haspopup="menu"
+              aria-expanded={posMenu === 'more'}
+              aria-label="More actions"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/40 bg-white/15 text-lg font-bold leading-none text-white hover:bg-white/25"
+              title="Print, delivery note, refresh"
+            >
+              ⋯
+            </button>
+            {posMenu === 'more' && (
+              <div role="menu" className="absolute right-0 top-11 z-[80] w-64 rounded-xl border border-neutral-200 bg-white p-1.5 text-neutral-900 shadow-xl">
+                <button role="menuitem" type="button" disabled={!printableSaleId} onClick={() => { setPosMenu(null); handlePrintFormat('A4', printableSaleId) }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-neutral-100 disabled:opacity-40">
+                  <Printer className="h-4 w-4 text-neutral-500" aria-hidden /> Print invoice {!printableSaleId && <span className="ml-auto text-xs font-normal text-neutral-500">save first</span>}
+                </button>
+                <button role="menuitem" type="button" disabled={!printableSaleId} onClick={() => { setPosMenu(null); handleDeliveryNotePrint('A4', printableSaleId) }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-neutral-100 disabled:opacity-40">
+                  <Package className="h-4 w-4 text-neutral-500" aria-hidden /> Delivery note {!printableSaleId && <span className="ml-auto text-xs font-normal text-neutral-500">save first</span>}
+                </button>
+                {printableSaleId && (
+                  <button role="menuitem" type="button" onClick={() => { setPosMenu(null); handleDownloadPdf(printableSaleId, printableInvoiceNo) }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-neutral-100">
+                    <Download className="h-4 w-4 text-neutral-500" aria-hidden /> Download PDF
+                  </button>
+                )}
+                <button role="menuitem" type="button" disabled={refreshingData} onClick={() => { setPosMenu(null); handleRefreshData() }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-neutral-100 disabled:opacity-40">
+                  <RefreshCw className={`h-4 w-4 text-neutral-500 ${refreshingData ? 'animate-spin' : ''}`} aria-hidden /> Refresh products
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex md:hidden items-center gap-1 sm:gap-1.5 flex-shrink-0">
           <button
             onClick={handleHold}
             disabled={isFormDisabled || cart.filter(i => i.productId && (Number(i.qty) > 0)).length === 0}
@@ -2442,6 +2566,8 @@ const PosEnterprisePage = () => {
           </button>
         </div>
       </div>
+
+      {posMenu && <div className="fixed inset-0 z-[75] hidden md:block" onClick={() => setPosMenu(null)} aria-hidden />}
 
       {/* Hold Invoice Modal */}
       {showHoldModal && (
@@ -2721,10 +2847,33 @@ const PosEnterprisePage = () => {
             </span>
           )}
           {selectedCustomer && selectedCustomer.id !== 'cash' && (
-            <span className={`text-micro font-semibold tabular-nums ${selectedCustomer?.balance < 0 ? 'text-[#10B981]' : selectedCustomer?.balance > 0 ? 'text-primary-600' : 'text-neutral-500'}`}>
+            <span className={`md:hidden text-micro font-semibold tabular-nums ${selectedCustomer?.balance < 0 ? 'text-[#10B981]' : selectedCustomer?.balance > 0 ? 'text-primary-600' : 'text-neutral-500'}`}>
               {formatBalance(selectedCustomer?.balance || 0)}
             </span>
           )}
+          {selectedCustomer && selectedCustomer.id !== 'cash' && (() => {
+            const bal = Number(selectedCustomer?.balance) || 0
+            return (
+              <div
+                className={`hidden md:block rounded-lg border px-3 py-1.5 leading-tight ${bal > 0 ? 'border-error-border bg-error-bg text-error-fg' : bal < 0 ? 'border-success-border bg-success-bg text-success-fg' : 'border-neutral-300 bg-white text-neutral-700'}`}
+                title="Customer balance"
+              >
+                <span className="block text-xs font-bold">{bal > 0 ? 'Balance due' : bal < 0 ? 'Credit' : 'Balance'}</span>
+                <span className="block text-base font-extrabold tabular-nums">{formatCurrency(Math.abs(bal))}</span>
+              </div>
+            )
+          })()}
+          <button
+            type="button"
+            onClick={() => setScanModeOn((v) => !v)}
+            disabled={isFormDisabled}
+            className={`hidden md:inline-flex h-11 items-center gap-1.5 rounded-lg border-2 px-3 text-sm font-bold disabled:opacity-50 ${scanModeOn ? 'border-warning bg-amber-500 text-white' : 'border-primary-600 bg-primary-50 text-primary-700 hover:bg-primary-100'}`}
+            title={scanModeOn ? 'Stop camera scan' : 'Start continuous camera scan'}
+            aria-pressed={scanModeOn}
+          >
+            <ScanBarcode className="h-5 w-5" aria-hidden />
+            Scan
+          </button>
           {/* Phones: branch, route and date collapse into one line that opens a sheet, so the cart stays on screen. */}
           <button
             type="button"
@@ -2741,60 +2890,7 @@ const PosEnterprisePage = () => {
               <AlertTriangle className="h-3.5 w-3.5" /> No branch/route
             </span>
           )}
-          {!staffHasNoAssignments && (
-            <div className="hidden md:contents">
-              <div className="relative inline-flex items-center">
-                <select
-                  aria-label="Branch"
-                  value={selectedBranchId}
-                  onChange={(e) => {
-                    setSelectedBranchId(e.target.value)
-                    setSelectedRouteId('')
-                  }}
-                  disabled={branchesRoutesLoading || branches.length === 0 || (!isAdminOrOwner(user) && branches.length === 1)}
-                  className="h-11 lg:h-9 pl-2 pr-8 min-w-[7.5rem] max-w-[11rem] border border-neutral-300 rounded-md text-xs bg-white disabled:opacity-50 appearance-none truncate"
-                  title="Branch"
-                >
-                  <option value="">{branchesRoutesLoading ? '…' : 'Branch'}</option>
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500" aria-hidden />
-              </div>
-              <div className="relative inline-flex items-center">
-                <select
-                  value={selectedRouteId}
-                  aria-label="Route"
-                  onChange={(e) => setSelectedRouteId(e.target.value)}
-                  disabled={branchesRoutesLoading || routes.length === 0 || !selectedBranchId || (!isAdminOrOwner(user) && (selectedBranchId ? routes.filter(r => r.branchId === parseInt(selectedBranchId, 10)) : routes).length <= 1)}
-                  className="h-11 lg:h-9 pl-2 pr-8 min-w-[7.5rem] max-w-[11rem] border border-neutral-300 rounded-md text-xs bg-white disabled:opacity-50 appearance-none truncate"
-                  title="Route"
-                >
-                  <option value="">Route</option>
-                  {routes
-                    .filter(r => !selectedBranchId || r.branchId === parseInt(selectedBranchId))
-                    .map(r => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500" aria-hidden />
-              </div>
-            </div>
-          )}
           <span className="hidden h-10 items-center rounded-full bg-primary-50 px-3 text-sm font-bold text-primary-700 md:inline-flex lg:hidden" aria-live="polite">Items {cart.length}</span>
-          <label className="relative hidden md:inline-flex h-10 lg:h-9 cursor-pointer items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-2.5 text-xs font-medium text-neutral-800 hover:bg-neutral-50" title="Invoice date">
-            <CalendarDays className="h-4 w-4 text-neutral-500" aria-hidden />
-            {invoiceDate ? new Date(`${invoiceDate}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : 'Date'}
-            <input
-              type="date"
-              aria-label="Invoice date"
-              value={invoiceDate}
-              onChange={(e) => setInvoiceDate(e.target.value)}
-              onClick={(e) => { try { e.currentTarget.showPicker?.() } catch { /* native picker unavailable */ } }}
-              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-            />
-          </label>
           <button
             type="button"
             onClick={addEmptyRow}
@@ -2809,7 +2905,7 @@ const PosEnterprisePage = () => {
             type="button"
             onClick={() => setScanModeOn((v) => !v)}
             disabled={isFormDisabled}
-            className={`h-10 lg:h-9 px-2.5 text-xs font-semibold rounded-md disabled:opacity-50 inline-flex items-center gap-1 border ${
+            className={`md:hidden h-10 lg:h-9 px-2.5 text-xs font-semibold rounded-md disabled:opacity-50 inline-flex items-center gap-1 border ${
               scanModeOn
                 ? 'bg-amber-500 text-white border-warning hover:bg-warning'
                 : 'bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-50'
@@ -2819,25 +2915,6 @@ const PosEnterprisePage = () => {
           >
             <ScanBarcode className="h-4 w-4" />
             <span className="hidden lg:inline">Scan</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleRefreshData}
-            disabled={refreshingData}
-            className="hidden md:inline-flex h-10 lg:h-9 px-2.5 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60 items-center"
-            title="Refresh"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshingData ? 'animate-spin' : ''}`} />
-          </button>
-          <button
-            type="button"
-            onClick={() => !isZeroInvoice && setShowDiscountPopup(true)}
-            disabled={isFormDisabled || isZeroInvoice}
-            className="h-10 lg:h-9 px-2.5 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-50 hidden sm:inline-flex items-center"
-            title="Invoice discount (F8)"
-          >
-            <Percent className="h-4 w-4 lg:hidden" aria-hidden />
-            <span className="hidden lg:inline">Disc</span>
           </button>
         </div>
         {selectedCustomer && selectedCustomer.id !== 'cash' && (() => {
