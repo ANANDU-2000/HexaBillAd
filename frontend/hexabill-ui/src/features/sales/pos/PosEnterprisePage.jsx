@@ -3520,7 +3520,7 @@ const PosEnterprisePage = () => {
                 </div>
                 <div className="pt-1">
                   <div className="mb-1 flex items-center justify-between gap-2">
-                    <label className="flex items-center gap-1 text-sm font-medium text-neutral-600">
+                    <label className="flex items-center gap-1 text-sm font-medium text-neutral-600" htmlFor="pos-sheet-discount">
                       <Percent className="h-3.5 w-3.5 text-neutral-400" aria-hidden />
                       Discount
                     </label>
@@ -3531,6 +3531,7 @@ const PosEnterprisePage = () => {
                     <input
                       type="text"
                       inputMode="decimal"
+                      id="pos-sheet-discount"
                       disabled={isFormDisabled || isZeroInvoice}
                       className="h-11 w-full rounded-xl border border-neutral-300 bg-neutral-50/70 pl-12 pr-3 text-right text-base font-bold text-neutral-900 tabular-nums transition-colors placeholder:font-normal placeholder:text-neutral-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 disabled:opacity-50"
                       placeholder="0.00"
@@ -3629,10 +3630,11 @@ const PosEnterprisePage = () => {
                 </div>
                 {paymentMethod !== 'Pending' && (
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-neutral-700">Amount</label>
+                    <label className="mb-1 block text-xs font-semibold text-neutral-700" htmlFor="pos-sheet-amount">Amount</label>
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">{currency}</span>
                       <input
+                        id="pos-sheet-amount"
                         type="number"
                         min="0"
                         step="0.01"
@@ -3663,11 +3665,12 @@ const PosEnterprisePage = () => {
                   </div>
                 )}
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-neutral-700">
+                  <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-neutral-700" htmlFor="pos-sheet-notes">
                     <StickyNote className="h-3.5 w-3.5 text-neutral-400" aria-hidden />
                     Notes
                   </label>
                   <textarea
+                    id="pos-sheet-notes"
                     disabled={isFormDisabled}
                     className="min-h-[3.5rem] w-full rounded-xl border border-neutral-300 bg-neutral-50/70 px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 disabled:opacity-50"
                     rows="2"
@@ -3729,24 +3732,28 @@ const PosEnterprisePage = () => {
 
       {/* Mobile: Sticky bottom bar — single total + one CTA (opens payment sheet) */}
       <div className="hidden md:block lg:hidden h-36 shrink-0" aria-hidden />
-      <div className="hidden md:block lg:hidden fixed bottom-0 left-0 right-0 z-[60] border-t border-neutral-300 bg-white px-4 pb-3 pt-2 shadow-[0_-4px_14px_rgba(15,23,42,0.12)]" data-testid="pos-tablet-savebar">
-        <div className="flex items-center justify-between gap-3 border-b border-neutral-200 pb-2 text-sm text-neutral-600">
-          <span>Items <b className="text-base text-neutral-900 tabular-nums">{cart.length}</b></span>
-          <span>Subtotal <b className="text-base text-neutral-900 tabular-nums">{totals.subtotal.toFixed(2)}</b></span>
-          <span>VAT {vatPercent}% <b className="text-base text-neutral-900 tabular-nums">{totals.vatTotal.toFixed(2)}</b></span>
-          <span>Discount <b className="text-base tabular-nums text-neutral-900">{Number(discount || 0).toFixed(2)}</b></span>
+      <div className="hidden md:block lg:hidden fixed bottom-0 left-0 right-0 z-[60] rounded-t-2xl border-t border-neutral-200 bg-white/95 px-4 pb-3 pt-2.5 shadow-[0_-8px_24px_rgba(15,23,42,0.10)] backdrop-blur" data-testid="pos-tablet-savebar">
+        <div className="flex items-center justify-between gap-3 border-b border-neutral-200 pb-2">
+          <span className="text-micro font-semibold uppercase tracking-wide text-neutral-500">Items <b className="ml-0.5 text-sm font-bold tabular-nums text-neutral-900">{cart.length}</b></span>
+          <span className="text-micro font-semibold uppercase tracking-wide text-neutral-500">Subtotal <b className="ml-0.5 text-sm font-bold tabular-nums text-neutral-900">{totals.subtotal.toFixed(2)}</b></span>
+          <span className="text-micro font-semibold uppercase tracking-wide text-neutral-500">VAT {vatPercent}% <b className="ml-0.5 text-sm font-bold tabular-nums text-neutral-900">{totals.vatTotal.toFixed(2)}</b></span>
+          <span className="text-micro font-semibold uppercase tracking-wide text-neutral-500">Discount <b className={`ml-0.5 text-sm font-bold tabular-nums ${Number(discount || 0) > 0 ? 'text-error' : 'text-neutral-900'}`}>{Number(discount || 0).toFixed(2)}</b></span>
         </div>
         <div className="mt-2 flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-neutral-600">Grand total</p>
-            <p className="text-3xl font-extrabold tabular-nums leading-tight text-neutral-900">{currency} {totals.grandTotal.toFixed(2)}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-primary-700">Grand total</p>
+            <p className="text-3xl font-extrabold leading-tight tabular-nums text-neutral-900">{currency} {totals.grandTotal.toFixed(2)}</p>
           </div>
-          <button type="button" onClick={() => setTabletSheetOpen((o) => !o)} aria-expanded={tabletSheetOpen} className="h-14 rounded-lg border-2 border-primary-600 bg-white px-4 text-sm font-bold text-primary-700 hover:bg-primary-50">Payment · Discount {tabletSheetOpen ? '▾' : '▴'}</button>
+          <button type="button" onClick={() => setTabletSheetOpen((o) => !o)} aria-expanded={tabletSheetOpen} className="inline-flex h-14 items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3.5 text-sm font-bold text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 active:scale-[0.98]">
+            <Wallet className="h-5 w-5" aria-hidden />
+            Payment
+            <ChevronDown className={`h-4 w-4 transition-transform ${tabletSheetOpen ? 'rotate-180' : ''}`} aria-hidden />
+          </button>
           <button
             type="button"
             onClick={handleSave}
             disabled={loading || loadingSale || cart.length === 0}
-            className="inline-flex h-14 min-w-[9.5rem] items-center justify-center gap-2 rounded-lg bg-accent px-5 text-base font-bold text-white shadow-sm hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-14 min-w-[9.5rem] items-center justify-center gap-2 rounded-xl bg-accent px-5 text-base font-bold text-white shadow-[0_4px_12px_rgba(16,185,129,0.28)] transition-all hover:bg-accent/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
           >
             <Save className="h-5 w-5" aria-hidden />
             {(loading || loadingSale) ? 'Saving...' : isEditMode ? 'Update' : 'Save Invoice'}
@@ -3850,128 +3857,180 @@ const PosEnterprisePage = () => {
       {showPaymentSheet && (
         <div className="md:hidden fixed inset-0 z-[60] flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowPaymentSheet(false)} aria-hidden />
-          <div className="relative bg-white rounded-t-xl shadow-xl max-h-[90vh] flex flex-col animate-slideUp">
-            <div className="flex-shrink-0 px-4 pt-4 pb-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-[#0F172A]">Payment</h3>
-                <button type="button" onClick={() => setShowPaymentSheet(false)} className="p-2 rounded-lg hover:bg-[#F8FAFC] transition-colors" aria-label="Close">
-                  <X className="h-5 w-5 text-[#475569]" />
+          <div className="relative flex max-h-[90vh] flex-col rounded-t-2xl bg-white shadow-2xl animate-slideUp" role="dialog" aria-modal="true" aria-label="Payment and discount">
+            <div className="flex-shrink-0 border-b border-neutral-200 px-4 pb-3 pt-2.5">
+              <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-neutral-300" aria-hidden />
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="flex items-center gap-1.5 text-base font-bold leading-tight text-neutral-900">
+                    <Wallet className="h-4 w-4 text-primary-600" aria-hidden />
+                    Payment &amp; discount
+                  </h3>
+                  <p className="text-xs text-neutral-500">Adjust totals, then take payment</p>
+                </div>
+                <button type="button" onClick={() => setShowPaymentSheet(false)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-600 shadow-sm transition-colors hover:bg-neutral-50 active:scale-[0.98]" aria-label="Close">
+                  <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-2 space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-[#475569]">Subtotal</span>
-                <span className="font-medium text-[#0F172A]">{currency} {totals.subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#475569]">VAT {vatPercent}%</span>
-                <span className="font-medium text-[#0F172A]">{currency} {totals.vatTotal.toFixed(2)}</span>
-              </div>
-              <div className="pt-2 border-t border-[#E5E7EB]">
-                <label className="block text-xs font-medium text-[#475569] mb-1">Discount ({currency})</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="0.00"
-                  value={discountInput}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    if (v === '' || /^\d*\.?\d*$/.test(v)) {
-                      setDiscountInput(v)
-                      setDiscount(v === '' ? 0 : (parseFloat(v) || 0))
-                    }
-                  }}
-                />
-              </div>
-              <div className="pt-2">
-                <label className="block text-xs font-medium text-[#475569] mb-1">Round Off / تقريب ({currency})</label>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={handleAutoRoundOff} disabled={isZeroInvoice} className="text-xs text-primary-600 hover:text-primary-700 px-2 py-1 rounded border border-[#E5E7EB]">Auto</button>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="-1"
-                    max="1"
-                    className="flex-1 px-3 py-2 border border-[#E5E7EB] rounded-lg text-[#0F172A] text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="0.00"
-                    value={roundOffInput === '' && roundOff === 0 ? '' : roundOffInput}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      setRoundOffInput(v)
-                      setRoundOff(v === '' ? 0 : (parseFloat(v) || 0))
-                    }}
-                  />
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-3 pt-3 text-sm">
+              <section className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm">
+                <div className="mb-2 flex items-center gap-1.5 border-b border-neutral-200 pb-2">
+                  <Receipt className="h-4 w-4 text-primary-600" aria-hidden />
+                  <h4 className="text-xs font-bold uppercase tracking-wide text-neutral-700">Totals</h4>
                 </div>
-              </div>
-              {discount > 0 && (
-                <div className="flex justify-between text-error font-medium">
-                  <span>Discount</span>
-                  <span className="tabular-nums">-{currency} {Number(discount).toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex justify-between items-end pt-2 border-t-2 border-primary-500 font-semibold">
-                <span className="text-sm font-bold uppercase tracking-wide text-primary-700">Grand Total</span>
-                <span className="text-lg font-semibold text-neutral-900 tabular-nums">{currency} {totals.grandTotal.toFixed(2)}</span>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-[#475569] mb-1">Payment method</label>
-                <select
-                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                >
-                  <option value="Pending">Credit (Pay later)</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Debit">Debit (Card)</option>
-                  <option value="Cheque">Cheque</option>
-                  <option value="Online">Online</option>
-                </select>
-              </div>
-              {paymentMethod !== 'Pending' && (
-                <div>
-                  <label className="block text-xs font-medium text-[#475569] mb-1">Amount ({currency})</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder={totals.grandTotal.toFixed(2)}
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                  />
-                  {/* Quick Amount Buttons */}
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {[100, 500, 1000, 2000, 5000].map(amount => (
-                      <button
-                        key={amount}
-                        type="button"
-                        onClick={() => {
-                          const totals = calculateTotals()
-                          const maxAmount = Math.min(amount, totals.grandTotal)
-                          setPaymentAmount(maxAmount.toFixed(2))
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2 py-1">
+                    <span className="font-medium text-neutral-600">Subtotal</span>
+                    <span className="font-bold tabular-nums text-neutral-900">{currency} {totals.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 py-1">
+                    <span className="font-medium text-neutral-600">VAT {vatPercent}%</span>
+                    <span className="font-bold tabular-nums text-neutral-900">{currency} {totals.vatTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="pt-1">
+                    <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-neutral-700" htmlFor="pos-mobile-discount">
+                      <Percent className="h-3.5 w-3.5 text-neutral-400" aria-hidden />
+                      Discount ({currency})
+                    </label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">{currency}</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        id="pos-mobile-discount"
+                        className="h-12 w-full rounded-xl border border-neutral-300 bg-neutral-50/70 pl-12 pr-3 text-right text-base font-bold tabular-nums text-neutral-900 transition-colors placeholder:font-normal placeholder:text-neutral-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10"
+                        placeholder="0.00"
+                        value={discountInput}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          if (v === '' || /^\d*\.?\d*$/.test(v)) {
+                            setDiscountInput(v)
+                            setDiscount(v === '' ? 0 : (parseFloat(v) || 0))
+                          }
                         }}
-                        className="px-3 py-1.5 text-xs font-medium bg-primary-50 text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-100 active:bg-primary-200 transition-colors"
-                      >
-                        {amount} {currency}
+                      />
+                    </div>
+                  </div>
+                  <div className="pt-1">
+                    <label className="mb-1 block text-xs font-semibold text-neutral-700" htmlFor="pos-mobile-roundoff">Round off ({currency})</label>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={handleAutoRoundOff} disabled={isZeroInvoice} className="inline-flex h-12 items-center gap-1 rounded-xl border border-primary-200 bg-primary-50 px-2.5 text-xs font-bold text-primary-700 transition-colors hover:bg-primary-100 disabled:opacity-50">
+                        <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                        Auto
                       </button>
-                    ))}
+                      <div className="relative flex-1">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">{currency}</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="-1"
+                          max="1"
+                          id="pos-mobile-roundoff"
+                          className="h-12 w-full rounded-xl border border-neutral-300 bg-neutral-50/70 pl-12 pr-3 text-right text-base font-bold tabular-nums text-neutral-900 transition-colors placeholder:font-normal placeholder:text-neutral-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10"
+                          placeholder="0.00"
+                          value={roundOffInput === '' && roundOff === 0 ? '' : roundOffInput}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            setRoundOffInput(v)
+                            setRoundOff(v === '' ? 0 : (parseFloat(v) || 0))
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {discount > 0 && (
+                    <div className="flex items-center justify-between gap-2 py-1 font-medium text-error">
+                      <span>Discount</span>
+                      <span className="font-bold tabular-nums">-{currency} {Number(discount).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="mt-2 rounded-xl bg-primary-900 px-4 py-3 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-primary-200">Grand total</p>
+                        <p className="text-micro text-primary-200/80">Total payable</p>
+                      </div>
+                      <p className="text-3xl font-extrabold leading-none tabular-nums text-white">{currency} {totals.grandTotal.toFixed(2)}</p>
+                    </div>
                   </div>
                 </div>
-              )}
-              <div>
-                <label className="block text-xs font-medium text-[#475569] mb-1">Notes (optional)</label>
-                <textarea
-                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-                  rows={2}
-                  placeholder="Notes..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </div>
+              </section>
+
+              <section className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm">
+                <div className="mb-2 flex items-center gap-1.5 border-b border-neutral-200 pb-2">
+                  <Banknote className="h-4 w-4 text-primary-600" aria-hidden />
+                  <h4 className="text-xs font-bold uppercase tracking-wide text-neutral-700">Payment</h4>
+                  <span className="text-micro font-normal normal-case tracking-normal text-neutral-500">Optional</span>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-neutral-700">Method</label>
+                  <div className="relative">
+                    <select
+                      className="h-12 w-full appearance-none rounded-xl border border-neutral-300 bg-neutral-50/70 pl-3 pr-9 text-sm font-semibold text-neutral-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10"
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                    >
+                      <option value="Pending">Credit (Pay later)</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Debit">Debit (Card)</option>
+                      <option value="Cheque">Cheque</option>
+                      <option value="Online">Online</option>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" aria-hidden />
+                  </div>
+                </div>
+                {paymentMethod !== 'Pending' && (
+                  <div className="mt-2.5">
+                    <label className="mb-1 block text-xs font-semibold text-neutral-700" htmlFor="pos-mobile-amount">Amount ({currency})</label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">{currency}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        id="pos-mobile-amount"
+                        className="h-12 w-full rounded-xl border border-neutral-300 bg-neutral-50/70 pl-12 pr-3 text-right text-base font-bold tabular-nums text-neutral-900 transition-colors placeholder:font-normal placeholder:text-neutral-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10"
+                        placeholder={totals.grandTotal.toFixed(2)}
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {[100, 500, 1000, 2000, 5000].map(amount => (
+                        <button
+                          key={amount}
+                          type="button"
+                          onClick={() => {
+                            const totals = calculateTotals()
+                            const maxAmount = Math.min(amount, totals.grandTotal)
+                            setPaymentAmount(maxAmount.toFixed(2))
+                          }}
+                          className="h-10 min-w-[3.25rem] rounded-lg border border-neutral-200 bg-white px-2.5 text-sm font-bold tabular-nums text-neutral-800 shadow-sm transition-all hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 active:scale-95"
+                        >
+                          {amount}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="mt-2.5">
+                  <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-neutral-700" htmlFor="pos-mobile-notes">
+                    <StickyNote className="h-3.5 w-3.5 text-neutral-400" aria-hidden />
+                    Notes (optional)
+                  </label>
+                  <textarea
+                    id="pos-mobile-notes"
+                    className="min-h-[3.5rem] w-full resize-none rounded-xl border border-neutral-300 bg-neutral-50/70 px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10"
+                    rows={2}
+                    placeholder="Add a note for this bill…"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </div>
+              </section>
             </div>
-            <div className="flex-shrink-0 px-4 pt-3 pb-4 border-t border-[#E5E7EB] bg-white" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+            <div className="flex-shrink-0 border-t border-neutral-200 bg-white px-4 pt-3" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
               <button
                 onClick={async () => {
                   await handleSave()
@@ -3979,7 +4038,7 @@ const PosEnterprisePage = () => {
                 }}
                 disabled={loading || loadingSale || cart.length === 0}
                 title={cart.length === 0 && !loading && !loadingSale ? 'Add at least one item to checkout' : undefined}
-                className="w-full py-3.5 rounded-lg font-bold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors duration-150 min-h-[48px]"
+                className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-primary-600 py-3.5 font-bold text-white shadow-[0_4px_12px_rgba(37,99,235,0.28)] transition-all hover:bg-primary-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
               >
                 {(loading || loadingSale) ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
