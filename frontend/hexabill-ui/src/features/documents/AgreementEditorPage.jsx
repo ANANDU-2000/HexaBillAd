@@ -298,8 +298,8 @@ export default function AgreementEditorPage() {
             onClick={save}
             disabled={saving || !isDirty}
             className={`inline-flex items-center gap-1 px-3 py-1.5 min-h-[44px] text-sm rounded-md disabled:opacity-50 ${
-              isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'border text-text-secondary bg-slate-50'
-            }`}
+ isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'border text-text-secondary bg-slate-50'
+ }`}
           >
             <Save className="w-4 h-4" /> {saving ? 'Saving…' : isDirty ? 'Save changes' : 'Saved'}
           </button>
@@ -314,7 +314,7 @@ export default function AgreementEditorPage() {
           </button>
         </div>
       </div>
-      {error && <div className="text-sm text-neutral-800 bg-white border border-neutral-200 border-l-4 border-l-error rounded px-3 py-2">{error}</div>}
+      {error && <div className="text-sm text-neutral-800 bg-white border border-neutral-200 rounded px-3 py-2">{error}</div>}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
         <div className="border rounded-lg bg-white p-2.5 space-y-2">
@@ -334,7 +334,7 @@ export default function AgreementEditorPage() {
           </div>
           <label className="text-xs space-y-1 block">
             <span className="text-text-secondary">Second Party Name</span>
-            <input
+            <input aria-label="Blank until typed"
               data-agr-field="name"
               className="w-full border rounded px-2 py-1.5 text-sm"
               value={secondPartyName}
@@ -386,11 +386,11 @@ export default function AgreementEditorPage() {
             {logoSrc ? (
               <img src={logoSrc} alt="" className="h-10 w-10 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
             ) : null}
-            <div className="flex-1 text-center text-[#E67E22] font-bold text-sm uppercase tracking-wide leading-relaxed">
+            <div className="flex-1 text-center text-[#E67E22] font-bold text-sm leading-relaxed">
               {first.firstPartyName || 'First Party'}
             </div>
           </div>
-          <div className="text-center font-bold underline text-base mb-2 tracking-wide">BUSINESS DEVELOPMENT AGREEMENT</div>
+          <div className="text-center font-bold underline text-base mb-2 ">BUSINESS DEVELOPMENT AGREEMENT</div>
           <div className="text-center text-sm mb-6 underline">DATE-{agreementDate ? agreementDate.split('-').reverse().join('/') : ''}</div>
 
           <div className="text-sm leading-relaxed space-y-1.5 mb-5">

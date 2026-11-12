@@ -257,12 +257,12 @@ export default function ReturnCreatePage() {
           <table className="min-w-full divide-y divide-neutral-200">
             <thead className="bg-neutral-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-600 uppercase">Product</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-600 uppercase">Sold Qty</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-600 uppercase">Return Qty</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-600 uppercase">Condition</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-600 uppercase">Price</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-600 uppercase">Total</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-600 ">Product</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-600 ">Sold Qty</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-600 ">Return Qty</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-600 ">Condition</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-600 ">Price</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-600 ">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200">

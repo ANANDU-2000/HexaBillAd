@@ -709,8 +709,8 @@ const RouteDetailPage = () => {
               <table className="min-w-full divide-y divide-neutral-200">
                 <thead className="bg-neutral-50 sticky top-0">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Customer</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Actions</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 ">Customer</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 ">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 bg-white">
@@ -749,7 +749,7 @@ const RouteDetailPage = () => {
             <ul className="md:hidden divide-y divide-neutral-200 border border-neutral-200 rounded-lg bg-white" aria-label="Route invoices">
               {routeSales.map(s => {
                 const status = (s.status || 'Pending')
-                const tone = status.toLowerCase() === 'paid' ? 'bg-green-100 text-success-fg' : status.toLowerCase() === 'partial' ? 'bg-amber-100 text-warning-fg' : 'bg-red-100 text-error-fg'
+                const tone = status.toLowerCase() === 'paid' ? 'bg-green-100 text-success-fg' : status.toLowerCase() === 'partial' ? 'bg-warning-bg text-warning-fg' : 'bg-red-100 text-error-fg'
                 return (
                   <li key={s.id} className="px-3 py-3">
                     <div className="flex items-start justify-between gap-3">
@@ -779,12 +779,12 @@ const RouteDetailPage = () => {
               <table className="min-w-full divide-y divide-neutral-200">
                 <thead className="bg-neutral-50 sticky top-0">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Invoice No</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Customer</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Date</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Total</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Status</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Actions</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 ">Invoice No</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 ">Customer</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 ">Date</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 ">Total</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 ">Status</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 ">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 bg-white">
@@ -794,7 +794,7 @@ const RouteDetailPage = () => {
                       <td className="px-4 py-2 text-sm">{s.customerName || '—'}</td>
                       <td className="px-4 py-2 text-sm">{s.invoiceDate ? new Date(s.invoiceDate).toLocaleDateString() : '—'}</td>
                       <td className="px-4 py-2 text-sm text-right">{formatCurrency(s.grandTotal ?? s.total ?? 0)}</td>
-                      <td className="px-4 py-2 text-right"><span className={`px-2 py-0.5 rounded text-xs font-medium ${(s.status || '').toLowerCase() === 'paid' ? 'bg-green-100 text-success-fg' : (s.status || '').toLowerCase() === 'partial' ? 'bg-amber-100 text-warning-fg' : 'bg-red-100 text-error-fg'}`}>{s.status || 'Pending'}</span></td>
+                      <td className="px-4 py-2 text-right"><span className={`px-2 py-0.5 rounded text-xs font-medium ${(s.status || '').toLowerCase() === 'paid' ? 'bg-green-100 text-success-fg' : (s.status || '').toLowerCase() === 'partial' ? 'bg-warning-bg text-warning-fg' : 'bg-red-100 text-error-fg'}`}>{s.status || 'Pending'}</span></td>
                       <td className="px-4 py-2 text-right"><button type="button" onClick={() => navigate(`/sales-ledger?invoiceId=${s.id}`)} className="text-primary-600 hover:underline text-sm">View</button></td>
                     </tr>
                   ))}
@@ -837,7 +837,7 @@ const RouteDetailPage = () => {
                       <span className="font-medium">{e.category}</span>
                       <span className="text-neutral-600 ml-2">{formatCurrency(e.amount)}</span>
                       {e.description && <p className="text-sm text-neutral-500">{e.description}</p>}
-                      <p className="text-xs text-neutral-400">{e.expenseDate?.split('T')[0]}</p>
+                      <p className="text-xs text-slate-500">{e.expenseDate?.split('T')[0]}</p>
                     </div>
                     {canManage && (
                       <div className="flex items-center gap-1">
@@ -889,7 +889,7 @@ const RouteDetailPage = () => {
                           <span className="font-medium">{e.categoryName || 'Uncategorized'}</span>
                           <span className="text-neutral-600 ml-2">{formatCurrency(e.amount || 0)}</span>
                           {e.note && <p className="text-sm text-neutral-500">{e.note}</p>}
-                          <p className="text-xs text-neutral-400">{e.date ? new Date(e.date).toLocaleDateString() : '—'}</p>
+                          <p className="text-xs text-slate-500">{e.date ? new Date(e.date).toLocaleDateString() : '—'}</p>
                         </div>
                         <span className="text-xs text-neutral-500">Branch Expense</span>
                       </li>
@@ -950,15 +950,15 @@ const RouteDetailPage = () => {
                 <table className="min-w-full divide-y divide-neutral-200">
                   <thead className="bg-neutral-50 sticky top-0">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Name</th>
-                      {canManage && <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Actions</th>}
+                      <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 ">Name</th>
+                      {canManage && <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 ">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-200 bg-white">
                     {route?.assignedStaffName && (
                       <tr>
                         <td className="px-4 py-2 font-medium">{route.assignedStaffName} (Primary)</td>
-                        {canManage && <td className="px-4 py-2 text-right"><span className="text-xs text-neutral-400">Primary</span></td>}
+                        {canManage && <td className="px-4 py-2 text-right"><span className="text-xs text-slate-500">Primary</span></td>}
                       </tr>
                     )}
                     {(route?.staff || []).filter(s => s.userName !== route.assignedStaffName).map(s => (
@@ -1183,7 +1183,7 @@ const RouteDetailPage = () => {
             </div>
           )}
           {stopLocationEnabled && locationNeededStops(stopsMap).length > 0 && (
-            <div className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-3 text-sm" data-testid="planner-location-needed">
+            <div className="rounded-sm border border-neutral-200 bg-white p-3 text-sm" data-testid="planner-location-needed">
               <p className="font-medium text-warning-fg">Location needed</p>
               <p className="text-neutral-700">These stops have no shop location, so they are left off the map and the driver has no directions to them: {locationNeededStops(stopsMap).map((s) => s.customerName).join(', ')}.</p>
             </div>
@@ -1271,7 +1271,7 @@ const RouteDetailPage = () => {
               <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-600 mr-1" />Arrived</span>
               <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-success mr-1" />Delivered</span>
               <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-red-600 mr-1" />Failed</span>
-              <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-warning mr-1" />Skipped</span>
+              <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-warning-fg mr-1" />Skipped</span>
             </div>
           )}
         </div>
@@ -1374,9 +1374,9 @@ const RouteDetailPage = () => {
                   const statusColors = {
                     'NotVisited': 'bg-neutral-100 text-neutral-600',
                     'Visited': 'bg-primary-100 text-primary-700',
-                    'NotHome': 'bg-amber-100 text-warning-fg',
+                    'NotHome': 'bg-warning-bg text-warning-fg',
                     'PaymentCollected': 'bg-emerald-100 text-success-fg',
-                    'Rescheduled': 'bg-purple-100 text-purple-700',
+                    'Rescheduled': 'bg-slate-50 text-slate-700',
                     'Arrived': 'bg-sky-100 text-sky-800',
                     'Delivered': 'bg-green-100 text-success-fg',
                     'Failed': 'bg-red-100 text-error-fg',
@@ -1472,7 +1472,7 @@ const RouteDetailPage = () => {
                         </div>
                       </td>
                       <td className="py-2 px-2 print:py-1 print:px-1 text-center hidden print:table-cell">
-                        <div className={`w-6 h-6 border-2 rounded inline-block ${currentStatus === 'PaymentCollected' ? 'bg-emerald-200 border-emerald-400' : currentStatus === 'Visited' ? 'bg-primary-200 border-primary-400' : currentStatus === 'NotHome' ? 'bg-amber-200 border-amber-400' : 'border-neutral-400'}`} title={statusLabels[currentStatus] || currentStatus}></div>
+                        <div className={`w-6 h-6 border-2 rounded inline-block ${currentStatus === 'PaymentCollected' ? 'bg-emerald-200 border-emerald-400' : currentStatus === 'Visited' ? 'bg-primary-200 border-primary-400' : currentStatus === 'NotHome' ? 'bg-warning-bg border-warning-border' : 'border-neutral-400'}`} title={statusLabels[currentStatus] || currentStatus}></div>
                       </td>
                     </tr>
                   )
@@ -1488,9 +1488,9 @@ const RouteDetailPage = () => {
                     <div className="flex flex-wrap gap-4 print:gap-2">
                       <span><span className="inline-block w-3 h-3 rounded-full bg-neutral-200 border border-neutral-400 mr-1"></span> Not Visited</span>
                       <span><span className="inline-block w-3 h-3 rounded-full bg-primary-200 border border-primary-400 mr-1"></span> Visited</span>
-                      <span><span className="inline-block w-3 h-3 rounded-full bg-amber-200 border border-amber-400 mr-1"></span> Not Home</span>
+                      <span><span className="inline-block w-3 h-3 rounded-full bg-warning-bg border border-warning-border mr-1"></span> Not Home</span>
                       <span><span className="inline-block w-3 h-3 rounded-full bg-emerald-200 border border-emerald-400 mr-1"></span> Payment Collected</span>
-                      <span><span className="inline-block w-3 h-3 rounded-full bg-purple-200 border border-purple-400 mr-1"></span> Rescheduled</span>
+                      <span><span className="inline-block w-3 h-3 rounded-full bg-slate-50 border border-slate-200 mr-1"></span> Rescheduled</span>
                     </div>
                   </td>
                 </tr>

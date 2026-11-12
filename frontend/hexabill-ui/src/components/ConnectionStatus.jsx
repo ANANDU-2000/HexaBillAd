@@ -26,9 +26,9 @@ function ConnectionStatus() {
     <div
       role="status"
       aria-live="polite"
-      className={`fixed top-5 right-5 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl border transition-all duration-300 ease-out ${
-        isConnected
-          ? 'bg-success-bg border-success-border text-emerald-800'
+      className={`fixed top-5 right-5 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-sm border transition-all duration-300 ease-out ${
+ isConnected
+ ? 'bg-success-bg border-success-border text-emerald-800'
           : 'bg-white border-error-border text-red-800 shadow-red-100'
       }`}
     >

@@ -77,7 +77,7 @@ export function QuickCreateMenu () {
         <Plus className="h-4 w-4" aria-hidden /> New <ChevronDown className="h-4 w-4 opacity-80" aria-hidden />
       </button>
       {open && (
-        <div role="menu" aria-label="Create" className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-lg border border-surface-border bg-white shadow-lg">
+        <div role="menu" aria-label="Create" className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm">
           <ActionList actions={actions} onPick={(a) => { setOpen(false); navigate(a.href) }} variant="menu" />
         </div>
       )}

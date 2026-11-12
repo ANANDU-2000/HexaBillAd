@@ -421,3 +421,16 @@
     z-index: 60;
   }
 }
+
+/* UI/UX loop B1 (2026-11-12): calm page transition, press feedback, touch comfort (never on POS, Dashboard, Billing History). */
+@media (prefers-reduced-motion: no-preference) {
+  .hb-page-in { animation: hb-page-in 0.18s ease-out both; }
+  @keyframes hb-page-in { from { opacity: 0; transform: translateY(6px); } }
+  button:not(:disabled):active, [role="button"]:not([aria-disabled="true"]):active { transform: scale(0.985); }
+}
+@media (max-width: 1023px) {
+  [data-comfort="on"] button, [data-comfort="on"] select, [data-comfort="on"] [role="button"],
+  [data-comfort="on"] input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]) { min-height: 44px; }
+  [data-comfort="on"] button, [data-comfort="on"] a[class*="inline-flex"] { min-width: 44px; }
+  [data-comfort="on"] .text-xs { font-size: 13px; line-height: 1.25rem; }
+}

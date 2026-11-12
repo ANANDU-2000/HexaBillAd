@@ -854,7 +854,7 @@ const CustomersPage = () => {
             </p>
           </div>
           <div className="relative order-last min-w-0 basis-full lg:order-none lg:basis-0 lg:flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" aria-hidden />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden />
             <input
               type="search"
               placeholder="Search by name, phone or TRN"
@@ -1400,7 +1400,7 @@ const CustomersPage = () => {
               <div>
                 <p className="text-sm font-medium text-neutral-500">Current Balance</p>
                 <p className={`text-lg font-semibold ${selectedCustomer?.balance < 0 ? 'text-success' : selectedCustomer?.balance > 0 ? 'text-error' : 'text-neutral-600'
-                  }`}>
+ }`}>
                   {formatBalance(selectedCustomer?.balance || 0)}
                 </p>
               </div>
@@ -1450,22 +1450,22 @@ const CustomersPage = () => {
             <table className="min-w-full divide-y divide-neutral-200">
               <thead className="bg-neutral-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 ">
                     Date
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 ">
                     Type
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 ">
                     Reference
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 ">
                     Debit
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 ">
                     Credit
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 ">
                     Balance
                   </th>
                 </tr>
@@ -1496,7 +1496,7 @@ const CustomersPage = () => {
                         {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${entry.balance < 0 ? 'text-success' : entry.balance > 0 ? 'text-error' : 'text-neutral-900'
-                        }`}>
+ }`}>
                         {formatBalance(entry.balance)}
                       </td>
                     </tr>

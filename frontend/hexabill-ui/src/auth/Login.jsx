@@ -10,7 +10,7 @@ import { isSystemAdmin } from '../utils/superAdmin'
 import { getTenantHost } from '../tenant/tenantHost'
 
 const fieldClass = (invalid, hasIcon, hasEnd) =>
-  `block h-11 w-full rounded-md border bg-white px-3 text-base text-[#0F172A] shadow-none transition-colors placeholder:text-neutral-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:bg-[#F3F4F6] disabled:opacity-40 lg:h-[38px] lg:text-sm dark:border-[#1E293B] dark:bg-[#0F172A] dark:text-[#F8FAFC] dark:disabled:bg-[#1E293B] ${hasIcon ? 'ps-9' : ''} ${hasEnd ? 'pe-12' : ''} ${invalid ? 'border-red-300 focus:ring-red-500/20' : 'border-[#E5E7EB]'}`
+  `block h-11 w-full rounded-md border bg-white px-3 text-base text-[#0F172A] shadow-none transition-colors placeholder:text-slate-500 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:bg-[#F3F4F6] disabled:opacity-40 lg:h-[38px] lg:text-sm dark:border-[#1E293B] dark:bg-[#0F172A] dark:text-[#F8FAFC] dark:disabled:bg-[#1E293B] ${hasIcon ? 'ps-9' : ''} ${hasEnd ? 'pe-12' : ''} ${invalid ? 'border-red-300 focus:ring-red-500/20' : 'border-[#E5E7EB]'}`
 
 const AuthField = forwardRef(function AuthField({ id, label, error, icon: Icon, end, className = '', ...props }, ref) {
   const errorId = error ? `${id}-error` : undefined
@@ -22,7 +22,7 @@ const AuthField = forwardRef(function AuthField({ id, label, error, icon: Icon, 
       </label>
       <div className="relative">
         {Icon && (
-          <Icon className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" strokeWidth={2} aria-hidden="true" />
+          <Icon className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" strokeWidth={2} aria-hidden="true" />
         )}
         <input
           ref={ref}
@@ -48,7 +48,7 @@ function PasswordToggle({ shown, onClick, label }) {
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="flex h-11 w-11 items-center justify-center text-neutral-400 hover:text-neutral-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 lg:h-8 lg:w-8 dark:hover:text-[#F8FAFC]"
+      className="flex h-11 w-11 items-center justify-center text-slate-500 hover:text-neutral-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 lg:h-8 lg:w-8 dark:hover:text-[#F8FAFC]"
     >
       <Icon className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
     </button>

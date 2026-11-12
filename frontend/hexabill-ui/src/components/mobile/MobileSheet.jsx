@@ -71,7 +71,7 @@ const MobileSheet = ({
         <div
           ref={panelRef}
           tabIndex={-1}
-          className={`relative w-full rounded-t-xl lg:rounded-lg bg-white outline-none shadow-lg flex flex-col max-h-[92dvh] lg:max-h-[88dvh] animate-slideUp ${sizeClasses[size]}`}
+          className={`relative w-full rounded-t-xl lg:rounded-lg bg-white outline-none shadow-sm flex flex-col max-h-[92dvh] lg:max-h-[88dvh] animate-slideUp ${sizeClasses[size]}`}
         >
           {/* Grab handle (mobile hint) */}
           <div className="flex justify-center pt-2.5 lg:hidden" aria-hidden="true">

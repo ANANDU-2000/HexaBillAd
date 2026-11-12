@@ -83,7 +83,7 @@ const SuperAdminHealthPage = () => {
         <button
           onClick={handleCheckAgain}
           disabled={checking}
-          className="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 shadow-sm hover:shadow-md transition-all space-x-2 disabled:opacity-60"
+          className="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 shadow-sm hover:shadow-sm transition-all space-x-2 disabled:opacity-60"
         >
           <RefreshCw className={`h-5 w-5 ${checking ? 'animate-spin' : ''}`} />
           <span>{checking ? 'Checking…' : 'Check again'}</span>
@@ -98,7 +98,7 @@ const SuperAdminHealthPage = () => {
       </p>
 
       {error && (
-        <div className="mb-6 p-4 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm flex items-start gap-3">
+        <div className="mb-6 p-4 bg-white border border-neutral-200 rounded-sm flex items-start gap-3">
           <XCircle className="h-6 w-6 text-error flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-red-800">Error</p>
@@ -138,8 +138,8 @@ const SuperAdminHealthPage = () => {
           {/* Migrations */}
           <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-lg bg-purple-100">
-                <Hash className="h-6 w-6 text-purple-600" />
+              <div className="p-2.5 rounded-lg bg-slate-50">
+                <Hash className="h-6 w-6 text-slate-700" />
               </div>
               <h2 className="text-lg font-semibold text-neutral-900">Migrations</h2>
             </div>
@@ -163,7 +163,7 @@ const SuperAdminHealthPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowMigrateModal(true)}
-                  className="inline-flex items-center justify-center px-4 py-2 bg-warning text-white text-sm font-semibold rounded-lg hover:bg-amber-700 transition-all"
+                  className="inline-flex items-center justify-center px-4 py-2 bg-warning-fg text-white text-sm font-semibold rounded-lg hover:bg-warning-fg transition-all"
                 >
                   Run migrations
                 </button>
@@ -215,7 +215,7 @@ const SuperAdminHealthPage = () => {
       {/* Run migrations confirmation modal */}
       {showMigrateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" aria-modal="true">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+          <div className="bg-white rounded-lg shadow-sm max-w-md w-full p-6">
             <h3 className="text-lg font-semibold text-neutral-900 mb-2">Apply pending migrations?</h3>
             <p className="text-neutral-600 text-sm mb-4">
               {health?.migrations?.pending?.length ?? 0} migration(s) will be applied. This may take a moment. Do not close the app.
@@ -233,7 +233,7 @@ const SuperAdminHealthPage = () => {
                 type="button"
                 onClick={handleRunMigrations}
                 disabled={migrating}
-                className="inline-flex items-center justify-center px-4 py-2 bg-warning text-white font-semibold rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-all"
+                className="inline-flex items-center justify-center px-4 py-2 bg-warning-fg text-white font-semibold rounded-lg hover:bg-warning-fg disabled:opacity-60 transition-all"
               >
                 {migrating ? 'Applying…' : 'Apply'}
               </button>

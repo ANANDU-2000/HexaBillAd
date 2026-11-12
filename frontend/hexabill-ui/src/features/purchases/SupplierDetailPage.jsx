@@ -429,7 +429,7 @@ const SupplierDetailPage = () => {
           <h1 className="break-words text-lg sm:text-xl font-semibold text-neutral-900">{supplierName}</h1>
           <p className="text-xs text-neutral-500">Supplier ledger</p>
         </div>
-        {supplierInfo?.isActive === false && <span className="text-micro px-1.5 py-0.5 rounded bg-warning-bg text-amber-800 border border-warning-border">Deactivated</span>}
+        {supplierInfo?.isActive === false && <span className="text-micro px-1.5 py-0.5 rounded bg-warning-bg text-warning-fg border border-warning-border">Deactivated</span>}
         {canPay && supplierInfo?.id > 0 && (
           <button type="button" onClick={goEdit} className={btnOutline} aria-label="Edit supplier"><Pencil className="h-4 w-4" /> Edit</button>
         )}
@@ -662,7 +662,7 @@ const SupplierDetailPage = () => {
                         <p className="font-medium text-neutral-900">{p.invoiceNo}</p>
                         <p className="text-xs text-neutral-500">{formatDate(p.purchaseDate)}</p>
                       </div>
-                      <span className={`text-micro font-medium px-1.5 py-0.5 rounded h-fit ${(p.paymentStatus || '').toLowerCase() === 'partial' ? 'bg-warning-bg text-amber-800' : 'bg-neutral-100 text-neutral-700'}`}>{p.paymentStatus || 'Unpaid'}</span>
+                      <span className={`text-micro font-medium px-1.5 py-0.5 rounded h-fit ${(p.paymentStatus || '').toLowerCase() === 'partial' ? 'bg-warning-bg text-warning-fg' : 'bg-neutral-100 text-neutral-700'}`}>{p.paymentStatus || 'Unpaid'}</span>
                     </div>
                     <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
                       <div><p className="text-neutral-500">Total</p><p className="tabular-nums">{formatCurrency(p.totalAmount || 0)}</p></div>

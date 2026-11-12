@@ -61,11 +61,11 @@ export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 overflow-y-auto">
-      <div className="relative w-full max-w-3xl rounded-2xl bg-white shadow-2xl border border-neutral-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+      <div className="relative w-full max-w-3xl rounded-2xl bg-white shadow-sm border border-neutral-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Modal Top Header */}
         <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-50 px-5 py-3 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+            <span className="inline-flex items-center rounded-md bg-warning-bg px-2 py-0.5 text-xs font-semibold text-warning-fg">
               STARPLUS HISTORICAL ARCHIVE
             </span>
             <span className="text-xs text-neutral-500 font-mono">
@@ -85,7 +85,7 @@ export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose })
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700"
+              className="rounded-lg p-1 text-slate-500 hover:bg-neutral-200 hover:text-neutral-700"
             >
               <X className="h-5 w-5" />
             </button>
@@ -112,8 +112,8 @@ export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose })
           ) : invoice ? (
             <>
               {/* Disclaimer Notice */}
-              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-900 flex items-start gap-3">
-                <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="rounded-xl border border-warning-border bg-warning-bg/70 p-3.5 text-xs text-warning-fg flex items-start gap-3">
+                <ShieldCheck className="h-5 w-5 text-warning-fg shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold">Historical Document Identity:</span> This invoice was originally issued by{' '}
                   <span className="font-semibold">{invoice.legacyIssuer || 'STARPLUS FOODSTUFF TRADING'}</span> under TRN{' '}
@@ -143,11 +143,11 @@ export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose })
                 <div>
                   <span className="text-neutral-500 block">Payment Status</span>
                   {invoice.outstandingCalculated <= 0.005 ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 mt-0.5">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 mt-0.5">
                       <CheckCircle2 className="h-3 w-3" /> Fully Settled
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800 mt-0.5">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 mt-0.5">
                       <Clock className="h-3 w-3" /> Cutover Pending
                     </span>
                   )}
@@ -157,7 +157,7 @@ export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose })
               {/* Line Items Section */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-700">Line Items</h4>
+                  <h4 className="text-xs font-bold text-neutral-700">Line Items</h4>
                   <span className="text-xs text-neutral-500">{invoice.items?.length || 0} items listed</span>
                 </div>
 
@@ -179,7 +179,7 @@ export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose })
                           <tr key={item.id || idx} className="hover:bg-neutral-50">
                             <td className="px-3 py-2 text-neutral-900 font-medium">
                               <div>{item.productName}</div>
-                              {item.sku && <span className="text-[10px] text-neutral-500 font-mono">SKU: {item.sku}</span>}
+                              {item.sku && <span className="text-xs text-neutral-500 font-mono">SKU: {item.sku}</span>}
                             </td>
                             <td className="px-3 py-2 text-center text-neutral-600">{item.unitType || 'PCS'}</td>
                             <td className="px-3 py-2 text-right font-medium text-neutral-900">{item.quantity}</td>
@@ -192,12 +192,12 @@ export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose })
                     </table>
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center">
-                    <AlertTriangle className="h-5 w-5 text-amber-600 mx-auto" />
-                    <p className="mt-1 text-xs font-semibold text-amber-900">
+                  <div className="rounded-lg border border-warning-border bg-warning-bg p-4 text-center">
+                    <AlertTriangle className="h-5 w-5 text-warning-fg mx-auto" />
+                    <p className="mt-1 text-xs font-semibold text-warning-fg">
                       Incomplete Source Data — Financial Totals Preserved from Starplus Ledger
                     </p>
-                    <p className="text-[11px] text-amber-700 mt-0.5">
+                    <p className="text-xs text-warning-fg mt-0.5">
                       Original transaction line items were not present in the legacy export, but total amount ({formatCurrency(invoice.grandTotal)}) and payments are verified.
                     </p>
                   </div>
@@ -207,7 +207,7 @@ export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose })
               {/* Payments Section */}
               {invoice.payments && invoice.payments.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-700">Historical Payment Records</h4>
+                  <h4 className="text-xs font-bold text-neutral-700">Historical Payment Records</h4>
                   <div className="overflow-x-auto border border-neutral-200 rounded-lg">
                     <table className="min-w-full divide-y divide-neutral-200 text-xs">
                       <thead className="bg-neutral-100 text-neutral-700 font-semibold">
@@ -229,13 +229,13 @@ export default function LegacyInvoiceDetailModal({ invoiceId, isOpen, onClose })
                             </td>
                             <td className="px-3 py-2 text-center font-medium text-neutral-800">{p.mode}</td>
                             <td className="px-3 py-2 text-center">
-                              <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                                (p.status || '').toUpperCase() === 'CLEARED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                              }`}>
+                              <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-semibold ${
+ (p.status || '').toUpperCase() === 'CLEARED' ? 'bg-emerald-100 text-emerald-800' : 'bg-warning-bg text-warning-fg'
+ }`}>
                                 {p.status}
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-neutral-500 font-mono text-[11px]">{p.reference || '—'}</td>
+                            <td className="px-3 py-2 text-neutral-500 font-mono text-xs">{p.reference || '—'}</td>
                             <td className="px-3 py-2 text-right font-bold text-emerald-700">{formatCurrency(p.amount)}</td>
                           </tr>
                         ))}

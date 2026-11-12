@@ -313,10 +313,10 @@ const BranchesPage = () => {
                       <div>
                         <p className="font-medium text-neutral-900">{b.name}</p>
                         {b.address && <p className="text-sm text-neutral-500">{b.address}</p>}
-                        <p className="text-xs text-neutral-400">{b.routeCount || 0} route(s)</p>
+                        <p className="text-xs text-slate-500">{b.routeCount || 0} route(s)</p>
                       </div>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-neutral-400" />
+                    <ChevronRight className="h-5 w-5 text-slate-500" />
                   </Link>
                 </li>
               ))}
@@ -393,9 +393,9 @@ const BranchesPage = () => {
                       <div className="min-w-0">
                         <p className="font-medium text-neutral-900">{r.name}</p>
                         <p className="text-sm text-neutral-500">{r.branchName ?? '—'}</p>
-                        <p className="text-xs text-neutral-400">{r.customerCount ?? 0} customer(s), {r.staffCount ?? 0} staff</p>
+                        <p className="text-xs text-slate-500">{r.customerCount ?? 0} customer(s), {r.staffCount ?? 0} staff</p>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-neutral-400 shrink-0" />
+                      <ChevronRight className="h-5 w-5 text-slate-500 shrink-0" />
                     </Link>
                     {canManage && (
                       <div className="flex items-center gap-1 shrink-0">

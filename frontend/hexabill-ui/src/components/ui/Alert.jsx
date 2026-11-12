@@ -3,10 +3,10 @@ import { CheckCircle2, AlertTriangle, XCircle, Info, X } from 'lucide-react'
 // Flat ERP notice: white panel, hairline border, a solid status bar on the left, neutral text.
 // Colour is carried only by the bar and the icon so long messages stay readable.
 export const NOTICE_TONES = {
-  info: { bar: 'border-l-info', icon: 'text-info', Icon: Info },
-  success: { bar: 'border-l-success', icon: 'text-success', Icon: CheckCircle2 },
-  warning: { bar: 'border-l-warning', icon: 'text-warning', Icon: AlertTriangle },
-  error: { bar: 'border-l-error', icon: 'text-error', Icon: XCircle },
+  info: { bar: '', icon: 'text-info', Icon: Info },
+  success: { bar: '', icon: 'text-success', Icon: CheckCircle2 },
+  warning: { bar: '', icon: 'text-warning', Icon: AlertTriangle },
+  error: { bar: '', icon: 'text-error', Icon: XCircle },
 }
 
 /**
@@ -19,7 +19,7 @@ export default function Alert({ tone = 'info', title, children, action, onDismis
   return (
     <div
       role={assertive ? 'alert' : 'status'}
-      className={`flex items-start gap-3 rounded-sm border border-neutral-200 border-l-4 bg-white px-3 py-2.5 text-sm text-text-primary ${bar} ${className}`}
+      className={`flex items-start gap-3 rounded-sm border border-neutral-200 bg-white px-3 py-2.5 text-sm text-text-primary ${bar} ${className}`}
     >
       <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${icon}`} strokeWidth={2} aria-hidden />
       <div className="min-w-0 flex-1">

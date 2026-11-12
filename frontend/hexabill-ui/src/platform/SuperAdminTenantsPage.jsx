@@ -310,7 +310,7 @@ const SuperAdminTenantsPage = () => {
       key: 'name', label: (
         <div className="flex flex-col">
           <span>Company Name</span>
-          <span className="text-micro font-normal text-neutral-400">English / Arabic</span>
+          <span className="text-micro font-normal text-slate-500">English / Arabic</span>
         </div>
       )
     },
@@ -343,10 +343,10 @@ const SuperAdminTenantsPage = () => {
           <span className="text-xs text-neutral-500 truncate max-w-[160px]" title={tenant.companyNameEn}>{tenant.companyNameEn}</span>
         )}
         {tenant.companyNameAr && tenant.companyNameAr.trim() && (
-          <span className="text-xs text-neutral-400 truncate max-w-[160px]" dir="rtl" title={tenant.companyNameAr}>{tenant.companyNameAr}</span>
+          <span className="text-xs text-slate-500 truncate max-w-[160px]" dir="rtl" title={tenant.companyNameAr}>{tenant.companyNameAr}</span>
         )}
         {tenant.sharedVatTenantCount > 1 && (
-          <span className="text-xs text-amber-800" title="Shared VAT registration is allowed. Each workspace retains its own data and reports.">
+          <span className="text-xs text-warning-fg" title="Shared VAT registration is allowed. Each workspace retains its own data and reports.">
             Shared VAT TRN · {tenant.sharedVatTenantCount} workspaces
           </span>
         )}
@@ -380,20 +380,20 @@ const SuperAdminTenantsPage = () => {
             <span className="text-xs text-neutral-500 truncate max-w-[160px]">{tenant.companyNameEn}</span>
           )}
           {tenant.companyNameAr && (
-            <span className="text-xs text-neutral-400 truncate max-w-[160px]" dir="rtl">{tenant.companyNameAr}</span>
+            <span className="text-xs text-slate-500 truncate max-w-[160px]" dir="rtl">{tenant.companyNameAr}</span>
           )}
           {tenant.sharedVatTenantCount > 1 && (
-            <span className="text-xs text-amber-800">Shared VAT TRN · {tenant.sharedVatTenantCount} workspaces</span>
+            <span className="text-xs text-warning-fg">Shared VAT TRN · {tenant.sharedVatTenantCount} workspaces</span>
           )}
         </div>
       </div>
     ),
     totalRevenue: formatCurrency(tenant.totalRevenue || 0),
     status: getStatusBadge(tenant.status, tenant.subscription?.status),
-    plan: tenant.planName ? <span className="text-neutral-700">{tenant.planName}</span> : <span className="text-neutral-400">—</span>,
+    plan: tenant.planName ? <span className="text-neutral-700">{tenant.planName}</span> : <span className="text-slate-500">—</span>,
     lastActivity: tenant.lastActivity
       ? new Date(tenant.lastActivity).toLocaleDateString(undefined, { dateStyle: 'short' })
-      : <span className="text-neutral-400">—</span>,
+      : <span className="text-slate-500">—</span>,
     createdAt: new Date(tenant.createdAt).toLocaleDateString(),
     actions: (
       <div className="flex items-center space-x-2">
@@ -405,7 +405,7 @@ const SuperAdminTenantsPage = () => {
             }
             window.open(tenant.loginUrl, '_blank', 'noopener,noreferrer')
           }}
-          className="p-1 text-indigo-600 hover:bg-indigo-50 rounded"
+          className="p-1 text-slate-700 hover:bg-slate-100 rounded"
           title="Enter Workspace"
         >
           <LogIn className="h-4 w-4" />
@@ -466,7 +466,7 @@ const SuperAdminTenantsPage = () => {
         </div>
         <button
           onClick={() => { setSharedLegalSource(null); setLegalIdentityConfirmed(false); setCreateError(''); setShowCreateModal(true) }}
-          className="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 shadow-sm hover:shadow-md transition-all space-x-2"
+          className="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 shadow-sm hover:shadow-sm transition-all space-x-2"
         >
           <Plus className="h-5 w-5" />
           <span>Add New Company</span>
@@ -512,7 +512,7 @@ const SuperAdminTenantsPage = () => {
               setSearchTerm(e.target.value)
               setCurrentPage(1)
             }}
-            icon={<Search className="h-5 w-5 text-neutral-400" />}
+            icon={<Search className="h-5 w-5 text-slate-500" />}
           />
           <Select
             label="Status"
@@ -542,15 +542,15 @@ const SuperAdminTenantsPage = () => {
 
       {/* Bulk actions bar */}
       {selectedIds.size > 0 && (
-        <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg flex flex-wrap items-center justify-between gap-3">
-          <span className="text-sm font-medium text-indigo-900">
+        <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-lg flex flex-wrap items-center justify-between gap-3">
+          <span className="text-sm font-medium text-slate-700">
             {selectedIds.size} selected
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setShowBulkExtendModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-warning text-white rounded-lg hover:bg-amber-700 text-sm font-medium"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-warning-fg text-white rounded-lg hover:bg-warning-fg text-sm font-medium"
             >
               <CalendarPlus className="h-4 w-4" />
               Extend trial
@@ -558,7 +558,7 @@ const SuperAdminTenantsPage = () => {
             <button
               type="button"
               onClick={() => setShowBulkAnnouncementModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
             >
               <Megaphone className="h-4 w-4" />
               Send announcement
@@ -584,7 +584,7 @@ const SuperAdminTenantsPage = () => {
               <button
                 type="button"
                 onClick={toggleSelectAll}
-                className="text-indigo-600 hover:underline"
+                className="text-slate-700 hover:underline"
               >
                 {selectedIds.size === tenants.length ? 'Clear selection' : 'Select all on this page'}
               </button>
@@ -611,7 +611,7 @@ const SuperAdminTenantsPage = () => {
         title="Suspend Company"
       >
         <div className="p-1">
-          <div className="flex items-center space-x-3 text-neutral-800 mb-4 p-3 bg-white rounded-sm border border-neutral-200 border-l-4 border-l-warning">
+          <div className="flex items-center space-x-3 text-neutral-800 mb-4 p-3 bg-white rounded-sm border border-neutral-200 ">
             <Ban className="h-6 w-6" />
             <p className="font-medium">You are about to suspend this company's access.</p>
           </div>
@@ -627,7 +627,7 @@ const SuperAdminTenantsPage = () => {
             <textarea
               value={suspendReason}
               onChange={(e) => setSuspendReason(e.target.value)}
-              className="w-full border border-neutral-300 rounded-lg p-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
+              className="w-full border border-neutral-300 rounded-lg p-3 focus:ring-2 focus:ring-warning-border focus:border-warning-border outline-none transition-all"
               rows={3}
               placeholder="e.g., Unpaid subscription, Violation of terms..."
             />
@@ -646,7 +646,7 @@ const SuperAdminTenantsPage = () => {
             </button>
             <LoadingButton
               onClick={handleSuspend}
-              className="px-5 py-2.5 bg-warning text-white font-semibold rounded-lg hover:bg-amber-700 shadow-md hover:shadow-lg transition-all"
+              className="px-5 py-2.5 bg-warning-fg text-white font-semibold rounded-lg hover:bg-warning-fg shadow-sm hover:shadow-sm transition-all"
             >
               Suspend Access
             </LoadingButton>
@@ -679,7 +679,7 @@ const SuperAdminTenantsPage = () => {
             <button type="button" onClick={() => setShowBulkExtendModal(false)} className="px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded-lg">
               Cancel
             </button>
-            <LoadingButton onClick={handleBulkExtendTrial} loading={bulkActionLoading} className="px-4 py-2 bg-warning text-white rounded-lg hover:bg-amber-700">
+            <LoadingButton onClick={handleBulkExtendTrial} loading={bulkActionLoading} className="px-4 py-2 bg-warning-fg text-white rounded-lg hover:bg-warning-fg">
               Extend trial
             </LoadingButton>
           </div>
@@ -698,7 +698,7 @@ const SuperAdminTenantsPage = () => {
           </p>
           <div className="space-y-2 mb-4">
             <label className="block text-sm font-semibold text-neutral-700">Title</label>
-            <input
+            <input aria-label="Platform announcement"
               type="text"
               value={bulkAnnouncementTitle}
               onChange={(e) => setBulkAnnouncementTitle(e.target.value)}
@@ -732,7 +732,7 @@ const SuperAdminTenantsPage = () => {
             <button type="button" onClick={() => { setShowBulkAnnouncementModal(false); setBulkAnnouncementTitle(''); setBulkAnnouncementMessage('') }} className="px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded-lg">
               Cancel
             </button>
-            <LoadingButton onClick={handleBulkAnnouncement} loading={bulkActionLoading} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+            <LoadingButton onClick={handleBulkAnnouncement} loading={bulkActionLoading} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
               Send announcement
             </LoadingButton>
           </div>
@@ -873,7 +873,7 @@ const SuperAdminTenantsPage = () => {
         }} className="space-y-6 px-1">
 
           {createError && <p id="company-create-error" ref={createErrorRef} role="alert" tabIndex={-1}
-            className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white p-3 text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-red-500">{createError}</p>}
+            className="rounded-sm border border-neutral-200 bg-white p-3 text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-red-500">{createError}</p>}
 
           {sharedLegalSource && (
             <section className="rounded-lg border border-primary-200 bg-primary-50 p-4 text-sm">
@@ -1090,7 +1090,7 @@ const SuperAdminTenantsPage = () => {
             <LoadingButton
               type="submit"
               loading={createLoading}
-              className="px-8 py-3 bg-gradient-to-r from-primary-600 to-indigo-700 text-white font-bold rounded-lg hover:shadow-lg hover:from-primary-700 hover:to-indigo-800 transition-all transform hover:-translate-y-0.5"
+              className="px-8 py-3 from-primary-600 text-white font-bold rounded-lg hover:shadow-sm hover:from-primary-700 hover:transition-all transform hover:-translate-y-0.5"
             >
               {sharedLegalSource ? 'Create owner workspace' : 'Create company'}
             </LoadingButton>
@@ -1108,7 +1108,7 @@ const SuperAdminTenantsPage = () => {
         size="md"
       >
         <div className="p-1">
-          <div className="flex items-center space-x-3 text-neutral-800 mb-4 bg-white p-4 rounded-sm border border-neutral-200 border-l-4 border-l-error">
+          <div className="flex items-center space-x-3 text-neutral-800 mb-4 bg-white p-4 rounded-sm border border-neutral-200 ">
             <AlertTriangle className="h-6 w-6" />
             <span className="font-bold">Permanent Deletion</span>
           </div>
@@ -1148,20 +1148,20 @@ const SuperAdminTenantsPage = () => {
         showCloseButton={false}
       >
         <div className="space-y-6 p-2">
-          <p className="text-neutral-800 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4 text-sm font-medium">
+          <p className="text-neutral-800 bg-white border border-neutral-200 rounded-sm p-4 text-sm font-medium">
             These credentials are shown only once. Save them before closing.
           </p>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Login URL</label>
+              <label className="block text-xs font-medium text-neutral-500 mb-1">Login URL</label>
               <p className="font-mono text-sm bg-neutral-100 p-3 rounded border break-all">{credentialsData?.clientAppLink || '—'}</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Owner Email</label>
+              <label className="block text-xs font-medium text-neutral-500 mb-1">Owner Email</label>
               <p className="font-mono text-sm bg-neutral-100 p-3 rounded border">{credentialsData?.email || '—'}</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">One-time Invite Link</label>
+              <label className="block text-xs font-medium text-neutral-500 mb-1">One-time Invite Link</label>
               <p className="font-mono text-sm bg-neutral-100 p-3 rounded border break-all">{credentialsData?.inviteUrl || '—'}</p>
               <p className="text-xs text-neutral-500 mt-1">The owner opens this link on the tenant address and sets a permanent password. It expires after 48 hours and can only be used once.</p>
             </div>

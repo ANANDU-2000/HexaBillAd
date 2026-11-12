@@ -28,7 +28,7 @@ const Input = forwardRef(({
       )}
       <div className="relative group">
         {icon && (
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors group-focus-within:text-primary-500 text-neutral-400">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors group-focus-within:text-primary-500 text-slate-500">
             {icon}
           </div>
         )}
@@ -38,9 +38,9 @@ const Input = forwardRef(({
           required={required}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : helperText ? helperId : undefined}
-          className={`block w-full ${icon ? 'pl-10' : 'px-3'} min-h-[44px] lg:min-h-[40px] py-2 bg-white border rounded-md placeholder:text-neutral-400 text-neutral-900 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 disabled:bg-neutral-50 disabled:text-neutral-500 disabled:cursor-not-allowed text-base lg:text-sm ${error
-            ? 'border-error focus:ring-error/20 focus:border-error'
-            : 'border-neutral-300'
+          className={`block w-full ${icon ? 'pl-10' : 'px-3'} min-h-[44px] lg:min-h-[40px] py-2 bg-white border rounded-md placeholder:text-slate-500 text-neutral-900 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 disabled:bg-neutral-50 disabled:text-neutral-500 disabled:cursor-not-allowed text-base lg:text-sm ${error
+ ? 'border-error focus:ring-error/20 focus:border-error'
+ : 'border-neutral-300'
             } ${className}`}
           {...props}
         />
@@ -99,7 +99,7 @@ const Select = forwardRef(({
       )}
       <div className="relative group">
         {icon && (
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors group-focus-within:text-primary-500 text-neutral-400">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors group-focus-within:text-primary-500 text-slate-500">
             {icon}
           </div>
         )}
@@ -110,8 +110,8 @@ const Select = forwardRef(({
           aria-invalid={!!error}
           aria-describedby={error ? errorId : helperText ? helperId : undefined}
           className={`block w-full ${icon ? 'pl-10' : 'px-3'} min-h-[44px] lg:min-h-[40px] py-2 bg-white border rounded-md text-neutral-900 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 disabled:bg-neutral-50 disabled:text-neutral-500 disabled:cursor-not-allowed text-base lg:text-sm appearance-none ${error
-            ? 'border-error focus:ring-error/20 focus:border-error'
-            : 'border-neutral-300'
+ ? 'border-error focus:ring-error/20 focus:border-error'
+ : 'border-neutral-300'
             } ${className}`}
           style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
           {...props}
@@ -171,9 +171,9 @@ const TextArea = forwardRef(({
           rows={rows}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : helperText ? helperId : undefined}
-          className={`block w-full px-3 min-h-[44px] lg:min-h-[40px] py-2 bg-white border rounded-md placeholder:text-neutral-400 text-neutral-900 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 disabled:bg-neutral-50 disabled:text-neutral-500 disabled:cursor-not-allowed text-base lg:text-sm ${error
-            ? 'border-error focus:ring-error/20 focus:border-error'
-            : 'border-neutral-300'
+          className={`block w-full px-3 min-h-[44px] lg:min-h-[40px] py-2 bg-white border rounded-md placeholder:text-slate-500 text-neutral-900 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 disabled:bg-neutral-50 disabled:text-neutral-500 disabled:cursor-not-allowed text-base lg:text-sm ${error
+ ? 'border-error focus:ring-error/20 focus:border-error'
+ : 'border-neutral-300'
             } ${className}`}
           {...props}
         />

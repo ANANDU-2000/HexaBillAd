@@ -69,7 +69,7 @@ const SuperAdminSubscriptionsPage = () => {
     const s = (status || '').toLowerCase()
     const expiring = trialEndDate && new Date(trialEndDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     if (expiring && s === 'trial') {
-      return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">Trial (Expiring)</span>
+      return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-warning-bg text-warning-fg">Trial (Expiring)</span>
     }
     const map = {
       active: 'bg-green-100 text-green-800',
@@ -171,12 +171,12 @@ const SuperAdminSubscriptionsPage = () => {
             <table className="min-w-full divide-y divide-neutral-200">
               <thead className="bg-neutral-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Company</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Plan</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Trial End</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">MRR</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Company</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Plan</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Trial End</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">MRR</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">

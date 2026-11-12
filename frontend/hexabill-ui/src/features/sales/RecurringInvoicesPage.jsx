@@ -75,7 +75,7 @@ const RecurringInvoicesPage = () => {
         <div className="py-12 text-center text-neutral-500">Loading...</div>
       ) : list.length === 0 ? (
         <div className="bg-neutral-50 rounded-lg border border-neutral-200 p-12 text-center">
-          <FileText className="h-12 w-12 text-neutral-400 mx-auto mb-3" />
+          <FileText className="h-12 w-12 text-slate-500 mx-auto mb-3" />
           <p className="text-neutral-600">No recurring invoices yet</p>
           <p className="text-sm text-neutral-500 mt-1">Create one to automatically generate invoices on a schedule</p>
         </div>

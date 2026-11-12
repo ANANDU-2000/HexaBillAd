@@ -83,7 +83,7 @@ export default function OverflowMenu({ items = [], label = 'More actions', butto
           aria-label={label}
           onKeyDown={onMenuKeyDown}
           style={pos || { visibility: 'hidden' }}
-          className="fixed z-dropdown min-w-[12rem] max-w-[calc(100vw-2rem)] rounded-lg border border-surface-border bg-white py-1 shadow-lg"
+          className="fixed z-dropdown min-w-[12rem] max-w-[calc(100vw-2rem)] rounded-lg border border-surface-border bg-white py-1 shadow-sm"
         >
           {visible.map((item, idx) => {
             const Icon = item.icon
@@ -96,8 +96,8 @@ export default function OverflowMenu({ items = [], label = 'More actions', butto
                   disabled={item.disabled}
                   onClick={() => { setOpen(false); item.onClick?.() }}
                   className={`flex min-h-[44px] w-full items-center gap-2.5 px-3 text-start text-sm md:min-h-[36px] disabled:cursor-not-allowed disabled:opacity-40 ${
-                    item.danger ? 'text-error-fg hover:bg-error-bg focus:bg-error-bg' : 'text-text-primary hover:bg-neutral-50 focus:bg-neutral-50'
-                  } focus:outline-none`}
+ item.danger ? 'text-error-fg hover:bg-error-bg focus:bg-error-bg' : 'text-text-primary hover:bg-neutral-50 focus:bg-neutral-50'
+ } focus:outline-none`}
                 >
                   {Icon && <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />}
                   {item.label}

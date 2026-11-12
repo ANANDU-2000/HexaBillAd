@@ -9,7 +9,7 @@ const DateField = forwardRef(({ label, value, onChange, error, disabled = false,
   const generatedId = useId()
   const inputId = id || generatedId
   const set = (v) => onChange?.({ target: { name, value: v }, type: 'change' })
-  const chip = 'rounded px-1.5 py-0.5 text-[11px] font-medium text-primary-700 hover:bg-primary-50 disabled:opacity-50 disabled:hover:bg-transparent'
+  const chip = 'rounded px-1.5 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-50 disabled:opacity-50 disabled:hover:bg-transparent'
   return (
     <div className="space-y-1 text-left">
       <div className="flex items-center justify-between gap-2">

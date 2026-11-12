@@ -254,7 +254,7 @@ const OnboardingWizard = () => {
 
   return (
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full bg-white rounded-lg shadow-lg p-8">
+      <div className="max-w-2xl w-full bg-white rounded-lg shadow-sm p-8">
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -266,8 +266,8 @@ const OnboardingWizard = () => {
               return (
                 <div key={step.number} className="flex flex-col items-center flex-1">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 ${
-                    isCompleted ? 'bg-success text-white' :
-                    isCurrent ? 'bg-primary-600 text-white' :
+ isCompleted ? 'bg-success text-white' :
+ isCurrent ? 'bg-primary-600 text-white' :
                     'bg-neutral-200 text-neutral-500'
                   }`}>
                     {isCompleted ? (
@@ -277,8 +277,8 @@ const OnboardingWizard = () => {
                     )}
                   </div>
                   <span className={`text-xs font-medium ${
-                    isCurrent ? 'text-primary-600' : 'text-neutral-500'
-                  }`}>
+ isCurrent ? 'text-primary-600' : 'text-neutral-500'
+ }`}>
                     {step.title}
                   </span>
                 </div>

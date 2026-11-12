@@ -34,7 +34,7 @@ const MorePage = () => {
             <section key={group.id} aria-labelledby={`more-${group.id}`}>
               <h2
                 id={`more-${group.id}`}
-                className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-500"
+                className="mb-3 text-xs font-semibold text-neutral-500"
               >
                 {group.label}
               </h2>
@@ -47,9 +47,9 @@ const MorePage = () => {
                       <Link
                         to={item.href}
                         aria-current={active ? 'page' : undefined}
-                        className={`group flex h-full items-center gap-4 rounded-xl border p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-                          active
-                            ? 'border-primary-300 bg-primary-50'
+                        className={`group flex h-full items-center gap-4 rounded-xl border p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+ active
+ ? 'border-primary-300 bg-primary-50'
                             : 'border-neutral-200 bg-white hover:border-primary-300'
                         }`}
                       >
@@ -67,7 +67,7 @@ const MorePage = () => {
                           )}
                         </span>
                         <ChevronRight
-                          className="h-4 w-4 shrink-0 text-neutral-400 transition-transform group-hover:translate-x-0.5 group-hover:text-primary-600"
+                          className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-hover:translate-x-0.5 group-hover:text-primary-600"
                           aria-hidden
                         />
                       </Link>

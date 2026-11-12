@@ -108,8 +108,8 @@ export default function DeliveryNotesPage() {
 
       <div className="shrink-0 mb-2 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[10rem] max-w-md">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 h-4 w-4" />
-          <input
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 h-4 w-4" />
+          <input aria-label="Search invoice #, customer"
             type="search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -123,7 +123,7 @@ export default function DeliveryNotesPage() {
       </div>
 
       {error && (
-        <div className="shrink-0 text-sm text-neutral-800 mb-2 bg-white border border-neutral-200 border-l-4 border-l-error rounded px-3 py-1.5">{error}</div>
+        <div className="shrink-0 text-sm text-neutral-800 mb-2 bg-white border border-neutral-200 rounded px-3 py-1.5">{error}</div>
       )}
 
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white border border-neutral-200 rounded-lg">
@@ -131,7 +131,7 @@ export default function DeliveryNotesPage() {
           <p className="text-sm text-text-secondary p-4">Loading…</p>
         ) : rows.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-            <Package className="w-9 h-9 mb-2 text-slate-400" />
+            <Package className="w-9 h-9 mb-2 text-slate-500" />
             <p className="text-text-primary font-medium mb-0.5">No delivery notes yet</p>
             <p className="text-sm text-text-secondary">Create invoices in POS — each sale can print a delivery note.</p>
           </div>

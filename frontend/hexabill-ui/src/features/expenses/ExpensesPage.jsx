@@ -115,7 +115,7 @@ function BulkVatForm ({ noVatExpenses, onApply, onCancel, submitting }) {
         </div>
       </div>
       <div className="flex gap-2 pt-2">
-        <LoadingButton type="button" loading={submitting} onClick={handleApply} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+        <LoadingButton type="button" loading={submitting} onClick={handleApply} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
           Apply VAT to {noVatExpenses.length} expense(s)
         </LoadingButton>
         <button type="button" onClick={onCancel} className="px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50">Cancel</button>
@@ -179,7 +179,7 @@ function CategoryVatEditInline ({ category, onSave, onCancel }) {
         <label htmlFor="catLock" className="text-sm text-neutral-700">Lock VAT for this category</label>
       </div>
       <div className="flex gap-2 pt-2">
-        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
+        <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Save</button>
         <button type="button" onClick={onCancel} className="px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50">Cancel</button>
       </div>
     </form>
@@ -1165,7 +1165,7 @@ const ExpensesPage = () => {
                   <MoreHorizontal className="h-4 w-4" aria-hidden />
                 </button>
                 {moreOpen && (
-                  <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-neutral-200 bg-white py-1 shadow-lg">
+                  <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-neutral-200 bg-white py-1 shadow-sm">
                     <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50 disabled:opacity-40" disabled={exportingCsv || exportingPdf} onClick={() => { setMoreOpen(false); handleExportCsv() }}>
                       {exportingCsv ? 'Exporting…' : 'Export CSV'}
                     </button>
@@ -1266,7 +1266,7 @@ const ExpensesPage = () => {
             </label>
             <label className="relative min-w-[12rem] flex-1 text-xs font-medium text-neutral-500">
               Search this page
-              <input
+              <input aria-label="Search this page"
                 type="search"
                 value={searchDraft}
                 onChange={(e) => setSearchDraft(e.target.value)}
@@ -1279,7 +1279,7 @@ const ExpensesPage = () => {
                 type="button"
                 aria-pressed={filterNoVatOnly}
                 onClick={() => setFilterNoVatOnly((prev) => !prev)}
-                className={`min-h-[44px] rounded-md border px-3 text-sm ${filterNoVatOnly ? 'border-warning bg-warning-bg text-amber-800' : 'border-neutral-300 bg-white text-neutral-800'}`}
+                className={`min-h-[44px] rounded-md border px-3 text-sm ${filterNoVatOnly ? 'border-warning bg-warning-bg text-warning-fg' : 'border-neutral-300 bg-white text-neutral-800'}`}
               >
                 VAT missing
               </button>
@@ -1346,10 +1346,10 @@ const ExpensesPage = () => {
           </p>
         )}
         {noVatCount > 0 && isAdminOrOwner(user) && (
-          <div className="mb-3 flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 border-l-2 border-l-warning bg-white px-3">
+          <div className="mb-3 flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 border-l-2 bg-white px-3">
             <p className="text-sm text-warning-fg">Missing VAT · {noVatCount} expenses need VAT</p>
             <span className="flex gap-2">
-              <button type="button" className="min-h-[44px] rounded-md px-3 text-sm text-amber-800 hover:bg-warning-bg" onClick={() => setFilterNoVatOnly(true)}>Review</button>
+              <button type="button" className="min-h-[44px] rounded-md px-3 text-sm text-warning-fg hover:bg-warning-bg" onClick={() => setFilterNoVatOnly(true)}>Review</button>
               <button type="button" className="min-h-[44px] rounded-md px-3 text-sm text-neutral-700 hover:bg-neutral-50" onClick={() => setShowBulkVatModal(true)}>Update VAT</button>
             </span>
           </div>
@@ -1455,11 +1455,11 @@ const ExpensesPage = () => {
                 {allSelectedAreNoVat && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-neutral-600 mr-1">VAT:</span>
-                    <div className="inline-flex rounded-lg border border-amber-300 overflow-hidden">
+                    <div className="inline-flex rounded-lg border border-warning-border overflow-hidden">
                       <button
                         type="button"
                         onClick={() => setQuickBulkVatInterpretation('add-on-top')}
-                        className={`px-2.5 py-1.5 text-xs font-medium ${quickBulkVatInterpretation === 'add-on-top' ? 'bg-warning text-white' : 'bg-white text-neutral-700 hover:bg-warning-bg'}`}
+                        className={`px-2.5 py-1.5 text-xs font-medium ${quickBulkVatInterpretation === 'add-on-top' ? 'bg-warning-fg text-white' : 'bg-white text-neutral-700 hover:bg-warning-bg'}`}
                         title="Amount was net; add 5% on top"
                       >
                         Add on top
@@ -1467,7 +1467,7 @@ const ExpensesPage = () => {
                       <button
                         type="button"
                         onClick={() => setQuickBulkVatInterpretation('extract-from-amount')}
-                        className={`px-2.5 py-1.5 text-xs font-medium ${quickBulkVatInterpretation === 'extract-from-amount' ? 'bg-warning text-white' : 'bg-white text-neutral-700 hover:bg-warning-bg'}`}
+                        className={`px-2.5 py-1.5 text-xs font-medium ${quickBulkVatInterpretation === 'extract-from-amount' ? 'bg-warning-fg text-white' : 'bg-white text-neutral-700 hover:bg-warning-bg'}`}
                         title="Amount included VAT; extract net and VAT"
                       >
                         Extract from amount
@@ -1495,7 +1495,7 @@ const ExpensesPage = () => {
                           toast.error(err?.response?.data?.message || 'Update failed')
                         }
                       }}
-                      className="px-3 py-1.5 bg-warning text-white text-sm font-medium rounded-lg hover:bg-amber-700"
+                      className="px-3 py-1.5 bg-warning-fg text-white text-sm font-medium rounded-lg hover:bg-warning-fg"
                     >
                       Apply 5% VAT to selected ({selectedNoVatCount})
                     </button>
@@ -1666,11 +1666,11 @@ const ExpensesPage = () => {
                               </span>
                             ) : expense.vatAmount != null && expense.vatAmount > 0 ? (
                               <span className="ml-1.5 flex-shrink-0" title="Has VAT but not claimable">
-                                <DollarSign className="h-3.5 w-3.5 text-amber-500" />
+                                <DollarSign className="h-3.5 w-3.5 text-warning-fg" />
                               </span>
                             ) : (
                               <span className="ml-1.5 flex-shrink-0" title="No VAT data">
-                                <XCircle className="h-3.5 w-3.5 text-neutral-300" />
+                                <XCircle className="h-3.5 w-3.5 text-slate-500" />
                               </span>
                             )}
                             {expense.taxType && expense.taxType !== 'Standard' && (
@@ -1761,7 +1761,7 @@ const ExpensesPage = () => {
                               <button
                                 type="button"
                                 onClick={() => handleEdit(expense)}
-                                className="text-indigo-600 hover:text-indigo-900"
+                                className="text-slate-700 hover:text-slate-700"
                                 title="Edit expense"
                                 aria-label="Edit expense"
                               >
@@ -1844,8 +1844,8 @@ const ExpensesPage = () => {
                           <p className="truncate text-xs text-neutral-600">{expense.note || 'No description'}</p>
                           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-neutral-500">
                             <span className={`font-medium ${
-                              expense.status === 'Rejected' ? 'text-error-fg' :
-                              expense.status === 'Pending' ? 'text-warning-fg' : 'text-success-fg'
+ expense.status === 'Rejected' ? 'text-error-fg' :
+ expense.status === 'Pending' ? 'text-warning-fg' : 'text-success-fg'
                             }`}>
                               {expense.status || 'Approved'}
                             </span>
@@ -2213,14 +2213,14 @@ const ExpensesPage = () => {
             })()}
 
             {selectedExpense && selectedExpense.vatAmount == null && !vatLockedByCategory && (
-              <div className="rounded-sm bg-white border border-neutral-200 border-l-4 border-l-warning px-3 py-2 mb-2 flex flex-wrap items-center gap-2">
-                <span className="text-sm text-amber-800">No VAT data.</span>
-                <button type="button" onClick={() => { setValue('withVat', true); setValue('taxType', 'Standard'); setValue('isTaxClaimable', true); }} className="text-sm px-2 py-1 bg-warning text-white rounded hover:bg-amber-700">Add 5% VAT</button>
-                <button type="button" onClick={() => { setValue('withVat', false); }} className="text-sm px-2 py-1 border border-amber-300 rounded hover:bg-amber-100">Keep as No VAT</button>
+              <div className="rounded-sm bg-white border border-neutral-200 px-3 py-2 mb-2 flex flex-wrap items-center gap-2">
+                <span className="text-sm text-warning-fg">No VAT data.</span>
+                <button type="button" onClick={() => { setValue('withVat', true); setValue('taxType', 'Standard'); setValue('isTaxClaimable', true); }} className="text-sm px-2 py-1 bg-warning-fg text-white rounded hover:bg-warning-fg">Add 5% VAT</button>
+                <button type="button" onClick={() => { setValue('withVat', false); }} className="text-sm px-2 py-1 border border-warning-border rounded hover:bg-warning-border">Keep as No VAT</button>
               </div>
             )}
             {vatLockedByCategory ? (
-              <p className="text-sm text-neutral-800 bg-white border border-neutral-200 border-l-4 border-l-warning rounded px-3 py-2">
+              <p className="text-sm text-neutral-800 bg-white border border-neutral-200 rounded px-3 py-2">
                 VAT auto-set from category default ({selectedCategory?.defaultVatRate ? `${(selectedCategory.defaultVatRate * 100).toFixed(0)}%` : '0%'}
                 {selectedCategory?.defaultIsTaxClaimable ? ', Claimable' : ', Non-claimable'}
                 {selectedCategory?.defaultIsEntertainment ? ', Entertainment (50% cap)' : ''}).
@@ -2406,7 +2406,7 @@ const ExpensesPage = () => {
             
             {recurringExpenses.length === 0 ? (
               <div className="text-center py-8 text-neutral-500">
-                <Repeat className="h-12 w-12 mx-auto mb-4 text-neutral-400" />
+                <Repeat className="h-12 w-12 mx-auto mb-4 text-slate-500" />
                 <p>No recurring expenses configured</p>
               </div>
             ) : (
@@ -2478,13 +2478,13 @@ const ExpensesPage = () => {
                   {cat.defaultVatRate ? `${(cat.defaultVatRate * 100).toFixed(0)}% VAT` : '0% VAT'}
                 </span>
                 {cat.defaultIsTaxClaimable && <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-success-fg">Claimable</span>}
-                {cat.defaultIsEntertainment && <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-warning-fg">Entertainment</span>}
+                {cat.defaultIsEntertainment && <span className="text-xs px-2 py-0.5 rounded bg-warning-bg text-warning-fg">Entertainment</span>}
                 {cat.vatDefaultLocked && <span className="text-xs px-2 py-0.5 rounded bg-primary-100 text-primary-700">Locked</span>}
               </div>
               <button
                 type="button"
                 onClick={() => setEditingCategoryVat({ ...cat })}
-                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                className="text-slate-700 hover:text-slate-700 text-sm font-medium"
               >
                 Edit
               </button>

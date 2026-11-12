@@ -258,13 +258,13 @@ const SuperAdminSettingsPage = () => {
     if (activeTab === 'security') {
       return (
         <div className="space-y-4">
-          <div className="p-4 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm">
+          <div className="p-4 bg-white border border-neutral-200 rounded-sm">
             <label className="flex items-center justify-between cursor-pointer">
-              <span className="flex items-center gap-2 font-medium text-amber-900">
+              <span className="flex items-center gap-2 font-medium text-warning-fg">
                 <Construction className="h-5 w-5" />
                 Maintenance Mode
               </span>
-              <span className="flex items-center gap-2 text-sm font-medium text-amber-900">
+              <span className="flex items-center gap-2 text-sm font-medium text-warning-fg">
                 {form.maintenanceMode ? 'On' : 'Off'}
                 <input
                   type="checkbox"
@@ -288,7 +288,7 @@ const SuperAdminSettingsPage = () => {
             </label>
             <p className="text-sm text-warning-fg mt-2">When ON, all tenant users see a maintenance screen. SuperAdmin can still access.</p>
             {form.maintenanceMode && (
-              <p className="mt-2 p-2 text-sm font-medium text-amber-900 bg-amber-100 border border-amber-300 rounded">Maintenance mode is on. Tenant users see the maintenance screen.</p>
+              <p className="mt-2 p-2 text-sm font-medium text-warning-fg bg-warning-bg border border-warning-border rounded">Maintenance mode is on. Tenant users see the maintenance screen.</p>
             )}
             {form.maintenanceMode && (
               <Input
@@ -339,7 +339,7 @@ const SuperAdminSettingsPage = () => {
               <HelpCircle className="h-5 w-5 text-neutral-500" />
               <span className="font-medium text-neutral-900">Help & Support</span>
             </span>
-            <ExternalLink className="h-4 w-4 text-neutral-400" />
+            <ExternalLink className="h-4 w-4 text-slate-500" />
           </Link>
           <Link
             to="/feedback"
@@ -349,7 +349,7 @@ const SuperAdminSettingsPage = () => {
               <MessageSquare className="h-5 w-5 text-neutral-500" />
               <span className="font-medium text-neutral-900">Feedback</span>
             </span>
-            <ExternalLink className="h-4 w-4 text-neutral-400" />
+            <ExternalLink className="h-4 w-4 text-slate-500" />
           </Link>
         </div>
       )
@@ -373,8 +373,8 @@ const SuperAdminSettingsPage = () => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-4 py-3 rounded-lg text-left whitespace-nowrap transition ${
-                    activeTab === tab.id
-                      ? 'bg-primary-600 text-white'
+ activeTab === tab.id
+ ? 'bg-primary-600 text-white'
                       : 'bg-white border border-neutral-200 hover:bg-neutral-50'
                   }`}
                 >

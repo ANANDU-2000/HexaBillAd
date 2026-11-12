@@ -42,7 +42,7 @@ function Totals({ totals }) {
     <dl className="grid grid-cols-3 gap-2" data-testid="route-map-totals">
       {cells.map(([label, value]) => (
         <div key={label} className="min-w-0 border border-neutral-200 bg-white px-2 py-1">
-          <dt className="text-micro uppercase tracking-wide text-neutral-500">{label}</dt>
+          <dt className="text-micro text-neutral-500">{label}</dt>
           <dd className="truncate text-sm font-semibold tabular-nums text-neutral-900">{value}</dd>
         </div>
       ))}
@@ -226,14 +226,14 @@ export default function RouteMapPage() {
 
   const searchBox = (
       <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" aria-hidden />
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden />
         <input
           type="search"
           aria-label="Search customers"
           placeholder="Search name, area or phone"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="block h-10 w-full border border-neutral-300 bg-white pl-8 pr-8 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+          className="block h-10 w-full border border-neutral-300 bg-white pl-8 pr-8 text-sm text-neutral-900 placeholder:text-slate-500 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
         />
         {search && (
           <button type="button" aria-label="Clear search" onClick={() => setSearch('')} data-size="sm" className="absolute right-0 top-0 flex h-10 w-9 items-center justify-center text-neutral-500 hover:text-neutral-900">

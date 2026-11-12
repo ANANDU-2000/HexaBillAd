@@ -67,7 +67,7 @@ export default function ProductPicker({ inputRef, inputId, inputClassName, value
           id={listId}
           role="listbox"
           style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}
-          className="absolute left-0 right-0 top-full z-40 mt-1 max-h-[340px] overflow-y-auto overscroll-contain rounded-xl border-2 border-neutral-200 bg-white shadow-lg md:max-w-xl"
+          className="absolute left-0 right-0 top-full z-40 mt-1 max-h-[340px] overflow-y-auto overscroll-contain rounded-xl border-2 border-neutral-200 bg-white shadow-sm md:max-w-xl"
         >
           {products.map((product, i) => (
             <li
@@ -86,11 +86,11 @@ export default function ProductPicker({ inputRef, inputId, inputClassName, value
                   <p className="text-sm font-semibold leading-snug break-words">
                     {product.nameEn}
                     {addedQty[product.id] > 0 && (
-                      <span className="ml-2 rounded bg-success-bg px-1.5 py-0.5 text-[11px] font-semibold text-success-fg">Added (Qty: {addedQty[product.id]})</span>
+                      <span className="ml-2 rounded bg-success-bg px-1.5 py-0.5 text-xs font-semibold text-success-fg">Added (Qty: {addedQty[product.id]})</span>
                     )}
                   </p>
                   <p className="text-xs text-primary-500">
-                    {product.unitType ? <span className="mr-2 rounded bg-neutral-100 px-1.5 py-0.5 font-semibold uppercase">{product.unitType}</span> : null}
+                    {product.unitType ? <span className="mr-2 rounded bg-neutral-100 px-1.5 py-0.5 font-semibold ">{product.unitType}</span> : null}
                     SKU: {product.sku}
                   </p>
                 </div>

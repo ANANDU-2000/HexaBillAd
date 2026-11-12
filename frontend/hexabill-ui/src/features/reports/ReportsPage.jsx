@@ -1330,8 +1330,8 @@ const ReportsPage = () => {
             className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
  reportSource === 'operating'
  ? 'bg-primary-600 text-white shadow-sm'
-                : 'text-neutral-700 bg-neutral-100 hover:bg-neutral-200'
-            }`}
+ : 'text-neutral-700 bg-neutral-100 hover:bg-neutral-200'
+ }`}
           >
             Current FrozenHub (Active)
           </button>
@@ -1340,12 +1340,12 @@ const ReportsPage = () => {
             onClick={() => setReportSource('legacy')}
             className={`px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
  reportSource === 'legacy'
- ? 'bg-warning text-white shadow-sm'
-                : 'text-warning-fg bg-warning-bg hover:bg-warning-border'
-            }`}
+ ? 'bg-warning-fg text-white shadow-sm'
+ : 'text-warning-fg bg-warning-bg hover:bg-warning-border'
+ }`}
           >
             <span>Legacy Starplus (Historical)</span>
-            <span className={`text-xs font-bold px-1.5 py-0.2 rounded-full ${reportSource === 'legacy' ? 'bg-warning text-white' : 'bg-warning-bg text-warning-fg'}`}>Archive</span>
+            <span className={`text-xs font-bold px-1.5 py-0.2 rounded-full ${reportSource === 'legacy' ? 'bg-warning-fg text-white' : 'bg-warning-bg text-warning-fg'}`}>Archive</span>
           </button>
           <button
             type="button"
@@ -1353,8 +1353,8 @@ const ReportsPage = () => {
             className={`px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
  reportSource === 'comparative'
  ? 'bg-primary-600 text-white shadow-sm'
-                : 'text-slate-700 bg-slate-50 hover:bg-slate-100'
-            }`}
+ : 'text-slate-700 bg-slate-50 hover:bg-slate-100'
+ }`}
           >
             <span>Comparative Overview</span>
             <span className={`text-xs font-bold px-1.5 py-0.2 rounded-full ${reportSource === 'comparative' ? 'bg-primary-600 text-white' : 'bg-slate-50 text-slate-700'}`}>Side-by-Side</span>
@@ -1513,91 +1513,110 @@ const ReportsPage = () => {
         )}
       />
 
-      {/* Row 2: one filter toolbar. Everything applies as soon as it changes. */}
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-2 py-1.5">
-        <input type="date" aria-label="From Date" value={dateRange.from}
-          onChange={(e) => setDateRange((prev) => ({ ...prev, from: e.target.value }))}
-          className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px]" />
-        <span className="text-xs text-neutral-500">to</span>
-        <input type="date" aria-label="To Date" value={dateRange.to}
-          onChange={(e) => setDateRange((prev) => ({ ...prev, to: e.target.value }))}
-          className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px]" />
-        <select aria-label="Period" value=""
-          onChange={(e) => {
-            const preset = periodPresets.find((x) => x.id === e.target.value)
-            if (preset) setDateRange(preset.range())
-          }}
-          className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px]">
-          <option value="">Period…</option>
-          {periodPresets.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
-        </select>
-        <span className="hidden h-5 w-px bg-neutral-300 sm:block" aria-hidden />
-        <select aria-label="Branch" value={filters.branch}
-          onChange={(e) => setFilter({ branch: e.target.value, route: '' })}
-          className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] max-w-[11rem]">
-          <option value="">All branches</option>
-          {branchesList.map((b) => <option key={b.id} value={String(b.id)}>{b.name || 'Branch'}</option>)}
-        </select>
-        <select aria-label="Route" value={filters.route}
-          onChange={(e) => setFilter({ route: e.target.value })}
-          className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] max-w-[11rem]">
-          <option value="">All routes</option>
-          {routesList.map((r) => <option key={r.id} value={String(r.id)}>{r.name || 'Route'}</option>)}
-        </select>
+      {/* Row 2: period chips (scroll sideways on phones) + one Filters button. Everything applies as soon as it changes. */}
+      <div className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white p-2">
+        <div role="group" aria-label="Period" className="scrollbar-hide flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
+          {[['today', 'Today'], ['yesterday', 'Yesterday'], ['last7', '7 days'], ['month', 'This month'], ['lastMonth', 'Last month'], ['year', 'This year']].map(([id, label]) => {
+            const r = periodPresets.find((x) => x.id === id)?.range()
+            const active = !!r && r.from === dateRange.from && r.to === dateRange.to
+            return (
+              <button key={id} type="button" aria-pressed={active}
+                onClick={() => r && setDateRange(r)}
+                className={`h-10 shrink-0 whitespace-nowrap rounded-lg border px-3.5 text-sm font-medium transition-colors ${active ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
+                {label}
+              </button>
+            )
+          })}
+        </div>
 
-        <div className="relative">
+        <div className="relative shrink-0">
           <button type="button" aria-expanded={filtersExpanded}
             onClick={() => setFiltersExpanded((v) => !v)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 text-[13px] font-medium text-neutral-700 hover:bg-neutral-50">
-            <Filter className="h-3.5 w-3.5" />
-            More
-            {moreFilterCount > 0 && <span className="rounded-full bg-primary-600 px-1.5 text-xs font-semibold text-white">{moreFilterCount}</span>}
+            className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <Filter className="h-4 w-4" aria-hidden />
+            <span>Filters</span>
+            {(moreFilterCount + (filters.branch ? 1 : 0) + (filters.route ? 1 : 0)) > 0 && (
+              <span className="rounded-full bg-primary-600 px-1.5 text-xs font-semibold text-white">{moreFilterCount + (filters.branch ? 1 : 0) + (filters.route ? 1 : 0)}</span>
+            )}
           </button>
           {filtersExpanded && (
-            <div className="absolute left-0 top-full z-40 mt-1 w-72 space-y-2 rounded-md border border-neutral-200 bg-white p-3 shadow-sm">
-              <label className="block text-xs font-medium text-neutral-600">Product
-                <select value={filters.product} onChange={(e) => setFilter({ product: e.target.value })} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] mt-1 w-full">
-                  <option value="">All products</option>
-                  {productsList.map((x) => <option key={x.id} value={x.id?.toString()}>{x.nameEn || x.sku || 'Unknown'}</option>)}
-                </select>
-              </label>
-              <label className="block text-xs font-medium text-neutral-600">Customer
-                <select value={filters.customer} onChange={(e) => setFilter({ customer: e.target.value })} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] mt-1 w-full">
-                  <option value="">All customers</option>
-                  {customersList.map((x) => <option key={x.id} value={x.id?.toString()}>{x.name || 'Unknown'}</option>)}
-                </select>
-              </label>
-              {activeTab === 'sales' && (
-                <label className="block text-xs font-medium text-neutral-600">Status
-                  <select value={filters.status} onChange={(e) => setFilter({ status: e.target.value })} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] mt-1 w-full">
-                    <option value="">All status</option>
-                    <option value="Paid">Paid</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Partial">Partial</option>
+            <>
+              <button type="button" aria-label="Close filters" tabIndex={-1} onClick={() => setFiltersExpanded(false)} className="fixed inset-0 z-40 bg-black/30 sm:bg-transparent" />
+              <div className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] space-y-3 overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-1 sm:w-80 sm:rounded-xl">
+                <p className="text-sm font-semibold text-slate-900">Filters</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block text-xs font-medium text-slate-600">From
+                    <input type="date" aria-label="From Date" value={dateRange.from}
+                      onChange={(e) => setDateRange((prev) => ({ ...prev, from: e.target.value }))}
+                      className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm" />
+                  </label>
+                  <label className="block text-xs font-medium text-slate-600">To
+                    <input type="date" aria-label="To Date" value={dateRange.to}
+                      onChange={(e) => setDateRange((prev) => ({ ...prev, to: e.target.value }))}
+                      className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm" />
+                  </label>
+                </div>
+                <label className="block text-xs font-medium text-slate-600">Branch
+                  <select aria-label="Branch" value={filters.branch}
+                    onChange={(e) => setFilter({ branch: e.target.value, route: '' })}
+                    className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm">
+                    <option value="">All branches</option>
+                    {branchesList.map((b) => <option key={b.id} value={String(b.id)}>{b.name || 'Branch'}</option>)}
                   </select>
                 </label>
-              )}
-              {activeTab === 'returns' && (
-                <>
-                  <label className="block text-xs font-medium text-neutral-600">Damage category
-                    <select value={filters.damageCategory} onChange={(e) => setFilter({ damageCategory: e.target.value })} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] mt-1 w-full">
-                      <option value="">All categories</option>
-                      {(reportData.damageCategories || []).map((dc) => <option key={dc.id} value={String(dc.id)}>{dc.name || 'Unknown'}</option>)}
+                <label className="block text-xs font-medium text-slate-600">Route
+                  <select aria-label="Route" value={filters.route}
+                    onChange={(e) => setFilter({ route: e.target.value })}
+                    className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm">
+                    <option value="">All routes</option>
+                    {routesList.map((r) => <option key={r.id} value={String(r.id)}>{r.name || 'Route'}</option>)}
+                  </select>
+                </label>
+                <label className="block text-xs font-medium text-slate-600">Product
+                  <select value={filters.product} onChange={(e) => setFilter({ product: e.target.value })} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm">
+                    <option value="">All products</option>
+                    {productsList.map((x) => <option key={x.id} value={x.id?.toString()}>{x.nameEn || x.sku || 'Unknown'}</option>)}
+                  </select>
+                </label>
+                <label className="block text-xs font-medium text-slate-600">Customer
+                  <select value={filters.customer} onChange={(e) => setFilter({ customer: e.target.value })} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm">
+                    <option value="">All customers</option>
+                    {customersList.map((x) => <option key={x.id} value={x.id?.toString()}>{x.name || 'Unknown'}</option>)}
+                  </select>
+                </label>
+                {activeTab === 'sales' && (
+                  <label className="block text-xs font-medium text-slate-600">Status
+                    <select value={filters.status} onChange={(e) => setFilter({ status: e.target.value })} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm">
+                      <option value="">All status</option>
+                      <option value="Paid">Paid</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Partial">Partial</option>
                     </select>
                   </label>
-                  <label className="block text-xs font-medium text-neutral-600">Staff user ID
-                    <input type="number" min="1" placeholder="Optional" value={filters.staffId} onChange={(e) => setFilter({ staffId: e.target.value })} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] mt-1 w-full" />
-                  </label>
-                </>
-              )}
-              <div className="flex justify-between pt-1">
-                <button type="button" onClick={() => setFilter({ product: '', customer: '', status: '', damageCategory: '', staffId: '' })} className="text-xs font-medium text-neutral-600 hover:text-neutral-900">Clear</button>
-                <button type="button" onClick={() => setFiltersExpanded(false)} className="text-xs font-semibold text-primary-700">Done</button>
+                )}
+                {activeTab === 'returns' && (
+                  <>
+                    <label className="block text-xs font-medium text-slate-600">Damage category
+                      <select value={filters.damageCategory} onChange={(e) => setFilter({ damageCategory: e.target.value })} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm">
+                        <option value="">All categories</option>
+                        {(reportData.damageCategories || []).map((dc) => <option key={dc.id} value={String(dc.id)}>{dc.name || 'Unknown'}</option>)}
+                      </select>
+                    </label>
+                    <label className="block text-xs font-medium text-slate-600">Staff user ID
+                      <input aria-label="Optional" type="number" min="1" placeholder="Optional" value={filters.staffId} onChange={(e) => setFilter({ staffId: e.target.value })} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm" />
+                    </label>
+                  </>
+                )}
+                <div className="flex items-center justify-between pt-1">
+                  <button type="button" onClick={() => setFilter({ branch: '', route: '', product: '', customer: '', status: '', damageCategory: '', staffId: '' })} className="min-h-10 px-1 text-sm font-medium text-slate-600 hover:text-slate-900">Clear all</button>
+                  <button type="button" onClick={() => setFiltersExpanded(false)} className="h-10 rounded-lg bg-primary-600 px-5 text-sm font-medium text-white hover:bg-primary-700">Done</button>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>
+      <p className="-mt-1 shrink-0 px-1 text-xs text-slate-500">{dateRange.from === dateRange.to ? dateRange.from : `${dateRange.from} to ${dateRange.to}`}</p>
 
       {/* Report body fills the remaining height and scrolls on its own */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white">
@@ -1609,54 +1628,18 @@ const ReportsPage = () => {
           {/* Summary Tab */}
           {activeTab === 'summary' && reportData.summary && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-                <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
-                  <div className="flex items-center">
-                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-slate-500 flex-shrink-0" />
-                    <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-slate-600">Total Sales</p>
-                      <p className="text-base sm:text-xl lg:text-xl font-semibold text-slate-900 truncate">
-                        {formatCurrency(reportData.summary.totalSales || 0)}
-                      </p>
-                    </div>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+                {[
+                  ['Total sales', reportData.summary.totalSales, 'text-slate-900'],
+                  ['Total purchases', reportData.summary.totalPurchases, 'text-slate-900'],
+                  ['Total expenses', reportData.summary.totalExpenses, 'text-slate-900'],
+                  ['Net profit', reportData.summary.netProfit, (reportData.summary.netProfit || 0) < 0 ? 'text-error' : 'text-success'],
+                ].map(([label, value, tone]) => (
+                  <div key={label} className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+                    <p className="text-xs font-medium text-slate-600 sm:text-sm">{label}</p>
+                    <p className={`mt-1 truncate text-xl font-semibold tabular-nums sm:text-2xl ${tone}`}>{formatCurrency(value || 0)}</p>
                   </div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
-                  <div className="flex items-center">
-                    <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-slate-500 flex-shrink-0" />
-                    <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-slate-600">Total Purchases</p>
-                      <p className="text-base sm:text-xl lg:text-xl font-semibold text-slate-900 truncate">
-                        {formatCurrency(reportData.summary.totalPurchases || 0)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
-                  <div className="flex items-center">
-                    <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-slate-500 flex-shrink-0" />
-                    <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-slate-600">Total Expenses</p>
-                      <p className="text-base sm:text-xl lg:text-xl font-semibold text-slate-900 truncate">
-                        {formatCurrency(reportData.summary.totalExpenses || 0)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
-                  <div className="flex items-center">
-                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-slate-500 flex-shrink-0" />
-                    <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-slate-600">Net Profit</p>
-                      <p className="text-base sm:text-xl lg:text-xl font-semibold text-slate-900 truncate">
-                        {formatCurrency(reportData.summary.netProfit || 0)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1844,7 +1827,7 @@ const ReportsPage = () => {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-64 text-neutral-500">
-                      <PieChart className="h-12 w-12 mb-2 text-neutral-400" />
+                      <PieChart className="h-12 w-12 mb-2 text-slate-500" />
                       <p>No product sales data available</p>
                       <p className="text-sm mt-1">Try selecting a different date range</p>
                     </div>
@@ -1911,8 +1894,8 @@ const ReportsPage = () => {
                           <p className={`font-semibold text-lg ${customer.total > (customer.creditLimit * 0.8)
  ? 'text-error'
  : customer.total > (customer.creditLimit * 0.5)
-                              ? 'text-yellow-600'
-                              : 'text-neutral-900'
+ ? 'text-yellow-600'
+ : 'text-neutral-900'
                             }`}>
                             {formatCurrency(customer.total)}
                           </p>
@@ -1941,7 +1924,7 @@ const ReportsPage = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-64 text-neutral-500">
-                    <FileText className="h-12 w-12 mb-2 text-neutral-400" />
+                    <FileText className="h-12 w-12 mb-2 text-slate-500" />
                     <p>No matching customers found</p>
                     <p className="text-sm mt-1">
                       {activeTab === 'overdue'
@@ -2115,8 +2098,8 @@ const ReportsPage = () => {
                             Profit Margin: <span className={`font-semibold ${
  ((topBranch.profit || 0) / topBranch.totalSales * 100) >= 20 ? 'text-success' :
  ((topBranch.profit || 0) / topBranch.totalSales * 100) >= 10 ? 'text-yellow-600' :
-                              'text-error'
-                            }`}>
+ 'text-error'
+ }`}>
                               {((topBranch.profit || 0) / topBranch.totalSales * 100).toFixed(1)}%
                             </span>
                           </p>
@@ -2179,12 +2162,12 @@ const ReportsPage = () => {
                                       <span className={`font-medium ${
  ((row.profit || 0) / row.totalSales * 100) >= 20 ? 'text-success' :
  ((row.profit || 0) / row.totalSales * 100) >= 10 ? 'text-yellow-600' :
-                                        'text-error'
-                                      }`}>
+ 'text-error'
+ }`}>
                                         {((row.profit || 0) / row.totalSales * 100).toFixed(1)}%
                                       </span>
                                     ) : (
-                                      <span className="text-neutral-400">—</span>
+                                      <span className="text-slate-500">—</span>
                                     )}
                                   </td>
                                   <td className="px-4 py-3 text-right">
@@ -2193,7 +2176,7 @@ const ReportsPage = () => {
                                         {row.growthPercent >= 0 ? '↑' : '↓'} {Math.abs(row.growthPercent).toFixed(1)}%
                                       </span>
                                     ) : (
-                                      <span className="text-neutral-400">—</span>
+                                      <span className="text-slate-500">—</span>
                                     )}
                                   </td>
                                 </tr>
@@ -2709,7 +2692,7 @@ const ReportsPage = () => {
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-64 text-neutral-500">
-                  <TrendingUp className="h-12 w-12 mb-2 text-neutral-400" />
+                  <TrendingUp className="h-12 w-12 mb-2 text-slate-500" />
                   <p>No profit & loss data available</p>
                   <p className="text-sm mt-1">Try selecting a different date range</p>
                 </div>
@@ -2783,7 +2766,7 @@ const ReportsPage = () => {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-64 text-neutral-500 bg-white border border-neutral-200 rounded-lg">
-                  <Building2 className="h-12 w-12 mb-2 text-neutral-400" />
+                  <Building2 className="h-12 w-12 mb-2 text-slate-500" />
                   <p>{loading ? 'Loading branch profit...' : (
                       <>
                         No data found for {dateRange.from} to {dateRange.to}
@@ -2920,7 +2903,7 @@ const ReportsPage = () => {
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bill.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800' :
  bill.paymentStatus === 'Partial' ? 'bg-yellow-100 text-yellow-800' :
  'bg-red-100 text-red-800'
-                                }`}>
+ }`}>
                                 {bill.paymentStatus}
                               </span>
                             </td>
@@ -2934,11 +2917,11 @@ const ReportsPage = () => {
                                   <span className={`font-medium ${daysOverdue > 90 ? 'text-error' :
  daysOverdue > 60 ? 'text-slate-700' :
  'text-yellow-600'
-                                    }`}>
+ }`}>
                                     {daysOverdue} days
                                   </span>
                                 ) : (
-                                  <span className="text-neutral-400">-</span>
+                                  <span className="text-slate-500">-</span>
                                 )
                               })()}
                             </td>
@@ -3024,7 +3007,7 @@ const ReportsPage = () => {
                   </>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
-                    <DollarSign className="h-12 w-12 mb-2 text-neutral-400" />
+                    <DollarSign className="h-12 w-12 mb-2 text-slate-500" />
                     <p>No outstanding bills found</p>
                     <p className="text-sm mt-1">All invoices are fully paid</p>
                   </div>
@@ -3250,7 +3233,7 @@ const ReportsPage = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
-                    <RotateCcw className="h-12 w-12 mb-2 text-neutral-400" />
+                    <RotateCcw className="h-12 w-12 mb-2 text-slate-500" />
                     <p>{loading ? 'Loading returns...' : 'No returns in this period. Adjust the date range or filters.'}</p>
                   </div>
                 )}
@@ -3303,7 +3286,7 @@ const ReportsPage = () => {
                         URL.revokeObjectURL(url)
                         toast.success('Damage report exported to CSV')
                       }}
-                      className="px-4 py-2 bg-warning text-white rounded-lg hover:bg-warning-fg flex items-center gap-2"
+                      className="px-4 py-2 bg-warning-fg text-white rounded-lg hover:bg-warning-fg flex items-center gap-2"
                       disabled={!reportData.damageReport?.length}
                     >
                       <Download className="h-4 w-4" />
@@ -3354,7 +3337,7 @@ const ReportsPage = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
-                    <AlertTriangle className="h-12 w-12 mb-2 text-neutral-400" />
+                    <AlertTriangle className="h-12 w-12 mb-2 text-slate-500" />
                     <p>{loading ? 'Loading...' : 'No damage or write-off return lines in this period.'}</p>
                   </div>
                 )}
@@ -3447,7 +3430,7 @@ const ReportsPage = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
-                    <FileText className="h-12 w-12 mb-2 text-neutral-400" />
+                    <FileText className="h-12 w-12 mb-2 text-slate-500" />
                     <p>{loading ? 'Loading...' : 'No credit notes in this period.'}</p>
                   </div>
                 )}
@@ -3490,7 +3473,7 @@ const ReportsPage = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
-                    <TrendingUp className="h-12 w-12 mb-2 text-neutral-400" />
+                    <TrendingUp className="h-12 w-12 mb-2 text-slate-500" />
                     <p>{loading ? 'Loading...' : 'No data for the selected period.'}</p>
                   </div>
                 )}
@@ -3535,7 +3518,7 @@ const ReportsPage = () => {
                         URL.revokeObjectURL(url)
                         toast.success('CSV downloaded')
                       }}
-                      className="px-4 py-2 bg-warning text-white rounded-lg hover:bg-warning-fg flex items-center gap-2"
+                      className="px-4 py-2 bg-warning-fg text-white rounded-lg hover:bg-warning-fg flex items-center gap-2"
                       disabled={!reportData.collectionsList?.length}
                     >
                       <Download className="h-4 w-4" />
@@ -3587,7 +3570,7 @@ const ReportsPage = () => {
                                   Collect
                                 </button>
                               ) : (
-                                <span className="text-xs text-neutral-400">—</span>
+                                <span className="text-xs text-slate-500">—</span>
                               )}
                             </td>
                           </tr>
@@ -3608,7 +3591,7 @@ const ReportsPage = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
-                    <Phone className="h-12 w-12 mb-2 text-neutral-400" />
+                    <Phone className="h-12 w-12 mb-2 text-slate-500" />
                     <p>No customers with outstanding balance</p>
                     <p className="text-sm mt-1">All customer balances are settled</p>
                   </div>
@@ -3683,8 +3666,8 @@ const ReportsPage = () => {
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
  cheque.status === 'CLEARED' ? 'bg-green-100 text-green-800' :
  cheque.status === 'BOUNCED' ? 'bg-red-100 text-red-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }`}>
+ 'bg-yellow-100 text-yellow-800'
+ }`}>
                                 {cheque.status || 'PENDING'}
                               </span>
                             </td>
@@ -3739,7 +3722,7 @@ const ReportsPage = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
-                    <ShieldCheck className="h-12 w-12 mb-2 text-neutral-400" />
+                    <ShieldCheck className="h-12 w-12 mb-2 text-slate-500" />
                     <p>No cheque payments found</p>
                     <p className="text-sm mt-1">No cheques recorded for the selected period</p>
                   </div>
@@ -3808,7 +3791,7 @@ const ReportsPage = () => {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
-                  <Users className="h-12 w-12 mb-2 text-neutral-400" />
+                  <Users className="h-12 w-12 mb-2 text-slate-500" />
                   <p>No staff performance data for this period</p>
                   <p className="text-sm mt-1">Add Staff users and assign them to routes to see metrics</p>
                 </div>
@@ -3852,7 +3835,7 @@ const ReportsPage = () => {
                       <div key={index} className={`p-4 rounded-lg ${suggestion.priority === 'high' ? 'bg-error-bg border-red-400' :
  suggestion.priority === 'medium' ? 'bg-yellow-50 border-yellow-400' :
  'bg-success-bg border-green-400'
-                        }`}>
+ }`}>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <h4 className="font-medium text-neutral-900">{suggestion.title}</h4>

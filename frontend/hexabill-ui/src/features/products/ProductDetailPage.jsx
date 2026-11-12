@@ -277,7 +277,7 @@ const ProductDetailPage = () => {
               />
             ) : (
               <div className="h-24 w-24 bg-neutral-100 rounded-lg border border-neutral-200 flex items-center justify-center">
-                <Package className="h-10 w-10 text-neutral-400" />
+                <Package className="h-10 w-10 text-slate-500" />
               </div>
             )}
           </div>
@@ -423,7 +423,7 @@ const ProductDetailPage = () => {
 
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-t-xl sm:rounded-lg border border-neutral-200 shadow-lg">
+          <div className="bg-white w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-t-xl sm:rounded-lg border border-neutral-200 shadow-sm">
             <div className="sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 flex justify-between items-center">
               <h3 className="font-semibold text-neutral-900">Edit product</h3>
               <button type="button" onClick={() => setShowEditModal(false)} className="min-h-11 min-w-11 px-2 text-neutral-600">×</button>

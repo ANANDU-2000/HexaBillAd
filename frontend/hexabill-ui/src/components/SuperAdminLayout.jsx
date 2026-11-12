@@ -106,7 +106,7 @@ const SuperAdminLayout = () => {
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Mobile Header - Premium Design */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-primary-900 text-white shadow-xl z-50 border-b border-primary-700">
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-primary-900 text-white shadow-sm z-50 border-b border-primary-700">
         <div className="flex items-center justify-between px-4 py-3">
           <button
             type="button"
@@ -115,7 +115,7 @@ const SuperAdminLayout = () => {
               e.stopPropagation()
               setSidebarOpen(true)
             }}
-            className="p-2.5 rounded-lg hover:bg-primary-700 active:bg-primary-600 transition-all duration-200 touch-manipulation shadow-md"
+            className="p-2.5 rounded-lg hover:bg-primary-700 active:bg-primary-600 transition-all duration-200 touch-manipulation shadow-sm"
             aria-label="Open menu"
           >
             <Menu className="h-6 w-6" />
@@ -130,7 +130,7 @@ const SuperAdminLayout = () => {
               e.preventDefault()
               navigate('/superadmin/error-logs')
             }}
-            className="relative p-2.5 rounded-lg hover:bg-primary-700 active:bg-primary-600 transition-all duration-200 touch-manipulation shadow-md"
+            className="relative p-2.5 rounded-lg hover:bg-primary-700 active:bg-primary-600 transition-all duration-200 touch-manipulation shadow-sm"
             aria-label="Alerts"
           >
             <Bell className="h-5 w-5" />
@@ -146,7 +146,7 @@ const SuperAdminLayout = () => {
               e.preventDefault()
               navigate('/profile')
             }}
-            className="p-2.5 rounded-lg hover:bg-primary-700 active:bg-primary-600 transition-all duration-200 touch-manipulation shadow-md"
+            className="p-2.5 rounded-lg hover:bg-primary-700 active:bg-primary-600 transition-all duration-200 touch-manipulation shadow-sm"
             aria-label="Profile"
           >
             <User className="h-5 w-5" />
@@ -165,7 +165,7 @@ const SuperAdminLayout = () => {
             onClick={() => setSidebarOpen(false)}
             onTouchEnd={() => setSidebarOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 w-80 max-w-[85vw] flex flex-col bg-primary-900 text-white shadow-lg transform transition-transform duration-300 ease-in-out border-r border-primary-700">
+          <div className="fixed inset-y-0 left-0 w-80 max-w-[85vw] flex flex-col bg-primary-900 text-white shadow-sm transform transition-transform duration-300 ease-in-out border-r border-primary-700">
             <div className="flex h-16 items-center justify-between px-6 border-b border-primary-700 bg-primary-900/50">
               <div className="flex items-center gap-3">
                 <Logo size="default" showText={false} />
@@ -188,8 +188,8 @@ const SuperAdminLayout = () => {
                     to={item.href}
                     onClick={() => setSidebarOpen(false)}
                     className={`flex items-center px-4 py-3.5 text-base font-semibold rounded-lg touch-manipulation transition-all duration-200 ${isActive(item.href)
-                      ? 'bg-primary-700 text-white'
-                      : 'text-primary-100 hover:bg-primary-700/50 active:bg-primary-600'
+ ? 'bg-primary-700 text-white'
+ : 'text-primary-100 hover:bg-primary-700/50 active:bg-primary-600'
                       }`}
                   >
                     <Icon className={`mr-4 h-5 w-5 ${isActive(item.href) ? 'text-white' : 'text-primary-300'}`} />
@@ -225,7 +225,7 @@ const SuperAdminLayout = () => {
 
       {/* Desktop sidebar - Premium Blue Theme (collapsible) */}
       <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
-        <div className="flex flex-col flex-grow bg-primary-900 text-white shadow-lg border-r border-primary-700">
+        <div className="flex flex-col flex-grow bg-primary-900 text-white shadow-sm border-r border-primary-700">
           {/* Logo Section + Toggle */}
           <div className={`flex items-center border-b border-primary-700 py-5 ${sidebarCollapsed ? 'flex-col gap-3 px-2' : 'justify-between px-4'}`}>
             <div className={`flex items-center overflow-hidden ${sidebarCollapsed ? 'justify-center' : 'flex-1 min-w-0'}`}>
@@ -256,8 +256,8 @@ const SuperAdminLayout = () => {
                   to={item.href}
                   title={sidebarCollapsed ? item.name : undefined}
                   className={`group flex items-center rounded-lg transition-all duration-200 ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'
-                    } ${isActive(item.href)
-                      ? 'bg-primary-700 text-white'
+ } ${isActive(item.href)
+ ? 'bg-primary-700 text-white'
                       : 'text-primary-100 hover:bg-primary-700/50 hover:text-white'
                     }`}
                 >
@@ -274,7 +274,7 @@ const SuperAdminLayout = () => {
               onClick={logout}
               title={sidebarCollapsed ? 'Sign Out' : undefined}
               className={`flex items-center w-full text-sm font-semibold text-red-200 hover:text-white hover:bg-error/20 rounded-lg transition-all duration-200 ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'
-                }`}
+ }`}
             >
               <LogOut className="h-5 w-5 flex-shrink-0" />
               {!sidebarCollapsed && <span className="ml-3">Sign Out</span>}
@@ -286,7 +286,7 @@ const SuperAdminLayout = () => {
       {/* Main content - full width, dynamic padding for sidebar */}
       <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'}`}>
         {backendUnavailable && (
-          <div className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-100 border-b border-warning-border text-amber-900 text-sm text-left">
+          <div className="flex items-center justify-center gap-2 px-4 py-2 bg-warning-bg border-b border-warning-border text-warning-fg text-sm text-left">
             <span className="font-medium">Service temporarily unavailable.</span>
             <span>Service is temporarily unavailable. Please try again in a moment or contact your administrator.</span>
           </div>
@@ -317,7 +317,7 @@ const SuperAdminLayout = () => {
                   )}
                 </button>
                 {showAlertDropdown && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50">
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-sm border border-neutral-200 py-2 z-50">
                     <div className="px-4 py-2 border-b border-neutral-100">
                       <p className="text-sm font-semibold text-neutral-900">Critical events</p>
                       <p className="text-xs text-neutral-500 mt-0.5">
@@ -368,7 +368,7 @@ const SuperAdminLayout = () => {
                 </button>
 
                 {showProfileDropdown && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-sm border border-neutral-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="px-3 py-2 border-b border-neutral-200 bg-primary-50">
                       <p className="text-sm font-semibold text-neutral-900">{user?.name}</p>
                       <p className="text-xs text-primary-600">Super Admin</p>
@@ -405,7 +405,7 @@ const SuperAdminLayout = () => {
           <div className="py-1 sm:py-2 lg:py-6">
             <div className="w-full px-4 sm:px-6 lg:px-8">
           {maintenanceOn && (
-            <p role="status" className="mb-4 p-3 text-sm font-medium text-amber-900 bg-amber-100 border border-amber-300 rounded-lg">
+            <p role="status" className="mb-4 p-3 text-sm font-medium text-warning-fg bg-warning-bg border border-warning-border rounded-lg">
               Maintenance mode is on. Tenant users see the maintenance screen. Turn it off in Platform Settings, Security.
             </p>
           )}

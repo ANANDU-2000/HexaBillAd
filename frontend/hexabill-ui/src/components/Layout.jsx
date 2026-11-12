@@ -373,18 +373,18 @@ const Layout = () => {
       {/* Skip Link */}
       <a
         href="#main-content"
-        className="no-print sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded-md focus:shadow-lg focus:text-primary-600"
+        className="no-print sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded-md focus:shadow-sm focus:text-primary-600"
       >
         Skip to main content
       </a>
       {/* Impersonation banner: ONLY for System Admin actively impersonating a tenant. Never show to normal tenant users (Owner/Admin/Staff). */}
       {userIsSystemAdmin && selectedTenantId && (
-        <div className="fixed top-0 left-0 right-0 z-[9999] bg-orange-500 text-white px-4 py-2 flex items-center justify-between text-sm font-medium">
+        <div className="fixed top-0 left-0 right-0 z-[9999] bg-primary-600 text-white px-4 py-2 flex items-center justify-between text-sm font-medium">
           <span>IMPERSONATING: {selectedTenantName || 'Tenant'} — All actions affect their data.</span>
           <button
             type="button"
             onClick={handleExitImpersonation}
-            className="bg-white text-orange-600 px-3 py-1.5 rounded font-semibold hover:bg-orange-50 transition-colors"
+            className="bg-white text-slate-700 px-3 py-1.5 rounded font-semibold hover:bg-slate-100 transition-colors"
           >
             EXIT — Return to SuperAdmin
           </button>
@@ -448,14 +448,14 @@ const Layout = () => {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="hidden min-h-9 min-w-9 items-center justify-center rounded-md text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white motion-reduce:transition-none md:flex"
+              className="hidden min-h-11 min-w-11 items-center justify-center rounded-md text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white motion-reduce:transition-none md:flex"
               title={isSidebarCollapsed ? 'Expand sidebar (Ctrl+\\)' : 'Collapse sidebar (Ctrl+\\)'}
               aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
           </div>
-          <nav className="sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4" aria-label="Main">
+          <nav className={`sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain py-4 ${labelsVisible ? 'px-3' : 'px-2'}`} aria-label="Main">
             {navGroups.map((group, groupIndex) => {
               const open = groupIsOpen(group)
               return (
@@ -464,7 +464,7 @@ const Layout = () => {
                     <button
                       type="button"
                       onClick={() => toggleGroup(group)}
-                      className="flex min-h-8 w-full items-center justify-between rounded-md px-2 text-left text-micro font-semibold uppercase tracking-wider text-primary-300/80 transition-colors hover:text-white"
+                      className="flex min-h-8 w-full items-center justify-between rounded-md px-2 text-left text-micro font-semibold text-primary-300/80 transition-colors hover:text-white"
                       aria-expanded={open}
                     >
                       <span className="truncate">{group.label}</span>
@@ -481,8 +481,8 @@ const Layout = () => {
                         key={item.id}
                         to={item.href}
                         className={`group/nav relative flex rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${
-                          labelsVisible
-                            ? 'items-center min-h-11 lg:min-h-10 px-3'
+ labelsVisible
+ ? 'items-center min-h-11 lg:min-h-10 px-3'
                             : 'flex-col items-center justify-center gap-0.5 min-h-[48px] px-1'
                         } ${
                           active ? 'bg-primary-600 text-white shadow-sm ring-1 ring-white/10' : 'text-primary-100/80 hover:bg-primary-800 hover:text-white'
@@ -507,8 +507,8 @@ const Layout = () => {
             <Link
               to="/more"
               className={`group/nav relative flex rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${
-                labelsVisible
-                  ? 'items-center min-h-11 lg:min-h-10 px-3'
+ labelsVisible
+ ? 'items-center min-h-11 lg:min-h-10 px-3'
                   : 'flex-col items-center justify-center gap-0.5 min-h-[48px] px-1'
               } ${
                 location.pathname === '/more' ? 'bg-primary-600 text-white shadow-sm ring-1 ring-white/10' : 'border border-dashed border-primary-700 text-primary-100/80 hover:border-primary-500 hover:bg-primary-800 hover:text-white'
@@ -532,7 +532,7 @@ const Layout = () => {
       {/* Main content - Full viewport after sidebar; pt-10 when impersonation banner visible so content not covered */}
       <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none ${isSidebarCollapsed ? 'md:pl-16' : 'md:pl-48 lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
         {backendUnavailable && (
-          <div className="px-4 py-2 bg-amber-100 border-b border-warning-border text-amber-900 text-sm">
+          <div className="px-4 py-2 bg-warning-bg border-b border-warning-border text-warning-fg text-sm">
             Service temporarily unavailable. Try again in a moment, or contact your company administrator.
           </div>
         )}
@@ -588,10 +588,10 @@ const Layout = () => {
                     <span className="block max-w-[10rem] truncate text-sm font-medium text-text-primary">{user?.name || 'User'}</span>
                     <span className="block text-xs text-neutral-500">{user?.role || 'Staff'}</span>
                   </span>
-                  <ChevronDown className="h-4 w-4 text-neutral-400" aria-hidden />
+                  <ChevronDown className="h-4 w-4 text-slate-500" aria-hidden />
                 </button>
                 {showProfileDropdown && (
-                  <div role="menu" className="absolute right-0 z-50 mt-2 w-60 rounded-lg border border-surface-border bg-white py-1 shadow-lg">
+                  <div role="menu" className="absolute right-0 z-50 mt-2 w-60 rounded-lg border border-surface-border bg-white py-1 shadow-sm">
                     <div className="border-b border-surface-border px-4 py-3">
                       <p className="truncate text-sm font-medium text-text-primary">{user?.name}</p>
                       <p className="text-xs text-neutral-500">{user?.role}</p>
@@ -632,13 +632,13 @@ const Layout = () => {
         </header>
         )}
         {/* Page content — POS has no top header padding for full viewport */}
-        <main id="main-content" data-shell-title={shellOwnsTitle ? 'page' : undefined} className={`flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC] ${routeShowsBottomNav ? 'pb-[4.75rem]' : 'pb-[env(safe-area-inset-bottom,0px)]'} md:pb-6 ${userIsSystemAdmin && selectedTenantId
-          ? (isPosRoute ? 'pt-24 md:pt-10' : 'pt-24 md:pt-[6.5rem]')
-          : (isPosRoute ? 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-0' : 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-16')
+        <main id="main-content" data-shell-title={shellOwnsTitle ? 'page' : undefined} data-comfort={!isPosRoute && location.pathname !== '/dashboard' && !location.pathname.startsWith('/billing-history') ? 'on' : undefined} className={`flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC] ${routeShowsBottomNav ? 'pb-[4.75rem]' : 'pb-[env(safe-area-inset-bottom,0px)]'} md:pb-6 ${userIsSystemAdmin && selectedTenantId
+ ? (isPosRoute ? 'pt-24 md:pt-10' : 'pt-24 md:pt-[6.5rem]')
+ : (isPosRoute ? 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-0' : 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-16')
           }`}>
           <div className={`flex-1 min-h-0 ${isViewportShellRoute ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
             <div className={`w-full max-w-full mx-auto px-3 sm:px-4 ${isViewportShellRoute ? 'py-2 lg:py-3 min-h-0 flex-1 flex flex-col' : 'min-h-full py-2 lg:py-3'}`}>
-              <RouteContent />
+              <div key={location.pathname} className="hb-page-in flex min-h-0 flex-1 flex-col"><RouteContent /></div>
             </div>
           </div>
         </main>
@@ -661,7 +661,7 @@ const Layout = () => {
       {navTip && (
         <div
           role="tooltip"
-          className="pointer-events-none fixed z-[70] -translate-y-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white shadow-lg"
+          className="pointer-events-none fixed z-[70] -translate-y-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white shadow-sm"
           style={{ top: navTip.top, left: navTip.left }}
         >
           {navTip.label}

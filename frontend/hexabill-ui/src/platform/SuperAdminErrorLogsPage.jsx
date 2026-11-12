@@ -82,7 +82,7 @@ const SuperAdminErrorLogsPage = () => {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 shadow-sm hover:shadow-md transition-all space-x-2 disabled:opacity-60"
+            className="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 shadow-sm hover:shadow-sm transition-all space-x-2 disabled:opacity-60"
           >
             <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
             <span>{refreshing ? 'Refreshing…' : 'Refresh'}</span>
@@ -91,7 +91,7 @@ const SuperAdminErrorLogsPage = () => {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm flex items-start gap-3">
+        <div className="mb-6 p-4 bg-white border border-neutral-200 rounded-sm flex items-start gap-3">
           <AlertCircle className="h-6 w-6 text-error flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-red-800">Error</p>
@@ -105,22 +105,22 @@ const SuperAdminErrorLogsPage = () => {
           <table className="min-w-full divide-y divide-neutral-200">
             <thead className="bg-neutral-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Time</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">TraceId</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Code</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Message</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Path</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Method</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Tenant</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">User ID</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Time</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">TraceId</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Code</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Message</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Path</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Method</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Tenant</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">User ID</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200">
               {logs.length === 0 && !error && (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center text-neutral-500">
-                    <FileText className="h-12 w-12 mx-auto text-neutral-300 mb-2" />
+                    <FileText className="h-12 w-12 mx-auto text-slate-500 mb-2" />
                     <p>No error logs in the last batch</p>
                   </td>
                 </tr>

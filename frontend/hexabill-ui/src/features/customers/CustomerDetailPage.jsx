@@ -186,7 +186,7 @@ const CustomerDetailPage = () => {
           </button>
           <Link
             to="/reports?tab=overdue"
-            className="inline-flex min-h-[44px] items-center rounded-md border border-warning-border bg-warning-bg px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
+            className="inline-flex min-h-[44px] items-center rounded-md border border-warning-border bg-warning-bg px-4 py-2 text-sm font-medium text-warning-fg hover:bg-warning-border"
           >
             Overdue report
           </Link>
@@ -237,14 +237,14 @@ const CustomerDetailPage = () => {
           <div>
             <label className="text-sm font-medium text-neutral-500">Phone</label>
             <div className="mt-1 flex items-center gap-2">
-              <Phone className="h-4 w-4 text-neutral-400" />
+              <Phone className="h-4 w-4 text-slate-500" />
               <span className="text-sm text-neutral-900">{customer.phone || 'N/A'}</span>
             </div>
           </div>
           <div>
             <label className="text-sm font-medium text-neutral-500">Email</label>
             <div className="mt-1 flex items-center gap-2">
-              <Mail className="h-4 w-4 text-neutral-400" />
+              <Mail className="h-4 w-4 text-slate-500" />
               <span className="text-sm text-neutral-900">{customer.email || 'N/A'}</span>
             </div>
           </div>
@@ -255,7 +255,7 @@ const CustomerDetailPage = () => {
           <div>
             <label className="text-sm font-medium text-neutral-500">Address</label>
             <div className="mt-1 flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-neutral-400" />
+              <MapPin className="h-4 w-4 text-slate-500" />
               <span className="text-sm text-neutral-900">{customer.address || 'N/A'}</span>
             </div>
           </div>
@@ -286,7 +286,7 @@ const CustomerDetailPage = () => {
           <div>
             <label className="text-sm font-medium text-neutral-500">Last Activity</label>
             <div className="mt-1 flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-neutral-400" />
+              <Calendar className="h-4 w-4 text-slate-500" />
               <span className="text-sm text-neutral-900">
                 {customer.lastActivity ? new Date(customer.lastActivity).toLocaleDateString() : 'No activity'}
               </span>
@@ -295,7 +295,7 @@ const CustomerDetailPage = () => {
           <div>
             <label className="text-sm font-medium text-neutral-500">Last Payment</label>
             <div className="mt-1 flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-neutral-400" />
+              <Calendar className="h-4 w-4 text-slate-500" />
               <span className="text-sm text-neutral-900">
                 {customer.lastPaymentDate ? new Date(customer.lastPaymentDate).toLocaleDateString() : 'No payments'}
               </span>
@@ -349,7 +349,7 @@ const CustomerDetailPage = () => {
           <TableSkeleton rows={6} className="border-0 rounded-none" />
         ) : ledger.length === 0 ? (
           <div className="py-8 text-center">
-            <FileText className="h-12 w-12 mx-auto text-neutral-400" />
+            <FileText className="h-12 w-12 mx-auto text-slate-500" />
             <p className="mt-2 text-sm text-neutral-500">No transactions found</p>
           </div>
         ) : (
@@ -378,13 +378,13 @@ const CustomerDetailPage = () => {
             <table className="min-w-full divide-y divide-neutral-200">
               <thead className="bg-neutral-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Reference</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Remarks</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Debit</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Credit</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Balance</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Reference</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 ">Remarks</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Debit</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Credit</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 ">Balance</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-neutral-200">
@@ -416,10 +416,10 @@ const CustomerDetailPage = () => {
 
       {/* Historical Starplus Legacy Archive (If Customer Has Migrated Bills) */}
       {legacyInvoices.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-amber-200 p-6 space-y-4">
+        <div className="bg-white rounded-lg shadow-sm border border-warning-border p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-amber-600" />
+              <ShieldAlert className="h-5 w-5 text-warning-fg" />
               <h2 className="text-lg font-semibold text-neutral-900">
                 Starplus Legacy Archive ({legacyInvoices.length} historical bills)
               </h2>
@@ -432,7 +432,7 @@ const CustomerDetailPage = () => {
             </Link>
           </div>
 
-          <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+          <div className="rounded-lg bg-warning-bg border border-warning-border p-3 text-xs text-warning-fg">
             <strong>Historical Reference Only:</strong> These invoices were issued by Starplus Foodstuff Trading prior to cutover.
             Approved opening balance was transferred to FrozenHub 1 without reissuing historical tax invoices.
           </div>
@@ -457,13 +457,13 @@ const CustomerDetailPage = () => {
                     <td className="px-3 py-2 text-neutral-600">{new Date(inv.invoiceDate).toLocaleDateString()}</td>
                     <td className="px-3 py-2 text-right font-medium text-neutral-900">{formatCurrency(inv.grandTotal)}</td>
                     <td className="px-3 py-2 text-right text-emerald-600 font-medium">{formatCurrency(inv.paidAmount)}</td>
-                    <td className={`px-3 py-2 text-right font-bold ${inv.outstandingCalculated > 0.005 ? 'text-rose-600' : 'text-neutral-400'}`}>
+                    <td className={`px-3 py-2 text-right font-bold ${inv.outstandingCalculated > 0.005 ? 'text-rose-600' : 'text-slate-500'}`}>
                       {inv.outstandingCalculated > 0.005 ? formatCurrency(inv.outstandingCalculated) : 'AED 0.00'}
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                        inv.outstandingCalculated <= 0.005 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
+                      <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${
+ inv.outstandingCalculated <= 0.005 ? 'bg-emerald-100 text-emerald-800' : 'bg-warning-bg text-warning-fg'
+ }`}>
                         {inv.outstandingCalculated <= 0.005 ? 'Paid' : 'Pending'}
                       </span>
                     </td>
@@ -471,7 +471,7 @@ const CustomerDetailPage = () => {
                       <button
                         type="button"
                         onClick={() => setSelectedLegacyInvoiceId(inv.id)}
-                        className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition"
+                        className="px-2 py-0.5 rounded text-xs font-semibold bg-warning-bg text-warning-fg border border-warning-border hover:bg-warning-border transition"
                       >
                         View
                       </button>

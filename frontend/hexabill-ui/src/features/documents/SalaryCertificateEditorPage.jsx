@@ -400,8 +400,8 @@ export default function SalaryCertificateEditorPage() {
             onClick={save}
             disabled={saving || !isDirty}
             className={`inline-flex items-center gap-1 px-3 py-1.5 min-h-[44px] text-sm rounded-md disabled:opacity-50 ${
-              isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'border text-text-secondary bg-slate-50'
-            }`}
+ isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'border text-text-secondary bg-slate-50'
+ }`}
           >
             <Save className="w-4 h-4" /> {saving ? 'Saving…' : isDirty ? 'Save changes' : 'Saved'}
           </button>
@@ -433,7 +433,7 @@ export default function SalaryCertificateEditorPage() {
           </button>
         </div>
       </div>
-      {error && <div className="text-sm text-neutral-800 bg-white border border-neutral-200 border-l-4 border-l-error rounded px-3 py-2">{error}</div>}
+      {error && <div className="text-sm text-neutral-800 bg-white border border-neutral-200 rounded px-3 py-2">{error}</div>}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
         <div className="border rounded-lg bg-white p-2.5 space-y-2">
@@ -460,7 +460,7 @@ export default function SalaryCertificateEditorPage() {
           </div>
           <label className="text-xs space-y-1 block">
             <span className="text-text-secondary">To (Bank / Recipient)</span>
-            <input
+            <input aria-label="e.g. DIB"
               data-sc-field="recipient"
               className="w-full border rounded px-2 py-1.5 text-sm"
               value={recipient}
@@ -471,7 +471,7 @@ export default function SalaryCertificateEditorPage() {
           </label>
           <label className="text-xs space-y-1 block">
             <span className="text-text-secondary">Employee Name</span>
-            <input
+            <input aria-label="e.g. Mr.VIMALPRATHAP"
               data-sc-field="name"
               className="w-full border rounded px-2 py-1.5 text-sm"
               value={employeeName}
@@ -545,7 +545,7 @@ export default function SalaryCertificateEditorPage() {
             </label>
             <label className="text-xs space-y-1">
               <span className="text-text-secondary">Salary in words (auto)</span>
-              <input
+              <input aria-label="Auto from salary number"
                 data-sc-field="words"
                 className="w-full border rounded px-2 py-1.5 text-sm"
                 value={monthlySalaryWords}
@@ -566,7 +566,7 @@ export default function SalaryCertificateEditorPage() {
           </div>
           <label className="text-xs space-y-1 block">
             <span className="text-text-secondary">Phone Number</span>
-            <input
+            <input aria-label="e.g. 0506918642"
               data-sc-field="phone"
               className="w-full border rounded px-2 py-1.5 text-sm"
               value={employeePhone}
@@ -595,7 +595,7 @@ export default function SalaryCertificateEditorPage() {
         </div>
 
         <div className="border rounded-lg bg-white p-5 md:p-6 max-w-[210mm] mx-auto xl:mx-0 shadow-sm">
-          <div className="flex items-start gap-3 mb-5 pb-3 border-b border-orange-400">
+          <div className="flex items-start gap-3 mb-5 pb-3 border-b border-slate-200">
             {logoSrc ? (
               <img
                 src={logoSrc}
@@ -606,7 +606,7 @@ export default function SalaryCertificateEditorPage() {
                 }}
               />
             ) : null}
-            <div className="flex-1 text-[#E67E22] font-bold text-sm uppercase tracking-wide leading-relaxed">
+            <div className="flex-1 text-[#E67E22] font-bold text-sm leading-relaxed">
               {company.companyName}
             </div>
             <div className="text-xs text-right text-text-secondary space-y-1 shrink-0 leading-relaxed">
@@ -616,7 +616,7 @@ export default function SalaryCertificateEditorPage() {
             </div>
           </div>
 
-          <div className="text-center font-bold text-base mb-6 tracking-wide">Sub: SALARY CERTIFICATE</div>
+          <div className="text-center font-bold text-base mb-6 ">Sub: SALARY CERTIFICATE</div>
           <div className="text-sm leading-relaxed space-y-2 mb-5">
             <div>DATE:{formatDisplayDate(certificateDate)}</div>
             <div>To; {display(recipient)}</div>

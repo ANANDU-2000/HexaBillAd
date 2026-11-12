@@ -151,7 +151,7 @@ const SuperAdminAiPage = () => {
             <input type="checkbox" checked={draft.enabled} disabled={!data.effective?.envEnabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />
             <span className="font-medium">Assistant on</span>
           </label>
-          {!data.effective?.envEnabled && <span className="text-amber-700">Switched off in the server environment (Ai__Enabled). It cannot be turned on from here.</span>}
+          {!data.effective?.envEnabled && <span className="text-warning-fg">Switched off in the server environment (Ai__Enabled). It cannot be turned on from here.</span>}
           <span className="text-neutral-600">Company data allowed by the server: <b>{data.customerDataAllowed ? 'yes (each owner must also approve)' : 'no'}</b></span>
           <span className="text-neutral-600">Order now: <b>{(data.effective?.chain || []).join(' → ') || 'none'}</b></span>
         </div>
@@ -189,7 +189,7 @@ const SuperAdminAiPage = () => {
         <section key={p.key} className="rounded-lg border border-neutral-200 bg-white p-4">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-semibold text-neutral-900">{p.key} <span className={`ml-1 rounded px-1.5 py-0.5 text-xs ${p.paid ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}`}>{p.paid ? 'paid' : 'free'}</span></h2>
+              <h2 className="text-sm font-semibold text-neutral-900">{p.key} <span className={`ml-1 rounded px-1.5 py-0.5 text-xs ${p.paid ? 'bg-warning-bg text-warning-fg' : 'bg-green-100 text-green-800'}`}>{p.paid ? 'paid' : 'free'}</span></h2>
               <p className="text-xs text-neutral-500">{p.kind} · {p.configured ? 'key set' : 'NO KEY - set it in the server environment'}</p>
             </div>
             <div className="flex gap-2">
@@ -207,7 +207,7 @@ const SuperAdminAiPage = () => {
           <ol className="space-y-1">
             {(draft.models[p.key] || []).map((m, i) => (
               <li key={m} className="flex items-center gap-2 rounded border border-neutral-200 px-2 py-1 text-sm">
-                <span className="w-5 text-xs text-neutral-400">{i + 1}</span>
+                <span className="w-5 text-xs text-slate-500">{i + 1}</span>
                 <span className="flex-1 break-all">{m}</span>
                 <button type="button" aria-label="Move up" onClick={() => move(p.key, i, -1)} className="p-1 hover:bg-neutral-100"><ArrowUp className="h-3.5 w-3.5" /></button>
                 <button type="button" aria-label="Move down" onClick={() => move(p.key, i, 1)} className="p-1 hover:bg-neutral-100"><ArrowDown className="h-3.5 w-3.5" /></button>
@@ -219,22 +219,22 @@ const SuperAdminAiPage = () => {
           {catalogFor === p.key && (
             <div className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 p-3">
               <div className="mb-2 flex items-center gap-2">
-                <Search className="h-4 w-4 text-neutral-400" />
-                <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter free models" className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm" />
+                <Search className="h-4 w-4 text-slate-500" />
+                <input aria-label="Filter free models" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter free models" className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm" />
                 <button type="button" onClick={() => setCatalogFor(null)} className="text-xs text-neutral-500">Close</button>
               </div>
               {catalogLoading ? <p className="text-xs text-neutral-500">Loading the current free models…</p> : (
                 <ul className="max-h-60 space-y-1 overflow-auto">
                   {filteredCatalog.map((m) => (
                     <li key={m.id} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="break-all">{m.id}<span className="ml-2 text-xs text-neutral-400">{m.contextLength ? `${Math.round(m.contextLength / 1000)}k` : ''}</span></span>
+                      <span className="break-all">{m.id}<span className="ml-2 text-xs text-slate-500">{m.contextLength ? `${Math.round(m.contextLength / 1000)}k` : ''}</span></span>
                       <button type="button" disabled={(draft.models[p.key] || []).includes(m.id)} onClick={() => addModel(p.key, m.id)} className="rounded border border-neutral-300 px-2 py-0.5 text-xs disabled:opacity-40">Add</button>
                     </li>
                   ))}
                   {filteredCatalog.length === 0 && <li className="text-xs text-neutral-500">Nothing matches.</li>}
                 </ul>
               )}
-              <p className="mt-2 text-xs text-amber-700">Free models may keep and learn from what is sent to them. A free model that is busy is skipped for a few minutes, then tried again.</p>
+              <p className="mt-2 text-xs text-warning-fg">Free models may keep and learn from what is sent to them. A free model that is busy is skipped for a few minutes, then tried again.</p>
             </div>
           )}
         </section>

@@ -93,8 +93,8 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore, onOpenCreate }) => {
                     />
                     <span
                       className={`text-micro leading-tight text-center truncate max-w-full ${
-                        moreActive ? 'font-semibold text-primary-700' : 'font-medium'
-                      }`}
+ moreActive ? 'font-semibold text-primary-700' : 'font-medium'
+ }`}
                     >
                       {item.name}
                     </span>
@@ -142,8 +142,8 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore, onOpenCreate }) => {
                   />
                   <span
                     className={`text-micro leading-tight text-center truncate max-w-full ${
-                      active ? 'font-semibold text-primary-700' : 'font-medium'
-                    }`}
+ active ? 'font-semibold text-primary-700' : 'font-medium'
+ }`}
                   >
                     {item.name}
                   </span>

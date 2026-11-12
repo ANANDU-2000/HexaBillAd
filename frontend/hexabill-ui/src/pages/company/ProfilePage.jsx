@@ -175,7 +175,7 @@ const ProfilePage = () => {
   }
 
   const role = profile?.role || currentUser?.role
-  const roleChipClass = role === 'Owner' ? 'bg-amber-100 text-amber-800' : role === 'Admin' ? 'bg-primary-100 text-primary-800' : 'bg-slate-100 text-slate-700'
+  const roleChipClass = role === 'Owner' ? 'bg-warning-bg text-warning-fg' : role === 'Admin' ? 'bg-primary-100 text-primary-800' : 'bg-slate-100 text-slate-700'
   const photoUrl = getUploadsUrl(profile?.profilePhotoUrl)
 
   return (
@@ -310,7 +310,7 @@ const ProfilePage = () => {
               <CheckCircle className="h-5 w-5 text-success" />
             </div>
             <div>
-              <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Status</p>
+              <p className="text-xs font-medium text-neutral-500 ">Status</p>
               <p className="text-sm font-semibold text-neutral-900">Active</p>
             </div>
           </div>
@@ -319,7 +319,7 @@ const ProfilePage = () => {
               <User className="h-5 w-5 text-primary-600" />
             </div>
             <div>
-              <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Account</p>
+              <p className="text-xs font-medium text-neutral-500 ">Account</p>
               <p className="text-sm font-semibold text-neutral-900">{companyName || currentUser?.name || 'Your account'}</p>
             </div>
           </div>

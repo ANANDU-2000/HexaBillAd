@@ -164,10 +164,10 @@ const PriceList = () => {
           
           <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-4">
             <div className="flex items-center">
-              <Search className="h-8 w-8 text-purple-600" />
+              <Search className="h-8 w-8 text-slate-700" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-purple-600">Search Results</p>
-                <p className="text-2xl font-bold text-purple-900">{filteredProducts.length}</p>
+                <p className="text-sm font-medium text-slate-700">Search Results</p>
+                <p className="text-2xl font-bold text-slate-700">{filteredProducts.length}</p>
               </div>
             </div>
           </div>
@@ -176,8 +176,8 @@ const PriceList = () => {
         {/* Search Bar */}
         <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-4 mb-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
-            <input
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <input aria-label="Search by product name or SKU"
               type="text"
               placeholder="Search by product name or SKU..."
               value={searchTerm}
@@ -317,7 +317,7 @@ const PriceList = () => {
                         {editingProduct !== product.id && (
                           <button
                             onClick={() => handleEdit(product)}
-                            className="text-indigo-600 hover:text-indigo-900"
+                            className="text-slate-700 hover:text-slate-700"
                             title="Edit Price"
                           >
                             <Edit className="h-4 w-4" />
@@ -333,7 +333,7 @@ const PriceList = () => {
         </div>
 
         {/* Info Box */}
-        <div className="mt-6 bg-primary-50 border-l-4 border-primary-400 p-4 rounded">
+        <div className="mt-6 bg-primary-50 border-primary-400 p-4 rounded">
           <div className="flex">
             <div className="flex-shrink-0">
               <DollarSign className="h-5 w-5 text-primary-400" />

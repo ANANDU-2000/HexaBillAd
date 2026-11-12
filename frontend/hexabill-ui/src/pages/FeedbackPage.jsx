@@ -79,18 +79,18 @@ const FeedbackPage = () => {
                   type="button"
                   onClick={() => setFeedbackType(type.id)}
                   className={`p-4 border-2 rounded-lg transition ${
-                    feedbackType === type.id
-                      ? 'border-primary-600 bg-primary-50'
+ feedbackType === type.id
+ ? 'border-primary-600 bg-primary-50'
                       : 'border-neutral-200 hover:border-neutral-300'
                   }`}
                 >
                   <div className="flex flex-col items-center space-y-2">
-                    <div className={`${feedbackType === type.id ? 'text-primary-600' : 'text-neutral-400'}`}>
+                    <div className={`${feedbackType === type.id ? 'text-primary-600' : 'text-slate-500'}`}>
                       {type.icon}
                     </div>
                     <span className={`text-sm font-medium ${
-                      feedbackType === type.id ? 'text-primary-600' : 'text-neutral-700'
-                    }`}>
+ feedbackType === type.id ? 'text-primary-600' : 'text-neutral-700'
+ }`}>
                       {type.label}
                     </span>
                   </div>
@@ -111,10 +111,12 @@ const FeedbackPage = () => {
                     key={star}
                     type="button"
                     onClick={() => setRating(star)}
+                    aria-label={`${star} star${star > 1 ? 's' : ''}`}
+                    aria-pressed={rating >= star}
                     className={`p-2 rounded transition ${
-                      rating >= star
-                        ? 'text-yellow-400 hover:text-yellow-500'
-                        : 'text-neutral-300 hover:text-neutral-400'
+ rating >= star
+ ? 'text-yellow-400 hover:text-yellow-500'
+                        : 'text-slate-500 hover:text-slate-500'
                     }`}
                   >
                     <Star className="h-8 w-8 fill-current" />

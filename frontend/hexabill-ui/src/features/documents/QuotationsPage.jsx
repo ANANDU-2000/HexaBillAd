@@ -20,10 +20,10 @@ const SORTS = {
 const BADGE = {
   Draft: 'bg-slate-100 text-slate-700',
   Final: 'bg-blue-50 text-blue-700',
-  Sent: 'bg-indigo-50 text-indigo-700',
+  Sent: 'bg-slate-50 text-slate-700',
   Accepted: 'bg-green-50 text-green-700',
   Rejected: 'bg-red-50 text-red-700',
-  Expired: 'bg-amber-50 text-amber-800',
+  Expired: 'bg-warning-bg text-warning-fg',
 }
 
 const day = (v) => (v ? String(v).slice(0, 10) : '')
@@ -188,7 +188,7 @@ export default function QuotationsPage() {
       {rows.length > 0 && (
         <div className="shrink-0 mb-2 flex flex-wrap gap-2 items-center">
           <label className="relative flex-1 min-w-[12rem] max-w-md">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" aria-hidden />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" aria-hidden />
             <input
               type="search"
               value={query}
@@ -211,13 +211,13 @@ export default function QuotationsPage() {
         </div>
       )}
 
-      {error && <div className="shrink-0 text-sm text-neutral-800 mb-2 bg-white border border-neutral-200 border-l-4 border-l-error rounded px-3 py-1.5" role="alert">{error}</div>}
+      {error && <div className="shrink-0 text-sm text-neutral-800 mb-2 bg-white border border-neutral-200 rounded px-3 py-1.5" role="alert">{error}</div>}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white border border-neutral-200 rounded-lg">
       {loading ? (
         <p className="text-sm text-text-secondary p-4">Loading…</p>
       ) : rows.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <FileText className="w-9 h-9 mx-auto mb-2 text-slate-400" />
+          <FileText className="w-9 h-9 mx-auto mb-2 text-slate-500" />
           <p className="text-text-primary font-medium mb-1">No quotations yet</p>
           <p className="text-sm text-text-secondary mb-3">Create your first quote for a customer, then print or download PDF.</p>
           <Link
@@ -245,7 +245,7 @@ export default function QuotationsPage() {
                     {r.subject ? <p className="break-words text-xs text-slate-500">{r.subject}</p> : null}
                     <p className="text-xs text-slate-500">
                       {day(r.quoteDate)} · {(r.items || []).length} item{(r.items || []).length === 1 ? '' : 's'}
-                      {r.validUntil ? <> · valid to {day(r.validUntil)}{isLapsed(r) ? <span className="text-amber-700 font-medium"> (lapsed)</span> : null}</> : null}
+                      {r.validUntil ? <> · valid to {day(r.validUntil)}{isLapsed(r) ? <span className="text-warning-fg font-medium"> (lapsed)</span> : null}</> : null}
                     </p>
                   </div>
                   <p className="shrink-0 text-sm font-semibold tabular-nums">{currency} {Number(r.grandTotal).toFixed(2)}</p>
@@ -310,7 +310,7 @@ export default function QuotationsPage() {
                   <td className="px-2 py-1.5 whitespace-nowrap">{day(r.quoteDate)}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">
                     {r.validUntil ? day(r.validUntil) : '—'}
-                    {isLapsed(r) ? <span className="ml-1 text-xs text-amber-700 font-medium">lapsed</span> : null}
+                    {isLapsed(r) ? <span className="ml-1 text-xs text-warning-fg font-medium">lapsed</span> : null}
                   </td>
                   <td className="px-2 py-1.5">
                     <div>{r.customerName || '—'}</div>

@@ -93,8 +93,8 @@ const MoreMenuSheet = ({ open, onClose }) => {
         {/* Sticky search */}
         <div className="sticky top-0 z-10 bg-white border-b border-neutral-100 px-4 pt-3 pb-3">
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" aria-hidden />
-            <input
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" aria-hidden />
+            <input aria-label="Search for a section"
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -111,7 +111,7 @@ const MoreMenuSheet = ({ open, onClose }) => {
           <div className="px-4 py-3 space-y-5">
             {visible.map((group) => (
               <section key={group.id}>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2 px-1">
+                <h2 className="text-xs font-semibold text-neutral-500 mb-2 px-1">
                   {group.label}
                 </h2>
                 <ul className="flex flex-col gap-2">
@@ -128,8 +128,8 @@ const MoreMenuSheet = ({ open, onClose }) => {
                         >
                           <span
                             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                              isSignOut ? 'bg-red-50 text-error' : 'bg-primary-50 text-primary-600'
-                            }`}
+ isSignOut ? 'bg-red-50 text-error' : 'bg-primary-50 text-primary-600'
+ }`}
                           >
                             <Icon className="h-5 w-5" aria-hidden />
                           </span>
@@ -143,7 +143,7 @@ const MoreMenuSheet = ({ open, onClose }) => {
                               <span className="block text-xs leading-snug text-text-secondary">{item.description}</span>
                             )}
                           </span>
-                          {!isSignOut && <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" aria-hidden />}
+                          {!isSignOut && <ChevronRight className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />}
                         </button>
                       </li>
                     )

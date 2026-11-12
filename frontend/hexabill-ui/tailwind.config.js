@@ -82,10 +82,10 @@ module.exports = {
         },
         // Status: DEFAULT is the solid colour; fg/bg/border are the tinted trio
         // (mirrors --{status}-fg/-bg/-border). Always pair colour with text or an icon.
-        success: { DEFAULT: '#059669', fg: '#047857', bg: '#ecfdf5', border: '#a7f3d0' },
-        warning: { DEFAULT: '#d97706', fg: '#b45309', bg: '#fffbeb', border: '#fde68a' },
+        success: { DEFAULT: '#047857', fg: '#047857', bg: '#ecfdf5', border: '#a7f3d0' },
+        warning: { DEFAULT: '#b45309', fg: '#b45309', bg: '#fffbeb', border: '#fde68a' },
         error: { DEFAULT: '#dc2626', fg: '#b91c1c', bg: '#fef2f2', border: '#fecaca' },
-        info: { DEFAULT: '#3b82f6', fg: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+        info: { DEFAULT: '#2563eb', fg: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
         tenant: 'var(--tenant-brand)',
       },
       transitionDuration: {

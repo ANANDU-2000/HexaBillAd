@@ -19,22 +19,22 @@ export default function VatProfitEstimateCard({ report }) {
         <div className="rounded-xl border border-neutral-200 bg-white p-3">
           <p className="text-xs font-medium text-neutral-500">1. Gross profit from sales</p>
           <p className="mt-1 text-lg font-bold tabular-nums text-neutral-900">{formatCurrency(grossProfit)}</p>
-          <p className="text-[11px] text-neutral-500">Sales {formatCurrency(sales)} - product cost {formatCurrency(cogs)}</p>
+          <p className="text-xs text-neutral-500">Sales {formatCurrency(sales)} - product cost {formatCurrency(cogs)}</p>
         </div>
         <div className="rounded-xl border border-neutral-200 bg-white p-3">
           <p className="text-xs font-medium text-neutral-500">2. Less: total expenses</p>
           <p className="mt-1 text-lg font-bold tabular-nums text-neutral-900">{formatCurrency(expenses)}</p>
-          <p className="text-[11px] text-neutral-500">Full amounts, no VAT split</p>
+          <p className="text-xs text-neutral-500">Full amounts, no VAT split</p>
         </div>
         <div className="rounded-xl border border-neutral-200 bg-white p-3">
           <p className="text-xs font-medium text-neutral-500">3. Net profit (after expenses)</p>
           <p className={`mt-1 text-lg font-bold tabular-nums ${netProfit < 0 ? 'text-error-fg' : 'text-neutral-900'}`}>{formatCurrency(netProfit)}</p>
-          <p className="text-[11px] text-neutral-500">Gross profit - expenses</p>
+          <p className="text-xs text-neutral-500">Gross profit - expenses</p>
         </div>
         <div className="rounded-xl border-2 border-primary-500 bg-primary-50 p-3">
           <p className="text-xs font-semibold text-primary-800">4. 5% VAT on net profit</p>
           <p className="mt-1 text-xl font-extrabold tabular-nums text-primary-700">{available ? formatCurrency(Number(estimate)) : 'Refresh to load estimate'}</p>
-          <p className="text-[11px] text-primary-800">Net profit x 5%. Zero when profit is zero or negative.</p>
+          <p className="text-xs text-primary-800">Net profit x 5%. Zero when profit is zero or negative.</p>
         </div>
       </div>
 
@@ -73,7 +73,7 @@ export default function VatProfitEstimateCard({ report }) {
             })}
           </tbody>
         </table>
-        <p className="px-3 pb-3 pt-1 text-[11px] text-neutral-500">The 5% total above is worked out on the whole period, so negative days offset positive days. Daily figures are shown for checking.</p>
+        <p className="px-3 pb-3 pt-1 text-xs text-neutral-500">The 5% total above is worked out on the whole period, so negative days offset positive days. Daily figures are shown for checking.</p>
       </div>
     </section>
   )

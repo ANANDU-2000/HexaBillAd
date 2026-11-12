@@ -181,8 +181,8 @@ const SubscriptionPlansPage = () => {
           <button
             onClick={() => setBillingCycle('Monthly')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-              billingCycle === 'Monthly'
-                ? 'bg-primary-600 text-white'
+ billingCycle === 'Monthly'
+ ? 'bg-primary-600 text-white'
                 : 'text-neutral-700 hover:bg-neutral-100'
             }`}
           >
@@ -191,8 +191,8 @@ const SubscriptionPlansPage = () => {
           <button
             onClick={() => setBillingCycle('Yearly')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-              billingCycle === 'Yearly'
-                ? 'bg-primary-600 text-white'
+ billingCycle === 'Yearly'
+ ? 'bg-primary-600 text-white'
                 : 'text-neutral-700 hover:bg-neutral-100'
             }`}
           >
@@ -211,9 +211,9 @@ const SubscriptionPlansPage = () => {
           return (
             <div
               key={plan.id}
-              className={`bg-white rounded-lg shadow-lg border-2 p-6 relative ${
-                isCurrentPlan ? 'border-primary-500' : 'border-neutral-200'
-              }`}
+              className={`bg-white rounded-lg shadow-sm border-2 p-6 relative ${
+ isCurrentPlan ? 'border-primary-500' : 'border-neutral-200'
+ }`}
             >
               {isCurrentPlan && (
                 <div className="absolute top-4 right-4 bg-primary-600 text-white text-xs font-semibold px-2 py-1 rounded">
@@ -301,8 +301,8 @@ const SubscriptionPlansPage = () => {
                 onClick={() => handleSubscribe(plan)}
                 disabled={isCurrentPlan}
                 className={`w-full py-3 rounded-lg font-semibold transition ${
-                  isCurrentPlan
-                    ? 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
+ isCurrentPlan
+ ? 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
                     : 'bg-primary-600 text-white hover:bg-primary-700'
                 }`}
               >

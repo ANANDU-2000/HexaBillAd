@@ -876,7 +876,7 @@ const ProductsPage = () => {
               <TableSkeleton rows={6} className="border-0 rounded-none" />
             ) : movements.length === 0 ? (
               <div className="text-center py-12 text-neutral-500">
-                <History className="h-10 w-10 mx-auto mb-2 text-neutral-300" />
+                <History className="h-10 w-10 mx-auto mb-2 text-slate-500" />
                 <p className="font-medium">No stock movements found</p>
                 <p className="text-sm mt-1">Stock movements are recorded when sales, purchases, adjustments, or returns occur.</p>
               </div>
@@ -902,10 +902,10 @@ const ProductsPage = () => {
                         <td className="px-3 py-2.5 text-neutral-500">{m.productSku || '—'}</td>
                         <td className="px-3 py-2.5 text-center">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                            m.transactionType === 'Sale' ? 'bg-red-100 text-error-fg' :
-                            m.transactionType === 'Purchase' ? 'bg-green-100 text-success-fg' :
+ m.transactionType === 'Sale' ? 'bg-red-100 text-error-fg' :
+ m.transactionType === 'Purchase' ? 'bg-green-100 text-success-fg' :
                             m.transactionType === 'Adjustment' ? 'bg-primary-100 text-primary-700' :
-                            m.transactionType === 'Return' ? 'bg-amber-100 text-warning-fg' :
+                            m.transactionType === 'Return' ? 'bg-warning-bg text-warning-fg' :
                             'bg-neutral-100 text-neutral-700'
                           }`}>
                             {m.transactionType}
@@ -918,7 +918,7 @@ const ProductsPage = () => {
                           </span>
                         </td>
                         <td className="px-3 py-2.5 text-neutral-600 max-w-xs truncate">{m.reason || '—'}</td>
-                        <td className="px-3 py-2.5 text-center text-neutral-400">{m.refId || '—'}</td>
+                        <td className="px-3 py-2.5 text-center text-slate-500">{m.refId || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -942,15 +942,15 @@ const ProductsPage = () => {
       ) : (
       <>
       {activeTab === 'missingBarcode' && canManageInventory && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white px-3 py-2.5">
-          <ScanBarcode className="h-4 w-4 text-amber-800 shrink-0" />
-          <p className="text-sm text-amber-900 flex-1 min-w-[12rem]">
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-sm border border-neutral-200 bg-white px-3 py-2.5">
+          <ScanBarcode className="h-4 w-4 text-warning-fg shrink-0" />
+          <p className="text-sm text-warning-fg flex-1 min-w-[12rem]">
             Products without a barcode ({totalCount}). Auto-fill uses SKU when unique, otherwise HB(tenant)-id. Then print or share labels.
           </p>
           <button
             type="button"
             onClick={handleAutoFillMissingBarcodes}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-warning text-white hover:bg-amber-700"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-warning-fg text-white hover:bg-warning-fg"
           >
             <Wand2 className="h-4 w-4" />
             Auto-fill missing
@@ -958,7 +958,7 @@ const ProductsPage = () => {
           <button
             type="button"
             onClick={() => handlePrintMissingBarcodes({ share: false })}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-warning-border bg-white text-warning-fg hover:bg-warning-border"
           >
             <Printer className="h-4 w-4" />
             Print PDF
@@ -966,7 +966,7 @@ const ProductsPage = () => {
           <button
             type="button"
             onClick={() => handlePrintMissingBarcodes({ share: true })}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-warning-border bg-white text-warning-fg hover:bg-warning-border"
           >
             <Share2 className="h-4 w-4" />
             Share PDF
@@ -1011,7 +1011,7 @@ const ProductsPage = () => {
       {/* Mobile search + filter trigger (md:hidden) */}
       <div data-sticky-toolbar className="md:hidden flex items-center gap-2 mb-3 sticky top-0 z-20 bg-[#F8FAFC] py-1">
         <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" aria-hidden />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" aria-hidden />
           <input
             type="search"
             value={searchTerm}
@@ -1145,7 +1145,7 @@ const ProductsPage = () => {
                       />
                     ) : (
                       <div className="h-9 w-9 bg-neutral-100 rounded border border-neutral-200 flex items-center justify-center mb-1.5">
-                        <ImageIcon className="h-4 w-4 text-neutral-400" />
+                        <ImageIcon className="h-4 w-4 text-slate-500" />
                       </div>
                     )}
                     <span className="font-medium text-neutral-900 leading-snug line-clamp-2">{product.nameEn}</span>
@@ -1177,7 +1177,7 @@ const ProductsPage = () => {
                     <p className="text-xs text-neutral-500">Expiry</p>
                     {product.expiryDate ? (() => {
                       const days = Math.ceil((new Date(product.expiryDate) - new Date()) / (1000 * 60 * 60 * 24))
-                      return <p className={days < 0 ? 'text-error font-medium' : days <= 30 ? 'text-orange-600' : 'text-neutral-900'}>{days < 0 ? 'Expired' : days <= 30 ? `${days}d left` : new Date(product.expiryDate).toLocaleDateString()}</p>
+                      return <p className={days < 0 ? 'text-error font-medium' : days <= 30 ? 'text-slate-700' : 'text-neutral-900'}>{days < 0 ? 'Expired' : days <= 30 ? `${days}d left` : new Date(product.expiryDate).toLocaleDateString()}</p>
                     })() : <p className="text-neutral-500 text-xs">No expiry</p>}
                   </div>
                 </div>
@@ -1300,7 +1300,7 @@ const ProductsPage = () => {
       {
         showImportModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-sm max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-semibold text-neutral-900">Import Products from Excel</h2>
@@ -1310,7 +1310,7 @@ const ProductsPage = () => {
                       setImportFile(null)
                       setImportResult(null)
                     }}
-                    className="text-neutral-400 hover:text-neutral-600"
+                    className="text-slate-500 hover:text-neutral-600"
                   >
                     ✕
                   </button>
@@ -1319,7 +1319,7 @@ const ProductsPage = () => {
                 {!importResult ? (
                   <div className="space-y-4">
                     <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center">
-                      <Upload className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
+                      <Upload className="h-12 w-12 text-slate-500 mx-auto mb-4" />
                       <p className="text-sm text-neutral-600 mb-2">
                         Upload Excel file (.xlsx or .xls)
                       </p>
@@ -1452,7 +1452,7 @@ const ProductsPage = () => {
                     </div>
 
                     {importResult.errorMessages && importResult.errorMessages.length > 0 && (
-                      <div className="bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm p-4 max-h-40 overflow-y-auto">
+                      <div className="bg-white border border-neutral-200 rounded-sm p-4 max-h-40 overflow-y-auto">
                         <h4 className="font-semibold text-red-800 mb-2">Errors:</h4>
                         <ul className="text-sm text-error-fg space-y-1">
                           {importResult.errorMessages.slice(0, 10).map((msg, idx) => (
@@ -1510,7 +1510,7 @@ const ProductsPage = () => {
                   setEditingCategory(null)
                   setCategoryFormData({ name: '', description: '', colorCode: '#3B82F6' })
                 }}
-                className="text-neutral-400 hover:text-neutral-600"
+                className="text-slate-500 hover:text-neutral-600"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -1526,7 +1526,7 @@ const ProductsPage = () => {
                   <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                     Category Name *
                   </label>
-                  <input
+                  <input aria-label="e.g., Dairy, Beverages, Snacks"
                     type="text"
                     value={categoryFormData.name}
                     onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
@@ -1599,7 +1599,7 @@ const ProductsPage = () => {
                           {cat.description && (
                             <div className="text-xs text-neutral-500">{cat.description}</div>
                           )}
-                          <div className="text-xs text-neutral-400">{cat.productCount || 0} products</div>
+                          <div className="text-xs text-slate-500">{cat.productCount || 0} products</div>
                         </div>
                       </div>
                       <div className="flex gap-2">

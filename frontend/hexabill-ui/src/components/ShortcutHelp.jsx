@@ -32,7 +32,7 @@ const ShortcutHelp = ({ open, onClose }) => (
     <div className="space-y-5">
       {GROUPS.map((group) => (
         <section key={group.title}>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">{group.title}</h4>
+          <h4 className="mb-2 text-xs font-semibold text-neutral-500">{group.title}</h4>
           <dl className="divide-y divide-surface-border rounded-md border border-surface-border">
             {group.rows.map(([keys, label]) => (
               <div key={keys} className="flex items-center justify-between gap-4 px-3 py-2 text-sm">

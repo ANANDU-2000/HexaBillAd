@@ -31,7 +31,7 @@ export default function QuotationProductDrawer({
     <div className="fixed inset-0 z-[55] flex justify-end" data-quote-product-picker="overlay">
       <button type="button" className="absolute inset-0 bg-black/30" aria-label="Close product drawer" onClick={onClose} />
       <aside
-        className="relative w-full md:w-[420px] max-w-full h-full bg-white shadow-2xl border-l border-neutral-200 flex flex-col"
+        className="relative w-full md:w-[420px] max-w-full h-full bg-white shadow-sm border-l border-neutral-200 flex flex-col"
         role="dialog"
         aria-modal="true"
         aria-label={`Product search row ${(rowIndex ?? 0) + 1}`}
@@ -47,8 +47,8 @@ export default function QuotationProductDrawer({
         </div>
         <div className="px-3 py-2 border-b bg-neutral-50 shrink-0">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-            <input
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <input aria-label="Search products, or type a custom item and press Enter"
               ref={searchRef}
               type="search"
               value={searchValue || ''}
@@ -92,7 +92,7 @@ export default function QuotationProductDrawer({
                 <p className="font-medium text-sm truncate">{product.nameEn || product.name || product.NameEn}</p>
                 <div className="flex justify-between text-xs text-neutral-600 mt-0.5">
                   <span>{currency} {Number(product.sellPrice ?? product.SellPrice ?? 0).toFixed(2)}</span>
-                  {(product.sku || product.Sku) && <span className="text-neutral-400">{product.sku || product.Sku}</span>}
+                  {(product.sku || product.Sku) && <span className="text-slate-500">{product.sku || product.Sku}</span>}
                 </div>
               </button>
             ))

@@ -114,8 +114,8 @@ export default function SalaryCertificatesPage() {
       </div>
 
       <div className="shrink-0 mb-2 relative max-w-md">
-        <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
+        <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+        <input aria-label="Search name, passport, designation"
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -124,13 +124,13 @@ export default function SalaryCertificatesPage() {
         />
       </div>
 
-      {error && <div className="shrink-0 text-sm text-neutral-800 mb-2 bg-white border border-neutral-200 border-l-4 border-l-error rounded px-3 py-1.5">{error}</div>}
+      {error && <div className="shrink-0 text-sm text-neutral-800 mb-2 bg-white border border-neutral-200 rounded px-3 py-1.5">{error}</div>}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white border border-neutral-200 rounded-lg">
         {loading ? (
           <p className="text-sm text-text-secondary p-4">Loading…</p>
         ) : filtered.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-            <BadgeDollarSign className="w-9 h-9 mx-auto mb-2 text-slate-400" />
+            <BadgeDollarSign className="w-9 h-9 mx-auto mb-2 text-slate-500" />
             <p className="text-text-primary font-medium mb-1">{rows.length === 0 ? 'No salary certificates yet' : 'No matches'}</p>
             <p className="text-sm text-text-secondary mb-3">
               {rows.length === 0

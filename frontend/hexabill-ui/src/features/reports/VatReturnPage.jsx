@@ -578,11 +578,11 @@ const VatReturnPage = () => {
           </div>
         </div>
       </div>
-      <div role="note" className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white px-4 py-3 text-sm font-medium text-neutral-800">
+      <div role="note" className="rounded-sm border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-800">
         Management report. Not an FTA filing.
       </div>
       {actionAcknowledgement && (
-        <div role="status" className="rounded-sm border border-neutral-200 border-l-4 border-l-success bg-white px-4 py-3 text-sm text-neutral-800">
+        <div role="status" className="rounded-sm border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-800">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold">{actionAcknowledgement.action} complete</p>
@@ -600,7 +600,7 @@ const VatReturnPage = () => {
         </div>
       )}
       {actionError && (
-        <div role="alert" className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white px-4 py-3 text-sm text-neutral-800">
+        <div role="alert" className="rounded-sm border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-800">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold">VAT action failed</p>
@@ -703,7 +703,7 @@ const VatReturnPage = () => {
       </div>
 
       {refreshNote && (
-        <p role="status" className="mb-3 rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white px-3 py-2 text-sm text-neutral-800">{refreshNote}</p>
+        <p role="status" className="mb-3 rounded-sm border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800">{refreshNote}</p>
       )}
       {loading && vatReturn && (
         <p role="status" className="mb-3 text-sm text-neutral-500">Updating VAT figures for {fromDate} to {toDate}…</p>
@@ -713,7 +713,7 @@ const VatReturnPage = () => {
       ) : loadError === 'access' ? (
         <div className="py-12 text-center">
           <div className="max-w-md mx-auto rounded-lg border border-warning-border bg-warning-bg p-6">
-            <p className="text-amber-800 font-medium">You don&apos;t have access to VAT Return</p>
+            <p className="text-warning-fg font-medium">You don&apos;t have access to VAT Return</p>
             <p className="mt-2 text-sm text-warning-fg">This report is for Admin, Owner, or Manager.</p>
           </div>
         </div>
@@ -777,7 +777,7 @@ const VatReturnPage = () => {
             <span className="text-sm text-neutral-600">
               Showing: {fromDate} – {toDate} ({periodLabel})
               {(v.status || '').toLowerCase() === 'locked' && (
-                <span className="ml-2 inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Locked</span>
+                <span className="ml-2 inline-flex px-2 py-0.5 rounded text-xs font-medium bg-warning-bg text-warning-fg">Locked</span>
               )}
               {(v.status || '').toLowerCase() === 'submitted' && (
                 <span className="ml-2 inline-flex px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Filed locally</span>
@@ -853,7 +853,7 @@ const VatReturnPage = () => {
                   }}
                   disabled={blocking.length > 0 || !canFreezeVatReport || ['locked', 'submitted'].includes((v.status || '').toLowerCase())}
                   title={!canFreezeVatReport ? 'Add a valid 15-digit non-sample VAT TRN to freeze this report.' : undefined}
-                  className="inline-flex items-center gap-1 px-3 py-2 border border-amber-500 text-warning-fg rounded-md text-sm hover:bg-warning-bg disabled:opacity-50"
+                  className="inline-flex items-center gap-1 px-3 py-2 border border-warning-border text-warning-fg rounded-md text-sm hover:bg-warning-bg disabled:opacity-50"
                 >
                   <Lock className="h-4 w-4" /> Lock period
                 </button>
@@ -954,7 +954,7 @@ const VatReturnPage = () => {
 
           {/* SYS001 calculation error banner */}
           {hasSys001 && (
-            <div className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white p-4 flex items-start gap-2">
+            <div className="rounded-sm border border-neutral-200 bg-white p-4 flex items-start gap-2">
               <AlertTriangle className="h-5 w-5 text-error flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-red-800">Calculation error — partial data shown.</p>
@@ -973,7 +973,7 @@ const VatReturnPage = () => {
             }, {})
             const groups = Object.values(grouped)
             return (
-            <div className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white px-4 py-3">
+            <div className="rounded-sm border border-neutral-200 bg-white px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-medium text-red-800">
                   {blocking.length} blocking issue{blocking.length !== 1 ? 's' : ''} — resolve before locking period.
@@ -1008,7 +1008,7 @@ const VatReturnPage = () => {
             )
           })()}
           {issues.length > 0 && blocking.length === 0 && !hasSys001 && (
-            <div className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-4 text-sm text-neutral-800">
+            <div className="rounded-sm border border-neutral-200 bg-white p-4 text-sm text-neutral-800">
               <span className="font-medium">Warnings:</span>
               <ul className="mt-1 list-disc list-inside space-y-0.5">
                 {issues.slice(0, 5).map((i, idx) => (
@@ -1021,7 +1021,7 @@ const VatReturnPage = () => {
             </div>
           )}
           {issues.length === 0 && v && (
-            <div className="rounded-sm border border-neutral-200 border-l-4 border-l-success bg-white px-4 py-2 flex items-center gap-2">
+            <div className="rounded-sm border border-neutral-200 bg-white px-4 py-2 flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-success" />
               <p className="text-sm text-green-800 font-medium">All validation checks passed</p>
             </div>
@@ -1092,7 +1092,7 @@ const VatReturnPage = () => {
 
           {/* Hint when Total Sales is 0: suggest the year that contains the out-of-period invoice dates */}
           {v && standardOutputNet === 0 && standardOutputVat === 0 && (
-            <div className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-4 text-sm text-neutral-800">
+            <div className="rounded-sm border border-neutral-200 bg-white p-4 text-sm text-neutral-800">
               <p className="font-medium">Total Sales is 0.00 for this period ({fromDate} – {toDate}).</p>
               <p className="mt-1 text-warning-fg">VAT only includes invoices whose <strong>invoice date</strong> falls in this range. If your dashboard shows sales for other dates, pick a period that includes those dates.</p>
               {issues.some(i => (i.message || '').toLowerCase().includes('outside')) && (() => {
@@ -1127,7 +1127,7 @@ const VatReturnPage = () => {
                             setSearchParams({ from: ftaRange.from, to: ftaRange.to })
                             fetchVatReturn(ftaRange.from, ftaRange.to)
                           }}
-                          className="text-amber-800 font-semibold underline hover:no-underline"
+                          className="text-warning-fg font-semibold underline hover:no-underline"
                         >
                           Try: Q{ftaQ} {ftaY} ({ftaRange.from} – {ftaRange.to})
                         </button>
@@ -1143,7 +1143,7 @@ const VatReturnPage = () => {
                           setSearchParams({ from, to })
                           fetchVatReturn(from, to)
                         }}
-                        className="text-amber-800 font-semibold underline hover:no-underline"
+                        className="text-warning-fg font-semibold underline hover:no-underline"
                       >
                         Or: This Year ({y})
                       </button>
@@ -1164,7 +1164,7 @@ const VatReturnPage = () => {
                       setSearchParams({ from, to })
                       fetchVatReturn(from, to)
                     }}
-                    className="text-amber-800 font-semibold underline hover:no-underline"
+                    className="text-warning-fg font-semibold underline hover:no-underline"
                   >
                     Suggest period: This Year ({year || new Date().getFullYear()})
                   </button>
@@ -1183,28 +1183,28 @@ const VatReturnPage = () => {
                 <div className={`p-2 rounded border ${standardOutputNet > 0 || standardOutputVat > 0 ? 'bg-success-bg border-success-border' : 'bg-warning-bg border-warning-border'}`}>
                   <p className="text-xs font-medium text-slate-600">Overview / Sales</p>
                   <p className="text-sm font-bold text-slate-800">{formatCurrency(standardOutputNet)} / {formatCurrency(standardOutputVat)}</p>
-                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${standardOutputVat > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
+                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${standardOutputVat > 0 ? 'bg-green-200 text-green-800' : 'bg-warning-bg text-warning-fg'}`}>
                     {standardOutputVat > 0 ? 'OK' : 'Zero'}
                   </span>
                 </div>
                 <div className={`p-2 rounded border ${totalPurchasesVat > 0 ? 'bg-success-bg border-success-border' : 'bg-warning-bg border-warning-border'}`}>
                   <p className="text-xs font-medium text-slate-600">Purchases</p>
                   <p className="text-sm font-bold text-slate-800">{formatCurrency(totalPurchasesVat)}</p>
-                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${totalPurchasesVat > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
+                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${totalPurchasesVat > 0 ? 'bg-green-200 text-green-800' : 'bg-warning-bg text-warning-fg'}`}>
                     {totalPurchasesVat > 0 ? 'OK' : purchaseCountInPeriod > 0 ? 'Action' : 'Zero'}
                   </span>
                 </div>
                 <div className={`p-2 rounded border ${totalExpensesVat > 0 ? 'bg-success-bg border-success-border' : 'bg-warning-bg border-warning-border'}`}>
                   <p className="text-xs font-medium text-slate-600">Expenses</p>
                   <p className="text-sm font-bold text-slate-800">{formatCurrency(totalExpensesVat)}</p>
-                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${totalExpensesVat > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
+                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${totalExpensesVat > 0 ? 'bg-green-200 text-green-800' : 'bg-warning-bg text-warning-fg'}`}>
                     {totalExpensesVat > 0 ? 'OK' : expenseCountInPeriod > 0 ? 'Action' : 'Zero'}
                   </span>
                 </div>
                 <div className={`p-2 rounded border ${recoverableInputVat > 0 ? 'bg-success-bg border-success-border' : 'bg-warning-bg border-warning-border'}`}>
                   <p className="text-xs font-medium text-slate-600">Box 12 (Input VAT)</p>
                   <p className="text-sm font-bold text-slate-800">{formatCurrency(recoverableInputVat)}</p>
-                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${recoverableInputVat > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
+                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${recoverableInputVat > 0 ? 'bg-green-200 text-green-800' : 'bg-warning-bg text-warning-fg'}`}>
                     {recoverableInputVat > 0 ? 'OK' : 'Zero'}
                   </span>
                 </div>
@@ -1264,8 +1264,8 @@ const VatReturnPage = () => {
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={`min-h-11 flex-none whitespace-nowrap border-b-2 px-3 py-2 ${
-                    activeTab === tab.id ? 'border-primary-600 text-primary-700 font-medium' : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
-                  }`}
+ activeTab === tab.id ? 'border-primary-600 text-primary-700 font-medium' : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+ }`}
                 >
                   {tab.label}
                 </button>
@@ -1281,7 +1281,7 @@ const VatReturnPage = () => {
               <h2 className="text-lg font-semibold text-neutral-900 mb-1">Management summary</h2>
               <p className="text-sm font-medium">{v?.companyName ?? v?.CompanyName ?? 'Company'} · TRN: {v?.vatTrn ?? v?.VatTrn ?? 'Not provided'} · {v?.trnStatus ?? v?.TrnStatus ?? 'Registration unverified'}</p>
               {(v?.warnings ?? v?.Warnings ?? []).map((warning, index) => (
-                <p key={index} className="mt-2 rounded border border-neutral-200 border-l-4 border-l-warning bg-white px-3 py-2 text-sm text-neutral-800">{warning}</p>
+                <p key={index} className="mt-2 rounded border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800">{warning}</p>
               ))}
               <p className="text-xs text-neutral-500 mb-4">Period: {periodLabel} ({fromDate} – {toDate})</p>
               <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -1346,7 +1346,7 @@ const VatReturnPage = () => {
               </div>
               <div className="text-right">
                 <p className="text-sm font-medium text-neutral-700">Estimated period deadline</p>
-                <p className="text-lg font-semibold text-amber-900 mt-0.5">
+                <p className="text-lg font-semibold text-warning-fg mt-0.5">
                   {v?.dueDate ? new Date(v.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                 </p>
                 {daysUntilDue != null && daysUntilDue <= 0 && <p className="text-xs font-medium text-error">Overdue</p>}
@@ -1356,9 +1356,9 @@ const VatReturnPage = () => {
           </div>
 
           {activeTab === 'returnBoxes' && (
-            <section className="mt-4 rounded-lg border border-amber-300 bg-white p-4" aria-label="Draft return boxes">
+            <section className="mt-4 rounded-lg border border-warning-border bg-white p-4" aria-label="Draft return boxes">
               <h2 className="font-semibold text-neutral-900">Return boxes (draft — not FTA mapping)</h2>
-              <p className="my-2 rounded bg-warning-bg p-3 text-sm text-amber-900">These legacy box fields are retained for compatibility. They are not an FTA filing projection.</p>
+              <p className="my-2 rounded bg-warning-bg p-3 text-sm text-warning-fg">These legacy box fields are retained for compatibility. They are not an FTA filing projection.</p>
               <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {[["Box 1a", box1a], ["Box 1b", box1b], ["Box 2", box2], ["Box 3", box3], ["Box 9b", box9b], ["Box 12", box12], ["Box 13a", box13a], ["Box 13b", box13b]].map(([label, amount]) => (
                   <div key={label} className="flex justify-between rounded border p-3"><dt>{label}</dt><dd className="font-medium">{formatCurrency(amount)}</dd></div>
@@ -1538,9 +1538,9 @@ const VatReturnPage = () => {
                       )}
                       {expensesExcludedReasons.ClaimableZero > 0 && (
                         <div className="flex items-center gap-2 bg-white rounded px-3 py-2 border border-warning-border">
-                          <span className="w-6 h-6 rounded-full bg-amber-100 text-warning-fg flex items-center justify-center text-xs font-bold">{expensesExcludedReasons.ClaimableZero}</span>
+                          <span className="w-6 h-6 rounded-full bg-warning-bg text-warning-fg flex items-center justify-center text-xs font-bold">{expensesExcludedReasons.ClaimableZero}</span>
                           <div>
-                            <p className="text-xs font-medium text-amber-800">Zero Claimable VAT</p>
+                            <p className="text-xs font-medium text-warning-fg">Zero Claimable VAT</p>
                             <p className="text-micro text-warning">Enable VAT on these expenses</p>
                           </div>
                         </div>
@@ -1640,9 +1640,9 @@ const VatReturnPage = () => {
           )}
 
           {isProfitBasis && activeTab === 'profit' && (
-            <div className="mt-4 bg-white rounded-lg border border-amber-300 p-4">
-              <h2 className="text-sm font-semibold text-amber-950">Estimate, not for filing</h2>
-              <p className="text-xs text-amber-900 mt-1 mb-3">Sales minus cost of goods minus expenses. This is an operating estimate only — not UAE VAT. Use the Standard VAT boxes for filing.</p>
+            <div className="mt-4 bg-white rounded-lg border border-warning-border p-4">
+              <h2 className="text-sm font-semibold text-warning-fg">Estimate, not for filing</h2>
+              <p className="text-xs text-warning-fg mt-1 mb-3">Sales minus cost of goods minus expenses. This is an operating estimate only — not UAE VAT. Use the Standard VAT boxes for filing.</p>
               <table className="min-w-full text-sm border border-warning-border rounded-lg">
                 <tbody className="divide-y divide-amber-100">
                   <tr><td className="px-3 py-2">Sales</td><td className="px-3 py-2 text-right">{formatCurrency(profitSales)}</td></tr>

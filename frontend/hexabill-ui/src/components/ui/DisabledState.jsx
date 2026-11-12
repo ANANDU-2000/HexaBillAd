@@ -27,7 +27,7 @@ export default function DisabledState({
       </div>
       {showTooltip && (
         <div
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-neutral-800 rounded shadow-lg whitespace-nowrap z-50"
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-neutral-800 rounded shadow-sm whitespace-nowrap z-50"
           role="tooltip"
         >
           {reason}

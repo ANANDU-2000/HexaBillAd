@@ -56,7 +56,7 @@ export default function ReportSwitcher({ groups, activeId, onChange, right = nul
                 <ChevronDown className="h-3.5 w-3.5" aria-hidden />
               </button>
               {openGroup === g.label && (
-                <div role="menu" className="absolute left-0 top-full z-40 mt-1 min-w-[12rem] rounded-md border border-neutral-200 bg-white py-1 shadow-lg">
+                <div role="menu" className="absolute left-0 top-full z-40 mt-1 min-w-[12rem] rounded-md border border-neutral-200 bg-white py-1 shadow-sm">
                   {g.tabs.map((t) => (
                     <button
                       key={t.id}

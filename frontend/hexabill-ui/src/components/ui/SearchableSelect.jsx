@@ -172,7 +172,7 @@ const SearchableSelect = forwardRef(({
           onKeyDown={onTriggerKey}
           className={`flex w-full items-center gap-2 px-3 min-h-[44px] md:min-h-[40px] py-2 bg-white border rounded-md text-left transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 disabled:bg-neutral-50 disabled:text-neutral-500 disabled:cursor-not-allowed sm:text-sm ${border} ${className}`}
         >
-          <span className={`min-w-0 flex-1 truncate ${selected ? 'text-neutral-900' : 'text-neutral-400'}`}>
+          <span className={`min-w-0 flex-1 truncate ${selected ? 'text-neutral-900' : 'text-slate-500'}`}>
             {selected ? selected.label : emptyLabel}
             {selected?.meta && <span className="ml-2 text-xs text-neutral-500">{selected.meta}</span>}
           </span>
@@ -182,7 +182,7 @@ const SearchableSelect = forwardRef(({
               tabIndex={-1}
               aria-label="Clear selection"
               onClick={clear}
-              className="rounded p-0.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
+              className="rounded p-0.5 text-slate-500 hover:bg-neutral-100 hover:text-neutral-600"
             >
               <X className="h-3.5 w-3.5" aria-hidden />
             </span>
@@ -199,10 +199,10 @@ const SearchableSelect = forwardRef(({
         <div
           ref={popRef}
           style={{ position: 'fixed', ...popoverBox(pos), top: pos.top, bottom: pos.bottom }}
-          className="z-[70] overflow-hidden rounded-md border border-neutral-200 bg-white shadow-lg"
+          className="z-[70] overflow-hidden rounded-md border border-neutral-200 bg-white shadow-sm"
         >
           <div className="relative border-b border-neutral-100 p-2">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" aria-hidden />
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden />
             <input
               ref={searchRef}
               type="text"

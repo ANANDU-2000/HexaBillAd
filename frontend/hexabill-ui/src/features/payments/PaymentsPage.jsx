@@ -932,7 +932,7 @@ const PaymentsPage = () => {
         </div>
         <div data-sticky-toolbar className="flex flex-wrap items-center gap-2 px-3 pb-3 pt-3 sm:px-4">
           <div className="relative min-w-0 flex-[1_1_100%] lg:flex-[1_1_14rem] lg:max-w-[26rem]">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" aria-hidden />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden />
             <input
               type="search" aria-label="Search payments" maxLength={120}
               placeholder="Search customer, invoice or reference"
@@ -1038,7 +1038,7 @@ const PaymentsPage = () => {
 
       {/* Selection action bar - Generate Receipt */}
       {receiptSelectedIds.length > 0 && (
-        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 left-0 right-0 z-40 bg-white border-t border-neutral-200 shadow-lg px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 left-0 right-0 z-40 bg-white border-t border-neutral-200 shadow-sm px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-sm font-medium text-neutral-700">
             {receiptSelectedIds.length} payment(s) selected — Total: {money(selectedTotal)}
           </span>
@@ -1046,7 +1046,7 @@ const PaymentsPage = () => {
             <button
               type="button"
               onClick={handleGenerateReceiptFromBar}
-              className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+              className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
             >
               <Printer className="h-4 w-4" />
               Generate Receipt
@@ -1176,7 +1176,7 @@ const PaymentsPage = () => {
                           <p className="text-error font-semibold">
                             <span className="font-medium">Balance Due:</span> {money(selectedInv.balanceAmount)}
                             {selectedInv.daysOverdue > 0 && (
-                              <span className="ml-2 text-orange-600">({selectedInv.daysOverdue} days overdue)</span>
+                              <span className="ml-2 text-slate-700">({selectedInv.daysOverdue} days overdue)</span>
                             )}
                           </p>
                           <button
@@ -1198,7 +1198,7 @@ const PaymentsPage = () => {
             {/* Outstanding Invoices List for Selected Customer */}
             {selectedCustomerId && outstandingInvoices.length > 0 && !selectedSaleId && (
               <div className="md:col-span-2">
-                <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4">
+                <div className="bg-white border border-neutral-200 rounded-sm p-4">
                   <p className="text-sm font-medium text-yellow-900 mb-3">
                     Outstanding Invoices for {selectedCustomerDetails?.name || 'Customer'}:
                   </p>
@@ -1281,7 +1281,7 @@ const PaymentsPage = () => {
               </h3>
               <div className="bg-neutral-50 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-start">
-                  <User className="h-4 w-4 text-neutral-400 mt-1 mr-2" />
+                  <User className="h-4 w-4 text-slate-500 mt-1 mr-2" />
                   <div>
                     <p className="text-xs text-neutral-500">Name</p>
                     <p className="text-sm font-medium text-neutral-900">{selectedCustomerDetails.name}</p>
@@ -1289,7 +1289,7 @@ const PaymentsPage = () => {
                 </div>
                 {selectedCustomerDetails.phone && (
                   <div className="flex items-start">
-                    <Phone className="h-4 w-4 text-neutral-400 mt-1 mr-2" />
+                    <Phone className="h-4 w-4 text-slate-500 mt-1 mr-2" />
                     <div>
                       <p className="text-xs text-neutral-500">Phone</p>
                       <p className="text-sm font-medium text-neutral-900">{selectedCustomerDetails.phone}</p>
@@ -1298,7 +1298,7 @@ const PaymentsPage = () => {
                 )}
                 {selectedCustomerDetails.email && (
                   <div className="flex items-start">
-                    <Mail className="h-4 w-4 text-neutral-400 mt-1 mr-2" />
+                    <Mail className="h-4 w-4 text-slate-500 mt-1 mr-2" />
                     <div>
                       <p className="text-xs text-neutral-500">Email</p>
                       <p className="text-sm font-medium text-neutral-900">{selectedCustomerDetails.email}</p>
@@ -1307,7 +1307,7 @@ const PaymentsPage = () => {
                 )}
                 {selectedCustomerDetails.address && (
                   <div className="flex items-start md:col-span-2">
-                    <MapPin className="h-4 w-4 text-neutral-400 mt-1 mr-2" />
+                    <MapPin className="h-4 w-4 text-slate-500 mt-1 mr-2" />
                     <div>
                       <p className="text-xs text-neutral-500">Address</p>
                       <p className="text-sm font-medium text-neutral-900">{selectedCustomerDetails.address}</p>
@@ -1315,7 +1315,7 @@ const PaymentsPage = () => {
                   </div>
                 )}
                 <div className="flex items-start">
-                  <DollarSign className="h-4 w-4 text-neutral-400 mt-1 mr-2" />
+                  <DollarSign className="h-4 w-4 text-slate-500 mt-1 mr-2" />
                   <div>
                     <p className="text-xs text-neutral-500">Account Balance</p>
                     <p className={`text-sm font-medium ${(selectedCustomerDetails.balance || 0) < 0 ? 'text-success' : (selectedCustomerDetails.balance || 0) > 0 ? 'text-error' : 'text-neutral-600'}`}>
@@ -1325,7 +1325,7 @@ const PaymentsPage = () => {
                 </div>
                 {selectedCustomerDetails.trn && (
                   <div className="flex items-start">
-                    <FileText className="h-4 w-4 text-neutral-400 mt-1 mr-2" />
+                    <FileText className="h-4 w-4 text-slate-500 mt-1 mr-2" />
                     <div>
                       <p className="text-xs text-neutral-500">TRN</p>
                       <p className="text-sm font-medium text-neutral-900">{selectedCustomerDetails.trn}</p>
@@ -1405,7 +1405,7 @@ const PaymentsPage = () => {
             const patch = (fields) => { const updated = [...bulkPayments]; updated[index] = { ...updated[index], ...fields }; setBulkPayments(updated); setBulkRowErrors(({ [index]: _cleared, ...rest }) => rest) }
             const refRequired = ['CHEQUE', 'ONLINE'].includes(String(payment.method).toUpperCase())
             const cell = 'min-w-0'
-            const mini = (text) => <span className="mb-0.5 block text-[11px] font-medium text-neutral-500 md:hidden">{text}</span>
+            const mini = (text) => <span className="mb-0.5 block text-xs font-medium text-neutral-500 md:hidden">{text}</span>
             const info = bulkInvoices[String(payment.customerId)]
             const invoices = info?.list || []
             const owed = invoices.reduce((sum, inv) => sum + Number(inv.balanceAmount || 0), 0)
@@ -1462,7 +1462,7 @@ const PaymentsPage = () => {
                     onChange={(e) => onInvoice(e.target.value)}
                   />
                   {payment.customerId && !info?.loading && (
-                    <p className={`mt-0.5 text-[11px] ${overpay ? 'text-error' : 'text-neutral-500'}`}>
+                    <p className={`mt-0.5 text-xs ${overpay ? 'text-error' : 'text-neutral-500'}`}>
                       {invoices.length ? `Owes ${balance(owed)} on ${invoices.length} invoice${invoices.length === 1 ? '' : 's'}` : 'No unpaid invoices'}
                       {capacity != null && typed > 0 && !overpay && typed < capacity - 0.01 ? ` · partial, ${balance(capacity - typed)} stays due` : ''}
                       {overpay ? ` · more than ${balance(capacity)} due` : ''}
@@ -1495,13 +1495,13 @@ const PaymentsPage = () => {
                   {!savedBatch && bulkPayments.length > 1 ? (
                     <button type="button" aria-label={`Remove payment ${index + 1}`} title="Remove"
                       onClick={() => setBulkPayments(bulkPayments.filter((_, i) => i !== index))}
-                      className="rounded p-1 text-neutral-400 hover:bg-red-50 hover:text-error"><X className="h-4 w-4" /></button>
+                      className="rounded p-1 text-slate-500 hover:bg-red-50 hover:text-error"><X className="h-4 w-4" /></button>
                   ) : savedBatch ? (
-                    <span className="hidden text-[11px] text-neutral-500 md:inline" title={payment.confirmed ? 'Confirmed' : 'Awaiting confirmation'}>{payment.confirmed ? '✓' : '…'}</span>
+                    <span className="hidden text-xs text-neutral-500 md:inline" title={payment.confirmed ? 'Confirmed' : 'Awaiting confirmation'}>{payment.confirmed ? '✓' : '…'}</span>
                   ) : null}
                 </div>
                 {bulkRowErrors[index] && (
-                  <p role="alert" className="col-span-2 border-l-4 border-l-error bg-white py-1 pl-2 text-xs text-neutral-800 md:col-span-8">{bulkRowErrors[index]}</p>
+                  <p role="alert" className="col-span-2 bg-white py-1 pl-2 text-xs text-neutral-800 md:col-span-8">{bulkRowErrors[index]}</p>
                 )}
               </div>
             )

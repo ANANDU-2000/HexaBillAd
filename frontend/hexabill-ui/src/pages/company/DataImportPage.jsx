@@ -59,14 +59,14 @@ const DataImportPage = () => {
   if (!isAdmin) {
     return (
       <div className="p-4 w-full">
-        <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4 flex items-start gap-3">
+        <div className="bg-white border border-neutral-200 rounded-sm p-4 flex items-start gap-3">
           <HelpCircle className="h-6 w-6 text-warning flex-shrink-0 mt-0.5" />
           <div>
-            <h2 className="font-semibold text-amber-900">Access required</h2>
-            <p className="text-sm text-amber-800 mt-1">Data import and backup restore are available to Admins and Owners. Ask your admin or go to Settings for user roles.</p>
+            <h2 className="font-semibold text-warning-fg">Access required</h2>
+            <p className="text-sm text-warning-fg mt-1">Data import and backup restore are available to Admins and Owners. Ask your admin or go to Settings for user roles.</p>
             <button
               onClick={() => navigate('/dashboard')}
-              className="mt-3 text-sm font-medium text-warning-fg hover:text-amber-900 underline"
+              className="mt-3 text-sm font-medium text-warning-fg hover:text-warning-fg underline"
             >
               Back to Dashboard
             </button>

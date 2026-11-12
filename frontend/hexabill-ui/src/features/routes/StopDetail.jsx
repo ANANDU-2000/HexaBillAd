@@ -16,7 +16,7 @@ const OVERDUE_TEXT = { warning: 'text-warning-fg', error: 'text-error-fg', none:
 function Fact({ label, children }) {
   return (
     <div className="min-w-0 border border-neutral-200 bg-white px-2.5 py-1.5">
-      <dt className="text-micro uppercase tracking-wide text-neutral-500">{label}</dt>
+      <dt className="text-micro text-neutral-500">{label}</dt>
       <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-neutral-900">{children}</dd>
     </div>
   )
@@ -53,7 +53,7 @@ export default function StopDetail({ stop, onClose, showCreditLimit, canManage =
         {showCreditLimit && stop.creditLimit != null && <Fact label="Credit limit">{formatCurrency(stop.creditLimit)}</Fact>}
       </dl>
       {fix && (
-        <div className="mx-3 mb-2 border border-neutral-200 border-l-4 border-l-info bg-white px-2.5 py-2" data-testid="pending-fix">
+        <div className="mx-3 mb-2 border border-neutral-200 bg-white px-2.5 py-2" data-testid="pending-fix">
           <p className="text-xs font-semibold text-neutral-900">Driver reported a location</p>
           <p className="mt-0.5 text-xs text-neutral-700">{fix.text}</p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -77,7 +77,7 @@ export default function StopDetail({ stop, onClose, showCreditLimit, canManage =
         </div>
       )}
       {!pinned && (
-        <p className="mx-3 mb-2 flex items-center gap-1.5 border-l-4 border-l-warning border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700">
+        <p className="mx-3 mb-2 flex items-center gap-1.5 border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700">
           <MapPinOff className="h-3.5 w-3.5 shrink-0 text-warning" aria-hidden /> This customer has no saved shop location yet.
         </p>
       )}

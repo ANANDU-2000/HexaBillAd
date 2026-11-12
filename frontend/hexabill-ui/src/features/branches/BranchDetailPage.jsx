@@ -536,7 +536,7 @@ const BranchDetailPage = () => {
         )}
       </div>
       {summaryError && (
-        <div className="mb-3 flex items-center justify-between gap-2 rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white px-3 py-2 text-sm text-neutral-800">
+        <div className="mb-3 flex items-center justify-between gap-2 rounded-sm border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800">
           <span>Failed to load summary. Check backend logs.</span>
           <button type="button" onClick={retrySummary} className="shrink-0 font-medium text-warning-fg hover:underline">Retry</button>
         </div>
@@ -651,12 +651,12 @@ const BranchDetailPage = () => {
               <table className="min-w-full divide-y divide-neutral-200 text-sm">
                 <thead className="bg-neutral-50 sticky top-0">
                   <tr>
-                    <th className="px-2 py-1.5 text-left text-xs font-medium text-neutral-600 uppercase">Route</th>
-                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Invoices</th>
-                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Sales</th>
-                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Expenses</th>
-                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Profit / Loss</th>
-                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Actions</th>
+                    <th className="px-2 py-1.5 text-left text-xs font-medium text-neutral-600 ">Route</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 ">Invoices</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 ">Sales</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 ">Expenses</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 ">Profit / Loss</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 ">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 bg-white">
@@ -715,13 +715,13 @@ const BranchDetailPage = () => {
               <table className="min-w-[520px] w-full divide-y divide-neutral-200">
                 <thead className="bg-neutral-50 sticky top-0">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase whitespace-nowrap">Name</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase whitespace-nowrap">Email</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase min-w-[140px]" title="Assigned routes (this branch)">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 whitespace-nowrap">Name</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 whitespace-nowrap">Email</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 min-w-[140px]" title="Assigned routes (this branch)">
                       <span className="hidden sm:inline">Assigned routes (this branch)</span>
                       <span className="sm:hidden">Routes</span>
                     </th>
-                    {canManage && <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase whitespace-nowrap">Actions</th>}
+                    {canManage && <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 whitespace-nowrap">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 bg-white">
@@ -806,10 +806,10 @@ const BranchDetailPage = () => {
               <table className="min-w-full divide-y divide-neutral-200">
                 <thead className="bg-neutral-50 sticky top-0">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Customer</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Phone</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Balance</th>
-                    {canManage && <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Actions</th>}
+                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 ">Customer</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 ">Phone</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 ">Balance</th>
+                    {canManage && <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 ">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 bg-white">
@@ -888,11 +888,11 @@ const BranchDetailPage = () => {
             <table className="min-w-full divide-y divide-neutral-200">
               <thead className="bg-neutral-50">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Date</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Category</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Amount</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Description</th>
-                  {canManage && <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Actions</th>}
+                  <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 ">Date</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 ">Category</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 ">Amount</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 ">Description</th>
+                  {canManage && <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 ">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 bg-white">
@@ -1054,11 +1054,11 @@ const BranchDetailPage = () => {
               <table className="min-w-full divide-y divide-neutral-200 text-sm">
                 <thead className="bg-neutral-50">
                   <tr>
-                    <th className="px-2 py-1.5 text-left text-xs font-medium text-neutral-600 uppercase">Route</th>
-                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Invoices</th>
-                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Sales</th>
-                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Expenses</th>
-                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Profit / Loss</th>
+                    <th className="px-2 py-1.5 text-left text-xs font-medium text-neutral-600 ">Route</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 ">Invoices</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 ">Sales</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 ">Expenses</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 ">Profit / Loss</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 bg-white">

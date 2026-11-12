@@ -43,9 +43,9 @@ import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 const DASHBOARD_ITEMS = [
   { id: 'salesToday', label: 'Sales Today Card', icon: DollarSign, color: 'text-success', bg: 'bg-success-bg' },
   { id: 'expensesToday', label: 'Expenses Today Card', icon: TrendingDown, color: 'text-error', bg: 'bg-error-bg' },
-  { id: 'purchasesToday', label: 'Purchases Today Card', icon: ShoppingCart, color: 'text-orange-600', bg: 'bg-orange-50' },
-  { id: 'salesLedger', label: 'Sales Ledger Link', icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { id: 'expenses', label: 'Expenses Link', icon: Wallet, color: 'text-purple-600', bg: 'bg-purple-50' },
+  { id: 'purchasesToday', label: 'Purchases Today Card', icon: ShoppingCart, color: 'text-slate-700', bg: 'bg-slate-50' },
+  { id: 'salesLedger', label: 'Sales Ledger Link', icon: BookOpen, color: 'text-slate-700', bg: 'bg-slate-50' },
+  { id: 'expenses', label: 'Expenses Link', icon: Wallet, color: 'text-slate-700', bg: 'bg-slate-50' },
   { id: 'salesTrend', label: 'Sales Trend Chart', icon: BarChart3, color: 'text-success', bg: 'bg-success-bg' },
   { id: 'quickStats', label: 'Quick Stats Summary', icon: Activity, color: 'text-cyan-600', bg: 'bg-cyan-50' },
   { id: 'lowStockAlert', label: 'Low Stock Alerts', icon: Package, color: 'text-yellow-600', bg: 'bg-yellow-50' },
@@ -56,9 +56,9 @@ const DASHBOARD_ITEMS = [
 // Page-level access permissions (can be toggled for staff)
 const PAGE_ACCESS_ITEMS = [
   { id: 'pos', label: 'POS / Billing', icon: ShoppingCart, color: 'text-primary-600', bg: 'bg-primary-50' },
-  { id: 'invoices', label: 'Invoices', icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { id: 'invoices', label: 'Invoices', icon: FileText, color: 'text-slate-700', bg: 'bg-slate-50' },
   { id: 'products', label: 'Products', icon: Package, color: 'text-success', bg: 'bg-success-bg' },
-  { id: 'customers', label: 'Customers', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
+  { id: 'customers', label: 'Customers', icon: Users, color: 'text-slate-700', bg: 'bg-slate-50' },
   { id: 'expenses', label: 'Expenses', icon: Wallet, color: 'text-error', bg: 'bg-error-bg' },
   { id: 'reports', label: 'Reports', icon: BarChart3, color: 'text-success', bg: 'bg-success-bg' }
 ]
@@ -76,7 +76,7 @@ const DashboardAccessControl = ({ selectedPermissions, onToggle, onSelectAll, on
         <button type="button" onClick={onClearAll} className="text-xs font-medium text-primary-600 hover:text-primary-800">None</button>
       </div>
     </div>
-    <div className="mb-3 p-3 bg-warning-bg border border-amber-100 rounded-lg flex items-start text-xs text-amber-800">
+    <div className="mb-3 p-3 bg-warning-bg border border-warning-border rounded-lg flex items-start text-xs text-warning-fg">
       <ShieldAlert className="h-4 w-4 text-warning mr-2 flex-shrink-0 mt-0.5" />
       <div>
         <strong>Restricted Metrics:</strong> "Profit Today" card is locked — visible to Admin & Owner only.
@@ -91,8 +91,8 @@ const DashboardAccessControl = ({ selectedPermissions, onToggle, onSelectAll, on
           <label
             key={item.id}
             className={`flex items-center p-2 rounded-lg cursor-pointer transition-all border ${isSelected
-              ? 'bg-white border-primary-200 shadow-sm ring-1 ring-primary-100'
-              : 'bg-white/40 border-transparent opacity-70 hover:bg-white hover:opacity-100'
+ ? 'bg-white border-primary-200 shadow-sm ring-1 ring-primary-100'
+ : 'bg-white/40 border-transparent opacity-70 hover:bg-white hover:opacity-100'
               }`}
           >
             <div className="relative flex items-center w-full">
@@ -118,16 +118,16 @@ const DashboardAccessControl = ({ selectedPermissions, onToggle, onSelectAll, on
 )
 
 const PageAccessControl = ({ selectedPageAccess, onToggle, onSelectAll, onClearAll }) => (
-  <div className="bg-purple-50/50 rounded-lg p-3 border border-purple-100">
+  <div className="bg-slate-50/50 rounded-lg p-3 border border-slate-200">
     <div className="flex items-center justify-between mb-3">
-      <h3 className="text-sm font-semibold text-purple-900 flex items-center">
+      <h3 className="text-sm font-semibold text-slate-700 flex items-center">
         <Shield className="h-4 w-4 mr-1.5" />
         Page access
       </h3>
       <div className="flex space-x-2">
-        <button type="button" onClick={onSelectAll} className="text-xs font-medium text-purple-600 hover:text-purple-800">All</button>
-        <span className="text-purple-200">|</span>
-        <button type="button" onClick={onClearAll} className="text-xs font-medium text-purple-600 hover:text-purple-800">None</button>
+        <button type="button" onClick={onSelectAll} className="text-xs font-medium text-slate-700 hover:text-slate-700">All</button>
+        <span className="text-white">|</span>
+        <button type="button" onClick={onClearAll} className="text-xs font-medium text-slate-700 hover:text-slate-700">None</button>
       </div>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -135,8 +135,8 @@ const PageAccessControl = ({ selectedPageAccess, onToggle, onSelectAll, onClearA
         const Icon = item.icon
         const isSelected = selectedPageAccess.includes(item.id)
         return (
-          <label key={item.id} className={`flex items-center p-2 rounded-lg cursor-pointer transition-all border ${isSelected ? 'bg-white border-purple-200 shadow-sm' : 'bg-white/40 border-transparent opacity-70 hover:bg-white hover:opacity-100'}`}>
-            <input type="checkbox" checked={isSelected} onChange={() => onToggle(item.id)} className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-neutral-300 rounded cursor-pointer" />
+          <label key={item.id} className={`flex items-center p-2 rounded-lg cursor-pointer transition-all border ${isSelected ? 'bg-white border-slate-200 shadow-sm' : 'bg-white/40 border-transparent opacity-70 hover:bg-white hover:opacity-100'}`}>
+            <input type="checkbox" checked={isSelected} onChange={() => onToggle(item.id)} className="h-4 w-4 text-slate-700 focus:ring-slate-200 border-neutral-300 rounded cursor-pointer" />
             <div className={`ml-3 p-1.5 rounded-md ${item.bg}`}><Icon className={`h-3.5 w-3.5 ${item.color}`} /></div>
             <span className="ml-2 text-xs font-medium text-neutral-700">{item.label}</span>
           </label>
@@ -187,7 +187,7 @@ const UserAssignments = ({ branches, routes, assignedBranches, assignedRoutes, s
 
     <div className="bg-white p-3 rounded-lg border border-neutral-200">
       <h3 className="font-semibold text-neutral-900 mb-2 flex items-center">
-        <span className="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
+        <span className="w-2 h-2 rounded-full bg-primary-600 mr-2"></span>
         Assigned Routes
       </h3>
       <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
@@ -203,7 +203,7 @@ const UserAssignments = ({ branches, routes, assignedBranches, assignedRoutes, s
                   if (e.target.checked) setAssignedRoutes([...assignedRoutes, route.id])
                   else setAssignedRoutes(assignedRoutes.filter(id => id !== route.id))
                 }}
-                className="rounded border-neutral-300 text-purple-600 focus:ring-purple-500"
+                className="rounded border-neutral-300 text-slate-700 focus:ring-slate-200"
               />
               <div className="flex flex-col">
                 <span className="text-sm text-neutral-700">{route.name}</span>
@@ -322,7 +322,7 @@ const UsersPage = () => {
     if (/\d/.test(pwd)) score++
     if (/[^a-zA-Z0-9]/.test(pwd)) score++
     if (score <= 1) return { score: 1, label: 'Weak', color: 'bg-red-500' }
-    if (score <= 3) return { score: 3, label: 'Fair', color: 'bg-amber-500' }
+    if (score <= 3) return { score: 3, label: 'Fair', color: 'bg-warning-fg' }
     if (score <= 4) return { score: 4, label: 'Good', color: 'bg-lime-500' }
     return { score: 5, label: 'Strong', color: 'bg-success' }
   }
@@ -611,8 +611,8 @@ const UsersPage = () => {
         {/* Search */}
         <div className="mb-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
-            <input
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-500" />
+            <input aria-label="Search users by name, email, or role"
               type="text"
               placeholder="Search users by name, email, or role..."
               value={searchTerm}
@@ -667,7 +667,7 @@ const UsersPage = () => {
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
                     {user.phone && <span className="flex items-center"><Phone className="h-3 w-3 mr-1" />{user.phone}</span>}
-                    <span className={`flex items-center ${isOnline ? 'text-success' : 'text-neutral-400'}`}>
+                    <span className={`flex items-center ${isOnline ? 'text-success' : 'text-slate-500'}`}>
                       <span className={`w-2 h-2 rounded-full mr-1 ${isOnline ? 'bg-green-500' : 'bg-neutral-400'}`} />
                       {isOnline ? 'Online' : 'Offline'}
                     </span>
@@ -676,12 +676,12 @@ const UsersPage = () => {
                   {(user.role?.toLowerCase() === 'staff' || user.role?.toLowerCase() === 'admin') && hasAny && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {branchNames.map((name, i) => <span key={`b-${i}`} className="inline-flex px-1.5 py-0.5 rounded text-xs bg-primary-100 text-primary-800">{name}</span>)}
-                      {routeNames.map((name, i) => <span key={`r-${i}`} className="inline-flex px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-800">{name}</span>)}
+                      {routeNames.map((name, i) => <span key={`r-${i}`} className="inline-flex px-1.5 py-0.5 rounded text-xs bg-slate-50 text-slate-700">{name}</span>)}
                     </div>
                   )}
                   <div className="mt-3 pt-3 border-t border-neutral-100 flex flex-wrap gap-2">
                     <button type="button" onClick={() => { navigator.clipboard.writeText(user.email).then(() => toast.success('Email copied')) }} className="p-2 text-neutral-500 hover:bg-neutral-100 rounded" title="Copy email"><Copy className="h-4 w-4" /></button>
-                    <button type="button" onClick={() => openActivity(user)} className="inline-flex min-h-11 min-w-11 items-center justify-center p-2 text-neutral-500 hover:bg-indigo-50 rounded" aria-label={`Activity for ${user.name}`} title="Activity"><Activity className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => openActivity(user)} className="inline-flex min-h-11 min-w-11 items-center justify-center p-2 text-neutral-500 hover:bg-slate-100 rounded" aria-label={`Activity for ${user.name}`} title="Activity"><Activity className="h-4 w-4" /></button>
                     {(isOwner(currentUser) || user.role?.toLowerCase() !== 'owner') && (
                       <>
                         <button type="button" onClick={() => openEditModal(user)} className="p-2 text-primary-600 hover:bg-primary-50 rounded" title="Edit"><Edit className="h-4 w-4" /></button>
@@ -800,8 +800,8 @@ const UsersPage = () => {
                         <span
                           title={user.role?.toLowerCase() === 'owner' ? 'Company owner' : undefined}
                           className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full w-fit ${user.role?.toLowerCase() === 'owner'
-                            ? 'bg-red-100 text-red-800'
-                            : user.role?.toLowerCase() === 'admin'
+ ? 'bg-red-100 text-red-800'
+ : user.role?.toLowerCase() === 'admin'
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-primary-100 text-primary-800'
                             }`}>
@@ -833,12 +833,12 @@ const UsersPage = () => {
                               <AssignedSummary
                                 branchNames={branchNames}
                                 routeNames={routeNames}
-                                emptyLabel={<span className="text-neutral-400">—</span>}
+                                emptyLabel={<span className="text-slate-500">—</span>}
                               />
                             )
                           })()
                         ) : (
-                          <span className="text-neutral-400">—</span>
+                          <span className="text-slate-500">—</span>
                         )}
                       </td>
                       <td className="px-4 py-2whitespace-nowrap text-sm text-neutral-600">
@@ -861,7 +861,7 @@ const UsersPage = () => {
                           </button>
                           <button
                             onClick={() => openActivity(user)}
-                            className="text-neutral-500 hover:text-indigo-700 p-2 hover:bg-indigo-50 rounded transition"
+                            className="text-neutral-500 hover:text-slate-700 p-2 hover:bg-slate-100 rounded transition"
                             title="View activity"
                           >
                             <Activity className="h-5 w-5" />
@@ -988,9 +988,9 @@ const UsersPage = () => {
             <table className="min-w-full divide-y divide-neutral-200 text-sm">
               <thead className="bg-neutral-50 sticky top-0">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Time</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Action</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Details</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 ">Time</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 ">Action</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 ">Details</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
@@ -1025,10 +1025,10 @@ const UsersPage = () => {
             <table className="min-w-full divide-y divide-neutral-200 text-sm">
               <thead className="bg-neutral-50 sticky top-0">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 uppercase">User</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Email</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Login at</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Device / IP</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 ">User</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 ">Email</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 ">Login at</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600 ">Device / IP</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
@@ -1083,7 +1083,7 @@ const UsersPage = () => {
             <button
               type="button"
               onClick={() => setUserModalTab('pageAccess')}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${userModalTab === 'pageAccess' ? 'border-purple-600 text-purple-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${userModalTab === 'pageAccess' ? 'border-slate-200 text-slate-700' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
             >
               Page access
             </button>
@@ -1161,9 +1161,9 @@ const UsersPage = () => {
                   </select>
                   {errorsAdd.role && <p className="text-red-500 text-xs mt-0.5">{errorsAdd.role.message}</p>}
                   {addFormRole === 'Owner' && (
-                    <div className="mt-2 p-3 rounded-sm bg-white border border-neutral-200 border-l-4 border-l-warning flex items-start gap-2">
+                    <div className="mt-2 p-3 rounded-sm bg-white border border-neutral-200 flex items-start gap-2">
                       <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
-                      <div className="text-xs text-amber-800">
+                      <div className="text-xs text-warning-fg">
                         <strong>Co-owner:</strong> This user will have full access, including the ability to manage or delete other users and all company data. Only create another Owner if you intend a co-owner.
                       </div>
                     </div>
@@ -1262,7 +1262,7 @@ const UsersPage = () => {
             <button
               type="button"
               onClick={() => setUserModalTab('pageAccess')}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${userModalTab === 'pageAccess' ? 'border-purple-600 text-purple-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${userModalTab === 'pageAccess' ? 'border-slate-200 text-slate-700' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
             >
               Page access
             </button>

@@ -51,7 +51,7 @@ function ActivityDetail({ log, detail, loading, error, onRetry }) {
   return (
     <div className="space-y-4 text-sm">
       {error && (
-        <div className="rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white px-3 py-2">
+        <div className="rounded-sm border border-neutral-200 bg-white px-3 py-2">
           <p className="text-sm text-error-fg">Unable to load this activity.</p>
           <button type="button" onClick={onRetry} className="mt-2 text-sm font-medium text-primary-700 hover:underline">
             Try again
@@ -87,7 +87,7 @@ function ActivityDetail({ log, detail, loading, error, onRetry }) {
         <p className="mt-1 text-neutral-800 leading-snug">{view.summary}</p>
       </div>
       {deleted && (
-        <p className="flex items-start gap-2 rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white px-3 py-2 text-sm text-neutral-800">
+        <p className="flex items-start gap-2 rounded-sm border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
           Recovery unavailable.
         </p>
@@ -298,8 +298,8 @@ const AuditLogPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <label className="relative block sm:col-span-2 lg:col-span-1">
               <span className="sr-only">Search activity</span>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" aria-hidden="true" />
-              <input
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" aria-hidden="true" />
+              <input aria-label="Search activity"
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -384,7 +384,7 @@ const AuditLogPage = () => {
 
         {!loading && !error && logs.length === 0 && (
           <div className="bg-white rounded-lg border border-neutral-200 px-4 py-12 text-center">
-            <History className="h-5 w-5 mx-auto text-neutral-400 mb-2" aria-hidden="true" />
+            <History className="h-5 w-5 mx-auto text-slate-500 mb-2" aria-hidden="true" />
             <p className="text-sm font-medium text-neutral-800">
               {hasFilters ? 'No activity matches these filters.' : 'No activity found.'}
             </p>

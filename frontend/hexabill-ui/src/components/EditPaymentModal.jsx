@@ -255,7 +255,7 @@ export default function EditPaymentModal ({
 
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-neutral-700 mb-1">Reference / Remarks</label>
-            <input
+            <input aria-label="Cheque number, transaction reference, notes"
               type="text"
               value={form.reference}
               onChange={(e) => setForm((f) => ({ ...f, reference: e.target.value }))}
@@ -275,7 +275,7 @@ export default function EditPaymentModal ({
             </p>
           </div>
         ) : (
-          <div className="border border-neutral-200 border-l-4 border-l-warning bg-white rounded-sm p-3 text-sm text-neutral-800">
+          <div className="border border-neutral-200 bg-white rounded-sm p-3 text-sm text-neutral-800">
             General payment — not linked to a specific invoice (same as Add Payment).
           </div>
         )}
@@ -292,7 +292,7 @@ export default function EditPaymentModal ({
           <button
             type="submit"
             disabled={saving}
-            className="px-4 min-h-[44px] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium"
+            className="px-4 min-h-[44px] bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium"
           >
             {saving ? 'Saving...' : 'Save Payment'}
           </button>

@@ -35,13 +35,13 @@ import { buildSalesLedgerKpis } from '../../utils/salesLedgerKpis'
 
 // Literal class names so Tailwind keeps them in the build.
 const SALES_KPI_ACCENT = {
-  primary: 'border-l-primary-600',
-  emerald: 'border-l-emerald-600',
-  rose: 'border-l-rose-600',
-  amber: 'border-l-amber-500',
-  teal: 'border-l-teal-600',
-  violet: 'border-l-violet-600',
-  slate: 'border-l-slate-600',
+  primary: '',
+  emerald: '',
+  rose: '',
+  amber: '',
+  teal: '',
+  violet: '',
+  slate: '',
 }
 
 const SHOW_FILTERS_KEY = 'hexabill_sales_ledger_show_filters'
@@ -1041,7 +1041,7 @@ const SalesLedgerPage = () => {
               <button
                 type="button"
                 onClick={() => setOverdueOnly((v) => !v)}
-                className={`inline-flex items-center justify-center gap-1 shrink-0 min-h-10 md:min-h-8 px-2.5 border rounded-lg text-xs font-medium whitespace-nowrap ${overdueOnly ? 'bg-warning text-white border-warning' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
+                className={`inline-flex items-center justify-center gap-1 shrink-0 min-h-10 md:min-h-8 px-2.5 border rounded-lg text-xs font-medium whitespace-nowrap ${overdueOnly ? 'bg-warning-fg text-white border-warning' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
                 title="Show only overdue invoices (unpaid balance, invoice date before today)"
               >
                 Overdue
@@ -1262,13 +1262,13 @@ const SalesLedgerPage = () => {
           }).map((card) => (
             <div
               key={card.key}
-              className={`shrink-0 min-w-[7.5rem] md:min-w-0 rounded-md border border-neutral-200 border-l-4 bg-white px-2.5 py-1.5 ${SALES_KPI_ACCENT[card.accent]}`}
+              className={`shrink-0 min-w-[7.5rem] md:min-w-0 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 ${SALES_KPI_ACCENT[card.accent]}`}
             >
-              <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-neutral-500">{card.label}</p>
+              <p className="truncate text-xs font-semibold text-neutral-500">{card.label}</p>
               <p className="truncate text-sm font-bold tabular-nums text-neutral-900">
                 {card.format === 'balance' ? formatBalance(card.value) : card.format === 'count' ? card.value.toLocaleString() : formatCurrency(card.value)}
               </p>
-              {card.helper ? <p className="hidden truncate text-[11px] text-neutral-500 md:block">{card.helper}</p> : null}
+              {card.helper ? <p className="hidden truncate text-xs text-neutral-500 md:block">{card.helper}</p> : null}
             </div>
           ))}
         </div>
@@ -1287,47 +1287,47 @@ const SalesLedgerPage = () => {
             <table className="w-full min-w-[1100px] divide-y divide-neutral-200 text-xs lg:text-sm">
               <thead className="bg-neutral-100 sticky top-0 z-20 border-b-2 border-neutral-300">
                 <tr>
-                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Date
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Type
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Invoice No
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Customer
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     <span className="xl:hidden" title="Payment Mode">Mode</span>
                     <span className="hidden xl:inline">Payment Mode</span>
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Bill Amount
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     VAT
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Paid Amount
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Returns
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Pending
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Days overdue
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Status
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Balance
                   </th>
-                  <th className={`px-2 2xl:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap min-w-[7rem] ${stickyActionTh}`}>
+                  <th className={`px-2 2xl:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap min-w-[7rem] ${stickyActionTh}`}>
                     Actions
                   </th>
                 </tr>
@@ -1338,7 +1338,7 @@ const SalesLedgerPage = () => {
                     <td colSpan="14" className="px-4 py-8 text-center text-neutral-500">
                       {ledgerLoadFailed ? ledgerLoadFailedNotice : (
                         <>
-                          <FileText className="w-12 h-12 mx-auto mb-2 text-neutral-300" />
+                          <FileText className="w-12 h-12 mx-auto mb-2 text-slate-500" />
                           <p>No transactions found matching the filters</p>
                         </>
                       )}
@@ -1360,14 +1360,14 @@ const SalesLedgerPage = () => {
                         if (prevCustomerGroup) {
                           // Use full customer totals from customerGroups, not just displayed entries
                           rows.push(
-                            <tr key={`subtotal-${prevCustomer}-${idx}`} className="bg-indigo-50 border-t-2 border-indigo-300">
-                              <td colSpan="5" className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-sm font-bold text-indigo-900 border-r border-neutral-300">
+                            <tr key={`subtotal-${prevCustomer}-${idx}`} className="bg-slate-50 border-t-2 border-slate-200">
+                              <td colSpan="5" className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-sm font-bold text-slate-700 border-r border-neutral-300">
                                 <span className="sticky left-2">Subtotal for {prevCustomer}:</span>
                               </td>
                               <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalSales)}
                               </td>
-                              <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-neutral-300">
+                              <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-slate-700 border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalVat ?? 0)}
                               </td>
                               <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
@@ -1385,10 +1385,10 @@ const SalesLedgerPage = () => {
                               <td className="px-2 2xl:px-3 py-2 text-center text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
                                 {prevCustomerGroup.subtotal.totalInvoices} invoices
                               </td>
-                              <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-neutral-300">
+                              <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-slate-700 border-r border-neutral-300">
                                 {formatBalance(prevCustomerGroup.subtotal.balance)}
                               </td>
-                              <td className={stickyActionCell('bg-indigo-50')} />
+                              <td className={stickyActionCell('bg-slate-50')} />
                             </tr>
                           )
                         }
@@ -1408,7 +1408,7 @@ const SalesLedgerPage = () => {
                       const rowBgColor = entry.type === 'Payment'
                         ? 'bg-success-bg hover:bg-green-100'
                         : entry.type === 'Return'
-                          ? 'bg-warning-bg hover:bg-amber-100'
+                          ? 'bg-warning-bg hover:bg-warning-border'
                           : 'hover:bg-neutral-50'
 
                       const normalizeStatusForDisplay = (status) => {
@@ -1436,9 +1436,9 @@ const SalesLedgerPage = () => {
                         </td>
                         <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-medium text-neutral-900 border-r border-neutral-200">
                           <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${entry.type === 'Payment'
-                            ? 'bg-green-100 text-green-800'
-                            : entry.type === 'Return'
-                              ? 'bg-amber-100 text-amber-800'
+ ? 'bg-green-100 text-green-800'
+ : entry.type === 'Return'
+                              ? 'bg-warning-bg text-warning-fg'
                               : 'bg-primary-100 text-primary-800'
                             }`}>
                             {entry.type}
@@ -1464,7 +1464,7 @@ const SalesLedgerPage = () => {
                                 : '-'}
                         </td>
                         {/* VAT - Sale/Return: vatTotal; Payment: - */}
-                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-teal-700 border-r border-neutral-200">
+                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-slate-700 border-r border-neutral-200">
                           {entry.type === 'Payment' ? '-' : (entry.vatTotal > 0 ? formatCurrency(entry.vatTotal) : '-')}
                         </td>
                         {/* Paid Amount excludes returned goods, which have their own column. */}
@@ -1498,13 +1498,13 @@ const SalesLedgerPage = () => {
                               {displayStatus}
                             </span>
                           ) : (
-                            <span className="text-xs text-neutral-400">-</span>
+                            <span className="text-xs text-slate-500">-</span>
                           )}
                         </td>
                         <td
                           className={`px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold ${customerBalance < 0
-                            ? 'text-success'
-                            : customerBalance > 0
+ ? 'text-success'
+ : customerBalance > 0
                               ? 'text-error'
                               : 'text-neutral-900'
                             }`}
@@ -1516,7 +1516,7 @@ const SalesLedgerPage = () => {
                             entry.type === 'Payment'
                               ? 'bg-success-bg hover:bg-green-100'
                               : entry.type === 'Return'
-                                ? 'bg-warning-bg hover:bg-amber-100'
+                                ? 'bg-warning-bg hover:bg-warning-border'
                                 : 'bg-white hover:bg-neutral-50'
                           )
                         }>
@@ -1570,7 +1570,7 @@ const SalesLedgerPage = () => {
                                 <button
                                   type="button"
                                   onClick={() => handleEditLedgerPayment(entry)}
-                                  className="inline-flex items-center justify-center p-1.5 rounded-md text-indigo-600 hover:bg-indigo-50"
+                                  className="inline-flex items-center justify-center p-1.5 rounded-md text-slate-700 hover:bg-slate-100"
                                   title="Edit payment"
                                 >
                                   <Pencil className="w-4 h-4" />
@@ -1588,7 +1588,7 @@ const SalesLedgerPage = () => {
                               )}
                             </div>
                           ) : (
-                            <span className="text-neutral-300">-</span>
+                            <span className="text-slate-500">-</span>
                           )}
                         </td>
                       </tr>
@@ -1601,14 +1601,14 @@ const SalesLedgerPage = () => {
                       if (lastCustomerGroup) {
                         // Use full customer totals from customerGroups, not just displayed entries
                         rows.push(
-                          <tr key={`subtotal-${prevCustomer}-final`} className="bg-indigo-50 border-t-2 border-indigo-300">
-                            <td colSpan="5" className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-sm font-bold text-indigo-900 border-r border-neutral-300">
+                          <tr key={`subtotal-${prevCustomer}-final`} className="bg-slate-50 border-t-2 border-slate-200">
+                            <td colSpan="5" className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-sm font-bold text-slate-700 border-r border-neutral-300">
                               <span className="sticky left-2">Subtotal for {prevCustomer}:</span>
                             </td>
                             <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalSales)}
                             </td>
-                            <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-neutral-300">
+                            <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-slate-700 border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalVat ?? 0)}
                             </td>
                             <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
@@ -1626,10 +1626,10 @@ const SalesLedgerPage = () => {
                             <td className="px-2 2xl:px-3 py-2 text-center text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
                               {lastCustomerGroup.subtotal.totalInvoices} invoices
                             </td>
-                            <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-neutral-300">
+                            <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-slate-700 border-r border-neutral-300">
                               {formatBalance(lastCustomerGroup.subtotal.balance)}
                             </td>
-                            <td className={stickyActionCell('bg-indigo-50')} />
+                            <td className={stickyActionCell('bg-slate-50')} />
                           </tr>
                         )
                       }
@@ -1665,7 +1665,7 @@ const SalesLedgerPage = () => {
                   <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalSales)}
                   </td>
-                  <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-neutral-300">
+                  <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-slate-700 border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalVat ?? 0)}
                   </td>
                   <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
@@ -1701,7 +1701,7 @@ const SalesLedgerPage = () => {
               <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
                 {ledgerLoadFailed ? ledgerLoadFailedNotice : (
                   <>
-                    <FileText className="w-12 h-12 mb-2 text-neutral-300" />
+                    <FileText className="w-12 h-12 mb-2 text-slate-500" />
                     <p className="text-sm">No transactions found</p>
                   </>
                 )}
@@ -1738,8 +1738,8 @@ const SalesLedgerPage = () => {
                       const prevCustomerName = displayedLedger[idx - 1].customerName || 'Cash Customer'
                       const prevCustomerGroup = customerGroups.find(g => g.customerName === prevCustomerName)
                       return prevCustomerGroup ? (
-                        <div className="bg-indigo-50 border-2 border-indigo-300 rounded-lg p-3 mb-2">
-                          <div className="text-xs font-bold text-indigo-900 mb-1">
+                        <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-3 mb-2">
+                          <div className="text-xs font-bold text-slate-700 mb-1">
                             Subtotal for {prevCustomerName}:
                           </div>
                             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1749,7 +1749,7 @@ const SalesLedgerPage = () => {
                               </div>
                               <div>
                                 <div className="text-neutral-600">VAT:</div>
-                                <div className="font-bold text-teal-700">{formatCurrency(prevCustomerGroup.subtotal.totalVat ?? 0)}</div>
+                                <div className="font-bold text-slate-700">{formatCurrency(prevCustomerGroup.subtotal.totalVat ?? 0)}</div>
                               </div>
                               <div>
                                 <div className="text-neutral-600">Paid:</div>
@@ -1771,8 +1771,8 @@ const SalesLedgerPage = () => {
                     })()}
                     <div
                       className={`rounded-lg border p-2.5 ${entry.type === 'Payment'
-                        ? 'bg-success-bg border-success-border'
-                        : entry.type === 'Return'
+ ? 'bg-success-bg border-success-border'
+ : entry.type === 'Return'
                           ? 'bg-warning-bg border-warning-border'
                           : 'bg-white border-neutral-200'
                         }`}
@@ -1781,9 +1781,9 @@ const SalesLedgerPage = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                           <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${entry.type === 'Payment'
-                            ? 'bg-success text-white'
-                            : entry.type === 'Return'
-                              ? 'bg-warning text-white'
+ ? 'bg-success text-white'
+ : entry.type === 'Return'
+                              ? 'bg-warning-fg text-white'
                               : 'bg-primary-600 text-white'
                             }`}>
                             {entry.type}
@@ -1838,7 +1838,7 @@ const SalesLedgerPage = () => {
                             <button
                               type="button"
                               onClick={() => handleEditLedgerPayment(entry)}
-                              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-md text-indigo-600 hover:bg-indigo-50"
+                              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-md text-slate-700 hover:bg-slate-100"
                               title="Edit payment"
                             >
                               <Pencil className="w-4 h-4" />
@@ -1860,7 +1860,7 @@ const SalesLedgerPage = () => {
 
                     <div className="grid grid-cols-2 gap-1.5 text-xs">
                       <div>
-                        <div className="text-xs text-neutral-500 uppercase">{entry.type === 'Return' ? 'Returns' : 'Bill'}</div>
+                        <div className="text-xs text-neutral-500 ">{entry.type === 'Return' ? 'Returns' : 'Bill'}</div>
                         <div className="font-bold text-primary-600">
                           {entry.type === 'Sale'
                             ? formatCurrency(entry.grandTotal || 0)
@@ -1871,12 +1871,12 @@ const SalesLedgerPage = () => {
                       </div>
                       {(entry.vatTotal > 0 && entry.type !== 'Payment') && (
                         <div>
-                          <div className="text-xs text-neutral-500 uppercase">VAT</div>
-                          <div className="font-bold text-teal-700">{formatCurrency(entry.vatTotal)}</div>
+                          <div className="text-xs text-neutral-500 ">VAT</div>
+                          <div className="font-bold text-slate-700">{formatCurrency(entry.vatTotal)}</div>
                         </div>
                       )}
                       <div>
-                        <div className="text-xs text-neutral-500 uppercase">Paid</div>
+                        <div className="text-xs text-neutral-500 ">Paid</div>
                         <div className="font-bold text-success">
                           {entry.type === 'Sale'
                             ? (entry.paidAmount > 0 ? formatCurrency(entry.paidAmount) : '-')
@@ -1885,7 +1885,7 @@ const SalesLedgerPage = () => {
                       </div>
                       {entry.type === 'Sale' && entry.realPending > 0 && (
                         <div>
-                          <div className="text-xs text-neutral-500 uppercase">Pending</div>
+                          <div className="text-xs text-neutral-500 ">Pending</div>
                           <div className="font-bold text-error">
                             {formatCurrency(entry.realPending)}
                           </div>
@@ -1893,7 +1893,7 @@ const SalesLedgerPage = () => {
                       )}
                       {entry.type === 'Sale' && (Number(entry.realPending) || 0) > LEDGER_PENDING_EPS && (
                         <div>
-                          <div className="text-xs text-neutral-500 uppercase">Days overdue</div>
+                          <div className="text-xs text-neutral-500 ">Days overdue</div>
                           <div className="font-bold text-neutral-900">
                             {(() => {
                               const d = getSaleDaysOutstanding(entry)
@@ -1903,10 +1903,10 @@ const SalesLedgerPage = () => {
                         </div>
                       )}
                       <div>
-                        <div className="text-xs text-neutral-500 uppercase">Balance</div>
+                        <div className="text-xs text-neutral-500 ">Balance</div>
                         <div className={`font-bold ${(entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)) < 0 ? 'text-success' :
-                          (entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)) > 0 ? 'text-error' :
-                            'text-neutral-900'
+ (entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)) > 0 ? 'text-error' :
+ 'text-neutral-900'
                           }`}>
                           {formatBalance(entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0))}
                         </div>
@@ -1917,7 +1917,7 @@ const SalesLedgerPage = () => {
                       <button
                         type="button"
                         onClick={() => goRecordPaymentForSale(entry)}
-                        className="mt-2 w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-lg bg-warning text-white text-sm font-bold hover:bg-amber-700 active:scale-[0.99] transition-transform"
+                        className="mt-2 w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-lg bg-warning-fg text-white text-sm font-bold hover:bg-warning-fg active:scale-[0.99] transition-transform"
                       >
                         <Banknote className="h-4 w-4 shrink-0" aria-hidden />
                         Record payment
@@ -1934,8 +1934,8 @@ const SalesLedgerPage = () => {
                     {isLastOfCustomer && showGroupedSubtotals && (customerGroups.length > 1 || isCustomerFiltered) && (() => {
                       const customerGroup = customerGroups.find(g => g.customerName === customerName)
                       return customerGroup ? (
-                        <div className="bg-indigo-50 border-2 border-indigo-300 rounded-lg p-3 mt-2">
-                          <div className="text-xs font-bold text-indigo-900 mb-1">
+                        <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-3 mt-2">
+                          <div className="text-xs font-bold text-slate-700 mb-1">
                             Subtotal for {customerName}:
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs">

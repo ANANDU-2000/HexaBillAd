@@ -93,14 +93,14 @@ const LegacyInvoicesPage = () => {
   return (
     <div className="space-y-6">
       {/* Top Disclaimer Banner */}
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+      <div className="rounded-xl border border-warning-border bg-warning-bg p-4 shadow-sm">
         <div className="flex items-start gap-3">
-          <ShieldAlert className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
+          <ShieldAlert className="h-6 w-6 text-warning-fg shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <h3 className="text-sm font-bold text-amber-900 tracking-wide uppercase">
+            <h3 className="text-sm font-bold text-warning-fg ">
               Starplus Foodstuff Trading — Historical Legacy Archive
             </h3>
-            <p className="text-xs text-amber-800 leading-relaxed">
+            <p className="text-xs text-warning-fg leading-relaxed">
               These records are immutable historical data from Starplus (TRN: 100366253100003) migrated for reference and receivables cutover.
               They are isolated from current FrozenHub accounting, live inventory counts, and current-period UAE VAT returns (FTA Form 201).
             </p>
@@ -112,22 +112,22 @@ const LegacyInvoicesPage = () => {
       {reconciliation && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
-            <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Historical Total Sales</div>
+            <div className="text-xs font-semibold text-neutral-500 ">Historical Total Sales</div>
             <div className="mt-1 text-xl font-bold text-neutral-900">{formatCurrency(reconciliation.activeGrandTotal)}</div>
             <div className="mt-0.5 text-xs text-neutral-500">{reconciliation.activeInvoices?.toLocaleString()} active bills</div>
           </div>
           <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
-            <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Historical Paid Total</div>
+            <div className="text-xs font-semibold text-neutral-500 ">Historical Paid Total</div>
             <div className="mt-1 text-xl font-bold text-emerald-600">{formatCurrency(reconciliation.activePaidTotal)}</div>
             <div className="mt-0.5 text-xs text-neutral-500">{reconciliation.clearedPayments?.toLocaleString()} cleared payments</div>
           </div>
           <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
-            <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Cutover Receivables (Pending)</div>
+            <div className="text-xs font-semibold text-neutral-500 ">Cutover Receivables (Pending)</div>
             <div className="mt-1 text-xl font-bold text-rose-600">{formatCurrency(reconciliation.positiveOutstandingSum)}</div>
             <div className="mt-0.5 text-xs text-neutral-500">{reconciliation.positiveOutstandingCount} pending bills</div>
           </div>
           <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
-            <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Approved Customer Opening AR</div>
+            <div className="text-xs font-semibold text-neutral-500 ">Approved Customer Opening AR</div>
             <div className="mt-1 text-xl font-bold text-blue-600">{formatCurrency(reconciliation.customerOpeningReceivablesTotal)}</div>
             <div className="mt-0.5 text-xs text-neutral-500">{reconciliation.customerOpeningReceivablesCount} customer opening balances</div>
           </div>
@@ -146,8 +146,8 @@ const LegacyInvoicesPage = () => {
             type="button"
             onClick={() => { setPendingOnly(false); setPage(1); }}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition ${
-              !pendingOnly
-                ? 'bg-primary-600 text-white border-primary-600'
+ !pendingOnly
+ ? 'bg-primary-600 text-white border-primary-600'
                 : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'
             }`}
           >
@@ -157,8 +157,8 @@ const LegacyInvoicesPage = () => {
             type="button"
             onClick={() => { setPendingOnly(true); setPage(1); }}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition ${
-              pendingOnly
-                ? 'bg-rose-600 text-white border-rose-600'
+ pendingOnly
+ ? 'bg-rose-600 text-white border-rose-600'
                 : 'bg-white text-rose-700 border-rose-300 hover:bg-rose-50'
             }`}
           >
@@ -170,7 +170,7 @@ const LegacyInvoicesPage = () => {
       {/* Search Bar */}
       <form onSubmit={handleSearchSubmit} className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
           <input
             type="text"
             value={searchTerm}
@@ -200,18 +200,18 @@ const LegacyInvoicesPage = () => {
       <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm">
         {loading ? (
           <div className="py-16 text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-neutral-400" />
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-slate-500" />
             <p className="mt-2 text-sm text-neutral-500">Loading historical invoices from legacy archive...</p>
           </div>
         ) : invoices.length === 0 ? (
           <div className="py-16 text-center">
-            <FileText className="h-12 w-12 mx-auto text-neutral-300" />
+            <FileText className="h-12 w-12 mx-auto text-slate-500" />
             <p className="mt-2 text-sm font-medium text-neutral-600">No historical invoices found</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-neutral-200 text-sm">
-              <thead className="bg-neutral-50 text-neutral-600 font-semibold text-xs uppercase tracking-wider">
+              <thead className="bg-neutral-50 text-neutral-600 font-semibold text-xs ">
                 <tr>
                   <th className="px-4 py-3 text-left">Invoice #</th>
                   <th className="px-4 py-3 text-left">Date</th>
@@ -230,7 +230,7 @@ const LegacyInvoicesPage = () => {
                     <td className="px-4 py-3 font-semibold text-neutral-900">
                       #{inv.legacyInvoiceNumber}
                       {inv.reportedAsPending && (
-                        <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-100 text-rose-800">
+                        <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800">
                           Cutover Pending
                         </span>
                       )}
@@ -239,13 +239,13 @@ const LegacyInvoicesPage = () => {
                       {new Date(inv.invoiceDate).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-neutral-800 font-medium max-w-[200px] truncate">
-                      {inv.customerName || <span className="text-neutral-400 italic">Unassigned (Walk-in)</span>}
+                      {inv.customerName || <span className="text-slate-500 italic">Unassigned (Walk-in)</span>}
                     </td>
                     <td className="px-4 py-3 text-center text-xs text-neutral-600">
                       {inv.itemCount > 0 ? (
                         `${inv.itemCount} item${inv.itemCount > 1 ? 's' : ''}`
                       ) : (
-                        <span className="text-amber-600 font-medium">0 items (Source Incomplete)</span>
+                        <span className="text-warning-fg font-medium">0 items (Source Incomplete)</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-neutral-900">
@@ -254,7 +254,7 @@ const LegacyInvoicesPage = () => {
                     <td className="px-4 py-3 text-right text-emerald-600 font-medium">
                       {formatCurrency(inv.paidAmount)}
                     </td>
-                    <td className={`px-4 py-3 text-right font-bold ${inv.outstandingCalculated > 0.005 ? 'text-rose-600' : 'text-neutral-400'}`}>
+                    <td className={`px-4 py-3 text-right font-bold ${inv.outstandingCalculated > 0.005 ? 'text-rose-600' : 'text-slate-500'}`}>
                       {inv.outstandingCalculated > 0.005 ? formatCurrency(inv.outstandingCalculated) : 'AED 0.00'}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -263,7 +263,7 @@ const LegacyInvoicesPage = () => {
                           Paid
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-warning-bg text-warning-fg">
                           Pending
                         </span>
                       )}
@@ -295,6 +295,7 @@ const LegacyInvoicesPage = () => {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage(p => Math.max(1, p - 1))}
+              aria-label="Previous page"
               className="p-1.5 border border-neutral-300 rounded bg-white text-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-50"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -303,6 +304,7 @@ const LegacyInvoicesPage = () => {
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              aria-label="Next page"
               className="p-1.5 border border-neutral-300 rounded bg-white text-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-50"
             >
               <ChevronRight className="h-4 w-4" />
@@ -314,14 +316,14 @@ const LegacyInvoicesPage = () => {
       {/* Invoice Detail Modal */}
       {(selectedInvoice || detailLoading) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-neutral-200 p-6 space-y-6">
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-sm border border-neutral-200 p-6 space-y-6">
             <div className="flex items-start justify-between border-b pb-4">
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-bold text-neutral-900">
                     Legacy Invoice #{selectedInvoice?.legacyInvoiceNumber}
                   </h2>
-                  <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">
+                  <span className="px-2 py-0.5 rounded text-xs font-semibold bg-warning-bg text-warning-fg">
                     STARPLUS ARCHIVE ONLY
                   </span>
                 </div>
@@ -332,7 +334,7 @@ const LegacyInvoicesPage = () => {
               <button
                 type="button"
                 onClick={() => setSelectedInvoice(null)}
-                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100"
+                className="p-1 rounded-lg text-slate-500 hover:text-neutral-700 hover:bg-neutral-100"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -340,7 +342,7 @@ const LegacyInvoicesPage = () => {
 
             {detailLoading ? (
               <div className="py-12 text-center">
-                <RefreshCw className="h-8 w-8 animate-spin mx-auto text-neutral-400" />
+                <RefreshCw className="h-8 w-8 animate-spin mx-auto text-slate-500" />
                 <p className="mt-2 text-sm text-neutral-500">Loading line items and payment records...</p>
               </div>
             ) : selectedInvoice && (
@@ -371,7 +373,7 @@ const LegacyInvoicesPage = () => {
                     Original Invoice Items ({selectedInvoice.items?.length || 0})
                   </h3>
                   {selectedInvoice.items?.length === 0 ? (
-                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                    <div className="p-4 bg-warning-bg border border-warning-border rounded-lg text-xs text-warning-fg">
                       Note: This historical invoice was recorded in Starplus without line items. Financial grand total, paid amount, and tax balances are fully preserved from source records.
                     </div>
                   ) : (
@@ -393,7 +395,7 @@ const LegacyInvoicesPage = () => {
                             <tr key={idx} className="hover:bg-neutral-50/50">
                               <td className="px-3 py-2 font-medium text-neutral-900">
                                 <div>{it.productName}</div>
-                                {it.sku && <div className="text-[10px] text-neutral-400 font-mono">{it.sku}</div>}
+                                {it.sku && <div className="text-xs text-slate-500 font-mono">{it.sku}</div>}
                               </td>
                               <td className="px-3 py-2 text-center text-neutral-600">{it.unitType}</td>
                               <td className="px-3 py-2 text-right font-medium text-neutral-900">{it.quantity}</td>
@@ -464,11 +466,11 @@ const LegacyInvoicesPage = () => {
                             <tr key={pIdx}>
                               <td className="px-3 py-2 text-neutral-700">{new Date(p.paymentDate).toLocaleDateString()}</td>
                               <td className="px-3 py-2 text-neutral-700">{p.mode}</td>
-                              <td className="px-3 py-2 text-neutral-500 font-mono text-[10px]">{p.reference || '—'}</td>
+                              <td className="px-3 py-2 text-neutral-500 font-mono text-xs">{p.reference || '—'}</td>
                               <td className="px-3 py-2 text-center">
-                                <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                  p.status?.toUpperCase() === 'CLEARED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                                }`}>
+                                <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${
+ p.status?.toUpperCase() === 'CLEARED' ? 'bg-emerald-100 text-emerald-800' : 'bg-warning-bg text-warning-fg'
+ }`}>
                                   {p.status}
                                 </span>
                               </td>

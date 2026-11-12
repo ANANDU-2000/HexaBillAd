@@ -67,7 +67,7 @@ export function DriverRoutesPage() {
                   <span className="block font-medium text-text-primary">{r.name}</span>
                   {r.branchName && <span className="block text-sm text-neutral-600">{r.branchName}</span>}
                 </span>
-                <ChevronRight className="h-5 w-5 text-neutral-400" aria-hidden="true" />
+                <ChevronRight className="h-5 w-5 text-slate-500" aria-hidden="true" />
               </Link>
             </li>
           ))}
@@ -90,7 +90,7 @@ function StopCard({ stop, running, busy, onAction, reasonFor, setReasonFor, canR
           {stop.position}
         </span>
         <div className="min-w-0 flex-1">
-          {isNext && <p className="text-xs font-semibold uppercase tracking-wide text-info-fg">Next stop</p>}
+          {isNext && <p className="text-xs font-semibold text-info-fg">Next stop</p>}
           <p className="font-medium text-text-primary break-words">{stop.customerName}</p>
           {stop.address && <p className="text-sm text-neutral-600 break-words">{stop.address}</p>}
         </div>
@@ -350,8 +350,8 @@ export default function DriverRoutePage() {
       {liveOn && phase === 'running' && <LocationSharingPanel routeId={routeId} routeRunning={phase === 'running'} />}
 
       {running && next && (
-        <div className="rounded-sm border border-neutral-200 border-l-4 border-l-info bg-white p-3" data-testid="next-stop">
-          <p className="text-xs font-semibold uppercase tracking-wide text-info-fg">Next stop</p>
+        <div className="rounded-sm border border-neutral-200 bg-white p-3" data-testid="next-stop">
+          <p className="text-xs font-semibold text-info-fg">Next stop</p>
           <p className="mt-0.5 font-medium text-text-primary break-words">{next.position}. {next.customerName}</p>
           {next.address && <p className="text-sm text-neutral-600 break-words">{next.address}</p>}
           {stopNavigationUrl(next) && (
@@ -402,7 +402,7 @@ export default function DriverRoutePage() {
       )}
 
       {needLocation.length > 0 && (
-        <div className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white p-3" data-testid="location-needed">
+        <div className="rounded-sm border border-neutral-200 bg-white p-3" data-testid="location-needed">
           <p className="flex items-center gap-1 text-sm font-medium text-warning-fg"><MapPin className="h-4 w-4" aria-hidden="true" /> Location needed</p>
           <p className="mt-1 text-sm text-neutral-700">These stops have no shop location, so they are not on the map and have no directions. Press “I'm here” when you arrive: your location goes to the office to confirm.</p>
           <ul className="mt-1 list-disc pl-5 text-sm text-neutral-800">

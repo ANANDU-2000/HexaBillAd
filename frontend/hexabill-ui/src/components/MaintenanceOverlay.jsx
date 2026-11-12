@@ -84,7 +84,7 @@ export const MaintenanceOverlay = () => {
       aria-describedby="service-overlay-body"
       data-service-state={state.kind}
     >
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-lg">
+      <div className="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-sm">
         <Icon className="mx-auto mb-3 h-10 w-10 text-neutral-500" strokeWidth={1.5} aria-hidden="true" />
         <h1 id="service-overlay-title" className="mb-2 text-lg font-semibold text-neutral-900">{copy.title}</h1>
         <p id="service-overlay-body" className="mb-2 text-sm text-neutral-700">{state.message || copy.body}</p>

@@ -27,7 +27,7 @@ const CustomerPendingBillsTable = ({ rows = [], loading = false, error = null, o
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       {leading}
       <div className="relative min-w-[12rem] flex-1 sm:max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" aria-hidden />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden />
         <input
           type="search"
           value={query}
@@ -63,7 +63,7 @@ const CustomerPendingBillsTable = ({ rows = [], loading = false, error = null, o
 
       <div className="rounded-md border border-neutral-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-600">
+          <thead className="sticky top-0 z-10 bg-neutral-50 text-xs text-neutral-600">
             <tr>
               <th scope="col" className="px-3 py-1.5 text-left font-semibold">Customer</th>
               <th scope="col" className="hidden px-3 py-1.5 text-left font-semibold xl:table-cell">Phone / TRN</th>
@@ -118,7 +118,7 @@ const CustomerPendingBillsTable = ({ rows = [], loading = false, error = null, o
                     <tr className="bg-neutral-50">
                       <td colSpan={6} className="px-3 py-2">
                         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                          <label className={`inline-flex items-center gap-2 text-xs ${liveBills.length ? 'text-neutral-700' : 'text-neutral-400'}`}>
+                          <label className={`inline-flex items-center gap-2 text-xs ${liveBills.length ? 'text-neutral-700' : 'text-slate-500'}`}>
                             <input
                               type="checkbox"
                               disabled={!liveBills.length}

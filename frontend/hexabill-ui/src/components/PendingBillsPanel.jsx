@@ -31,8 +31,8 @@ const PendingBillsPanel = ({ bills, searchTerm, onSearchChange, filter, onFilter
         {/* Filters */}
         <div className="space-y-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
-            <input
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <input aria-label="Search invoice or customer"
               type="text"
               placeholder="Search invoice or customer..."
               className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-md text-sm"
@@ -77,8 +77,8 @@ const PendingBillsPanel = ({ bills, searchTerm, onSearchChange, filter, onFilter
                     <div className="flex items-center justify-end gap-1 mt-1">
                       {bill.paymentStatus && (
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          bill.paymentStatus.toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' :
-                          bill.paymentStatus.toLowerCase() === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+ bill.paymentStatus.toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' :
+ bill.paymentStatus.toLowerCase() === 'partial' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-red-100 text-red-800'
                         }`}>
                           {bill.paymentStatus}

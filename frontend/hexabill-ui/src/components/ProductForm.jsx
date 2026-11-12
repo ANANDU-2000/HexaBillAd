@@ -325,7 +325,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-lg w-full max-w-5xl max-h-[92vh] flex flex-col shadow-xl">
+      <div className="bg-white rounded-lg w-full max-w-5xl max-h-[92vh] flex flex-col shadow-sm">
         <div className="flex justify-between items-center px-4 py-3 border-b border-neutral-200 shrink-0">
           <h2 className="text-lg font-semibold text-neutral-900">
             {product ? 'Edit Product' : 'Add New Product'}
@@ -333,7 +333,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
           <button
             type="button"
             onClick={onCancel}
-            className="text-neutral-400 hover:text-neutral-600"
+            className="text-slate-500 hover:text-neutral-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -401,8 +401,8 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                     type="button"
                     onClick={() => setBarcodeScanOn((v) => !v)}
                     className={`px-2.5 py-1.5 text-sm font-medium rounded-lg border inline-flex items-center gap-1 shrink-0 ${
-                      barcodeScanOn
-                        ? 'bg-amber-500 text-white border-warning'
+ barcodeScanOn
+ ? 'bg-warning-fg text-white border-warning'
                         : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'
                     }`}
                     title={barcodeScanOn ? 'Stop camera' : 'Scan barcode with camera'}
@@ -461,7 +461,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                       {barcodeScanStatus === 'timeout' && (
                         <button
                           type="button"
-                          className="underline text-amber-200 shrink-0"
+                          className="underline text-white shrink-0"
                           onClick={() => {
                             setScanCamError(null)
                             startBarcodeCam()
@@ -544,7 +544,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                 </div>
                 {showCategoryInput && (
                   <div className="mt-2 flex gap-2">
-                    <input
+                    <input aria-label="New category name"
                       type="text"
                       placeholder="New category name"
                       value={newCategoryName}
@@ -579,7 +579,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                   id="product-unitType"
                   aria-invalid={Boolean(fieldErrors.unitType)}
                   aria-describedby="product-unitType-error"
-                  className="input uppercase"
+                  className="input "
                   value={formData.unitType}
                   onChange={handleChange}
                 >

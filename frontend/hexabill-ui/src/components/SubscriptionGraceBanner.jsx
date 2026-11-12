@@ -52,7 +52,7 @@ export function SubscriptionGraceBanner() {
 
   return (
     <div
-      className="bg-amber-500 text-amber-950 px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium"
+      className="bg-warning-fg text-warning-fg px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium"
       role="alert"
     >
       <AlertTriangle className="h-5 w-5 flex-shrink-0" />
@@ -64,14 +64,14 @@ export function SubscriptionGraceBanner() {
       </span>
       <Link
         to="/subscription"
-        className="ml-2 px-3 py-1 bg-amber-900 text-white rounded hover:bg-amber-800 font-medium"
+        className="ml-2 px-3 py-1 bg-warning-fg text-white rounded hover:bg-warning-fg font-medium"
       >
         Renew now
       </Link>
       <button
         type="button"
         onClick={() => setDismissed(true)}
-        className="ml-2 p-1 hover:bg-warning/30 rounded"
+        className="ml-2 p-1 hover:bg-warning-fg/30 rounded"
         aria-label="Dismiss"
       >
         <X className="h-4 w-4" />

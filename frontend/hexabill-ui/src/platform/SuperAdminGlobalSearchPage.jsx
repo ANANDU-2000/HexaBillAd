@@ -56,13 +56,13 @@ const SuperAdminGlobalSearchPage = () => {
         </p>
 
         <div className="relative mb-8">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Invoice #, customer name, phone, or email (min 2 characters)..."
-            className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-slate-200 focus:border-slate-200"
             autoFocus
           />
         </div>
@@ -84,7 +84,7 @@ const SuperAdminGlobalSearchPage = () => {
                 {result.invoices.length > 0 && (
                   <section>
                     <h2 className="flex items-center gap-2 text-lg font-semibold text-neutral-800 mb-3">
-                      <FileText className="h-5 w-5 text-indigo-600" />
+                      <FileText className="h-5 w-5 text-slate-700" />
                       Invoices ({result.invoices.length})
                     </h2>
                     <ul className="bg-white rounded-lg border border-neutral-200 shadow-sm divide-y divide-neutral-100 overflow-hidden">
@@ -95,7 +95,7 @@ const SuperAdminGlobalSearchPage = () => {
                               <span className="font-mono font-medium text-neutral-900">{inv.invoiceNo}</span>
                               <span className="text-neutral-500">·</span>
                               <span className="text-neutral-600">{inv.customerName || '—'}</span>
-                              <span className="text-neutral-400 text-sm">
+                              <span className="text-slate-500 text-sm">
                                 {new Date(inv.invoiceDate).toLocaleDateString()}
                               </span>
                             </div>
@@ -103,7 +103,7 @@ const SuperAdminGlobalSearchPage = () => {
                               <span className="text-neutral-700">{formatCurrency(inv.grandTotal)}</span>
                               <Link
                                 to={`/superadmin/tenants/${inv.tenantId}`}
-                                className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                                className="inline-flex items-center gap-1 text-sm text-slate-700 hover:text-slate-700 font-medium"
                               >
                                 <Building2 className="h-4 w-4" />
                                 {inv.tenantName}
@@ -120,7 +120,7 @@ const SuperAdminGlobalSearchPage = () => {
                 {result.customers.length > 0 && (
                   <section>
                     <h2 className="flex items-center gap-2 text-lg font-semibold text-neutral-800 mb-3">
-                      <Users className="h-5 w-5 text-indigo-600" />
+                      <Users className="h-5 w-5 text-slate-700" />
                       Customers ({result.customers.length})
                     </h2>
                     <ul className="bg-white rounded-lg border border-neutral-200 shadow-sm divide-y divide-neutral-100 overflow-hidden">
@@ -137,7 +137,7 @@ const SuperAdminGlobalSearchPage = () => {
                             </div>
                             <Link
                               to={`/superadmin/tenants/${c.tenantId}`}
-                              className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                              className="inline-flex items-center gap-1 text-sm text-slate-700 hover:text-slate-700 font-medium"
                             >
                               <Building2 className="h-4 w-4" />
                               {c.tenantName}

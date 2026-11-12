@@ -2341,7 +2341,7 @@ const CustomerLedgerPage = () => {
   if (user && !isAdminOrOwner(user) && staffAssignmentsLoaded && staffHasNoAssignments) {
     return (
       <div className="min-h-screen flex flex-col bg-neutral-50 items-center justify-center p-6">
-        <div className="flex items-center gap-3 px-4 py-4 rounded-sm bg-white border border-neutral-200 border-l-4 border-l-warning text-neutral-800 max-w-md">
+        <div className="flex items-center gap-3 px-4 py-4 rounded-sm bg-white border border-neutral-200 text-neutral-800 max-w-md">
           <AlertTriangle className="h-8 w-8 shrink-0" />
           <p className="text-sm font-medium">No branches or routes assigned. Contact your admin.</p>
         </div>
@@ -2541,7 +2541,7 @@ const CustomerLedgerPage = () => {
               </button>
             )}
             <div className="relative min-w-0 flex-1 lg:max-w-xl">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" aria-hidden />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden />
             <input
               ref={searchInputRef}
               type="search"
@@ -2650,8 +2650,8 @@ const CustomerLedgerPage = () => {
                   handleSelectCustomer({ id: 'cash', name: 'Cash Customer', balance: 0 })
                 }}
                 className={`w-full text-left px-2.5 py-1.5 rounded-md transition-colors text-sm border border-transparent ${selectedCustomer?.id === 'cash'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-neutral-50 hover:bg-neutral-100 text-neutral-900 border-neutral-200'
+ ? 'bg-primary-600 text-white'
+ : 'bg-neutral-50 hover:bg-neutral-100 text-neutral-900 border-neutral-200'
                   }`}
               >
                 <div className="font-semibold text-sm">Cash Customer</div>
@@ -2672,8 +2672,8 @@ const CustomerLedgerPage = () => {
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelectCustomer(customer)}
                   className={`w-full text-left px-2.5 py-1.5 rounded-md transition-colors text-sm border ${selectedCustomer?.id === customer.id
-                    ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-white hover:bg-neutral-50 text-neutral-900 border-transparent border-b-neutral-100'
+ ? 'bg-primary-600 text-white border-primary-600'
+ : 'bg-white hover:bg-neutral-50 text-neutral-900 border-transparent border-b-neutral-100'
                     }`}
                 >
                   <div className="flex justify-between items-center gap-2">
@@ -2710,12 +2710,12 @@ const CustomerLedgerPage = () => {
           {selectedCustomer && (
             <>
               {(paymentRecoveryError || unconfirmedPayment?.scope === paymentScope) && (
-                <div role="alert" className="m-3 p-3 rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white text-sm text-neutral-800">
+                <div role="alert" className="m-3 p-3 rounded-sm border border-neutral-200 bg-white text-sm text-neutral-800">
                   {paymentRecoveryError || (paymentLoading
                     ? `Waiting for confirmation of ${formatCurrency(unconfirmedPayment.request.amount)}.`
                     : `A payment of ${formatCurrency(unconfirmedPayment.request.amount)} needs confirmation. Retry it before recording another payment.`)}
                   {!paymentRecoveryError && (
-                    <button type="button" disabled={paymentLoading} className="ml-3 min-h-[44px] px-3 rounded bg-amber-800 text-white disabled:opacity-50"
+                    <button type="button" disabled={paymentLoading} className="ml-3 min-h-[44px] px-3 rounded bg-warning-fg text-white disabled:opacity-50"
                       onClick={() => { if (!paymentLoadingRef.current) executePaymentApi({ savedIntent: unconfirmedPayment }) }}>
                       Retry previous payment
                     </button>
@@ -2752,7 +2752,7 @@ const CustomerLedgerPage = () => {
                   </div>
                   <div className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg flex-shrink-0">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block leading-none">Balance Due</span>
+                      <span className="text-xs font-bold text-red-600 block leading-none">Balance Due</span>
                       {balanceRefreshSkeleton ? (
                         <span className="text-sm text-red-500 animate-pulse">Refreshing…</span>
                       ) : (
@@ -2770,7 +2770,7 @@ const CustomerLedgerPage = () => {
                           setFilterDraft(prev => ({ ...prev, from: '', to: '' }))
                         }}
                         title="View unpaid bills"
-                        className="bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
+                        className="bg-warning-bg text-warning-fg border border-warning-border text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
                       >
                         {outstandingInvoices.length} Unpaid
                       </button>
@@ -2900,7 +2900,7 @@ const CustomerLedgerPage = () => {
               <div className="shrink-0 bg-slate-50 border-b border-neutral-200 px-3 py-2 flex flex-wrap items-center gap-2">
                   <DatePresetChips from={filterDraft.from} to={filterDraft.to} onChange={(r) => setFilterDraft(prev => ({ ...prev, from: r.from, to: r.to }))} />
                   <label className="hidden xl:flex items-center gap-1 text-xs text-neutral-600">
-                    <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">From</span>
+                    <span className="text-micro font-medium text-neutral-500 shrink-0">From</span>
                     <input
                       type="date"
                       value={filterDraft.from}
@@ -2909,7 +2909,7 @@ const CustomerLedgerPage = () => {
                     />
                   </label>
                   <label className="hidden xl:flex items-center gap-1 text-xs text-neutral-600">
-                    <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">To</span>
+                    <span className="text-micro font-medium text-neutral-500 shrink-0">To</span>
                     <input
                       type="date"
                       value={filterDraft.to}
@@ -2929,11 +2929,11 @@ const CustomerLedgerPage = () => {
                   {ledgerFiltersOpen && (
                     <div className="flex flex-wrap items-center gap-2 w-full">
                       <label className="flex items-center gap-1 text-xs text-neutral-600 xl:hidden">
-                        <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">From</span>
+                        <span className="text-micro font-medium text-neutral-500 shrink-0">From</span>
                         <input type="date" value={filterDraft.from} onChange={(e) => setFilterDraft(prev => ({ ...prev, from: e.target.value }))} className="h-9 text-sm px-2 rounded-md border bg-white" />
                       </label>
                       <label className="flex items-center gap-1 text-xs text-neutral-600 xl:hidden">
-                        <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">To</span>
+                        <span className="text-micro font-medium text-neutral-500 shrink-0">To</span>
                         <input type="date" value={filterDraft.to} onChange={(e) => setFilterDraft(prev => ({ ...prev, to: e.target.value }))} className="h-9 text-sm px-2 rounded-md border bg-white" />
                       </label>
                       <select
@@ -3447,11 +3447,11 @@ const CustomerLedgerPage = () => {
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Customer Name <span className="text-red-500">*</span>
               </label>
-              <input
+              <input aria-label="Enter customer name"
                 type="text"
                 placeholder="Enter customer name"
                 className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.name ? 'border-red-500' : 'border-neutral-300'
-                  }`}
+ }`}
                 {...customerRegister('name', { required: 'Customer name is required' })}
               />
               {customerErrors.name && (
@@ -3461,7 +3461,7 @@ const CustomerLedgerPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Phone</label>
-              <input
+              <input aria-label="+971 50 123 4567 or 050 123 4567"
                 type="text"
                 placeholder="+971 50 123 4567 or 050 123 4567"
                 className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -3481,7 +3481,7 @@ const CustomerLedgerPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Email</label>
-              <input
+              <input aria-label="customer@example.com"
                 type="email"
                 placeholder="customer@example.com"
                 className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -3491,7 +3491,7 @@ const CustomerLedgerPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">TRN (15 digits)</label>
-              <input
+              <input aria-label="UAE Tax Registration Number"
                 type="text"
                 placeholder="UAE Tax Registration Number"
                 maxLength={15}
@@ -3511,7 +3511,7 @@ const CustomerLedgerPage = () => {
 
             <div className="col-span-2">
               <label className="block text-sm font-medium text-neutral-700 mb-1">Address</label>
-              <input
+              <input aria-label="Full address"
                 type="text"
                 placeholder="Full address"
                 className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -3521,9 +3521,9 @@ const CustomerLedgerPage = () => {
 
             <div className="col-span-2">
               <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Location <span className="text-neutral-400 font-normal">(optional)</span>
+                Location <span className="text-slate-500 font-normal">(optional)</span>
               </label>
-              <input
+              <input aria-label="Area / landmark (e.g. Mussafah, ICAD)"
                 type="text"
                 placeholder="Area / landmark (e.g. Mussafah, ICAD)"
                 maxLength={200}
@@ -3584,13 +3584,13 @@ const CustomerLedgerPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Credit Limit (AED)</label>
-              <input
+              <input aria-label="0 = unlimited"
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="0 = unlimited"
                 className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.creditLimit ? 'border-red-500' : 'border-neutral-300'
-                  }`}
+ }`}
                 {...customerRegister('creditLimit', {
                   valueAsNumber: true,
                   min: { value: 0, message: 'Credit limit must be 0 or greater' }
@@ -3692,11 +3692,11 @@ const CustomerLedgerPage = () => {
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Customer Name <span className="text-red-500">*</span>
               </label>
-              <input
+              <input aria-label="Enter customer name"
                 type="text"
                 placeholder="Enter customer name"
                 className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.name ? 'border-red-500' : 'border-neutral-300'
-                  }`}
+ }`}
                 {...customerRegister('name', { required: 'Customer name is required' })}
               />
               {customerErrors.name && (
@@ -3706,7 +3706,7 @@ const CustomerLedgerPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Phone</label>
-              <input
+              <input aria-label="+971 50 123 4567 or 050 123 4567"
                 type="text"
                 placeholder="+971 50 123 4567 or 050 123 4567"
                 className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -3726,7 +3726,7 @@ const CustomerLedgerPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Email</label>
-              <input
+              <input aria-label="customer@example.com"
                 type="email"
                 placeholder="customer@example.com"
                 className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -3736,7 +3736,7 @@ const CustomerLedgerPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">TRN (15 digits)</label>
-              <input
+              <input aria-label="UAE Tax Registration Number"
                 type="text"
                 placeholder="UAE Tax Registration Number"
                 maxLength={15}
@@ -3756,7 +3756,7 @@ const CustomerLedgerPage = () => {
 
             <div className="col-span-2">
               <label className="block text-sm font-medium text-neutral-700 mb-1">Address</label>
-              <input
+              <input aria-label="Full address"
                 type="text"
                 placeholder="Full address"
                 className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -3766,9 +3766,9 @@ const CustomerLedgerPage = () => {
 
             <div className="col-span-2">
               <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Location <span className="text-neutral-400 font-normal">(optional)</span>
+                Location <span className="text-slate-500 font-normal">(optional)</span>
               </label>
-              <input
+              <input aria-label="Area / landmark (e.g. Mussafah, ICAD)"
                 type="text"
                 placeholder="Area / landmark (e.g. Mussafah, ICAD)"
                 maxLength={200}
@@ -3820,13 +3820,13 @@ const CustomerLedgerPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Credit Limit (AED)</label>
-              <input
+              <input aria-label="0 = unlimited"
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="0 = unlimited"
                 className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.creditLimit ? 'border-red-500' : 'border-neutral-300'
-                  }`}
+ }`}
                 {...customerRegister('creditLimit', {
                   valueAsNumber: true,
                   min: { value: 0, message: 'Credit limit must be 0 or greater' }
@@ -3880,7 +3880,7 @@ const CustomerLedgerPage = () => {
             <button
               type="submit"
               disabled={customerLoading || customerLoadingRef.current}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {customerLoading || customerLoadingRef.current ? (
                 <span className="flex items-center">
@@ -4060,7 +4060,7 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
                 This customer has no outstanding invoices. Use <strong>Issue refund</strong> below to settle the credit in cash.
               </p>
             )}
-            <input
+            <input aria-label="Amount to apply"
               type="number"
               min="0.01"
               step="0.01"
@@ -4085,7 +4085,7 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
               type="button"
               onClick={handleRefundClick}
               disabled={actionLoading || remaining <= 0}
-              className="inline-flex items-center px-3 py-2 bg-warning text-white text-sm font-medium rounded hover:bg-amber-700 disabled:opacity-50"
+              className="inline-flex items-center px-3 py-2 bg-warning-fg text-white text-sm font-medium rounded hover:bg-warning-fg disabled:opacity-50"
             >
               {actionLoading ? 'Processing...' : `Issue refund (${remaining.toFixed(2)} AED)`}
             </button>
@@ -4158,23 +4158,23 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
       {/* 5 Customer KPI Cards — compact one-row strip so Ledger rows get the vertical space */}
       <div className="shrink-0 grid grid-cols-2 sm:grid-cols-5 gap-1.5 px-2.5 py-1.5 bg-neutral-50 border-b border-neutral-200" aria-label="Customer summary">
         <div className="px-2 py-1.5 rounded-lg border bg-white flex flex-col justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Total Billed</p>
+          <p className="text-xs font-bold text-neutral-500">Total Billed</p>
           <p className="text-sm sm:text-base font-extrabold tabular-nums text-neutral-900">{formatCurrency(Number(totalDebit) || 0)}</p>
         </div>
         <div className="px-2 py-1.5 rounded-lg border bg-white flex flex-col justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Total Received</p>
+          <p className="text-xs font-bold text-neutral-500">Total Received</p>
           <p className="text-sm sm:text-base font-extrabold tabular-nums text-emerald-700">{formatCurrency(Number(totalCredit) || 0)}</p>
         </div>
         <div className="px-2 py-1.5 rounded-lg border bg-white flex flex-col justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Period Net</p>
-          <p className="text-sm sm:text-base font-extrabold tabular-nums text-amber-800">{formatCurrency((Number(totalDebit) || 0) - (Number(totalCredit) || 0))}</p>
+          <p className="text-xs font-bold text-neutral-500">Period Net</p>
+          <p className="text-sm sm:text-base font-extrabold tabular-nums text-warning-fg">{formatCurrency((Number(totalDebit) || 0) - (Number(totalCredit) || 0))}</p>
         </div>
         <div className="px-2 py-1.5 rounded-lg border bg-white flex flex-col justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Transactions</p>
+          <p className="text-xs font-bold text-neutral-500">Transactions</p>
           <p className="text-sm sm:text-base font-extrabold tabular-nums text-neutral-900">{displayedEntries.length}</p>
         </div>
         <div className="px-2 py-1.5 rounded-lg border bg-white flex flex-col justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Closing Balance</p>
+          <p className="text-xs font-bold text-neutral-500">Closing Balance</p>
           <p className={`text-sm sm:text-base font-extrabold tabular-nums ${(Number(closingBalance) || 0) > 0 ? 'text-red-700' : (Number(closingBalance) || 0) < 0 ? 'text-emerald-700' : 'text-neutral-900'}`}>{formatBalance(Number(closingBalance) || 0)}</p>
         </div>
       </div>
@@ -4271,9 +4271,9 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="font-semibold text-neutral-900">{entry.type} · {invoiceNo}</p>
                           {entryStatus !== '-' && (
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                              entryStatus === 'Paid' ? 'bg-emerald-100 text-emerald-800' :
-                              entryStatus === 'Unpaid' ? 'bg-amber-100 text-amber-800' :
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-semibold ${
+ entryStatus === 'Paid' ? 'bg-emerald-100 text-emerald-800' :
+ entryStatus === 'Unpaid' ? 'bg-warning-bg text-warning-fg' :
                               entryStatus === 'Partial' ? 'bg-blue-100 text-blue-800' :
                               'bg-neutral-100 text-neutral-700'
                             }`}>
@@ -4290,7 +4290,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                         {(Number(entry.credit) || 0) > 0 ? formatCurrency(Number(entry.credit) || 0) : '-'}
                       </td>
                       <td className={`px-3 py-2 whitespace-nowrap text-sm text-right font-bold ${(Number(entry.balance) || 0) < 0 ? 'text-success' : (Number(entry.balance) || 0) > 0 ? 'text-error' : 'text-neutral-900'
-                        }`}>
+ }`}>
                         {formatBalance(Number(entry.balance) || 0)}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-right text-xs align-top">
@@ -4299,7 +4299,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                             <button
                               type="button"
                               onClick={() => navigate(`/returns/create?saleId=${entry.saleId ?? entry.SaleId}`, { state: { returnTo: location.pathname + location.search } })}
-                              className="inline-flex min-h-7 items-center rounded-md border border-amber-300 bg-amber-50 px-2 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                              className="inline-flex min-h-7 items-center rounded-md border border-warning-border bg-warning-bg px-2 text-xs font-medium text-warning-fg hover:bg-warning-border"
                               title="Create return"
                             >
                               Return
@@ -4458,7 +4458,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                       <button
                         type="button"
                         onClick={() => navigate(`/returns/create?saleId=${entry.saleId ?? entry.SaleId}`, { state: { returnTo: location.pathname + location.search } })}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded hover:bg-amber-200"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-warning-bg text-warning-fg rounded hover:bg-warning-border"
                         title="Create return for this bill"
                       >
                         <RotateCcw className="h-3 w-3" />
@@ -4618,7 +4618,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
       color = 'bg-red-100 text-red-800'
       text = `${daysOverdue} days overdue (Critical)`
     } else if (daysOverdue >= 60) {
-      color = 'bg-orange-100 text-orange-800'
+      color = 'bg-slate-50 text-slate-700'
       text = `${daysOverdue} days overdue`
     } else if (daysOverdue >= 30) {
       color = 'bg-yellow-100 text-yellow-800'
@@ -4637,13 +4637,13 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
           <table className="w-full divide-y divide-neutral-200">
             <thead className="bg-neutral-50 sticky top-0 z-10">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Date</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700 uppercase">Invoice No</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Amount</th>
-                <th className="hidden px-3 py-2 text-right text-xs font-medium text-neutral-700 uppercase whitespace-nowrap lg:table-cell">Paid</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Balance</th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Status</th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-neutral-700 uppercase whitespace-nowrap sticky right-0 bg-neutral-50 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)]">Action</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700 whitespace-nowrap">Date</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700 ">Invoice No</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700 whitespace-nowrap">Amount</th>
+                <th className="hidden px-3 py-2 text-right text-xs font-medium text-neutral-700 whitespace-nowrap lg:table-cell">Paid</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700 whitespace-nowrap">Balance</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-neutral-700 whitespace-nowrap">Status</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-neutral-700 whitespace-nowrap sticky right-0 bg-neutral-50 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)]">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
@@ -4686,7 +4686,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                         <div className="flex items-center gap-1.5">
                           <span>{invoice.invoiceNo || `INV-${invoice.id}`}</span>
                           {invoice.isLegacy && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200" title="Starplus Historical Bill">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-warning-bg text-warning-fg border border-warning-border" title="Starplus Historical Bill">
                               Historical
                             </span>
                           )}
@@ -4705,7 +4705,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                         {formatCurrency(paidAmount)}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-neutral-900">
-                        <span className={balance > 0 && paidAmount <= 0 ? 'font-bold text-red-600' : balance > 0 ? 'font-semibold text-amber-700' : ''}>{formatCurrency(balance)}</span>
+                        <span className={balance > 0 && paidAmount <= 0 ? 'font-bold text-red-600' : balance > 0 ? 'font-semibold text-warning-fg' : ''}>{formatCurrency(balance)}</span>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center flex-wrap gap-1">
@@ -4739,7 +4739,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                           {canEdit && onEditInvoice && !invoice.isLegacy && !invoice.isLocked && (
                             <button
                               onClick={() => onEditInvoice(invoice.id)}
-                              className="text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 p-1 rounded transition-colors"
+                              className="text-slate-700 hover:text-slate-700 hover:bg-slate-100 p-1 rounded transition-colors"
                               title="Edit Invoice"
                             >
                               <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -4748,7 +4748,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                           {isAdmin && invoice.isLocked && onUnlockInvoice && (
                             <button
                               onClick={() => onUnlockInvoice(invoice.id)}
-                              className="text-purple-600 hover:text-purple-900 hover:bg-purple-50 p-1 rounded transition-colors"
+                              className="text-slate-700 hover:text-slate-700 hover:bg-slate-100 p-1 rounded transition-colors"
                               title="Unlock Invoice (Admin Only)"
                             >
                               <Unlock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -4766,7 +4766,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                           {onReturnInvoice && !invoice.isLegacy && (
                             <button
                               onClick={() => onReturnInvoice(invoice.id)}
-                              className="text-warning hover:text-amber-900 hover:bg-warning-bg p-1 rounded transition-colors"
+                              className="text-warning hover:text-warning-fg hover:bg-warning-bg p-1 rounded transition-colors"
                               title="Create return for this invoice"
                             >
                               <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -4916,7 +4916,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                 <div className="flex justify-between text-sm text-neutral-600 border-t border-neutral-100 pt-2 mb-3">
                   <span>Amount: {formatCurrency(grandTotal)}</span>
                   {paidAmount > 0 && <span>Paid: {formatCurrency(paidAmount)}</span>}
-                  <span className={balance > 0 && paidAmount <= 0 ? 'font-bold text-red-600' : balance > 0 ? 'font-semibold text-amber-700' : ''}>Bal: {formatCurrency(balance)}</span>
+                  <span className={balance > 0 && paidAmount <= 0 ? 'font-bold text-red-600' : balance > 0 ? 'font-semibold text-warning-fg' : ''}>Bal: {formatCurrency(balance)}</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {balance > 0 && onPayInvoice && (
@@ -4937,7 +4937,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                   {canEdit && onEditInvoice && !invoice.isLegacy && !invoice.isLocked && (
                     <button
                       onClick={() => onEditInvoice(invoice.id)}
-                      className="px-3 py-2 text-indigo-600 hover:bg-indigo-50 rounded-md text-xs font-medium flex items-center gap-1"
+                      className="px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-md text-xs font-medium flex items-center gap-1"
                       aria-label="Edit invoice"
                     >
                       <Edit className="h-3.5 w-3.5" /> Edit
@@ -4946,7 +4946,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, dateRange, onShowAllDates,
                   {isAdmin && invoice.isLocked && onUnlockInvoice && (
                     <button
                       onClick={() => onUnlockInvoice(invoice.id)}
-                      className="px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-md text-xs"
+                      className="px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-md text-xs"
                       aria-label="Unlock invoice"
                     >
                       <Unlock className="h-3.5 w-3.5" />
@@ -5061,12 +5061,12 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                     />
                   </th>
                 )}
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Mode</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Related Invoice</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Reference / Remarks</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-neutral-700 uppercase">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 ">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 ">Mode</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 ">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 ">Related Invoice</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 ">Reference / Remarks</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-neutral-700 ">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
@@ -5129,7 +5129,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                           <button
                             type="button"
                             onClick={() => onEditPayment(payment)}
-                            className="text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 p-1 rounded transition-colors"
+                            className="text-slate-700 hover:text-slate-700 hover:bg-slate-100 p-1 rounded transition-colors"
                             title="Edit Payment"
                           >
                             <Edit className="h-4 w-4" />
@@ -5158,7 +5158,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
 
       {/* Selection action bar - Generate Receipt (fixed so multi-select is always visible) */}
       {onGenerateReceiptBatch && currentSelectedIds.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-neutral-200 shadow-lg px-4 py-3 flex flex-wrap gap-3 items-center justify-between">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-neutral-200 shadow-sm px-4 py-3 flex flex-wrap gap-3 items-center justify-between">
           <span className="text-sm font-medium text-neutral-700">
             {currentSelectedIds.length} payment(s) selected — Total: {formatCurrency(selectedTotal)}
           </span>
@@ -5166,7 +5166,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
             <button
               type="button"
               onClick={() => onGenerateReceiptBatch(currentSelectedIds)}
-              className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+              className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
             >
               <Printer className="h-4 w-4" />
               Generate Receipt
@@ -5237,7 +5237,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                 {canEditDelete && !user?.supportReadOnly && !isVoided(payment) && onEditPayment && (
                   <button
                     onClick={() => onEditPayment(payment)}
-                    className="px-3 py-2 text-indigo-600 hover:bg-indigo-50 rounded-md text-xs"
+                    className="px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-md text-xs"
                     aria-label="Edit payment"
                   >
                     <Edit className="h-3.5 w-3.5" /> Edit
@@ -5301,7 +5301,7 @@ const PendingPartialTab = ({ outstandingInvoices, onPayInvoice, onViewInvoice, o
       {/* Tablet and up: one dense table so many invoices fit on screen (phones keep the card list below). */}
       <div className="hidden md:block overflow-hidden rounded-lg border border-neutral-200 bg-white">
         <table className="w-full table-fixed border-collapse text-[15px]">
-          <thead className="bg-neutral-100 text-xs uppercase tracking-wide text-neutral-600">
+          <thead className="bg-neutral-100 text-xs text-neutral-600">
             <tr className="border-b border-neutral-300">
               <th className="px-3 py-2.5 text-left font-semibold">Invoice</th>
               <th className="w-28 px-2 py-2.5 text-left font-semibold">Date</th>
@@ -5323,8 +5323,8 @@ const PendingPartialTab = ({ outstandingInvoices, onPayInvoice, onViewInvoice, o
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="truncate font-bold text-neutral-900">{no}</span>
-                      {inv.isLegacy ? <span className="shrink-0 rounded bg-neutral-200 px-1.5 py-0.5 text-[11px] font-semibold text-neutral-700">Old</span> : null}
-                      {paid > 0 ? <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">Partial</span> : null}
+                      {inv.isLegacy ? <span className="shrink-0 rounded bg-neutral-200 px-1.5 py-0.5 text-xs font-semibold text-neutral-700">Old</span> : null}
+                      {paid > 0 ? <span className="shrink-0 rounded bg-warning-bg px-1.5 py-0.5 text-xs font-semibold text-warning-fg">Partial</span> : null}
                     </div>
                     {daysOverdue > 0 ? <div className="text-xs font-semibold text-red-700">{daysOverdue} days overdue</div> : null}
                   </td>
@@ -5371,8 +5371,8 @@ const PendingPartialTab = ({ outstandingInvoices, onPayInvoice, onViewInvoice, o
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[16px] font-bold text-neutral-900 break-words">{no}</span>
-                    {inv.isLegacy ? <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700">Historical</span> : null}
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${status === 'Partial' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-700'}`}>{status}</span>
+                    {inv.isLegacy ? <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-semibold text-neutral-700">Historical</span> : null}
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${status === 'Partial' ? 'bg-warning-bg text-warning-fg' : 'bg-red-100 text-red-700'}`}>{status}</span>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-neutral-700">
                     <span>{fmtDate(inv.invoiceDate || inv.date)}</span>
@@ -5386,15 +5386,15 @@ const PendingPartialTab = ({ outstandingInvoices, onPayInvoice, onViewInvoice, o
 
               <div className="mt-3 grid grid-cols-3 gap-2 text-right">
                 <div>
-                  <div className="text-micro uppercase text-neutral-500">Total</div>
+                  <div className="text-micro text-neutral-500">Total</div>
                   <div className="text-[15px] font-bold tabular-nums text-neutral-900">{formatCurrency(total)}</div>
                 </div>
                 <div>
-                  <div className="text-micro uppercase text-neutral-500">Paid</div>
+                  <div className="text-micro text-neutral-500">Paid</div>
                   <div className="text-[15px] font-bold tabular-nums text-emerald-700">{formatCurrency(paid)}</div>
                 </div>
                 <div>
-                  <div className="text-micro uppercase text-neutral-500">Balance due</div>
+                  <div className="text-micro text-neutral-500">Balance due</div>
                   <div className="text-[16px] font-bold tabular-nums text-red-600">{formatCurrency(balance)}</div>
                 </div>
               </div>
@@ -5490,13 +5490,13 @@ const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices
           <table className="min-w-full divide-y divide-neutral-200">
             <thead className="bg-neutral-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Invoice No</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Date</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Amount</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Paid</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Balance</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-neutral-700 uppercase">Days Overdue</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-neutral-700 uppercase">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 ">Invoice No</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 ">Date</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 ">Amount</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 ">Paid</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 ">Balance</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-neutral-700 ">Days Overdue</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-neutral-700 ">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
@@ -5511,7 +5511,7 @@ const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices
                   <tr key={inv.id} className="hover:bg-neutral-50">
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-neutral-900">
                       {inv.invoiceNo}
-                      {inv.isLegacy ? <span className="ml-2 rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700">Historical</span> : null}
+                      {inv.isLegacy ? <span className="ml-2 rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-semibold text-neutral-700">Historical</span> : null}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                       {new Date(inv.invoiceDate).toLocaleDateString('en-GB')}
@@ -5527,8 +5527,8 @@ const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${inv.daysOverdue > 30 ? 'bg-red-100 text-red-800' :
-                        inv.daysOverdue > 0 ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-green-100 text-green-800'
+ inv.daysOverdue > 0 ? 'bg-yellow-100 text-yellow-800' :
+ 'bg-green-100 text-green-800'
                         }`}>
                         {(Number(inv.daysOverdue) || 0)} days
                       </span>
@@ -5694,11 +5694,11 @@ const PaymentEntryModal = ({
       size="lg"
     >
       {unconfirmedPayment && (
-        <div role="alert" className="mb-4 p-3 rounded border border-neutral-200 border-l-4 border-l-warning bg-white text-sm text-neutral-800">
+        <div role="alert" className="mb-4 p-3 rounded border border-neutral-200 bg-white text-sm text-neutral-800">
           {loading
             ? `Waiting for confirmation of ${formatCurrency(unconfirmedPayment.request.amount)}.`
             : `Payment confirmation was not received for ${formatCurrency(unconfirmedPayment.request.amount)}. Retry the previous payment to confirm its result.`}
-          <button type="button" disabled={loading} onClick={onRetryPayment} className="mt-2 block min-h-[44px] px-3 rounded bg-amber-800 text-white disabled:opacity-50">
+          <button type="button" disabled={loading} onClick={onRetryPayment} className="mt-2 block min-h-[44px] px-3 rounded bg-warning-fg text-white disabled:opacity-50">
             Retry previous payment
           </button>
         </div>
@@ -5713,7 +5713,7 @@ const PaymentEntryModal = ({
         }
       })} className="space-y-4">
         {payAllOutstandingMode && (
-          <div className="col-span-2 p-4 bg-white border border-neutral-200 border-l-4 border-l-success rounded-sm">
+          <div className="col-span-2 p-4 bg-white border border-neutral-200 rounded-sm">
             <p className="text-sm font-medium text-emerald-800 flex items-center gap-2">
               <Wallet className="h-4 w-4" />
               Pay All Outstanding
@@ -5762,11 +5762,11 @@ const PaymentEntryModal = ({
           />
 
           {settlementShortfall > 0 && (
-            <div className="col-span-2 p-3 border border-neutral-200 border-l-4 border-l-warning bg-white rounded-sm space-y-2">
-              <p className="text-sm text-amber-900">
+            <div className="col-span-2 p-3 border border-neutral-200 bg-white rounded-sm space-y-2">
+              <p className="text-sm text-warning-fg">
                 Cash is {formatCurrency(settlementShortfall)} short of closing this invoice. An authorized adjustment can close the balance without inflating cash received.
               </p>
-              <label className="flex items-start gap-2 text-sm text-amber-900 cursor-pointer">
+              <label className="flex items-start gap-2 text-sm text-warning-fg cursor-pointer">
                 <input
                   type="checkbox"
                   className="mt-1"
@@ -5816,8 +5816,8 @@ const PaymentEntryModal = ({
 
         {!payAllOutstandingMode && selectedSaleId && (
           <div className={`border rounded-lg p-4 ${allAvailableInvoices.find(inv => inv.id === parseInt(selectedSaleId))?.isOutstanding
-            ? 'bg-primary-50 border-primary-200'
-            : 'bg-neutral-50 border-neutral-200'
+ ? 'bg-primary-50 border-primary-200'
+ : 'bg-neutral-50 border-neutral-200'
             }`}>
             <p className="text-sm font-medium mb-2 flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -5876,7 +5876,7 @@ const PaymentEntryModal = ({
         )}
 
         {!payAllOutstandingMode && !selectedSaleId && (
-          <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4">
+          <div className="bg-white border border-neutral-200 rounded-sm p-4">
             <p className="text-sm text-yellow-800 flex flex-col sm:flex-row sm:items-center gap-2">
               <span className="font-medium shrink-0">General Payment:</span>
               <span>This payment will not be allocated to any specific invoice. You can select an invoice above to allocate the payment.</span>

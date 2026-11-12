@@ -237,7 +237,7 @@ const BackupPage = () => {
 
   if (!isAdmin) {
     return (
-      <div className="mx-auto max-w-lg p-6 text-sm text-neutral-700 dark:text-neutral-300">
+      <div className="mx-auto max-w-lg p-6 text-sm text-neutral-700 dark:text-slate-500">
         You do not have access to backup and restore.
       </div>
     )
@@ -255,7 +255,7 @@ const BackupPage = () => {
           <p className="mt-1 text-sm text-neutral-600 dark:text-[#8B9BB4]">Company data only. A paired PC saves the scheduled copy.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={handleBackupNow} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+          <button type="button" onClick={handleBackupNow} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-primary-600 px-4 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
             <Download className="h-4 w-4" aria-hidden="true" />
             {loading ? 'Creating…' : 'Backup now'}
           </button>
@@ -308,7 +308,7 @@ const BackupPage = () => {
         <section className="mb-4 rounded-lg border border-neutral-200 bg-white p-4 dark:border-[#1E293B] dark:bg-[#121A22]">
           <h2 className="text-sm font-semibold text-neutral-900 dark:text-[#F8FAFC]">Connect this PC</h2>
           <p className="mt-1 text-sm text-neutral-600 dark:text-[#8B9BB4]">On this computer, run HexaBill Backup Agent and enter this code. It expires at {formatWhen(pairing.expiresAt)}. Use this site: {window.location.origin}</p>
-          <p className="mt-2 font-mono text-lg tracking-widest text-neutral-900 dark:text-[#F8FAFC]" aria-label="Pairing code">{pairing.code}</p>
+          <p className="mt-2 font-mono text-lg text-neutral-900 dark:text-[#F8FAFC]" aria-label="Pairing code">{pairing.code}</p>
         </section>
       )}
 
@@ -361,7 +361,7 @@ const BackupPage = () => {
             <p className="mt-1 flex items-center gap-1"><Folder className="h-4 w-4" aria-hidden="true" /> {status?.folderLabel || 'Folder is chosen on the PC'}</p>
           </div>
           <div className="flex gap-2">
-            <button type="submit" className="min-h-11 rounded-md bg-indigo-600 px-4 text-sm font-medium text-white">Save schedule</button>
+            <button type="submit" className="min-h-11 rounded-md bg-primary-600 px-4 text-sm font-medium text-white">Save schedule</button>
           </div>
         </form>
       )}
@@ -386,7 +386,7 @@ const BackupPage = () => {
           <>
             <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-left text-sm">
-                <thead className="text-xs uppercase text-neutral-500 dark:text-[#8B9BB4]">
+                <thead className="text-xs text-neutral-500 dark:text-[#8B9BB4]">
                   <tr>
                     <th className="px-4 py-2 font-medium">Date / time</th>
                     <th className="px-4 py-2 font-medium">Type</th>
@@ -451,7 +451,7 @@ const BackupPage = () => {
           <p className="mt-1 text-neutral-700 dark:text-[#8B9BB4]">{formatWhen(detail.createdAt)} · {detail.type} · {detail.device}</p>
           <p>Size: {formatBytes(detail.sizeBytes)} · {detail.verified ? 'Verified' : 'Not verified'} · {detail.status}</p>
           {detail.detail && <p>{detail.detail}</p>}
-          <button type="button" className="mt-2 min-h-11 text-sm text-indigo-700 dark:text-indigo-300" onClick={() => setDetail(null)}>Close</button>
+          <button type="button" className="mt-2 min-h-11 text-sm text-slate-700 dark:text-white" onClick={() => setDetail(null)}>Close</button>
         </section>
       )}
 

@@ -111,8 +111,8 @@ export default function StampSignaturePlacementPreview({
         onPointerCancel={onPointerUp}
       >
         <div className="absolute inset-x-3 top-3 bottom-10 border border-dashed border-neutral-200 pointer-events-none" />
-        <div className="absolute left-2 top-2 text-micro text-neutral-400 pointer-events-none">A4 body area</div>
-        <div className={`absolute bottom-2 text-micro text-neutral-400 pointer-events-none ${alignLeft ? 'left-2' : 'right-2'}`}>
+        <div className="absolute left-2 top-2 text-micro text-slate-500 pointer-events-none">A4 body area</div>
+        <div className={`absolute bottom-2 text-micro text-slate-500 pointer-events-none ${alignLeft ? 'left-2' : 'right-2'}`}>
           {alignLeft ? 'First Party / stamp' : 'For company'}
         </div>
 
@@ -147,7 +147,7 @@ export default function StampSignaturePlacementPreview({
         ) : null}
 
         {!stampSrc && !signatureSrc ? (
-          <div className="absolute inset-0 flex items-center justify-center text-xs text-neutral-400">
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-500">
             Upload stamp and signature to preview placement
           </div>
         ) : null}

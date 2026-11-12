@@ -136,14 +136,14 @@ const SuperAdminAuditLogsPage = () => {
           <span className="text-sm font-medium text-neutral-700">Filters</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <input
+          <input aria-label="Company ID"
             type="number"
             placeholder="Company ID"
             value={filters.tenantId}
             onChange={(e) => setFilters((f) => ({ ...f, tenantId: e.target.value }))}
             className="px-3 py-2 border border-neutral-200 rounded-lg text-sm"
           />
-          <input
+          <input aria-label="User ID"
             type="number"
             placeholder="User ID"
             value={filters.userId}
@@ -160,14 +160,14 @@ const SuperAdminAuditLogsPage = () => {
               <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <input
+          <input aria-label="From"
             type="date"
             placeholder="From"
             value={filters.fromDate}
             onChange={(e) => setFilters((f) => ({ ...f, fromDate: e.target.value }))}
             className="px-3 py-2 border border-neutral-200 rounded-lg text-sm"
           />
-          <input
+          <input aria-label="To"
             type="date"
             placeholder="To"
             value={filters.toDate}
@@ -185,7 +185,7 @@ const SuperAdminAuditLogsPage = () => {
           </button>
           <button
             onClick={handleSuperAdminOnly}
-            className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700"
+            className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700"
             title="Show only SuperAdmin actions (suspend, activate, clear data, etc.)"
           >
             SuperAdmin Actions Only
@@ -200,7 +200,7 @@ const SuperAdminAuditLogsPage = () => {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm">
+        <div className="mb-6 p-4 bg-white border border-neutral-200 rounded-sm">
           <p className="font-medium text-red-800">{error}</p>
         </div>
       )}
@@ -210,20 +210,20 @@ const SuperAdminAuditLogsPage = () => {
           <table className="min-w-full divide-y divide-neutral-200">
             <thead className="bg-neutral-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Time</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Company</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">User</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Action</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Entity</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Details</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Old → New</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Time</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Company</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">User</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Entity</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Details</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 ">Old → New</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200">
               {logs.length === 0 && !error && (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center text-neutral-500">
-                    <FileText className="h-12 w-12 mx-auto text-neutral-300 mb-2" />
+                    <FileText className="h-12 w-12 mx-auto text-slate-500 mb-2" />
                     <p>No audit logs yet</p>
                   </td>
                 </tr>

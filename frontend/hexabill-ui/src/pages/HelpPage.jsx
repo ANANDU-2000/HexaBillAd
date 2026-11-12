@@ -118,7 +118,7 @@ const HelpPage = () => {
         {/* Sidebar — sticky on desktop */}
         <aside className="lg:w-56 flex-shrink-0">
           <nav className="lg:sticky lg:top-4 bg-white rounded-lg shadow p-4 border border-neutral-200">
-            <h2 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-3">On this page</h2>
+            <h2 className="text-sm font-semibold text-neutral-500 mb-3">On this page</h2>
             <ul className="space-y-1">
               {helpSections.map(({ id, label }) => (
                 <li key={id}>
@@ -151,7 +151,7 @@ const HelpPage = () => {
 
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-500" />
             <Input
               type="text"
               placeholder="Search for help..."
@@ -247,7 +247,7 @@ const HelpPage = () => {
                 </div>
                 <div className="space-y-4">
                   {category.questions.map((faq, qIdx) => (
-                    <div key={qIdx} className="border-l-4 border-primary-500 pl-4">
+                    <div key={qIdx} className="border-primary-500 pl-4">
                       <h3 className="font-semibold text-neutral-900 mb-2">{faq.q}</h3>
                       <p className="text-neutral-600 text-sm">{faq.a}</p>
                     </div>
@@ -259,7 +259,7 @@ const HelpPage = () => {
         )}
 
         {/* Quick tips — daily-work tips */}
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-primary-500">
+        <div className="bg-white rounded-lg shadow p-6 border-primary-500">
           <h2 className="text-xl font-semibold text-neutral-900 mb-2">Tips for everyday work</h2>
           <ul className="text-neutral-600 text-sm space-y-1.5 list-disc list-inside">
             <li>Complete company & VAT in Settings first, then add branches and routes.</li>

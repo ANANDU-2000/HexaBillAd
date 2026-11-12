@@ -238,7 +238,7 @@ const AlertNotifications = () => {
           />
           
           {/* Panel */}
-          <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-lg border border-surface-border shadow-lg z-50 max-h-[min(600px,80vh)] flex flex-col">
+          <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-lg border border-surface-border shadow-sm z-50 max-h-[min(600px,80vh)] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-neutral-200">
               <h3 className="text-lg font-bold text-neutral-900">Notifications</h3>
@@ -265,7 +265,7 @@ const AlertNotifications = () => {
                 )}
                 <button
                   onClick={() => setShowPanel(false)}
-                  className="text-neutral-400 hover:text-neutral-600"
+                  className="text-slate-500 hover:text-neutral-600"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -310,8 +310,8 @@ const AlertNotifications = () => {
                       <div
                         key={alert.id}
                         className={`p-4 hover:bg-neutral-50 transition ${
-                          !alert.isRead ? 'bg-primary-50' : ''
-                        } ${alert.isResolved ? 'opacity-50' : ''}`}
+ !alert.isRead ? 'bg-primary-50' : ''
+ } ${alert.isResolved ? 'opacity-50' : ''}`}
                         onClick={() => !alert.isRead && handleMarkAsRead(alert.id)}
                       >
                         <div className="flex items-start space-x-3">

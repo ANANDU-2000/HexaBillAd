@@ -11,7 +11,7 @@ const VARIANTS = {
 }
 const DOTS = {
   success: 'bg-success',
-  warning: 'bg-warning',
+  warning: 'bg-warning-fg',
   error: 'bg-error',
   info: 'bg-info',
   neutral: 'bg-neutral-400',

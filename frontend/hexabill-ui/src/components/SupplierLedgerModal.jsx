@@ -146,7 +146,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
               </div>
               <div className="bg-warning-bg rounded-lg p-3 border border-warning-border">
                 <p className="text-xs text-warning-fg font-medium">Outstanding</p>
-                <p className="text-lg font-bold text-amber-900">{money(balance?.netPayable || 0)}</p>
+                <p className="text-lg font-bold text-warning-fg">{money(balance?.netPayable || 0)}</p>
               </div>
               <div className="bg-neutral-50 rounded-lg p-3 border border-neutral-200">
                 <p className="text-xs text-neutral-700 font-medium">Overdue</p>
@@ -157,9 +157,9 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
             <div className="flex flex-wrap gap-2 items-center">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-primary-500" />
-                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1 text-sm" placeholder="From" />
+                <input aria-label="From" type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1 text-sm" placeholder="From" />
                 <span className="text-primary-500">to</span>
-                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1 text-sm" placeholder="To" />
+                <input aria-label="To" type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1 text-sm" placeholder="To" />
               </div>
               <button onClick={handleExportCsv} className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 bg-primary-100 hover:bg-primary-200 rounded-lg" title="Export CSV" aria-label="Export CSV">
                 <Download className="h-4 w-4" />
@@ -192,7 +192,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-primary-700 mb-1">Reference</label>
-                    <input type="text" value={paymentForm.reference} onChange={e => setPaymentForm({ ...paymentForm, reference: e.target.value })} className="w-full border rounded px-3 py-2" placeholder="Cheque no, etc." />
+                    <input aria-label="Cheque no, etc" type="text" value={paymentForm.reference} onChange={e => setPaymentForm({ ...paymentForm, reference: e.target.value })} className="w-full border rounded px-3 py-2" placeholder="Cheque no, etc." />
                   </div>
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-medium text-primary-700 mb-1">Notes</label>

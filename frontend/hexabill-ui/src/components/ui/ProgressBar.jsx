@@ -2,7 +2,7 @@
  * Determinate progress (uploads, imports, backups). For work of unknown length
  * use a skeleton or the Button `loading` state instead.
  */
-const BARS = { primary: 'bg-primary-600', success: 'bg-success', warning: 'bg-warning', error: 'bg-error' }
+const BARS = { primary: 'bg-primary-600', success: 'bg-success', warning: 'bg-warning-fg', error: 'bg-error' }
 
 export default function ProgressBar({ value = 0, max = 100, label, showValue = true, tone = 'primary', className = '' }) {
   const pct = Math.max(0, Math.min(100, max > 0 ? (value / max) * 100 : 0))

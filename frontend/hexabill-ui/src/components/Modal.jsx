@@ -116,7 +116,7 @@ const Modal = ({
         {/* Modal */}
         <div
           ref={modalRef}
-          className={`relative bg-white border border-surface-border shadow-lg w-full flex flex-col ${isFullscreen ? 'max-w-full h-full max-h-full m-0 rounded-none' : `${sizeClasses[size]} rounded-t-lg md:rounded-lg max-h-[92dvh] safe-area-bottom md:max-h-[calc(100dvh-2rem)]`}`}
+          className={`relative bg-white border border-surface-border shadow-sm w-full flex flex-col ${isFullscreen ? 'max-w-full h-full max-h-full m-0 rounded-none' : `${sizeClasses[size]} rounded-t-lg md:rounded-lg max-h-[92dvh] safe-area-bottom md:max-h-[calc(100dvh-2rem)]`}`}
           onKeyDown={handleKeyDown}
           role="dialog"
           aria-modal="true"

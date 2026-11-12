@@ -84,7 +84,7 @@ const UpdatesPage = () => {
                   <span className="font-medium text-neutral-900 block">WhatsApp</span>
                   <span className="text-sm text-neutral-600">{whatsappDisplay}</span>
                 </div>
-                <ExternalLink className="h-4 w-4 text-neutral-400 flex-shrink-0" aria-hidden />
+                <ExternalLink className="h-4 w-4 text-slate-500 flex-shrink-0" aria-hidden />
               </a>
             )}
             <a
@@ -98,7 +98,7 @@ const UpdatesPage = () => {
                 <span className="font-medium text-neutral-900 block">Email</span>
                 <span className="text-sm text-neutral-600 break-all">{SUPPORT_EMAIL}</span>
               </div>
-              <ExternalLink className="h-4 w-4 text-neutral-400 flex-shrink-0" aria-hidden />
+              <ExternalLink className="h-4 w-4 text-slate-500 flex-shrink-0" aria-hidden />
             </a>
           </div>
           {!whatsappUrl && (

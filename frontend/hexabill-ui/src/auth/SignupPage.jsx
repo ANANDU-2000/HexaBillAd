@@ -166,7 +166,7 @@ const SignupPage = () => {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   error={errors.name}
                   required
-                  icon={<User className="h-5 w-5 text-neutral-400" />}
+                  icon={<User className="h-5 w-5 text-slate-500" />}
                 />
                 <Input
                   label="Email Address"
@@ -207,7 +207,7 @@ const SignupPage = () => {
                   onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                   error={errors.companyName}
                   required
-                  icon={<Building2 className="h-5 w-5 text-neutral-400" />}
+                  icon={<Building2 className="h-5 w-5 text-slate-500" />}
                 />
                 <div className="grid grid-cols-2 gap-4">
                   <Input
@@ -286,7 +286,7 @@ const SignupPage = () => {
           </div>
         </div>
 
-        <p className="mt-8 text-center text-xs text-neutral-400 max-w-xs mx-auto">
+        <p className="mt-8 text-center text-xs text-slate-500 max-w-xs mx-auto">
           By creating an account, you agree to our{' '}
           <Link to="/terms" className="hover:text-neutral-600 underline">Terms</Link>
           {' '}and{' '}

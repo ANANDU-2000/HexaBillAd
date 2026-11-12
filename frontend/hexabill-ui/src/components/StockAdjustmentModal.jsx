@@ -46,7 +46,7 @@ const StockAdjustmentModal = ({ product, onSave, onCancel }) => {
           </h2>
           <button
             onClick={onCancel}
-            className="text-neutral-400 hover:text-neutral-600 transition-colors min-h-[44px] min-w-[44px] -mr-2 -mt-2 flex items-center justify-center"
+            className="text-slate-500 hover:text-neutral-600 transition-colors min-h-[44px] min-w-[44px] -mr-2 -mt-2 flex items-center justify-center"
             aria-label="Close"
           >
             <X className="h-6 w-6" />
@@ -65,7 +65,7 @@ const StockAdjustmentModal = ({ product, onSave, onCancel }) => {
             <label className="block text-sm font-medium text-neutral-700 mb-1">
               Change Quantity *
             </label>
-            <input
+            <input aria-label="Enter positive or negative value"
               type="number"
               name="changeQty"
               required

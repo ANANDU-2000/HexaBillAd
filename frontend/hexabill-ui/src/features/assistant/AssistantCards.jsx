@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { customersAPI, productsAPI, salesAPI, paymentsAPI } from '../../services'
 import { newIdempotencyKey } from './assistantDraft'
 
-const field = 'block w-full min-h-11 rounded-lg border border-neutral-300 bg-white px-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/30'
+const field = 'block w-full min-h-11 rounded-lg border border-neutral-300 bg-white px-3 text-sm text-neutral-900 placeholder:text-slate-500 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/30'
 const card = 'rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm text-neutral-900'
 const label = 'mb-1 block text-xs font-medium text-neutral-600'
 
@@ -36,12 +36,12 @@ function Picker ({ placeholder, search, onPick, render, disabled }) {
   return (
     <div className="relative">
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
         <input className={`${field} pl-9`} placeholder={placeholder} value={q} disabled={disabled} onChange={(e) => setQ(e.target.value)} />
-        {busy && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-neutral-400" />}
+        {busy && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-slate-500" />}
       </div>
       {rows.length > 0 && (
-        <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-neutral-200 bg-white shadow-lg">
+        <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-neutral-200 bg-white shadow-sm">
           {rows.map((r) => (
             <li key={r.id}>
               <button type="button" className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm hover:bg-primary-50"
@@ -119,7 +119,7 @@ export function InvoiceCreateCard ({ fields = {} }) {
 
   if (result) {
     return (
-      <div className={`${card} border-l-4 border-l-emerald-600 space-y-3`}>
+      <div className={`${card} space-y-3`}>
         <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800"><CheckCircle2 className="h-5 w-5" />Invoice {result.invoiceNo} created</div>
         <dl className="grid grid-cols-3 gap-2 text-sm">
           <div><dt className="text-xs text-neutral-500">Subtotal</dt><dd className="font-semibold tabular-nums">{money(result.subtotal)}</dd></div>
@@ -138,15 +138,15 @@ export function InvoiceCreateCard ({ fields = {} }) {
   }
 
   return (
-    <div className={`${card} border-l-4 border-l-indigo-600 space-y-3`}>
-      <div className="flex items-center gap-2 text-sm font-semibold"><ShoppingCart className="h-5 w-5 text-indigo-600" />New invoice</div>
+    <div className={`${card} space-y-3`}>
+      <div className="flex items-center gap-2 text-sm font-semibold"><ShoppingCart className="h-5 w-5 text-slate-700" />New invoice</div>
 
       <div>
         <span className={label}>Customer</span>
         {customer ? (
-          <div className="flex min-h-11 items-center justify-between rounded-lg bg-indigo-50 px-3 text-sm">
+          <div className="flex min-h-11 items-center justify-between rounded-lg bg-slate-50 px-3 text-sm">
             <span className="font-medium">{customer.name}</span>
-            <button type="button" className="text-xs text-indigo-700 underline" onClick={() => setCustomer(null)}>Change</button>
+            <button type="button" className="text-xs text-slate-700 underline" onClick={() => setCustomer(null)}>Change</button>
           </div>
         ) : (
           <>
@@ -178,7 +178,7 @@ export function InvoiceCreateCard ({ fields = {} }) {
                 <label className="text-xs text-neutral-500">Price<input inputMode="decimal" className={field} value={l.price} onChange={(e) => setLine(i, { price: e.target.value })} /></label>
                 <div className="text-xs text-neutral-500">Line<div className="flex min-h-11 items-center text-sm font-semibold tabular-nums text-neutral-900">{money((Number(l.qty) || 0) * (Number(l.price) || 0))}</div></div>
               </div>
-              {Number(l.qty) > Number(l.stock) && <p className="mt-1 text-xs text-amber-700">Only {l.stock} in stock.</p>}
+              {Number(l.qty) > Number(l.stock) && <p className="mt-1 text-xs text-warning-fg">Only {l.stock} in stock.</p>}
             </li>
           ))}
         </ul>
@@ -190,7 +190,7 @@ export function InvoiceCreateCard ({ fields = {} }) {
         <span className="text-neutral-600">Subtotal (VAT is added when saved)</span><span className="font-bold tabular-nums">{money(subtotal)}</span>
       </div>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      <button type="button" onClick={save} disabled={!canSave || busy} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white disabled:opacity-40">
+      <button type="button" onClick={save} disabled={!canSave || busy} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 text-sm font-semibold text-white disabled:opacity-40">
         <Plus className="h-4 w-4" />{busy ? 'Saving…' : 'Confirm and create invoice'}
       </button>
       <p className="text-xs text-neutral-500">Nothing is saved until you tap Confirm. Prices and stock come from your products.</p>
@@ -230,7 +230,7 @@ export function ProductCreateCard ({ fields = {} }) {
 
   if (done) {
     return (
-      <div className={`${card} border-l-4 border-l-emerald-600 space-y-2`}>
+      <div className={`${card} space-y-2`}>
         <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800"><CheckCircle2 className="h-5 w-5" />Product added</div>
         <p className="text-sm">{done.nameEn} · {done.sku} · {money(done.sellPrice)}</p>
         <Link to="/products" className="inline-flex min-h-11 items-center rounded-lg border border-neutral-300 px-4 text-sm font-medium hover:bg-neutral-50">Open Products</Link>
@@ -238,8 +238,8 @@ export function ProductCreateCard ({ fields = {} }) {
     )
   }
   return (
-    <div className={`${card} border-l-4 border-l-amber-500 space-y-3`}>
-      <div className="flex items-center gap-2 text-sm font-semibold"><Package className="h-5 w-5 text-amber-600" />New product</div>
+    <div className={`${card} space-y-3`}>
+      <div className="flex items-center gap-2 text-sm font-semibold"><Package className="h-5 w-5 text-warning-fg" />New product</div>
       <label className="block"><span className={label}>Name</span><input className={field} value={name} maxLength={200} onChange={(e) => setName(e.target.value)} /></label>
       <div className="grid grid-cols-2 gap-2">
         <label className="block"><span className={label}>Unit</span>
@@ -251,7 +251,7 @@ export function ProductCreateCard ({ fields = {} }) {
         <label className="block"><span className={label}>Reorder level</span><input inputMode="numeric" className={field} value={reorder} onChange={(e) => setReorder(e.target.value)} /></label>
       </div>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      <button type="button" onClick={save} disabled={!valid || busy} className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-amber-600 px-4 text-sm font-semibold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Confirm and add product'}</button>
+      <button type="button" onClick={save} disabled={!valid || busy} className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-warning-fg px-4 text-sm font-semibold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Confirm and add product'}</button>
     </div>
   )
 }

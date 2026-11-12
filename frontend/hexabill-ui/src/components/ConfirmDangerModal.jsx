@@ -80,13 +80,13 @@ const ConfirmDangerModal = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="confirm-danger-title">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full border border-red-100 max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow-sm max-w-md w-full border border-red-100 max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-4 pr-2 border-b border-red-100 bg-error-bg rounded-t-xl">
           <div className="flex items-center gap-3 min-w-0">
             <AlertTriangle className="h-6 w-6 text-error flex-shrink-0" />
             <h2 id="confirm-danger-title" className="text-lg font-bold text-neutral-900 truncate">{title}</h2>
           </div>
-          <button type="button" onClick={handleClose} className="p-1 text-neutral-400 hover:text-neutral-600 rounded min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2" aria-label="Close">
+          <button type="button" onClick={handleClose} className="p-1 text-slate-500 hover:text-neutral-600 rounded min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -120,7 +120,7 @@ const ConfirmDangerModal = ({
                 value={typedText}
                 onChange={(e) => { setTypedText(e.target.value); setError('') }}
                 placeholder={`Type ${requireTypedText} here`}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 uppercase text-sm"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
                 onKeyDown={(e) => e.key === 'Enter' && isMatch && isInputValid && handleConfirm()}
               />
               {error && <p className="mt-1 text-sm text-error">{error}</p>}

@@ -8,7 +8,7 @@ export const mobilePageSubtitleClass = 'text-xs text-neutral-500 hidden sm:block
 export const mobileLedgerCardClass =
   'rounded-lg border border-neutral-200 bg-white p-3 text-sm leading-snug'
 export const mobileLedgerAmountClass = 'text-sm font-semibold tabular-nums'
-export const mobileLedgerLabelClass = 'text-xs font-medium text-neutral-500 uppercase tracking-wide'
+export const mobileLedgerLabelClass = 'text-xs font-medium text-neutral-500 '
 
 /** 4–5 equal tabs: icon on top, short label — fits one row on phone */
 export const MobileIconTabBar = ({ tabs, activeId, onChange, className = '' }) => (
@@ -28,8 +28,8 @@ export const MobileIconTabBar = ({ tabs, activeId, onChange, className = '' }) =
           aria-selected={active}
           onClick={() => onChange(tab.id)}
           className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] px-1 py-1.5 border-b-2 transition-colors ${
-            active
-              ? 'border-primary-600 text-primary-700 bg-primary-50/80'
+ active
+ ? 'border-primary-600 text-primary-700 bg-primary-50/80'
               : 'border-transparent text-neutral-600 hover:bg-neutral-50'
           }`}
         >
@@ -100,8 +100,8 @@ export const MobileLedgerTxnCard = ({
           <p className={mobileLedgerLabelClass}>Balance</p>
           <p
             className={`${mobileLedgerAmountClass} ${
-              bal < 0 ? 'text-success-fg' : bal > 0 ? 'text-error-fg' : 'text-neutral-900'
-            }`}
+ bal < 0 ? 'text-success-fg' : bal > 0 ? 'text-error-fg' : 'text-neutral-900'
+ }`}
           >
             {formatBalance(bal)}
           </p>

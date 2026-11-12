@@ -49,11 +49,11 @@ export default function LegacyPurchaseDetailModal({ purchaseId, isOpen, onClose 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 overflow-y-auto">
-      <div className="relative w-full max-w-3xl rounded-2xl bg-white shadow-2xl border border-neutral-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+      <div className="relative w-full max-w-3xl rounded-2xl bg-white shadow-sm border border-neutral-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Modal Top Header */}
         <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-50 px-5 py-3 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+            <span className="inline-flex items-center rounded-md bg-warning-bg px-2 py-0.5 text-xs font-semibold text-warning-fg">
               STARPLUS HISTORICAL PURCHASE
             </span>
             <span className="text-xs text-neutral-500 font-mono">
@@ -73,7 +73,7 @@ export default function LegacyPurchaseDetailModal({ purchaseId, isOpen, onClose 
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700"
+              className="rounded-lg p-1 text-slate-500 hover:bg-neutral-200 hover:text-neutral-700"
             >
               <X className="h-5 w-5" />
             </button>
@@ -95,8 +95,8 @@ export default function LegacyPurchaseDetailModal({ purchaseId, isOpen, onClose 
           ) : purchase ? (
             <>
               {/* Disclaimer Notice */}
-              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-900 flex items-start gap-3">
-                <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="rounded-xl border border-warning-border bg-warning-bg/70 p-3.5 text-xs text-warning-fg flex items-start gap-3">
+                <ShieldCheck className="h-5 w-5 text-warning-fg shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold">Historical Purchase Record:</span> Preserved from the Starplus Foodstuff Trading ERP system.
                   Maintained in read-only audit status with original line items, quantities, and supplier costs.
@@ -127,7 +127,7 @@ export default function LegacyPurchaseDetailModal({ purchaseId, isOpen, onClose 
 
               {/* Items Table */}
               <div>
-                <h4 className="text-xs font-semibold text-neutral-700 uppercase tracking-wider mb-2">
+                <h4 className="text-xs font-semibold text-neutral-700 mb-2">
                   Line Items ({purchase.items?.length || 0})
                 </h4>
                 <div className="border border-neutral-200 rounded-xl overflow-hidden">
@@ -146,7 +146,7 @@ export default function LegacyPurchaseDetailModal({ purchaseId, isOpen, onClose 
                     <tbody className="divide-y divide-neutral-100 bg-white">
                       {(purchase.items || []).map((item, idx) => (
                         <tr key={item.id || idx} className="hover:bg-neutral-50/50">
-                          <td className="px-3 py-2 text-neutral-400 font-mono">{idx + 1}</td>
+                          <td className="px-3 py-2 text-slate-500 font-mono">{idx + 1}</td>
                           <td className="px-3 py-2 font-medium text-neutral-900">
                             {item.productName}
                           </td>

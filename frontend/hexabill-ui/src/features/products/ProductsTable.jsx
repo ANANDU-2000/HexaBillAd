@@ -7,11 +7,11 @@ import { OverflowMenu } from '../../components/ui/index'
 const imageSrc = (url) => (url.startsWith('http') || url.startsWith('/') ? url : `/uploads/${url}`)
 
 const expiryCell = (expiryDate) => {
-  if (!expiryDate) return <span className="text-neutral-400">—</span>
+  if (!expiryDate) return <span className="text-slate-500">—</span>
   const d = new Date(expiryDate)
   const days = Math.ceil((d - new Date()) / 86400000)
   if (days < 0) return <span className="font-medium text-error">Expired</span>
-  if (days <= 30) return <span className="font-medium text-orange-600">{days}d left</span>
+  if (days <= 30) return <span className="font-medium text-slate-700">{days}d left</span>
   return <span className="text-neutral-600">{d.toLocaleDateString()}</span>
 }
 
@@ -63,7 +63,7 @@ export default function ProductsTable({
     <div className="rounded-lg border border-neutral-300 bg-white">
       <table className="w-full table-fixed border-collapse text-[15px] lg:text-[13px] [@media(pointer:coarse)]:lg:text-[15px]">
         <thead className="sticky top-0 z-10 bg-neutral-100">
-          <tr className="border-b border-neutral-300 text-xs lg:text-[11px] uppercase tracking-wide text-neutral-600">
+          <tr className="border-b border-neutral-300 text-xs lg:text-xs text-neutral-600">
             <th className="w-12 px-3 py-3 lg:w-10 lg:py-2 text-left">
               <input
                 type="checkbox"
@@ -85,7 +85,7 @@ export default function ProductsTable({
                 <button
                   type="button"
                   onClick={() => toggleSort(c.key)}
-                  className="inline-flex items-center gap-1 uppercase hover:text-neutral-900"
+                  className="inline-flex items-center gap-1 hover:text-neutral-900"
                 >
                   {c.label}
                   {sort.key === c.key && (sort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
@@ -127,19 +127,19 @@ export default function ProductsTable({
                   {p.imageUrl ? (
                     <ProductImage productId={p.id} src={imageSrc(p.imageUrl)} alt="" className="h-8 w-8 rounded border border-neutral-200 object-cover" onError={(e) => { e.target.style.visibility = 'hidden' }} />
                   ) : (
-                    <span className="flex h-8 w-8 items-center justify-center rounded border border-neutral-200 bg-neutral-100"><ImageIcon className="h-4 w-4 text-neutral-400" /></span>
+                    <span className="flex h-8 w-8 items-center justify-center rounded border border-neutral-200 bg-neutral-100"><ImageIcon className="h-4 w-4 text-slate-500" /></span>
                   )}
                 </td>
                 <td className="hidden truncate px-2 py-1.5 font-mono text-xs lg:table-cell" title={p.sku}>{p.sku || '—'}</td>
                 <td className="px-2 py-3 lg:py-1.5">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="truncate font-medium text-primary-700" title={p.nameEn}>{p.nameEn}</span>
-                    {inactive && <span className="shrink-0 rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-neutral-600">Inactive</span>}
+                    {inactive && <span className="shrink-0 rounded bg-neutral-200 px-1.5 py-0.5 text-xs font-semibold text-neutral-600">Inactive</span>}
                   </div>
                   <div className="truncate font-mono text-xs text-neutral-500 lg:hidden">{p.sku || '-'}{p.unitType ? ` · ${p.unitType}` : ''}</div>
                 </td>
-                <td className="hidden truncate px-2 py-1.5 font-mono text-xs text-neutral-600 xl:table-cell" title={p.barcode || ''}>{p.barcode || <span className="text-neutral-400">—</span>}</td>
-                <td className="hidden truncate px-2 py-1.5 lg:table-cell" title={p.categoryName || ''}>{p.categoryName || <span className="text-neutral-400">—</span>}</td>
+                <td className="hidden truncate px-2 py-1.5 font-mono text-xs text-neutral-600 xl:table-cell" title={p.barcode || ''}>{p.barcode || <span className="text-slate-500">—</span>}</td>
+                <td className="hidden truncate px-2 py-1.5 lg:table-cell" title={p.categoryName || ''}>{p.categoryName || <span className="text-slate-500">—</span>}</td>
                 <td className="hidden px-2 py-1.5 lg:table-cell">{p.unitType || '—'}</td>
                 <td className={`px-2 py-3 lg:py-1.5 text-right tabular-nums ${low ? 'font-semibold text-error' : ''}`}>
                   <span className="inline-flex items-center justify-end gap-1">

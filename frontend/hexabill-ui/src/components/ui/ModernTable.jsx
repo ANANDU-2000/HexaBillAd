@@ -202,7 +202,7 @@ const ModernTable = ({
                           ? (activeSort.direction === 'asc'
                             ? <ChevronUp className="h-4 w-4" aria-hidden />
                             : <ChevronDown className="h-4 w-4" aria-hidden />)
-                          : <ChevronsUpDown className="h-4 w-4 text-neutral-400" aria-hidden />}
+                          : <ChevronsUpDown className="h-4 w-4 text-slate-500" aria-hidden />}
                       </button>
                     ) : (
                       column.label
@@ -309,7 +309,7 @@ const ModernTable = ({
                 <span className="hidden items-center gap-1 md:flex">
                   {pageWindow(currentPage, totalPages).map((p) =>
                     typeof p === 'string' ? (
-                      <span key={p} className="px-1 text-neutral-400" aria-hidden>…</span>
+                      <span key={p} className="px-1 text-slate-500" aria-hidden>…</span>
                     ) : (
                       <button
                         key={p}
@@ -317,8 +317,8 @@ const ModernTable = ({
                         onClick={() => onPageChange(p)}
                         aria-current={p === currentPage ? 'page' : undefined}
                         className={`min-h-[40px] min-w-[40px] rounded-md px-2 text-sm tabular-nums ${
-                          p === currentPage ? 'bg-primary-600 font-semibold text-white' : 'text-neutral-700 hover:bg-neutral-100'
-                        }`}
+ p === currentPage ? 'bg-primary-600 font-semibold text-white' : 'text-neutral-700 hover:bg-neutral-100'
+ }`}
                       >
                         {p}
                       </button>

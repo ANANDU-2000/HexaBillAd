@@ -51,10 +51,10 @@ const SuperAdminSqlConsolePage = () => {
     <div className="min-h-screen bg-[#F8FAFC]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center gap-2 mb-6">
-          <Database className="h-6 w-6 text-indigo-600" />
+          <Database className="h-6 w-6 text-slate-700" />
           <h1 className="text-xl font-semibold text-neutral-900">SQL Console</h1>
         </div>
-        <div className="rounded-sm border border-neutral-200 border-l-4 border-l-warning bg-white px-4 py-3 mb-4 text-sm text-neutral-800">
+        <div className="rounded-sm border border-neutral-200 bg-white px-4 py-3 mb-4 text-sm text-neutral-800">
           <strong>Read-Only Mode:</strong> Only SELECT queries allowed. DROP, DELETE, UPDATE, INSERT and other write operations are blocked.
         </div>
         <p className="text-sm text-neutral-600 mb-4">
@@ -75,7 +75,7 @@ const SuperAdminSqlConsolePage = () => {
               type="button"
               onClick={runQuery}
               disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
             >
               <Play className="h-4 w-4" />
               {loading ? 'Running…' : 'Run'}
@@ -84,7 +84,7 @@ const SuperAdminSqlConsolePage = () => {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm flex items-start gap-2">
+          <div className="mb-6 p-4 bg-white border border-neutral-200 rounded-sm flex items-start gap-2">
             <AlertCircle className="h-5 w-5 text-error shrink-0 mt-0.5" />
             <p className="text-sm text-red-800 font-mono break-all">{error}</p>
           </div>

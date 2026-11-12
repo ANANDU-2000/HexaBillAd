@@ -193,7 +193,7 @@ const SuperAdminDashboard = () => {
         {/* Platform & connection – Backend URL + DB status (from platform-health) */}
         <div className="mb-6 p-4 bg-white border border-neutral-200 rounded-lg">
           <h3 className="font-semibold text-neutral-800 flex items-center gap-2 mb-3">
-            <Server className="h-5 w-5 text-indigo-600" />
+            <Server className="h-5 w-5 text-slate-700" />
             Platform & connection
           </h3>
           {platformHealth == null ? (
@@ -206,7 +206,7 @@ const SuperAdminDashboard = () => {
                   href={platformHealth.backendUrl ? `${platformHealth.backendUrl}/api/health` : '#'}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-indigo-600 hover:underline font-mono"
+                  className="flex items-center gap-1.5 text-slate-700 hover:underline font-mono"
                 >
                   <Link2 className="h-4 w-4" />
                   {platformHealth.backendUrl || '—'}
@@ -224,7 +224,7 @@ const SuperAdminDashboard = () => {
           <button
             type="button"
             onClick={() => navigate('/superadmin/health')}
-            className="mt-3 text-sm text-indigo-600 hover:underline"
+            className="mt-3 text-sm text-slate-700 hover:underline"
           >
             Infrastructure & health →
           </button>
@@ -275,7 +275,7 @@ const SuperAdminDashboard = () => {
         {/* Live Activity - Top tenants by API calls (last 60 min). In-memory; resets on server restart. */}
         <div className="mb-6 p-4 bg-white border border-neutral-200 rounded-lg">
           <h3 className="font-semibold text-neutral-800 flex items-center gap-2 mb-1">
-            <Zap className="h-5 w-5 text-amber-500" />
+            <Zap className="h-5 w-5 text-warning-fg" />
             Live Activity — Top 10 by API calls (last 60 min)
           </h3>
           <p className="text-xs text-neutral-500 mb-3">Activity resets on server restart.</p>
@@ -289,8 +289,8 @@ const SuperAdminDashboard = () => {
                 <li
                   key={t.tenantId}
                   className={`flex items-center justify-between p-2 rounded-lg border transition-colors ${
-                    t.isHighVolume
-                      ? 'bg-error-bg border-error-border hover:bg-red-100'
+ t.isHighVolume
+ ? 'bg-error-bg border-error-border hover:bg-red-100'
                       : 'bg-neutral-50 border-neutral-100 hover:bg-neutral-100'
                   }`}
                 >
@@ -347,7 +347,7 @@ const SuperAdminDashboard = () => {
 
         {dashboard?.trialsExpiringThisWeek?.length > 0 && (
           <div className="mb-6 p-4 bg-warning-bg border border-warning-border rounded-lg">
-            <h3 className="font-semibold text-amber-800 flex items-center gap-2 mb-3">
+            <h3 className="font-semibold text-warning-fg flex items-center gap-2 mb-3">
               <AlertTriangle className="h-5 w-5" />
               Trials Expiring This Week ({dashboard.trialsExpiringThisWeek.length})
             </h3>
@@ -358,7 +358,7 @@ const SuperAdminDashboard = () => {
                 return (
                   <li
                     key={t.tenantId}
-                    className="flex items-center justify-between p-2 bg-white rounded-lg border border-amber-100 hover:bg-warning-bg"
+                    className="flex items-center justify-between p-2 bg-white rounded-lg border border-warning-border hover:bg-warning-bg"
                   >
                     <span
                       className="font-medium text-neutral-900 cursor-pointer flex-1"
@@ -400,7 +400,7 @@ const SuperAdminDashboard = () => {
                       {extendingTrialId === t.tenantId ? 'Extending…' : 'Extend 7 days'}
                     </button>
                     <ChevronRight
-                      className="h-4 w-4 text-neutral-400 cursor-pointer ml-1"
+                      className="h-4 w-4 text-slate-500 cursor-pointer ml-1"
                       onClick={() => navigate(`/superadmin/tenants/${t.tenantId}`)}
                     />
                   </li>
@@ -435,7 +435,7 @@ const SuperAdminDashboard = () => {
                     <p className="text-sm font-medium text-neutral-500">{m.title}</p>
                     <p className="text-xl font-semibold text-neutral-900 mt-1">{m.value}</p>
                     {m.desc && (
-                      <p className="text-xs text-neutral-400 mt-2">{m.desc}</p>
+                      <p className="text-xs text-slate-500 mt-2">{m.desc}</p>
                     )}
                   </div>
                   <div className="p-2 rounded-lg bg-neutral-100 text-neutral-600">
@@ -528,7 +528,7 @@ const SuperAdminDashboard = () => {
                 </div>
                 <div className="p-3 bg-warning-bg rounded-lg">
                   <p className="text-xs text-warning-fg">Incomplete</p>
-                  <p className="text-lg font-bold text-amber-800">{onboardingReport.incompleteCount ?? 0}</p>
+                  <p className="text-lg font-bold text-warning-fg">{onboardingReport.incompleteCount ?? 0}</p>
                 </div>
                 <div className="p-3 bg-neutral-50 rounded-lg">
                   <p className="text-xs text-neutral-500">Showing</p>
@@ -559,19 +559,19 @@ const SuperAdminDashboard = () => {
                         <td className="py-2 font-medium text-neutral-900">{row.tenantName}</td>
                         <td className="py-2 text-neutral-600">{row.status ?? '—'}</td>
                         <td className="py-2 text-center">
-                          {row.step1CompanyInfo ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
+                          {row.step1CompanyInfo ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-slate-500 inline" />}
                         </td>
                         <td className="py-2 text-center">
-                          {row.step2VatSetup ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
+                          {row.step2VatSetup ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-slate-500 inline" />}
                         </td>
                         <td className="py-2 text-center">
-                          {row.step3HasProduct ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
+                          {row.step3HasProduct ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-slate-500 inline" />}
                         </td>
                         <td className="py-2 text-center">
-                          {row.step4HasCustomer ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
+                          {row.step4HasCustomer ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-slate-500 inline" />}
                         </td>
                         <td className="py-2 text-center">
-                          {row.step5HasInvoice ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
+                          {row.step5HasInvoice ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-slate-500 inline" />}
                         </td>
                         <td className="py-2 text-right font-medium">
                           {row.completedSteps}/5 {row.isComplete && <span className="text-success">Done</span>}

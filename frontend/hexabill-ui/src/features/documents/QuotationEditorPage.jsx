@@ -677,8 +677,8 @@ export default function QuotationEditorPage() {
             onClick={save}
             disabled={saving || !isDirty}
             className={`inline-flex items-center gap-1 px-3 py-1.5 min-h-[44px] text-sm rounded-md disabled:opacity-50 ${
-              isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'border text-text-secondary bg-slate-50'
-            }`}
+ isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'border text-text-secondary bg-slate-50'
+ }`}
           >
             <Save className="w-4 h-4" /> {saving ? 'Saving…' : isDirty ? 'Save changes' : 'Saved'}
           </button>
@@ -696,7 +696,7 @@ export default function QuotationEditorPage() {
           </button>
         </div>
       </div>
-      {error && <div className="text-sm text-neutral-800 bg-white border border-neutral-200 border-l-4 border-l-error rounded px-3 py-2">{error}</div>}
+      {error && <div className="text-sm text-neutral-800 bg-white border border-neutral-200 rounded px-3 py-2">{error}</div>}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
         <div className="border rounded-lg bg-white p-2.5 space-y-2">
@@ -720,7 +720,7 @@ export default function QuotationEditorPage() {
             </div>
             <label className="text-xs space-y-1 block">
               <span className="text-text-secondary">Subject (optional)</span>
-              <input className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" maxLength={300} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Supply of frozen meat" />
+              <input aria-label="e.g. Supply of frozen meat" className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" maxLength={300} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Supply of frozen meat" />
             </label>
           </fieldset>
 
@@ -729,10 +729,10 @@ export default function QuotationEditorPage() {
             <div className="relative">
               <label className="text-xs space-y-1 block">
                 <span className="text-text-secondary">Client name {customerId ? <span className="text-success-fg">· linked customer</span> : <span>· type to search saved customers</span>}</span>
-                <input className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" value={customerName} onChange={(e) => onCustomerNameChange(e.target.value)} onBlur={() => setTimeout(() => setCustomerHits([]), 150)} placeholder="Customer or company name" autoComplete="off" />
+                <input aria-label="Customer or company name" className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" value={customerName} onChange={(e) => onCustomerNameChange(e.target.value)} onBlur={() => setTimeout(() => setCustomerHits([]), 150)} placeholder="Customer or company name" autoComplete="off" />
               </label>
               {customerHits.length > 0 && (
-                <ul className="absolute z-20 left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-56 overflow-auto" role="listbox">
+                <ul className="absolute z-20 left-0 right-0 mt-1 bg-white border rounded-md shadow-sm max-h-56 overflow-auto" role="listbox">
                   {customerHits.map((h) => (
                     <li key={h.id}>
                       <button type="button" className="w-full text-left px-3 py-2 min-h-11 hover:bg-slate-50 text-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => pickCustomer(h)}>
@@ -747,7 +747,7 @@ export default function QuotationEditorPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <label className="text-xs space-y-1 block">
                 <span className="text-text-secondary">Customer TRN</span>
-                <input className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" maxLength={50} inputMode="numeric" value={customerTrn} onChange={(e) => setCustomerTrn(e.target.value)} placeholder="15-digit TRN" />
+                <input aria-label="15-digit TRN" className="w-full min-h-11 md:min-h-0 border rounded px-2 py-1.5 text-sm" maxLength={50} inputMode="numeric" value={customerTrn} onChange={(e) => setCustomerTrn(e.target.value)} placeholder="15-digit TRN" />
               </label>
               <label className="text-xs space-y-1 block">
                 <span className="text-text-secondary">Phone</span>
@@ -864,7 +864,7 @@ export default function QuotationEditorPage() {
                       <tr key={row.tempId ?? idx} className="border-t align-top">
                         <td className="p-1">
                           <div className="flex gap-1">
-                            <input
+                            <input aria-label="Search or type"
                               data-quote-cell={`${idx}-description`}
                               className="w-full min-w-0 border rounded px-1 py-1"
                               value={row.description}
@@ -878,7 +878,7 @@ export default function QuotationEditorPage() {
                               <Search className="w-4 h-4" />
                             </button>
                           </div>
-                          <input
+                          <input aria-label="Subtitle (optional)"
                             data-quote-cell={`${idx}-descriptionSubtitle`}
                             className="mt-1 w-full border rounded px-1 py-1 text-micro text-text-secondary"
                             placeholder="Subtitle (optional)"
@@ -972,7 +972,7 @@ export default function QuotationEditorPage() {
                   <img src={companyLogoSrc} alt="" className="h-10 w-10 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
                 ) : null}
                 <div className="text-center flex-1 min-w-0">
-                  <div className="font-bold text-xs uppercase leading-tight">{company.name || 'Company'}</div>
+                  <div className="font-bold text-xs leading-tight">{company.name || 'Company'}</div>
                   {company.address ? <div className="text-micro text-text-secondary whitespace-pre-wrap">{company.address}</div> : null}
                   {contactLine ? <div className="text-micro text-text-secondary">{contactLine}</div> : null}
                 </div>

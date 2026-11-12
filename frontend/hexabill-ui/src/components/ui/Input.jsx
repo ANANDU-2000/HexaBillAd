@@ -28,7 +28,7 @@ const Input = forwardRef(({
       )}
       <div className="relative">
         {icon && (
-          <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-neutral-400" aria-hidden>
+          <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-500" aria-hidden>
             {icon}
           </span>
         )}
@@ -37,9 +37,9 @@ const Input = forwardRef(({
           id={inputId}
           aria-invalid={!!error}
           aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined}
-          className={`block w-full ${icon ? 'pl-9' : 'px-3'} pr-8 ${height} bg-white border rounded-md text-base lg:text-sm text-neutral-900 placeholder:text-neutral-400
-            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-            disabled:bg-neutral-50 disabled:text-neutral-500 read-only:bg-neutral-50
+          className={`block w-full ${icon ? 'pl-9' : 'px-3'} pr-8 ${height} bg-white border rounded-md text-base lg:text-sm text-neutral-900 placeholder:text-slate-500
+ focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
+ disabled:bg-neutral-50 disabled:text-neutral-500 read-only:bg-neutral-50
             ${error ? 'border-error focus:ring-error focus:border-error' : success ? 'border-success' : 'border-neutral-300'} ${className}`}
           {...props}
         />

@@ -26,7 +26,7 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message, itemNa
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow-sm max-w-md w-full max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between pl-6 pr-2 py-4 border-b border-neutral-200 bg-error-bg">
           <div className="flex items-center min-w-0">
             <AlertTriangle className="h-6 w-6 text-error mr-3 flex-shrink-0" />
@@ -37,7 +37,7 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message, itemNa
           </div>
           <button
             onClick={handleClose}
-            className="min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center text-neutral-400 hover:text-neutral-600"
+            className="min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center text-slate-500 hover:text-neutral-600"
             aria-label="Close"
           >
             <X className="h-6 w-6" />
@@ -51,7 +51,7 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message, itemNa
             <label className="block text-sm font-medium text-neutral-700 mb-2">
               Type <span className="font-bold text-error">DELETE</span> to confirm:
             </label>
-            <input
+            <input aria-label="Type DELETE here"
               type="text"
               value={confirmText}
               onChange={(e) => {
@@ -59,7 +59,7 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message, itemNa
                 setError('')
               }}
               placeholder="Type DELETE here"
-              className="w-full px-4 py-3 border-2 border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 uppercase"
+              className="w-full px-4 py-3 border-2 border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 "
               autoFocus
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && confirmText.trim().toUpperCase() === 'DELETE') {

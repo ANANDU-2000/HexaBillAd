@@ -157,8 +157,8 @@ const SplitDonut = ({ title, subtitle, slices, centerLabel, centerValue, emptyTe
                     onBlur={() => onHover(null)}
                     onClick={() => onPin(s.key)}
                     className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-neutral-50 ${
-                      isActive ? '' : 'opacity-40'
-                    }`}
+ isActive ? '' : 'opacity-40'
+ }`}
                   >
                     <span className="flex items-center gap-2 text-neutral-700">
                       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
@@ -335,8 +335,8 @@ const WorksheetPage = () => {
                 type="button"
                 onClick={() => setPreset(p.id)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  preset === p.id
-                    ? 'bg-primary-600 text-white'
+ preset === p.id
+ ? 'bg-primary-600 text-white'
                     : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                 }`}
               >
@@ -396,9 +396,9 @@ const WorksheetPage = () => {
                   onFocus={() => setHoverId(k.id)}
                   onBlur={() => setHoverId(null)}
                   onClick={() => togglePin(k.id)}
-                  className={`text-left bg-white rounded-lg border p-4 shadow-sm transition-all hover:shadow-md ${
-                    isPinned ? 'border-primary-600 ring-2 ring-primary-200' : 'border-neutral-200'
-                  } ${k.id === 'pending' ? 'col-span-2 md:col-span-1' : ''}`}
+                  className={`text-left bg-white rounded-lg border p-4 shadow-sm transition-all hover:shadow-sm ${
+ isPinned ? 'border-primary-600 ring-2 ring-primary-200' : 'border-neutral-200'
+ } ${k.id === 'pending' ? 'col-span-2 md:col-span-1' : ''}`}
                 >
                   <div className="flex items-center gap-2 text-neutral-600 mb-1">
                     <Icon className={`h-5 w-5 ${k.iconClass}`} />
@@ -413,7 +413,7 @@ const WorksheetPage = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {insights.map((item) => (
               <div key={item.label} className="bg-white rounded-lg border border-neutral-200 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{item.label}</p>
+                <p className="text-xs font-medium text-neutral-500">{item.label}</p>
                 <p className={`mt-1 text-lg font-semibold ${item.tone || 'text-neutral-900'}`}>{item.value}</p>
                 <p className="text-xs text-neutral-500 mt-0.5">{item.hint}</p>
               </div>
@@ -483,8 +483,8 @@ const WorksheetPage = () => {
               })}
               <div className="flex items-center justify-between pt-3 border-t border-neutral-200 text-sm">
                 <span className="flex items-center gap-2 text-neutral-700">
-                  Received <ArrowRight className="h-3.5 w-3.5 text-neutral-400" /> Purchases + Expenses
-                  <ArrowRight className="h-3.5 w-3.5 text-neutral-400" /> Net
+                  Received <ArrowRight className="h-3.5 w-3.5 text-slate-500" /> Purchases + Expenses
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-500" /> Net
                 </span>
                 <span className={`font-semibold tabular-nums ${net >= 0 ? 'text-success' : 'text-error'}`}>
                   {formatCurrency(net)}

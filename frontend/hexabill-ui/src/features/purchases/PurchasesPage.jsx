@@ -913,7 +913,7 @@ const PurchasesPage = () => {
   const statusChip = (id, label, count) => {
     const active = statusFilter === id
     // Red only for overdue items that exist. Unpaid is an ordinary open balance, so it is neutral.
-    const tone = id === 'paid' ? 'text-green-800' : id === 'partial' ? 'text-amber-800' : id === 'overdue' && count > 0 ? 'text-red-800' : 'text-neutral-900'
+    const tone = id === 'paid' ? 'text-green-800' : id === 'partial' ? 'text-warning-fg' : id === 'overdue' && count > 0 ? 'text-red-800' : 'text-neutral-900'
     return (
       <button
         type="button"
@@ -941,8 +941,8 @@ const PurchasesPage = () => {
                 type="button"
                 onClick={() => { setActiveTab('operating'); setCurrentPage(1); }}
                 className={`pb-1 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${
-                  activeTab === 'operating' ? 'border-primary-600 text-primary-700' : 'border-transparent text-neutral-500 hover:text-neutral-700'
-                }`}
+ activeTab === 'operating' ? 'border-primary-600 text-primary-700' : 'border-transparent text-neutral-500 hover:text-neutral-700'
+ }`}
               >
                 Operating
               </button>
@@ -950,10 +950,10 @@ const PurchasesPage = () => {
                 type="button"
                 onClick={() => { setActiveTab('legacy'); setCurrentPage(1); }}
                 className={`pb-1 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center gap-1 ${
-                  activeTab === 'legacy' ? 'border-amber-600 text-amber-800' : 'border-transparent text-neutral-500 hover:text-neutral-700'
-                }`}
+ activeTab === 'legacy' ? 'border-warning-border text-warning-fg' : 'border-transparent text-neutral-500 hover:text-neutral-700'
+ }`}
               >
-                <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-warning-fg"></span>
                 Historical (Starplus · 1,563)
               </button>
             </div>
@@ -1082,7 +1082,7 @@ const PurchasesPage = () => {
 
         {/* Purchase Form - Tally Style - mobile: single column, no horizontal scroll */}
         {showForm && (
-          <div ref={formRef} data-shell-hides-nav className={`${tallyVoucherShellClass} shadow-lg`}>
+          <div ref={formRef} data-shell-hides-nav className={`${tallyVoucherShellClass} shadow-sm`}>
             <div className="flex items-center justify-between mb-3 sm:mb-4 border-b-2 border-neutral-200 pb-2">
               <h2 className="text-base sm:text-lg font-bold text-primary-800">
                 {editingPurchase ? 'Edit Purchase Entry' : 'New Purchase Entry'}
@@ -1138,7 +1138,7 @@ const PurchasesPage = () => {
                     onFocus={() => supplierSuggestions.length > 0 && setShowSupplierSuggestions(true)}
                   />
                   {showSupplierSuggestions && supplierSuggestions.length > 0 && (
-                    <div className="absolute z-20 mt-1 w-full bg-white border-2 border-neutral-200 rounded shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-20 mt-1 w-full bg-white border-2 border-neutral-200 rounded shadow-sm max-h-48 overflow-y-auto">
                       {supplierSuggestions.map((name, i) => {
                         const label = typeof name === 'string' ? name : (name?.name || String(name))
                         const pickSupplier = (ev) => {
@@ -1226,8 +1226,8 @@ const PurchasesPage = () => {
               {/* (4) Supplier Balance Info */}
               {formData.supplierName.trim() && supplierBalance != null && (
                 <div className="mb-4 sm:mb-6 p-3 bg-warning-bg rounded-lg border-2 border-warning-border">
-                  <h3 className="text-sm font-bold text-amber-800 mb-2">Supplier Balance</h3>
-                  <p className="text-sm text-amber-800">Current due: {formatCurrency(supplierBalance?.netPayable || 0)}</p>
+                  <h3 className="text-sm font-bold text-warning-fg mb-2">Supplier Balance</h3>
+                  <p className="text-sm text-warning-fg">Current due: {formatCurrency(supplierBalance?.netPayable || 0)}</p>
                   <p className="text-sm text-warning-fg mt-1">
                     After this purchase: {formatCurrency((supplierBalance?.netPayable || 0) + (calculateTotal() * (1 + vatPercent / 100)))}
                   </p>
@@ -1286,11 +1286,11 @@ const PurchasesPage = () => {
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
                             <div>
                               <label className="text-xs text-primary-500">Qty</label>
-                              <input type="number" inputMode="decimal" step="any" placeholder="e.g. 10" ref={(el) => { qtyRefs.current[`${item.productId}:m`] = el }} onFocus={(e) => e.target.select()} onKeyDown={(e) => onRowKey(e, item.productId, 'cost')} enterKeyHint="next" className="w-full min-h-11 px-2 border border-neutral-200 rounded text-base md:text-sm" value={item.qty === '' ? '' : item.qty} onChange={(e) => updateItem(index, 'qty', e.target.value)} />
+                              <input aria-label="e.g. 10" type="number" inputMode="decimal" step="any" placeholder="e.g. 10" ref={(el) => { qtyRefs.current[`${item.productId}:m`] = el }} onFocus={(e) => e.target.select()} onKeyDown={(e) => onRowKey(e, item.productId, 'cost')} enterKeyHint="next" className="w-full min-h-11 px-2 border border-neutral-200 rounded text-base md:text-sm" value={item.qty === '' ? '' : item.qty} onChange={(e) => updateItem(index, 'qty', e.target.value)} />
                             </div>
                             <div>
                               <label className="text-xs text-primary-500">Unit</label>
-                              <select className="w-full px-2 py-1 border border-neutral-200 rounded text-xs uppercase" value={item.unitType || 'PCS'} onChange={(e) => updateItem(index, 'unitType', e.target.value)}>
+                              <select className="w-full px-2 py-1 border border-neutral-200 rounded text-xs " value={item.unitType || 'PCS'} onChange={(e) => updateItem(index, 'unitType', e.target.value)}>
                                 <option value="PCS">PCS</option>
                                 <option value="CRTN">CRTN</option>
                                 <option value="KG">KG</option>
@@ -1302,11 +1302,11 @@ const PurchasesPage = () => {
                             </div>
                             <div>
                               <label className="text-xs text-primary-500">Unit cost</label>
-                              <input type="number" inputMode="decimal" step="any" placeholder="e.g. 120.00" ref={(el) => { costRefs.current[`${item.productId}:m`] = el }} onFocus={(e) => e.target.select()} onKeyDown={(e) => onRowKey(e, item.productId, 'search')} enterKeyHint="done" className={`w-full min-h-11 px-2 border rounded text-base md:text-sm ${(cost > 0 || !costSubmitTried) ? 'border-neutral-200' : 'border-error ring-1 ring-error'}`} value={item.unitCost === '' ? '' : item.unitCost} onChange={(e) => updateItem(index, 'unitCost', e.target.value)} />
+                              <input aria-label="e.g. 120.00" type="number" inputMode="decimal" step="any" placeholder="e.g. 120.00" ref={(el) => { costRefs.current[`${item.productId}:m`] = el }} onFocus={(e) => e.target.select()} onKeyDown={(e) => onRowKey(e, item.productId, 'search')} enterKeyHint="done" className={`w-full min-h-11 px-2 border rounded text-base md:text-sm ${(cost > 0 || !costSubmitTried) ? 'border-neutral-200' : 'border-error ring-1 ring-error'}`} value={item.unitCost === '' ? '' : item.unitCost} onChange={(e) => updateItem(index, 'unitCost', e.target.value)} />
                             </div>
                             <div className="flex flex-col justify-end">
                               <span className="text-xs text-primary-500">Total</span>
-                              <span className="text-[11px] text-primary-500 tabular-nums">Net {formatCurrency(subtotal)} + VAT {formatCurrency(vat)}</span>
+                              <span className="text-xs text-primary-500 tabular-nums">Net {formatCurrency(subtotal)} + VAT {formatCurrency(vat)}</span>
                               <span className="text-sm font-bold text-success-fg">{formatCurrency(total)}</span>
                             </div>
                           </div>
@@ -1321,8 +1321,8 @@ const PurchasesPage = () => {
                         <span className="font-medium">{formatCurrency(calculateTotal())}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-orange-600">VAT ({vatPercent}%)</span>
-                        <span className="font-medium text-orange-600">{formatCurrency(calculateTotal() * (vatPercent / 100))}</span>
+                        <span className="text-slate-700">VAT ({vatPercent}%)</span>
+                        <span className="font-medium text-slate-700">{formatCurrency(calculateTotal() * (vatPercent / 100))}</span>
                       </div>
                       <div className="flex justify-between text-base font-bold text-success-fg mt-1">
                         <span>Total</span>
@@ -1376,7 +1376,7 @@ const PurchasesPage = () => {
                             </td>
                             <td className="px-2 py-2 border-r border-neutral-100">
                               <select
-                                className="w-full min-h-[44px] px-1 border border-neutral-200 rounded text-sm uppercase"
+                                className="w-full min-h-[44px] px-1 border border-neutral-200 rounded text-sm "
                                 value={item.unitType || 'CRTN'}
                                 onChange={(e) => updateItem(index, 'unitType', e.target.value)}
                               >
@@ -1427,7 +1427,7 @@ const PurchasesPage = () => {
                                 return formatCurrency(qty * cost)
                               })()}
                             </td>
-                            <td className="px-2 py-2 border-r border-neutral-100 text-orange-600">
+                            <td className="px-2 py-2 border-r border-neutral-100 text-slate-700">
                               {(() => {
                                 const qty = typeof item.qty === 'number' ? item.qty : 0
                                 const cost = typeof item.unitCost === 'number' ? item.unitCost : 0
@@ -1460,7 +1460,7 @@ const PurchasesPage = () => {
                         <td className="px-2 py-2 font-bold text-primary-700 border-r border-neutral-200">
                           {formatCurrency(calculateTotal())}
                         </td>
-                        <td className="px-2 py-2 font-bold text-orange-600 border-r border-neutral-200">
+                        <td className="px-2 py-2 font-bold text-slate-700 border-r border-neutral-200">
                           {formatCurrency(calculateTotal() * (vatPercent / 100))}
                         </td>
                         <td className="px-2 py-2 font-bold text-success-fg">
@@ -1596,8 +1596,8 @@ const PurchasesPage = () => {
                           </td>
                           <td className="hidden xl:table-cell px-3 py-2 text-center">
                             <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                              (purchase.isTaxClaimable ?? purchase.IsTaxClaimable) !== false ? 'bg-green-100 text-green-800' : 'bg-neutral-100 text-neutral-500'
-                            }`} title="VAT Return: Input Tax Credit claimable">
+ (purchase.isTaxClaimable ?? purchase.IsTaxClaimable) !== false ? 'bg-green-100 text-green-800' : 'bg-neutral-100 text-neutral-500'
+ }`} title="VAT Return: Input Tax Credit claimable">
                               {(purchase.isTaxClaimable ?? purchase.IsTaxClaimable) !== false ? 'Yes' : 'No'}
                             </span>
                           </td>
@@ -1609,8 +1609,8 @@ const PurchasesPage = () => {
                           <td className="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums text-neutral-900">{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}</td>
                           <td className="px-3 py-2 text-center">
                             <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                              statusTone(purchase.paymentStatus || 'Unpaid', 'invoice')
-                            }`}>
+ statusTone(purchase.paymentStatus || 'Unpaid', 'invoice')
+ }`}>
                               {purchase.paymentStatus || 'Unpaid'}
                             </span>
                           </td>
@@ -1634,7 +1634,7 @@ const PurchasesPage = () => {
                                     setSelectedLegacyPurchaseId(purchase.id)
                                     setShowLegacyModal(true)
                                   }}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-md border border-amber-200"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-warning-fg bg-warning-bg hover:bg-warning-border rounded-md border border-warning-border"
                                 >
                                   <Eye className="h-3.5 w-3.5" /> View
                                 </button>

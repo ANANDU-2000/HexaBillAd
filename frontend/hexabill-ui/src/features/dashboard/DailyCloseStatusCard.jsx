@@ -7,7 +7,7 @@ import { describeDailyClose } from './dailyCloseStatus'
 
 const toneClass = {
   success: 'border-[var(--border)] text-[var(--text-primary)]',
-  warning: 'border-amber-300 bg-amber-50 text-amber-900',
+  warning: 'border-warning-border bg-warning-bg text-warning-fg',
   neutral: 'border-[var(--border)] text-[var(--text-primary)]',
 }
 
@@ -32,7 +32,7 @@ export default function DailyCloseStatusCard ({ branchId = null, compact = false
       <button
         type="button"
         onClick={() => navigate('/daily-close')}
-        className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${view.tone === 'warning' ? 'bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200'}`}
+        className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${view.tone === 'warning' ? 'bg-warning-bg text-warning-fg hover:bg-warning-border' : 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200'}`}
       >
         <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
         <span>Daily close: {view.title}</span>

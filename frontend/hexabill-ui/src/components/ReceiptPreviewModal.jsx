@@ -199,7 +199,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
   const displayCurrency = detail?.currency || tenantCurrency || 'AED'
   const footer = !loading && !error && detail && (
     <div className="flex flex-wrap gap-3">
-      {outputError && <p role="alert" className="w-full rounded-sm border border-neutral-200 border-l-4 border-l-error bg-white p-3 text-sm text-neutral-800">{outputError}</p>}
+      {outputError && <p role="alert" className="w-full rounded-sm border border-neutral-200 bg-white p-3 text-sm text-neutral-800">{outputError}</p>}
       {detail.isHistoricalSnapshot && (
         <button type="button" onClick={handleDownload} disabled={downloading}
           className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 disabled:opacity-50">
@@ -208,7 +208,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
         </button>
       )}
       <button type="button" onClick={handlePrint} disabled={printing}
-        className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+        className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
         title="Print when customer requests">
         <Printer className="h-4 w-4" /> Print receipt
       </button>
@@ -233,18 +233,18 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
     >
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-slate-700" />
         </div>
       )}
       {error && (
-        <div role="alert" className="rounded-sm bg-white border border-neutral-200 border-l-4 border-l-error px-4 py-3 text-neutral-800 text-sm">
+        <div role="alert" className="rounded-sm bg-white border border-neutral-200 px-4 py-3 text-neutral-800 text-sm">
           {error}
           <button type="button" onClick={() => setRetry(value => value + 1)} className="block mt-2 min-h-[44px] underline font-medium">Try again</button>
         </div>
       )}
       {!loading && !error && data?.detail && (
         <>
-          {!detail.companyTrn && <p role="status" className="mb-3 text-sm text-amber-800">Add VAT TRN in Settings. This payment receipt is not a Tax Invoice.</p>}
+          {!detail.companyTrn && <p role="status" className="mb-3 text-sm text-warning-fg">Add VAT TRN in Settings. This payment receipt is not a Tax Invoice.</p>}
           <div ref={printRef} className="receipt-preview rounded-lg border border-neutral-200 bg-white p-4 sm:p-6 text-left receipt-print-styles">
             {detail.bilingualMonochromeHeader && (
               <header className="company-document-header mb-4 text-center text-black">
@@ -262,10 +262,10 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
               <p className="text-sm text-neutral-700">Payments through: {toReceiptDate(detail.receiptEndDate)}</p>
             )}
             {detail.legacyReconstruction && (
-              <p className="mt-2 text-xs text-amber-800">Legacy receipt reconstructed from available records. Original company and invoice details were not saved.</p>
+              <p className="mt-2 text-xs text-warning-fg">Legacy receipt reconstructed from available records. Original company and invoice details were not saved.</p>
             )}
             {detail.paymentChangedSinceSnapshot && (
-              <p className="mt-2 text-xs text-amber-800" role="status">This copy shows the saved receipt. The payment was changed afterward; review the ledger for its current details.</p>
+              <p className="mt-2 text-xs text-warning-fg" role="status">This copy shows the saved receipt. The payment was changed afterward; review the ledger for its current details.</p>
             )}
             <div className="mt-4">
               <p className="text-sm font-medium text-neutral-700">Received From:</p>

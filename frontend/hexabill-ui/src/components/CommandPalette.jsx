@@ -125,18 +125,18 @@ const CommandPalette = ({ open, onClose }) => {
         role="dialog"
         aria-modal="true"
         aria-label="Search and go to"
-        className="w-full max-w-xl overflow-hidden rounded-lg border border-surface-border bg-white shadow-lg"
+        className="w-full max-w-xl overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={onKeyDown}
       >
         <div className="flex items-center gap-2 border-b border-surface-border px-3">
           <Search className="h-[18px] w-[18px] shrink-0 text-neutral-500" aria-hidden />
-          <input
+          <input aria-label="Search pages, customers, products, suppliers"
             ref={inputRef}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setActive(0) }}
             placeholder="Search pages, customers, products, suppliers…"
-            className="h-12 w-full bg-transparent text-base text-text-primary outline-none placeholder:text-neutral-400 md:text-sm"
+            className="h-12 w-full bg-transparent text-base text-text-primary outline-none placeholder:text-slate-500 md:text-sm"
             role="combobox"
             aria-expanded="true"
             aria-controls="command-palette-list"
@@ -163,8 +163,8 @@ const CommandPalette = ({ open, onClose }) => {
                 {Icon && <Icon className="h-[18px] w-[18px] shrink-0 text-neutral-500" aria-hidden />}
                 <span className="min-w-0 flex-1 truncate">{item.label}</span>
                 {item.hint && <span className="hidden truncate text-xs text-neutral-500 sm:block">{item.hint}</span>}
-                <span className="shrink-0 text-micro uppercase tracking-wide text-neutral-400">{item.kind}</span>
-                {selected && <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-neutral-400" aria-hidden />}
+                <span className="shrink-0 text-micro text-slate-500">{item.kind}</span>
+                {selected && <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden />}
               </li>
             )
           })}

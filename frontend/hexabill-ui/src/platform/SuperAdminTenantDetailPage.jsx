@@ -669,7 +669,7 @@ const SuperAdminTenantDetailPage = () => {
           <div className="flex items-center space-x-3">
             <button
               onClick={handleEnterWorkspace}
-              className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-sm"
+              className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 shadow-sm"
               title="Enter Workspace"
             >
               <LogIn className="h-5 w-5" />
@@ -735,8 +735,8 @@ const SuperAdminTenantDetailPage = () => {
           {/* Health Score Card */}
           {tenantHealth != null && (
             <div className={`rounded-lg border shadow-sm p-6 ${tenantHealth.level === 'Green' ? 'bg-success-bg border-success-border' :
-              tenantHealth.level === 'Yellow' ? 'bg-warning-bg border-warning-border' :
-                'bg-error-bg border-error-border'
+ tenantHealth.level === 'Yellow' ? 'bg-warning-bg border-warning-border' :
+ 'bg-error-bg border-error-border'
               }`}>
               <h2 className="text-xl font-semibold text-neutral-900 mb-4 flex items-center gap-2">
                 <Shield className="h-5 w-5" />
@@ -754,13 +754,13 @@ const SuperAdminTenantDetailPage = () => {
               )}
               <div className="flex flex-wrap items-center gap-6">
                 <div className={`text-4xl font-bold ${tenantHealth.level === 'Green' ? 'text-success-fg' :
-                  tenantHealth.level === 'Yellow' ? 'text-warning-fg' : 'text-error-fg'
-                  }`}>
+ tenantHealth.level === 'Yellow' ? 'text-warning-fg' : 'text-error-fg'
+ }`}>
                   {tenantHealth.score}/100
                 </div>
                 <span className={`px-3 py-1 rounded-full text-sm font-semibold ${tenantHealth.level === 'Green' ? 'bg-green-200 text-green-800' :
-                  tenantHealth.level === 'Yellow' ? 'bg-amber-200 text-amber-800' :
-                    'bg-red-200 text-red-800'
+ tenantHealth.level === 'Yellow' ? 'bg-warning-bg text-warning-fg' :
+ 'bg-red-200 text-red-800'
                   }`}>
                   {tenantHealth.level}
                 </span>
@@ -781,7 +781,7 @@ const SuperAdminTenantDetailPage = () => {
           {/* Client controls – single block: Suspend, Activate, Clear data, Lockout, Limits */}
           <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
             <h2 className="text-xl font-semibold text-neutral-900 mb-4 flex items-center gap-2">
-              <Shield className="h-5 w-5 text-indigo-600" />
+              <Shield className="h-5 w-5 text-slate-700" />
               Client controls
             </h2>
             <p className="text-sm text-neutral-600 mb-4">Account actions and limits. Use Limits tab for rate/storage caps.</p>
@@ -791,7 +791,7 @@ const SuperAdminTenantDetailPage = () => {
                   <CheckCircle className="h-4 w-4" /> Activate account
                 </button>
               ) : (
-                <button type="button" onClick={() => setShowSuspendModal(true)} className="flex items-center gap-2 bg-warning text-white px-4 py-2 rounded-lg hover:bg-amber-700 font-medium">
+                <button type="button" onClick={() => setShowSuspendModal(true)} className="flex items-center gap-2 bg-warning-fg text-white px-4 py-2 rounded-lg hover:bg-warning-fg font-medium">
                   <Ban className="h-4 w-4" /> Suspend access
                 </button>
               )}
@@ -801,7 +801,7 @@ const SuperAdminTenantDetailPage = () => {
               <button type="button" onClick={() => { setLockoutAction('unlock'); setLockoutEmail(tenant?.users?.[0]?.email || ''); setShowLockoutModal(true) }} className="flex items-center gap-2 bg-neutral-600 text-white px-4 py-2 rounded-lg hover:bg-neutral-700 font-medium">
                 <Lock className="h-4 w-4" /> Login lockout
               </button>
-              <button type="button" onClick={() => setActiveTab('limits')} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 font-medium">
+              <button type="button" onClick={() => setActiveTab('limits')} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 font-medium">
                 <Sliders className="h-4 w-4" /> Limits & rate
               </button>
             </div>
@@ -810,7 +810,7 @@ const SuperAdminTenantDetailPage = () => {
           {/* Usage, storage, and upgrade reminder */}
           <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
             <h2 className="text-xl font-semibold text-neutral-900 mb-4 flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-indigo-600" />
+              <TrendingUp className="h-5 w-5 text-slate-700" />
               Usage & storage
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm mb-4">
@@ -818,7 +818,7 @@ const SuperAdminTenantDetailPage = () => {
                 <p className="text-neutral-500 mb-1">API requests (last 60 min)</p>
                 <p className="font-semibold text-neutral-900 flex items-center gap-2">
                   {tenantRequestUsage != null ? tenantRequestUsage.requestCountLast60Min ?? 0 : '—'}
-                  {tenantRequestUsage?.isHighVolume && <span className="text-xs font-medium text-warning bg-amber-100 px-1.5 py-0.5 rounded">High volume</span>}
+                  {tenantRequestUsage?.isHighVolume && <span className="text-xs font-medium text-warning bg-warning-bg px-1.5 py-0.5 rounded">High volume</span>}
                 </p>
               </div>
               <div>
@@ -840,10 +840,10 @@ const SuperAdminTenantDetailPage = () => {
               const daysLeft = Math.ceil((endDate - new Date()) / (24 * 60 * 60 * 1000))
               if (daysLeft <= 14 && daysLeft >= 0) {
                 return (
-                  <div className="flex items-start gap-2 p-3 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm">
+                  <div className="flex items-start gap-2 p-3 bg-white border border-neutral-200 rounded-sm">
                     <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-medium text-amber-800">Trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</p>
+                      <p className="font-medium text-warning-fg">Trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</p>
                       <p className="text-sm text-warning-fg">Remind this client to upgrade before {endDate.toLocaleDateString()} to avoid service interruption.</p>
                     </div>
                   </div>
@@ -851,7 +851,7 @@ const SuperAdminTenantDetailPage = () => {
               }
               if (daysLeft < 0) {
                 return (
-                  <div className="flex items-start gap-2 p-3 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm">
+                  <div className="flex items-start gap-2 p-3 bg-white border border-neutral-200 rounded-sm">
                     <AlertTriangle className="h-5 w-5 text-error flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-medium text-red-800">Trial ended</p>
@@ -920,7 +920,7 @@ const SuperAdminTenantDetailPage = () => {
             <button
               onClick={handleExportData}
               disabled={exportLoading}
-              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               {exportLoading ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
               {exportLoading ? 'Preparing…' : 'Download ZIP (CSV)'}
@@ -929,11 +929,11 @@ const SuperAdminTenantDetailPage = () => {
 
           {/* Login Lockout - Super Admin can unlock/lock client login */}
           <div className="bg-warning-bg rounded-lg border border-warning-border shadow-sm p-6 mt-6">
-            <h2 className="text-xl font-bold text-amber-800 mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-warning-fg mb-4 flex items-center gap-2">
               <Lock className="h-5 w-5" />
               Login Lockout
             </h2>
-            <p className="text-sm text-amber-800 mb-4">
+            <p className="text-sm text-warning-fg mb-4">
               If a client is locked out (5 failed login attempts), unlock them instantly. Or manually lock a user&apos;s login.
             </p>
             <div className="flex flex-wrap gap-2">
@@ -946,7 +946,7 @@ const SuperAdminTenantDetailPage = () => {
               </button>
               <button
                 onClick={() => { setLockoutAction('lock'); setLockoutEmail(''); setShowLockoutModal(true) }}
-                className="bg-white text-warning-fg border border-amber-300 px-4 py-2 rounded-lg font-medium hover:bg-warning-bg flex items-center gap-2"
+                className="bg-white text-warning-fg border border-warning-border px-4 py-2 rounded-lg font-medium hover:bg-warning-bg flex items-center gap-2"
               >
                 <Lock className="h-4 w-4" />
                 Lock Login
@@ -959,7 +959,7 @@ const SuperAdminTenantDetailPage = () => {
             <h2 className="text-xl font-bold text-red-800 mb-4">Danger Zone</h2>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-bold text-red-900 uppercase tracking-wider">Reset Database</h3>
+                <h3 className="text-sm font-bold text-red-900 ">Reset Database</h3>
                 <p className="text-sm text-error-fg mt-1">
                   Wipe all transactions, sales, and expenses. Subscription and company settings are kept. Products and customers remain; stock and balances reset to 0. Create a backup first if needed.
                 </p>
@@ -1125,10 +1125,10 @@ const SuperAdminTenantDetailPage = () => {
             <table className="min-w-full divide-y divide-neutral-200">
               <thead className="bg-neutral-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Role</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 ">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 ">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 ">Role</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 ">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-neutral-200">
@@ -1141,7 +1141,7 @@ const SuperAdminTenantDetailPage = () => {
                       <div className="flex justify-end space-x-2">
                         <button onClick={() => { setSelectedUser(user); setUserFormData({ name: user.name, role: user.role, phone: user.phone || '' }); setShowEditUserModal(true); }} className="text-primary-600 hover:text-primary-900"><Edit className="h-4 w-4" /></button>
                         <button onClick={() => { setSelectedUser(user); setShowPasswordModal(true); }} title="Reset Password" className="text-success hover:text-green-900"><CheckCircle2 className="h-4 w-4" /></button>
-                        <button onClick={() => handleForceLogout(user.id, user.name)} title="Force Logout" className="text-warning hover:text-amber-900"><LogOut className="h-4 w-4" /></button>
+                        <button onClick={() => handleForceLogout(user.id, user.name)} title="Force Logout" className="text-warning hover:text-warning-fg"><LogOut className="h-4 w-4" /></button>
                         <button onClick={() => handleDeleteUser(user.id)} className="text-error hover:text-red-900"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
@@ -1158,7 +1158,7 @@ const SuperAdminTenantDetailPage = () => {
           <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
-                <CreditCard className="h-6 w-6 text-indigo-600" />
+                <CreditCard className="h-6 w-6 text-slate-700" />
                 Subscription Plan Details
               </h2>
               <button
@@ -1176,7 +1176,7 @@ const SuperAdminTenantDetailPage = () => {
                   }
                   setShowSubscriptionModal(true)
                 }}
-                className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-bold hover:bg-indigo-100 transition-all flex items-center gap-2"
+                className="bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-100 transition-all flex items-center gap-2"
               >
                 <Settings className="h-4 w-4" />
                 Manage Subscription
@@ -1186,12 +1186,12 @@ const SuperAdminTenantDetailPage = () => {
             {tenant.subscription ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-100">
-                  <label className="text-xs font-bold text-neutral-500 uppercase">Current Plan</label>
+                  <label className="text-xs font-bold text-neutral-500 ">Current Plan</label>
                   <p className="text-2xl font-black text-neutral-900 mt-1">{tenant.subscription.plan.name}</p>
                   <div className="mt-4 flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${tenant.subscription.status === 'Active' ? 'bg-green-100 text-success-fg' :
-                      tenant.subscription.status === 'Trial' ? 'bg-primary-100 text-primary-700' :
-                        'bg-red-100 text-error-fg'
+ tenant.subscription.status === 'Trial' ? 'bg-primary-100 text-primary-700' :
+ 'bg-red-100 text-error-fg'
                       }`}>
                       {tenant.subscription.status}
                     </span>
@@ -1200,7 +1200,7 @@ const SuperAdminTenantDetailPage = () => {
                 </div>
 
                 <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-100">
-                  <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Pricing</label>
+                  <label className="text-xs font-bold text-neutral-500 ">Pricing</label>
                   <p className="text-2xl font-black text-neutral-900 mt-1">
                     {formatCurrency(tenant.subscription.amount, tenant.subscription.currency)}
                   </p>
@@ -1211,7 +1211,7 @@ const SuperAdminTenantDetailPage = () => {
                 </div>
 
                 <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-100">
-                  <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Features Included</label>
+                  <label className="text-xs font-bold text-neutral-500 ">Features Included</label>
                   <ul className="mt-3 space-y-2">
                     <li className="text-xs font-bold flex items-center gap-2">
                       <CheckCircle2 className="h-3 w-3 text-success" />
@@ -1230,9 +1230,9 @@ const SuperAdminTenantDetailPage = () => {
               </div>
             ) : (
               <div className="py-12 text-center bg-neutral-50 rounded-lg border-2 border-dashed border-neutral-200">
-                <Database className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
+                <Database className="h-12 w-12 text-slate-500 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-neutral-600">No Active Subscription</h3>
-                <p className="text-sm text-neutral-400 mt-1">This company does not have a formal subscription plan assigned.</p>
+                <p className="text-sm text-slate-500 mt-1">This company does not have a formal subscription plan assigned.</p>
               </div>
             )}
           </div>
@@ -1246,19 +1246,19 @@ const SuperAdminTenantDetailPage = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center py-2 border-b border-neutral-50">
                   <span className="text-sm font-bold text-neutral-600">Advanced Reports</span>
-                  {tenant.subscription?.plan.hasAdvancedReports ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Ban className="h-5 w-5 text-neutral-300" />}
+                  {tenant.subscription?.plan.hasAdvancedReports ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Ban className="h-5 w-5 text-slate-500" />}
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-neutral-50">
                   <span className="text-sm font-bold text-neutral-600">White Labeling</span>
-                  {tenant.subscription?.plan.hasWhiteLabel ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Ban className="h-5 w-5 text-neutral-300" />}
+                  {tenant.subscription?.plan.hasWhiteLabel ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Ban className="h-5 w-5 text-slate-500" />}
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-neutral-50">
                   <span className="text-sm font-bold text-neutral-600">Custom Branding</span>
-                  {tenant.subscription?.plan.hasCustomBranding ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Ban className="h-5 w-5 text-neutral-300" />}
+                  {tenant.subscription?.plan.hasCustomBranding ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Ban className="h-5 w-5 text-slate-500" />}
                 </div>
                 <div className="flex justify-between items-center py-2">
                   <span className="text-sm font-bold text-neutral-600">Priority Support</span>
-                  {tenant.subscription?.plan.hasPrioritySupport ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Ban className="h-5 w-5 text-neutral-300" />}
+                  {tenant.subscription?.plan.hasPrioritySupport ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Ban className="h-5 w-5 text-slate-500" />}
                 </div>
               </div>
             </div>
@@ -1311,7 +1311,7 @@ const SuperAdminTenantDetailPage = () => {
                   <p className="text-sm text-neutral-600">Supplier Purchases</p>
                   <p className="text-xl font-semibold text-neutral-900">{tenant.usageMetrics.purchaseCount || 0}</p>
                 </div>
-                <ShoppingCart className="h-10 w-10 text-indigo-500" />
+                <ShoppingCart className="h-10 w-10 text-slate-500" />
               </div>
             </div>
             <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
@@ -1338,7 +1338,7 @@ const SuperAdminTenantDetailPage = () => {
                   <p className="text-sm text-neutral-600">Products</p>
                   <p className="text-xl font-semibold text-neutral-900">{tenant.usageMetrics.productCount}</p>
                 </div>
-                <Package className="h-10 w-10 text-purple-500" />
+                <Package className="h-10 w-10 text-slate-500" />
               </div>
             </div>
             <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
@@ -1364,7 +1364,7 @@ const SuperAdminTenantDetailPage = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-neutral-500">Total Purchases</label>
-                  <p className="text-xl font-bold text-indigo-600 mt-1">{formatCurrency(tenant.usageMetrics.totalPurchases || 0)}</p>
+                  <p className="text-xl font-bold text-slate-700 mt-1">{formatCurrency(tenant.usageMetrics.totalPurchases || 0)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-neutral-500">Total Expenses</label>
@@ -1396,11 +1396,11 @@ const SuperAdminTenantDetailPage = () => {
               {[
                 { label: 'Products & Inventory', icon: <Package className="h-5 w-5" />, path: '/products', color: 'bg-primary-50 text-primary-700' },
                 { label: 'Sales & POS Billing', icon: <TrendingUp className="h-5 w-5" />, path: '/pos', color: 'bg-success-bg text-success-fg' },
-                { label: 'Purchases & Suppliers', icon: <ShoppingCart className="h-5 w-5" />, path: '/purchases', color: 'bg-indigo-50 text-indigo-700' },
+                { label: 'Purchases & Suppliers', icon: <ShoppingCart className="h-5 w-5" />, path: '/purchases', color: 'bg-slate-50 text-slate-700' },
                 { label: 'Expenses Tracking', icon: <Receipt className="h-5 w-5" />, path: '/expenses', color: 'bg-error-bg text-error-fg' },
                 { label: 'Customer Ledger', icon: <CreditCard className="h-5 w-5" />, path: '/ledger', color: 'bg-warning-bg text-warning-fg' },
-                { label: 'Financial Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', color: 'bg-purple-50 text-purple-700' },
-                { label: 'Sales Ledger', icon: <List className="h-5 w-5" />, path: '/sales-ledger', color: 'bg-teal-50 text-teal-700' },
+                { label: 'Financial Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', color: 'bg-slate-50 text-slate-700' },
+                { label: 'Sales Ledger', icon: <List className="h-5 w-5" />, path: '/sales-ledger', color: 'bg-slate-50 text-slate-700' },
                 { label: 'Profit & Loss', icon: <Wallet className="h-5 w-5" />, path: '/reports?tab=profit-loss', color: 'bg-success-bg text-success-fg' },
                 { label: 'Company Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', color: 'bg-neutral-50 text-neutral-700' },
               ].map((report) => (
@@ -1432,7 +1432,7 @@ const SuperAdminTenantDetailPage = () => {
       {activeTab === 'limits' && (
         <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
           <h2 className="text-xl font-semibold text-neutral-900 mb-2 flex items-center gap-2">
-            <Sliders className="h-6 w-6 text-indigo-600" />
+            <Sliders className="h-6 w-6 text-slate-700" />
             Per-Tenant Limits & Rate Limiting
           </h2>
           <p className="text-sm text-neutral-600 mb-4">
@@ -1443,7 +1443,7 @@ const SuperAdminTenantDetailPage = () => {
             <span className="text-sm text-neutral-600">Requests (last 60 min):</span>
             <span className="font-semibold text-neutral-900">{tenantRequestUsage != null ? (tenantRequestUsage.requestCountLast60Min ?? 0) : '—'}</span>
             {tenantRequestUsage?.isHighVolume && (
-              <span className="text-xs font-medium text-warning bg-amber-100 px-2 py-1 rounded">High volume</span>
+              <span className="text-xs font-medium text-warning bg-warning-bg px-2 py-1 rounded">High volume</span>
             )}
             {tenantRequestUsage?.lastActiveAt && (
               <span className="text-xs text-neutral-500">Last active: {new Date(tenantRequestUsage.lastActiveAt).toLocaleString()}</span>
@@ -1499,7 +1499,7 @@ const SuperAdminTenantDetailPage = () => {
                 value={limitsData.maxInvoicesPerMonth}
                 onChange={(e) => setLimitsData({ ...limitsData, maxInvoicesPerMonth: parseInt(e.target.value, 10) || 1000 })}
               />
-              <LoadingButton type="submit" loading={limitsSaving} className="bg-indigo-600 hover:bg-indigo-700">
+              <LoadingButton type="submit" loading={limitsSaving} className="bg-primary-600 hover:bg-primary-700">
                 Save Limits
               </LoadingButton>
             </form>
@@ -1556,7 +1556,7 @@ const SuperAdminTenantDetailPage = () => {
             <LoadingButton
               type="submit"
               loading={loadingAction}
-              className="w-full bg-primary-600 text-white py-3 rounded-lg font-bold hover:bg-primary-700 shadow-md transition-all"
+              className="w-full bg-primary-600 text-white py-3 rounded-lg font-bold hover:bg-primary-700 shadow-sm transition-all"
             >
               Add User
             </LoadingButton>
@@ -1595,7 +1595,7 @@ const SuperAdminTenantDetailPage = () => {
             <LoadingButton
               type="submit"
               loading={loadingAction}
-              className="w-full bg-primary-600 text-white py-3 rounded-lg font-bold hover:bg-primary-700 shadow-md transition-all"
+              className="w-full bg-primary-600 text-white py-3 rounded-lg font-bold hover:bg-primary-700 shadow-sm transition-all"
             >
               Save Changes
             </LoadingButton>
@@ -1624,7 +1624,7 @@ const SuperAdminTenantDetailPage = () => {
             <LoadingButton
               type="submit"
               loading={loadingAction}
-              className="w-full bg-success text-white py-3 rounded-lg font-bold hover:bg-emerald-700 shadow-md transition-all"
+              className="w-full bg-success text-white py-3 rounded-lg font-bold hover:bg-emerald-700 shadow-sm transition-all"
             >
               Update Password
             </LoadingButton>
@@ -1723,7 +1723,7 @@ const SuperAdminTenantDetailPage = () => {
         size="md"
       >
         <div className="space-y-4">
-          <div className="bg-white border border-neutral-200 border-l-4 border-l-warning p-4 rounded-sm flex items-start space-x-3">
+          <div className="bg-white border border-neutral-200 p-4 rounded-sm flex items-start space-x-3">
             <Ban className="h-6 w-6 text-yellow-600 mt-0.5" />
             <div>
               <h4 className="text-sm font-bold text-yellow-800">Review Required</h4>
@@ -1855,7 +1855,7 @@ const SuperAdminTenantDetailPage = () => {
             </ul>
           </div>
 
-          <div className="space-y-3 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm p-3">
+          <div className="space-y-3 bg-white border border-neutral-200 rounded-sm p-3">
             <label className="flex items-start gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -1866,8 +1866,8 @@ const SuperAdminTenantDetailPage = () => {
               <span className="text-sm font-medium text-red-800">I understand this will permanently delete all transactional data for this company.</span>
             </label>
             <div>
-              <label className="block text-xs font-bold text-error-fg uppercase tracking-wider mb-1">Type CLEAR to confirm</label>
-              <input
+              <label className="block text-xs font-bold text-error-fg mb-1">Type CLEAR to confirm</label>
+              <input aria-label="CLEAR"
                 type="text"
                 className="w-full px-4 py-3 border-2 border-red-300 rounded-lg bg-white text-red-800 font-bold focus:ring-2 focus:ring-red-400 outline-none transition-all"
                 placeholder="CLEAR"
@@ -1892,7 +1892,7 @@ const SuperAdminTenantDetailPage = () => {
               onClick={handleClearData}
               loading={loadingAction}
               disabled={clearDataConfirmation.trim().toUpperCase() !== 'CLEAR' || !clearDataCheckbox}
-              className="flex-2 px-8 py-3 bg-error text-white font-bold rounded-lg hover:bg-red-700 shadow-lg border-2 border-red-700 disabled:opacity-50 disabled:grayscale transition-all"
+              className="flex-2 px-8 py-3 bg-error text-white font-bold rounded-lg hover:bg-red-700 shadow-sm border-2 border-red-700 disabled:opacity-50 disabled:grayscale transition-all"
             >
               Clear All Data
             </LoadingButton>
@@ -1926,7 +1926,7 @@ const SuperAdminTenantDetailPage = () => {
             ))}
           </Select>
           <div>
-            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">Data to copy</label>
+            <label className="block text-xs font-bold text-neutral-500 mb-2">Data to copy</label>
             <div className="space-y-2">
               {['Products', 'Settings'].map(key => (
                 <label key={key} className="flex items-center gap-2 cursor-pointer">
@@ -1973,7 +1973,7 @@ const SuperAdminTenantDetailPage = () => {
               onClick={handleDuplicateData}
               loading={loadingAction}
               disabled={!duplicateSourceTenantId || (!duplicateDataTypes.Products && !duplicateDataTypes.Settings)}
-              className="flex-2 px-8 py-3 bg-primary-600 text-white font-bold rounded-lg hover:bg-primary-700 shadow-lg disabled:opacity-50 transition-all"
+              className="flex-2 px-8 py-3 bg-primary-600 text-white font-bold rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 transition-all"
             >
               Duplicate
             </LoadingButton>
@@ -1990,11 +1990,11 @@ const SuperAdminTenantDetailPage = () => {
         closeOnOverlayClick={false}
       >
         <form onSubmit={handleUpdateSubscription} className="space-y-5">
-          <div className="bg-indigo-600 p-4 rounded-lg text-white flex items-start space-x-3 mb-2">
+          <div className="bg-primary-600 p-4 rounded-lg text-white flex items-start space-x-3 mb-2">
             <Shield className="h-8 w-8 opacity-80" />
             <div>
               <h4 className="font-bold text-lg leading-tight text-white mb-1">Super Admin Authority</h4>
-              <p className="text-xs text-indigo-100 leading-snug">
+              <p className="text-xs text-white leading-snug">
                 You are manually overriding the subscription for <strong>{tenant.name}</strong>. This bypasses the payment gateway.
               </p>
             </div>
@@ -2016,14 +2016,14 @@ const SuperAdminTenantDetailPage = () => {
             </Select>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Billing Frequency</label>
+              <label className="text-xs font-bold text-neutral-500 ">Billing Frequency</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setSubscriptionFormData({ ...subscriptionFormData, billingCycle: 0 })}
                   className={`py-3 px-4 rounded-lg font-bold border transition-all ${subscriptionFormData.billingCycle === 0
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
+ ? 'bg-primary-600 text-white border-slate-200'
+ : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
                     }`}
                 >
                   Monthly
@@ -2032,8 +2032,8 @@ const SuperAdminTenantDetailPage = () => {
                   type="button"
                   onClick={() => setSubscriptionFormData({ ...subscriptionFormData, billingCycle: 1 })}
                   className={`py-3 px-4 rounded-lg font-bold border transition-all ${subscriptionFormData.billingCycle === 1
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
+ ? 'bg-primary-600 text-white border-slate-200'
+ : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
                     }`}
                 >
                   Yearly
@@ -2053,7 +2053,7 @@ const SuperAdminTenantDetailPage = () => {
             <LoadingButton
               type="submit"
               loading={loadingAction}
-              className="flex-2 px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg transition-all"
+              className="flex-2 px-8 py-3 bg-primary-600 text-white font-bold rounded-lg hover:bg-primary-700 shadow-sm transition-all"
             >
               Apply Plan
             </LoadingButton>
@@ -2356,9 +2356,9 @@ const TenantFeaturesTab = ({ tenantId }) => {
   return (
     <div className="space-y-6">
       {/* Warning banner */}
-      <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4 flex items-start gap-3">
+      <div className="bg-white border border-neutral-200 rounded-sm p-4 flex items-start gap-3">
         <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
-        <div className="text-sm text-amber-800">
+        <div className="text-sm text-warning-fg">
           <strong>Super Admin Only:</strong> These toggles are Super Admin only. Company admin cannot override these settings.
         </div>
       </div>
@@ -2397,7 +2397,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
             type="button"
             onClick={handleSaveVatBasis}
             loading={vatBasisSaving}
-            className="w-full md:w-auto px-6 py-2.5 bg-warning text-white rounded-lg hover:bg-amber-700 font-medium min-h-[44px]"
+            className="w-full md:w-auto px-6 py-2.5 bg-warning-fg text-white rounded-lg hover:bg-warning-fg font-medium min-h-[44px]"
           >
             Apply VAT basis
           </LoadingButton>
@@ -2407,7 +2407,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
       {/* Feature toggles */}
       <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
         <h2 className="text-xl font-semibold text-neutral-900 mb-2 flex items-center gap-2">
-          <Sliders className="h-6 w-6 text-indigo-600" />
+          <Sliders className="h-6 w-6 text-slate-700" />
           Feature Management
         </h2>
         <p className="text-sm text-neutral-600 mb-6">Enable or disable specific modules for this tenant.</p>
@@ -2420,30 +2420,30 @@ const TenantFeaturesTab = ({ tenantId }) => {
               <div
                 key={feat.key}
                 className={`flex items-start p-4 rounded-lg border transition-all ${isEnabled
-                  ? 'border-indigo-200 bg-indigo-50/50'
-                  : 'border-neutral-200 hover:border-neutral-300 bg-white'
+ ? 'border-slate-200 bg-slate-50/50'
+ : 'border-neutral-200 hover:border-neutral-300 bg-white'
                   }`}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    {Icon && <Icon className={`h-4 w-4 flex-shrink-0 ${isEnabled ? 'text-indigo-600' : 'text-neutral-400'}`} />}
-                    <h4 className={`font-semibold text-sm ${isEnabled ? 'text-indigo-900' : 'text-neutral-700'}`}>
+                    {Icon && <Icon className={`h-4 w-4 flex-shrink-0 ${isEnabled ? 'text-slate-700' : 'text-slate-500'}`} />}
+                    <h4 className={`font-semibold text-sm ${isEnabled ? 'text-slate-700' : 'text-neutral-700'}`}>
                       {feat.label}
                     </h4>
-                    {isEnabled && <CheckCircle2 className="w-4 h-4 text-indigo-600 flex-shrink-0" />}
+                    {isEnabled && <CheckCircle2 className="w-4 h-4 text-slate-700 flex-shrink-0" />}
                   </div>
                   <p className="text-xs text-neutral-500 leading-relaxed">{feat.description}</p>
                 </div>
                 <button
                   onClick={() => handleToggleFeature(feat.key, feat.label)}
                   disabled={featuresSaving}
-                  className={`relative ml-3 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEnabled ? 'bg-indigo-600 focus:ring-indigo-500' : 'bg-neutral-200 focus:ring-neutral-500'
-                    } ${featuresSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`relative ml-3 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEnabled ? 'bg-primary-600 focus:ring-slate-200' : 'bg-neutral-200 focus:ring-neutral-500'
+ } ${featuresSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <span
                     aria-hidden="true"
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isEnabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+ }`}
                   />
                 </button>
               </div>
@@ -2456,7 +2456,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
           <LoadingButton
             onClick={handleSaveFeatures}
             loading={featuresSaving}
-            className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-sm"
+            className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium shadow-sm"
           >
             Save Changes
           </LoadingButton>

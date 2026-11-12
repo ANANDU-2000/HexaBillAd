@@ -91,13 +91,13 @@ export default function AgreementsPage() {
           <Plus className="w-4 h-4" /> New
         </Link>
       </div>
-      {error && <div className="shrink-0 text-sm text-neutral-800 mb-2 bg-white border border-neutral-200 border-l-4 border-l-error rounded px-3 py-1.5">{error}</div>}
+      {error && <div className="shrink-0 text-sm text-neutral-800 mb-2 bg-white border border-neutral-200 rounded px-3 py-1.5">{error}</div>}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white border border-neutral-200 rounded-lg">
       {loading ? (
         <p className="text-sm text-text-secondary p-4">Loading…</p>
       ) : rows.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <ScrollText className="w-9 h-9 mx-auto mb-2 text-slate-400" />
+          <ScrollText className="w-9 h-9 mx-auto mb-2 text-slate-500" />
           <p className="text-text-primary font-medium mb-1">No agreements yet</p>
           <p className="text-sm text-text-secondary mb-3">Create your first agreement — fill Second Party details, then print PDF.</p>
           <Link

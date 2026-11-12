@@ -18,7 +18,7 @@ const LoadingOverlay = ({ message = 'Loading...', show = true }) => {
 
   return (
     <div role="status" aria-live="polite" className="fixed inset-0 z-modal flex items-center justify-center bg-neutral-900/50">
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-surface-border bg-white p-6 shadow-lg">
+      <div className="flex flex-col items-center gap-3 rounded-lg border border-surface-border bg-white p-6 shadow-sm">
         <LoadingSpinner size="xl" className="text-primary-600" />
         <p className="text-sm font-medium text-neutral-700">{message}</p>
       </div>

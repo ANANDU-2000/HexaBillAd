@@ -15,7 +15,7 @@ const STATUS_BAR = {
   arrived: 'bg-info',
   delivered: 'bg-success',
   failed: 'bg-error',
-  skipped: 'bg-warning',
+  skipped: 'bg-warning-fg',
 }
 
 const OVERDUE_TEXT = { warning: 'text-warning-fg', error: 'text-error-fg', none: 'text-neutral-500' }
@@ -47,8 +47,8 @@ export default function StopCard({ stop, selected, onSelect }) {
       aria-pressed={selected}
       onClick={() => onSelect(stop.customerId)}
       className={`flex min-h-[64px] w-full items-stretch gap-3 border-b border-neutral-200 px-3 py-2.5 text-left transition-colors ${
-        selected ? 'bg-primary-50' : 'bg-white hover:bg-neutral-50'
-      }`}
+ selected ? 'bg-primary-50' : 'bg-white hover:bg-neutral-50'
+ }`}
     >
       <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center text-sm font-semibold text-white ${STATUS_BAR[stop.mapStatus] || STATUS_BAR.not_reached}`} aria-hidden>
         {stop.position}

@@ -7,8 +7,8 @@ const ViewToggle = ({ view, onChange }) => {
         type="button"
         onClick={() => onChange('grid')}
         className={`
-          inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-l-lg
-          ${
+ inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-l-lg
+ ${
             view === 'grid'
               ? 'bg-blue-600 text-white'
               : 'text-gray-700 hover:bg-gray-50'
@@ -22,8 +22,8 @@ const ViewToggle = ({ view, onChange }) => {
         type="button"
         onClick={() => onChange('list')}
         className={`
-          inline-flex items-center px-3 py-2 border-l border-gray-300 text-sm font-medium rounded-r-lg
-          ${
+ inline-flex items-center px-3 py-2 border-l border-gray-300 text-sm font-medium rounded-r-lg
+ ${
             view === 'list'
               ? 'bg-blue-600 text-white'
               : 'text-gray-700 hover:bg-gray-50'

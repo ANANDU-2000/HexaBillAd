@@ -227,7 +227,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
           saleId: invoiceId || null,
           customerId: customerId || null,
           amount: parseFloat(formData.amount),
-          mode: formData.mode.toUpperCase(), // Ensure uppercase: CASH, CHEQUE, ONLINE, CREDIT
+          mode: formData.mode.toUpperCase(), // Ensure : CASH, CHEQUE, ONLINE, CREDIT
           reference: formData.reference || null,
           paymentDate: formData.paymentDate ? new Date(formData.paymentDate).toISOString() : new Date().toISOString()
         }
@@ -367,7 +367,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
   return (
   <>
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] max-h-[90dvh] overflow-y-auto overscroll-contain" role="dialog" aria-modal="true">
+      <div className="bg-white rounded-lg shadow-sm max-w-md w-full max-h-[90vh] max-h-[90dvh] overflow-y-auto overscroll-contain" role="dialog" aria-modal="true">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-2">
@@ -378,7 +378,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
           </div>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-neutral-600 transition-colors min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center"
+            className="text-slate-500 hover:text-neutral-600 transition-colors min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center"
             disabled={loading}
             aria-label="Close"
           >
@@ -388,9 +388,9 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
 
         {paymentRecoveryError && <p role="alert" className="p-4 text-sm text-error-fg">{paymentRecoveryError}</p>}
         {unconfirmedPayment && (
-          <div role="status" className="p-4 bg-warning-bg border-b border-warning-border text-sm text-amber-950">
+          <div role="status" className="p-4 bg-warning-bg border-b border-warning-border text-sm text-warning-fg">
             <p>Previous payment of {money(unconfirmedPayment.request.amount)} is unconfirmed. Retry it to confirm the result before recording another payment.</p>
-            <button type="button" disabled={loading} onClick={() => doSubmitPayment(unconfirmedPayment)} className="mt-2 min-h-[44px] px-3 border border-amber-400 rounded-md font-medium">Retry previous payment</button>
+            <button type="button" disabled={loading} onClick={() => doSubmitPayment(unconfirmedPayment)} className="mt-2 min-h-[44px] px-3 border border-warning-border rounded-md font-medium">Retry previous payment</button>
           </div>
         )}
         {/* Invoice Info */}
@@ -448,11 +448,11 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
               </p>
             )}
             {settlementAdjustmentsEnabled && settlementShortfall > 0 && (
-              <div className="mt-3 p-3 border border-neutral-200 border-l-4 border-l-warning bg-white rounded-sm space-y-2">
-                <p className="text-sm text-amber-900">
+              <div className="mt-3 p-3 border border-neutral-200 bg-white rounded-sm space-y-2">
+                <p className="text-sm text-warning-fg">
                   Cash is {money(settlementShortfall)} short of closing this invoice. You can record an authorized settlement adjustment (not counted as cash received).
                 </p>
-                <label className="flex items-start gap-2 text-sm text-amber-900 cursor-pointer">
+                <label className="flex items-start gap-2 text-sm text-warning-fg cursor-pointer">
                   <input
                     type="checkbox"
                     className="mt-1"
@@ -464,7 +464,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                 </label>
                 {applySettlementAdjustment && (
                   <textarea
-                    className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm min-h-[72px]"
+                    className="w-full px-3 py-2 border border-warning-border rounded-lg text-sm min-h-[72px]"
                     placeholder="Reason for adjustment (required)"
                     value={settlementAdjustmentReason}
                     onChange={(e) => setSettlementAdjustmentReason(e.target.value)}
@@ -553,7 +553,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
             ) : (
               // Confirmation step buttons
               <div className="w-full space-y-4">
-                <div className="p-4 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm">
+                <div className="p-4 bg-white border border-neutral-200 rounded-sm">
                   <div className="flex items-center gap-2 text-yellow-800 mb-2">
                     <AlertTriangle className="w-5 h-5" />
                     <span className="font-semibold">Confirm Payment</span>
@@ -567,7 +567,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                   </p>
                   <p className="text-sm text-yellow-700 mt-2">
                     Payment Mode: <strong>{formData.mode}</strong>
-                    {formData.mode === 'CHEQUE' && <span className="text-orange-600"> (Pending Clearance)</span>}
+                    {formData.mode === 'CHEQUE' && <span className="text-slate-700"> (Pending Clearance)</span>}
                   </p>
                   {invoice && formData.amount > (Number(invoice.outstandingAmount) || 0) + 0.01 && (
                     <p className="text-sm text-warning-fg mt-2 font-medium">

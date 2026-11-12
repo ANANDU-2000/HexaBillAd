@@ -364,7 +364,7 @@ const DailyClosePage = () => {
       <div className="space-y-3">
         <label className="block text-sm">
           <span className="font-medium text-neutral-700">Counted cash ({cashUnit})</span>
-          <input type="number" step="0.01" inputMode="decimal" className="mt-1 w-full min-h-[48px] border rounded-lg px-3 text-base" value={countedCash} onChange={(e) => setCountedCash(e.target.value)} placeholder="Physical count" />
+          <input aria-label="Physical count" type="number" step="0.01" inputMode="decimal" className="mt-1 w-full min-h-[48px] border rounded-lg px-3 text-base" value={countedCash} onChange={(e) => setCountedCash(e.target.value)} placeholder="Physical count" />
         </label>
         {variance != null && Math.abs(variance) > 0.01 && (
           <p className={`text-sm font-medium ${variance < 0 ? 'text-error-fg' : 'text-warning-fg'}`}>
@@ -382,23 +382,23 @@ const DailyClosePage = () => {
       </div>
 
       {closedForDate && (
-        <div className="border border-neutral-200 border-l-4 border-l-warning bg-white rounded-sm p-4 space-y-2">
-          <p className="text-sm text-amber-900 font-medium">This business day is closed (v{closedForDate.version}). Reopen to record a corrected close.</p>
+        <div className="border border-neutral-200 bg-white rounded-sm p-4 space-y-2">
+          <p className="text-sm text-warning-fg font-medium">This business day is closed (v{closedForDate.version}). Reopen to record a corrected close.</p>
           {canManageClose ? (
             <>
-              <input
+              <input aria-label="Reopen reason (required)"
                 type="text"
-                className="w-full min-h-[44px] border border-amber-300 rounded-lg px-3 text-sm"
+                className="w-full min-h-[44px] border border-warning-border rounded-lg px-3 text-sm"
                 placeholder="Reopen reason (required)"
                 value={reopenReason}
                 onChange={(e) => setReopenReason(e.target.value)}
               />
-              <LoadingButton type="button" loading={saving} onClick={handleReopen} className="min-h-[44px] px-4 bg-amber-700 text-white rounded-lg">
+              <LoadingButton type="button" loading={saving} onClick={handleReopen} className="min-h-[44px] px-4 bg-warning-fg text-white rounded-lg">
                 Reopen day
               </LoadingButton>
             </>
           ) : (
-            <p className="text-xs text-amber-800">Ask an owner or admin to reopen this day.</p>
+            <p className="text-xs text-warning-fg">Ask an owner or admin to reopen this day.</p>
           )}
         </div>
       )}
