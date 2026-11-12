@@ -11,7 +11,7 @@ Repeat with `npx playwright test e2e/ui-inventory.spec.js --project=m390` (then 
 | horizontal overflow | **0 / 42 pages** |
 | text below 12 px | **0 / 42** |
 | controls below 44 × 44 | **24 pages**, 1–4 controls each |
-| stuck spinner after load | `/payments`, `/settings` |
+| stuck spinner after load | none — corrected, see the note below |
 | error card on screen | `/billing-history`, `/pending-bills`, `/documents`, `/vat-return` |
 | page height > 2 000 px at 390 | `/settings` 4 727 · `/help` 3 506 · `/agreements/new` 2 821 · `/quotations/new` 2 716 · `/worksheet` 1 967 |
 
@@ -78,7 +78,9 @@ inside a 44 px row no longer counts as a small target.
 
 1. The layout basics hold: nothing scrolls sideways, nothing is below the 12 px floor.
 2. The remaining phone work is **density and hierarchy**, not breakage — except the five 500s above.
-3. Two pages keep a spinner visible after load (`/payments`, `/settings`) — real, reproducible in this sweep.
+3. The "stuck spinner" on `/payments` and `/settings` was a **false positive in this sweep**: the detector matched
+   `[role="status"]`, which is what the toast uses. The sweep now waits for spinners to settle and ignores anything
+   inside the toast host. Re-measured: no page keeps a spinner after load.
 4. Every page has at least one page-level scroll; the tall ones need in-page navigation.
 
 Next sweep adds `t768` and `d1440`, and the loop in `docs/ui-loop-plan.md` takes one page per commit

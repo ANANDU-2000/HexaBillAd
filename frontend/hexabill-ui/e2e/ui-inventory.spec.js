@@ -37,6 +37,12 @@ test('ui inventory', async ({ page }, info) => {
     page.on('response', onResp)
     await page.goto(`${feOrigin(SLUG)}${route}`, { waitUntil: 'domcontentloaded' }).catch(() => {})
     await page.waitForTimeout(1800)
+    // Let spinners settle: a loader captured mid-flight is not a defect.
+    for (let i = 0; i < 6; i++) {
+      const spinning = await page.locator('.animate-spin').count().catch(() => 0)
+      if (!spinning) break
+      await page.waitForTimeout(1000)
+    }
     const name = route.replace(/\//g, '_').slice(1)
     await page.screenshot({ path: `${OUT}/${vp}/${name}.png`, fullPage: true }).catch(() => {})
 
@@ -74,7 +80,8 @@ test('ui inventory', async ({ page }, info) => {
         return { cls: String(el.className).slice(0, 60), h: Math.round(r.height), top: Math.round(r.top) }
       })
 
-      const loader = document.querySelector('.animate-spin, [role="status"], [aria-busy="true"]')
+      const loaderEl = [...document.querySelectorAll('.animate-spin, [aria-busy="true"]')].find((el) => !el.closest('.hb-toaster'))
+      const loader = !!loaderEl
       const errorCard = /could not be loaded|failed to load|went wrong/i.test(document.body.innerText)
       const empty = /no .* (yet|found)|nothing (here|to show)|empty/i.test(document.body.innerText)
       return {
