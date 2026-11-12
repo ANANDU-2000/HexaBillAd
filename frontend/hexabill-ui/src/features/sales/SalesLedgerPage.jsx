@@ -1343,9 +1343,6 @@ const SalesLedgerPage = () => {
                   <th className="px-2 2xl:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Status
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
-                    Balance
-                  </th>
                   <th className={`px-2 2xl:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap min-w-[7rem] ${stickyActionTh}`}>
                     Actions
                   </th>
@@ -1520,16 +1517,6 @@ const SalesLedgerPage = () => {
                             <span className="text-xs text-slate-500">-</span>
                           )}
                         </td>
-                        <td
-                          className={`px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold ${customerBalance < 0
- ? 'text-success'
- : customerBalance > 0
-                              ? 'text-error'
-                              : 'text-neutral-900'
-                            }`}
-                        >
-                          {formatBalance(customerBalance)}
-                        </td>
                         <td className={
                           stickyActionCell(
                             entry.type === 'Payment'
@@ -1673,7 +1660,7 @@ const SalesLedgerPage = () => {
                   </tr>
                 )}
               </tbody>
-              <tfoot className="bg-neutral-200 sticky bottom-0 z-40 border-t-2 border-neutral-400">
+              <tfoot className="hidden lg:table-footer-group bg-neutral-200 sticky bottom-0 z-40 border-t-2 border-neutral-400">
                 <tr className="bg-primary-50">
                   <td
                     colSpan="5"
@@ -1701,11 +1688,6 @@ const SalesLedgerPage = () => {
                   </td>
                   <td className="px-2 2xl:px-3 py-2 text-center text-xs lg:text-sm font-bold text-neutral-900 border-r border-neutral-300">
                     -
-                  </td>
-                  <td className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-sm font-bold border-r border-neutral-300">
-                    <span className={filteredSummary.pendingBalance > 0 ? 'text-error-fg' : filteredSummary.pendingBalance < 0 ? 'text-success-fg' : 'text-neutral-900'}>
-                      {formatBalance(filteredSummary.pendingBalance)}
-                    </span>
                   </td>
                   <td className={stickyActionCell('bg-primary-50')} />
                 </tr>
