@@ -1208,7 +1208,7 @@ const BranchDetailPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Target Route (optional)</label>
-              <select aria-label="No route assignment"
+              <select aria-label="Target Route (optional)"
                 value={transferTargetRouteId}
                 onChange={(e) => setTransferTargetRouteId(e.target.value)}
                 disabled={!transferTargetBranchId}

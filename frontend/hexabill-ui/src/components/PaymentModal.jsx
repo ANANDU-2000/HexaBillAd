@@ -481,7 +481,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
             <label className="block text-sm font-medium text-neutral-700 mb-2">
               Payment Mode *
             </label>
-            <select aria-label="Cash"
+            <select aria-label="Payment Mode"
               value={formData.mode}
               onChange={(e) => setFormData(prev => ({ ...prev, mode: e.target.value }))}
               className="w-full px-4 py-2.5 min-h-[44px] border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"

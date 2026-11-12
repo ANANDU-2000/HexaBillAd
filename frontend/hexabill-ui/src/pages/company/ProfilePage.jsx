@@ -190,7 +190,7 @@ const ProfilePage = () => {
         </div>
 
         <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden mb-6">
-          <div className="bg-white border border-neutral-200 text-white px-5 py-6 sm:px-6 sm:py-7">
+          <div className="bg-primary-700 text-white px-5 py-6 sm:px-6 sm:py-7">
             <div className="flex items-center gap-4">
               <div className="relative flex-shrink-0">
                 <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border-2 border-white/40">
@@ -219,8 +219,8 @@ const ProfilePage = () => {
                 </button>
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg sm:text-xl font-bold truncate">{profile?.name || currentUser?.name}</h2>
-                <p className="text-primary-100 text-sm truncate mt-0.5">{profile?.email || currentUser?.email}</p>
+                <h2 title={profile?.name || currentUser?.name} className="text-lg sm:text-xl font-bold text-white truncate">{profile?.name || currentUser?.name}</h2>
+                <p className="text-white/90 text-sm truncate mt-0.5">{profile?.email || currentUser?.email}</p>
                 <span className={`inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-full text-xs font-medium ${roleChipClass}`}>
                   <Shield className="h-3.5 w-3.5" />
                   {role || 'User'}
@@ -252,6 +252,7 @@ const ProfilePage = () => {
               </label>
               <input
                 type="text"
+                aria-label="Full name"
                 {...register('name', { required: 'Name is required' })}
                 className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
@@ -264,6 +265,7 @@ const ProfilePage = () => {
               </label>
               <input
                 type="text"
+                aria-label="Phone"
                 {...register('phone')}
                 className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
@@ -274,6 +276,7 @@ const ProfilePage = () => {
                 Language / اللغة
               </label>
               <select
+                aria-label="Language"
                 {...register('languagePreference')}
                 className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >

@@ -29,6 +29,7 @@ const FilterPanel = ({
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-500" />
             <input
               type="text"
+              aria-label={searchPlaceholder || 'Search'}
               placeholder={searchPlaceholder}
               value={searchTerm}
               onChange={handleSearchChange}
@@ -41,6 +42,7 @@ const FilterPanel = ({
         {filters.map((filter) => (
           <div key={filter.key} className="min-w-[150px]">
             <select
+              aria-label={filter.label}
               value={activeFilters[filter.key] || ''}
               onChange={(e) => onFilterChange({ ...activeFilters, [filter.key]: e.target.value })}
               className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

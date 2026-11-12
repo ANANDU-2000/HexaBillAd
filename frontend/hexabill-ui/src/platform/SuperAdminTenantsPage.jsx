@@ -718,7 +718,7 @@ const SuperAdminTenantsPage = () => {
           </div>
           <div className="space-y-2 mb-6">
             <label className="block text-sm font-semibold text-neutral-700">Severity</label>
-            <select aria-label="Info"
+            <select aria-label="Severity"
               value={bulkAnnouncementSeverity}
               onChange={(e) => setBulkAnnouncementSeverity(e.target.value)}
               className="w-full border border-neutral-300 rounded-lg px-3 py-2"
@@ -1090,7 +1090,7 @@ const SuperAdminTenantsPage = () => {
             <LoadingButton
               type="submit"
               loading={createLoading}
-              className="px-8 py-3 from-primary-600 text-white font-bold rounded-lg hover:shadow-sm hover:from-primary-700 hover:transition-all transform hover:-translate-y-0.5"
+              className="px-8 py-3 bg-primary-600 text-white font-bold rounded-lg transition-colors hover:bg-primary-700"
             >
               {sharedLegalSource ? 'Create owner workspace' : 'Create company'}
             </LoadingButton>

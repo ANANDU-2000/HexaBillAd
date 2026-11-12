@@ -1404,7 +1404,7 @@ const RouteDetailPage = () => {
                       <td className="py-2 px-2 print:py-1 print:px-1 text-right">{c.todayInvoiceAmount != null ? formatCurrency(c.todayInvoiceAmount) : '—'}</td>
                       <td className="py-2 px-2 print:py-1 print:px-1 text-center print:hidden">
                         <div className="flex flex-col items-center gap-1">
-                          <select aria-label="Not Visited"
+                          <select
                             value={currentStatus}
                             onChange={(e) => {
                               const newStatus = e.target.value

@@ -27,6 +27,7 @@ import { LoadingButton } from '../../components/Loading'
 import Modal from '../../components/Modal'
 import { LoadingCard } from '../../components/Loading'
 import { TabNavigation } from '../../components/ui/index'
+import PageSectionJump from '../../components/ui/PageSectionJump'
 import { adminAPI, settingsAPI } from '../../services/index'
 import { getSetting, getSettingBool } from '../../utils/settingsKeys'
 import api from '../../services/api'
@@ -971,6 +972,7 @@ const SettingsPage = () => {
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow-sm border border-neutral-200">
         <TabNavigation tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+        <div className="mt-3"><PageSectionJump key={activeTab} /></div>
       </div>
 
       <form id="settings-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -1483,7 +1485,7 @@ const SettingsPage = () => {
               </div>
               <div className="max-w-md">
                 <label className="block text-sm font-medium text-neutral-700 mb-2">Default print format</label>
-                <select aria-label="A4 Invoice"
+                <select aria-label="Default print format"
                   value={defaultPrintFormat}
                   onChange={(e) => {
                     const v = e.target.value

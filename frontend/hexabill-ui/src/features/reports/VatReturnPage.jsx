@@ -683,6 +683,7 @@ const VatReturnPage = () => {
             )}
           </div>
           <select
+            aria-label="Year"
             value={year}
             onChange={(e) => setYear(parseInt(e.target.value, 10))}
             className="border border-neutral-300 rounded-md px-3 py-2 text-sm"

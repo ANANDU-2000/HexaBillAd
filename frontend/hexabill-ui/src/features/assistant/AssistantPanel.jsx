@@ -296,7 +296,7 @@ function PaymentActionCard({ fields = {}, language = 'en' }) {
           </div>
           <div>
             <label className="block font-medium text-neutral-700 mb-0.5">Payment Mode</label>
-            <select aria-label="CASH" className={inputClass} value={mode} onChange={(e) => setMode(e.target.value)}>
+            <select aria-label="Payment Mode" className={inputClass} value={mode} onChange={(e) => setMode(e.target.value)}>
               <option value="CASH">CASH</option>
               <option value="ONLINE">ONLINE / BANK</option>
               <option value="CHEQUE">CHEQUE</option>
@@ -765,7 +765,7 @@ function CustomerActionCard({ fields = {}, language = 'en' }) {
           </div>
           <div>
             <label className="block font-medium text-neutral-700 mb-0.5">Type</label>
-            <select aria-label="Credit"
+            <select aria-label="Type"
               className={inputClass}
               value={form.customerType}
               onChange={(e) => setForm({ ...form, customerType: e.target.value })}
@@ -1143,7 +1143,7 @@ export default function AssistantPanel({ open, onClose }) {
       {/* 1. Header */}
       <header className="flex items-center justify-between gap-2 border-b border-neutral-200 bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl from-primary-600 text-white shadow-sm">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white shadow-sm">
             <Sparkles className="h-5 w-5" />
           </div>
           <div className="min-w-0">

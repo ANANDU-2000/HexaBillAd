@@ -184,7 +184,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-primary-700 mb-1">Mode</label>
-                    <select aria-label="Cash" value={paymentForm.mode} onChange={e => setPaymentForm({ ...paymentForm, mode: e.target.value })} className="w-full border rounded px-3 py-2">
+                    <select aria-label="Mode" value={paymentForm.mode} onChange={e => setPaymentForm({ ...paymentForm, mode: e.target.value })} className="w-full border rounded px-3 py-2">
                       <option value="Cash">Cash</option>
                       <option value="Bank">Bank</option>
                       <option value="Cheque">Cheque</option>

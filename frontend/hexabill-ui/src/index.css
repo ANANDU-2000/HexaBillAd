@@ -235,7 +235,7 @@
   }
 
   .table th {
-    @apply bg-neutral-50 px-4 py-2.5 text-left text-xs font-semibold text-text-secondary uppercase tracking-wide border-b border-surface-border;
+    @apply bg-neutral-50 px-4 py-2.5 text-left text-xs font-semibold text-text-secondary border-b border-surface-border;
   }
 
   .table td {

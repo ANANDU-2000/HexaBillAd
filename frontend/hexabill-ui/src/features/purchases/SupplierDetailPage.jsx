@@ -504,7 +504,7 @@ const SupplierDetailPage = () => {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">Mode</label>
-                      <select aria-label="Cash" value={paymentForm.mode} onChange={e => setPaymentForm({ ...paymentForm, mode: e.target.value })} className={fieldClass}>
+                      <select aria-label="Mode" value={paymentForm.mode} onChange={e => setPaymentForm({ ...paymentForm, mode: e.target.value })} className={fieldClass}>
                         <option value="Cash">Cash</option>
                         <option value="Bank">Bank</option>
                         <option value="Cheque">Cheque</option>
@@ -797,7 +797,7 @@ const SupplierDetailPage = () => {
           </div>
           <div>
             <label className="block text-xs font-medium text-neutral-700 mb-1">Mode</label>
-            <select aria-label="Cash" value={editPaymentForm.mode} onChange={e => setEditPaymentForm(f => ({ ...f, mode: e.target.value }))} className={fieldClass}>
+            <select aria-label="Mode" value={editPaymentForm.mode} onChange={e => setEditPaymentForm(f => ({ ...f, mode: e.target.value }))} className={fieldClass}>
               <option value="Cash">Cash</option>
               <option value="Bank">Bank</option>
               <option value="Cheque">Cheque</option>

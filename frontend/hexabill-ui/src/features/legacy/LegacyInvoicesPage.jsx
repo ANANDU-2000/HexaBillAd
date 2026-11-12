@@ -176,6 +176,7 @@ const LegacyInvoicesPage = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by invoice number (e.g. 6996, 2158), customer name, or notes..."
+            aria-label="Search legacy invoices"
             className="w-full pl-9 pr-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>

@@ -3562,6 +3562,7 @@ const CustomerLedgerPage = () => {
                     Route {addModalBranchId && <span className="text-red-500">*</span>}
                   </label>
                   <select
+                    aria-label="Route"
                     className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 disabled:cursor-not-allowed ${customerErrors.routeId ? 'border-red-500' : 'border-neutral-300'}`}
                     {...customerRegister('routeId', {
                       required: addModalBranchId ? 'Route is required when branch is selected' : false

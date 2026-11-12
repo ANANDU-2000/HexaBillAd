@@ -2596,7 +2596,7 @@ const ReportsPage = () => {
                     </div>
                   </div>
 
-                  <div className="from-green-50 to-primary-50 rounded-lg p-6 border-2 border-green-300">
+                  <div className="bg-white rounded-lg p-6 border-2 border-success-border">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-neutral-600">Net Profit / Loss</p>
@@ -3349,7 +3349,7 @@ const ReportsPage = () => {
           {activeTab === 'credit-notes' && (
             <div className="space-y-6">
               <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
-                <div className="to-primary-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
+                <div className="bg-white px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <h3 className="text-lg font-semibold text-neutral-900">Credit Note Report</h3>
                     <p className="text-sm text-neutral-600 mt-1">

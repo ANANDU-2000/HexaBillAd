@@ -126,7 +126,7 @@ const PageAccessControl = ({ selectedPageAccess, onToggle, onSelectAll, onClearA
       </h3>
       <div className="flex space-x-2">
         <button type="button" onClick={onSelectAll} className="text-xs font-medium text-slate-700 hover:text-slate-700">All</button>
-        <span className="text-white">|</span>
+        <span className="text-slate-400" aria-hidden>|</span>
         <button type="button" onClick={onClearAll} className="text-xs font-medium text-slate-700 hover:text-slate-700">None</button>
       </div>
     </div>

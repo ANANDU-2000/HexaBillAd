@@ -235,7 +235,7 @@ export default function ReturnCreatePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700">Reason</label>
-            <select aria-label="— Select —"
+            <select aria-label="Reason"
               value={reasonCategoryId ?? ''}
               onChange={e => {
                 const id = e.target.value ? Number(e.target.value) : null
