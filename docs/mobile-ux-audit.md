@@ -126,6 +126,10 @@ overflow**. Document-number links (agreements, salary certificates, delivery not
 hit height, Leaflet zoom buttons are 44 px on touch widths, and the sweep ignores map attribution
 (required small print, not an action).
 
+Final tablet sweep (42 routes at 768): **0 controls under 44 px, 0 text under 12 px, 0 horizontal
+overflow**. The editor "List" buttons (quotations, agreements) and the salary-certificate number link
+were the last three.
+
 ---
 
 ## Plan

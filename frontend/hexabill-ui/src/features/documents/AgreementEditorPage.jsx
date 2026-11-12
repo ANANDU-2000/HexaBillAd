@@ -293,7 +293,7 @@ export default function AgreementEditorPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/agreements" className="px-3 py-1.5 text-sm border rounded-md">List</Link>
+          <Link to="/agreements" className="inline-flex min-h-touch min-w-touch items-center justify-center px-3 text-sm border rounded-md">List</Link>
           <button
             type="button"
             onClick={save}

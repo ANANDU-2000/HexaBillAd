@@ -197,7 +197,7 @@ export default function SalaryCertificatesPage() {
                 {filtered.map((r) => (
                   <tr key={r.id} className="border-t hover:bg-slate-50">
                     <td className="px-2 py-1">
-                      <Link className="text-primary font-medium" to={`/salary-certificates/${r.id}`}>
+                      <Link className="inline-flex min-h-touch items-center text-primary font-medium" to={`/salary-certificates/${r.id}`}>
                         {r.certificateNo}
                       </Link>
                     </td>
