@@ -43,23 +43,34 @@ const LoadingButton = ({ loading, children, className = '', ...props }) => {
   )
 }
 
+const SkeletonBlock = ({ className = '' }) => <div className={`hb-skeleton ${className}`} aria-hidden="true" />
+
 const LoadingCard = ({ message = 'Loading...' }) => {
   return (
-    <div role="status" className="rounded-lg border border-surface-border bg-white p-6">
-      <div className="flex items-center justify-center space-x-3">
-        <LoadingSpinner className="text-primary-600" />
-        <span className="text-sm font-medium text-neutral-600">{message}</span>
+    <div role="status" aria-live="polite" className="rounded-xl border border-surface-border bg-white p-4">
+      <span className="sr-only">{message}</span>
+      <div className="space-y-3">
+        <SkeletonBlock className="h-4 w-1/3" />
+        <SkeletonBlock className="h-10 w-full" />
+        <SkeletonBlock className="h-10 w-full" />
+        <SkeletonBlock className="h-10 w-4/5" />
       </div>
     </div>
   )
 }
 
+/** Page placeholder that mirrors the real layout (title, 4 KPI cards, list rows) so the page does not jump when data arrives. */
 const PageLoading = ({ navigationAvailable = false }) => (
-  <div role="status" aria-live="polite" className="flex min-h-[240px] flex-1 flex-col items-center justify-center gap-3 bg-surface px-4 py-8 text-sm text-neutral-600">
-    <LoadingSpinner size="lg" className="text-primary-600 motion-reduce:animate-none" />
-    <span>Loading this page…</span>
-    {navigationAvailable && <span className="text-xs text-neutral-500">You can still use navigation.</span>}
+  <div role="status" aria-live="polite" className="hb-fade-in flex w-full flex-1 flex-col gap-4 px-1 py-3">
+    <span className="sr-only">Loading this page…{navigationAvailable ? ' You can still use navigation.' : ''}</span>
+    <SkeletonBlock className="h-7 w-48" />
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {[0, 1, 2, 3].map((i) => <SkeletonBlock key={i} className="h-20" />)}
+    </div>
+    <div className="space-y-2 rounded-xl border border-surface-border bg-white p-3">
+      {[0, 1, 2, 3, 4].map((i) => <SkeletonBlock key={i} className="h-12" />)}
+    </div>
   </div>
 )
 
-export { LoadingSpinner, LoadingOverlay, LoadingButton, LoadingCard, PageLoading }
+export { LoadingSpinner, LoadingOverlay, LoadingButton, LoadingCard, PageLoading, SkeletonBlock }

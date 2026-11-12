@@ -6,6 +6,7 @@ import { profitAPI, salesAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
 import { useConfirmDialog } from '../../hooks/useConfirmDialog'
 import { LoadingCard } from '../../components/Loading'
+import CountUp from '../../components/ui/CountUp'
 
 /** UAE business date (Asia/Dubai, UTC+4, no DST) as YYYY-MM-DD, independent of the device time zone. */
 const dubaiToday = () => new Date(Date.now() + 4 * 3600 * 1000).toISOString().slice(0, 10)
@@ -52,11 +53,11 @@ const warningLabel = (inv) => {
   return null
 }
 
-function SummaryCard({ title, value, valueClass = '', children }) {
+function SummaryCard({ title, amount, valueClass = '', children }) {
   return (
     <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
       <p className="text-xs font-medium text-slate-600">{title}</p>
-      <p className={`mt-1 text-[20px] font-semibold tabular-nums leading-tight ${valueClass}`}>{value}</p>
+      <p className={`mt-1 text-[20px] font-semibold tabular-nums leading-tight ${valueClass}`}><CountUp value={amount} format={money} /></p>
       <div className="mt-1 text-xs text-slate-600">{children}</div>
     </div>
   )
@@ -225,16 +226,16 @@ export default function ProfitHistoryPage() {
 
       {summary && (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <SummaryCard title="Net sales (excl. VAT)" value={money(summary.netSalesExclVat)}>
+          <div className="hb-stagger grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <SummaryCard title="Net sales (excl. VAT)" amount={summary.netSalesExclVat}>
               Gross: {money(summary.grossSalesInclVat)} · VAT Excl: {money(summary.outputVatExcluded)} · Disc: {money(summary.discountsAndRoundOff)}
               {summary.returnsExclVat > 0 && <> · Returns: {money(summary.returnsExclVat)}</>}
             </SummaryCard>
-            <SummaryCard title="Product cost (COGS)" value={money(summary.totalCogsExclVat)}>Verified Purchase Cost Basis</SummaryCard>
-            <SummaryCard title="Gross profit" value={money(summary.grossProfit)} valueClass={summary.grossProfit < 0 ? 'text-red-700' : 'text-emerald-700'}>
+            <SummaryCard title="Product cost (COGS)" amount={summary.totalCogsExclVat}>Verified Purchase Cost Basis</SummaryCard>
+            <SummaryCard title="Gross profit" amount={summary.grossProfit} valueClass={summary.grossProfit < 0 ? 'text-red-700' : 'text-emerald-700'}>
               <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${summary.grossProfit < 0 ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>{summary.grossMarginPercent}% Margin</span>
             </SummaryCard>
-            <SummaryCard title="Net profit (after expenses)" value={money(summary.netProfit)} valueClass={summary.netProfit < 0 ? 'text-red-700' : 'text-slate-900'}>
+            <SummaryCard title="Net profit (after expenses)" amount={summary.netProfit} valueClass={summary.netProfit < 0 ? 'text-red-700' : 'text-slate-900'}>
               Expenses: {summary.totalExpenses > 0 ? '-' : ''}{money(summary.totalExpenses)} · 5% Profit VAT: {money(summary.vatOnNetProfit5Percent)}
             </SummaryCard>
           </div>

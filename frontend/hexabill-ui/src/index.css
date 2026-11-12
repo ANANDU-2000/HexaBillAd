@@ -439,3 +439,31 @@
 @media (max-width: 767px) {
   [data-comfort="on"] :not(td):not(th).truncate { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; }
 }
+
+/* ===== Motion system (UI/UX loop 2026-11-12): calm, 150-300 ms, ease-out, no bounce. All of it off for reduced motion. ===== */
+:root { --hb-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.hb-skeleton { background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%); background-size: 200% 100%; border-radius: 8px; }
+button, a, select, input, textarea, [role="button"], [role="tab"] {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hb-skeleton { animation: hb-shimmer 1.3s linear infinite; }
+  @keyframes hb-shimmer { to { background-position: -200% 0; } }
+  @keyframes hb-rise { from { opacity: 0; transform: translateY(8px); } }
+  @keyframes hb-fade { from { opacity: 0; } }
+  @keyframes hb-sheet-up { from { opacity: 0.6; transform: translateY(28px); } }
+  @keyframes hb-scale-in { from { opacity: 0; transform: scale(0.97) translateY(6px); } }
+  @keyframes hb-route-bar { 0% { transform: scaleX(0); opacity: 1; } 70% { transform: scaleX(0.85); opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
+  .hb-rise { animation: hb-rise 0.3s var(--hb-ease) both; }
+  .hb-fade-in { animation: hb-fade 0.2s ease-out both; }
+  .hb-stagger > * { animation: hb-rise 0.32s var(--hb-ease) both; }
+  .hb-stagger > *:nth-child(2) { animation-delay: 0.05s; }
+  .hb-stagger > *:nth-child(3) { animation-delay: 0.1s; }
+  .hb-stagger > *:nth-child(4) { animation-delay: 0.15s; }
+  .hb-stagger > *:nth-child(5) { animation-delay: 0.2s; }
+  .hb-stagger > *:nth-child(6) { animation-delay: 0.25s; }
+  .hb-stagger > *:nth-child(n+7) { animation-delay: 0.3s; }
+  .hb-dialog-in { animation: hb-sheet-up 0.26s var(--hb-ease) both; }
+  @media (min-width: 768px) { .hb-dialog-in { animation-name: hb-scale-in; animation-duration: 0.2s; } }
+  .hb-route-bar { transform-origin: left; animation: hb-route-bar 0.8s var(--hb-ease) both; }
+}

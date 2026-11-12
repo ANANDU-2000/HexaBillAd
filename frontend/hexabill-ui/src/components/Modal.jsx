@@ -109,14 +109,14 @@ const Modal = ({
       <div className={`flex ${isFullscreen ? 'h-full' : 'min-h-full items-end justify-center md:min-h-screen md:items-center md:p-4'}`}>
         {/* Overlay */}
         <div
-          className="fixed inset-0 bg-neutral-900/50 transition-opacity"
+          className="hb-fade-in fixed inset-0 bg-neutral-900/50"
           onClick={closeOnOverlayClick ? onClose : undefined}
         />
 
         {/* Modal */}
         <div
           ref={modalRef}
-          className={`relative bg-white border border-surface-border shadow-sm w-full flex flex-col ${isFullscreen ? 'max-w-full h-full max-h-full m-0 rounded-none' : `${sizeClasses[size]} rounded-t-lg md:rounded-lg max-h-[92dvh] safe-area-bottom md:max-h-[calc(100dvh-2rem)]`}`}
+          className={`hb-dialog-in relative bg-white border border-surface-border shadow-sm w-full flex flex-col ${isFullscreen ? 'max-w-full h-full max-h-full m-0 rounded-none' : `${sizeClasses[size]} rounded-t-lg md:rounded-lg max-h-[92dvh] safe-area-bottom md:max-h-[calc(100dvh-2rem)]`}`}
           onKeyDown={handleKeyDown}
           role="dialog"
           aria-modal="true"

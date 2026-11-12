@@ -33,6 +33,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { formatCurrency, formatBalance } from '../../utils/currency'
+import CountUp from '../../components/ui/CountUp'
 import toast from 'react-hot-toast'
 import { showToast } from '../../utils/toast'
 import { LoadingCard } from '../../components/Loading'
@@ -1541,8 +1542,8 @@ const ReportsPage = () => {
           </button>
           {filtersExpanded && (
             <>
-              <button type="button" aria-label="Close filters" tabIndex={-1} onClick={() => setFiltersExpanded(false)} className="fixed inset-0 z-40 bg-black/30 sm:bg-transparent" />
-              <div className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] space-y-3 overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-1 sm:w-80 sm:rounded-xl">
+              <button type="button" aria-label="Close filters" tabIndex={-1} onClick={() => setFiltersExpanded(false)} className="hb-fade-in fixed inset-0 z-40 bg-black/30 sm:bg-transparent" />
+              <div className="hb-dialog-in fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] space-y-3 overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-1 sm:w-80 sm:rounded-xl">
                 <p className="text-sm font-semibold text-slate-900">Filters</p>
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block text-xs font-medium text-slate-600">From
@@ -1628,7 +1629,7 @@ const ReportsPage = () => {
           {/* Summary Tab */}
           {activeTab === 'summary' && reportData.summary && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+              <div className="hb-stagger grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
                 {[
                   ['Total sales', reportData.summary.totalSales, 'text-slate-900'],
                   ['Total purchases', reportData.summary.totalPurchases, 'text-slate-900'],
@@ -1637,7 +1638,7 @@ const ReportsPage = () => {
                 ].map(([label, value, tone]) => (
                   <div key={label} className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                     <p className="text-xs font-medium text-slate-600 sm:text-sm">{label}</p>
-                    <p className={`mt-1 truncate text-xl font-semibold tabular-nums sm:text-2xl ${tone}`}>{formatCurrency(value || 0)}</p>
+                    <p className={`mt-1 truncate text-xl font-semibold tabular-nums sm:text-2xl ${tone}`}><CountUp value={value || 0} format={formatCurrency} /></p>
                   </div>
                 ))}
               </div>
