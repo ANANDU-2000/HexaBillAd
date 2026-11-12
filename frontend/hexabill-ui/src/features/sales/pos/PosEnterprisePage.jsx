@@ -2726,7 +2726,7 @@ const PosEnterprisePage = () => {
             type="button"
             onClick={() => setShowMetaSheet(true)}
             disabled={isFormDisabled}
-            className="md:hidden flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-neutral-300 bg-white px-3 text-left text-sm disabled:opacity-50"
+            className="lg:hidden flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-neutral-300 bg-white px-3 text-left text-sm disabled:opacity-50"
             aria-label={`Change branch, route and date. Now ${metaSummary}`}
           >
             <span className="min-w-0 truncate">{staffHasNoAssignments ? (invoiceDate || 'Date') : metaSummary}</span>
@@ -2738,7 +2738,7 @@ const PosEnterprisePage = () => {
             </span>
           )}
           {!staffHasNoAssignments && (
-            <div className="hidden md:contents">
+            <div className="hidden lg:contents">
               <div className="relative inline-flex items-center">
                 <select
                   aria-label="Branch"
@@ -2782,14 +2782,14 @@ const PosEnterprisePage = () => {
             type="date"
             value={invoiceDate}
             onChange={(e) => setInvoiceDate(e.target.value)}
-            className="hidden md:block h-11 lg:h-9 px-1.5 border border-neutral-300 rounded-md text-xs font-medium bg-white"
+            className="hidden lg:block h-11 lg:h-9 px-1.5 border border-neutral-300 rounded-md text-xs font-medium bg-white"
             title="Invoice date"
           />
           <button
             type="button"
             onClick={addEmptyRow}
             disabled={isFormDisabled}
-            className="hidden md:inline-flex h-11 lg:h-11 lg:h-9 px-2.5 text-xs font-semibold bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 items-center gap-1"
+            className="hidden lg:inline-flex h-11 lg:h-9 px-2.5 text-xs font-semibold bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 items-center gap-1"
             title="Add row (F3)"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -2814,7 +2814,7 @@ const PosEnterprisePage = () => {
             type="button"
             onClick={handleRefreshData}
             disabled={refreshingData}
-            className="hidden md:inline-flex h-11 lg:h-9 px-2 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60 items-center"
+            className="hidden lg:inline-flex h-11 lg:h-9 px-2 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60 items-center"
             title="Refresh"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshingData ? 'animate-spin' : ''}`} />
@@ -2856,7 +2856,7 @@ const PosEnterprisePage = () => {
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
           <div ref={tableScrollRef} className="flex-1 min-w-0 overflow-y-auto px-1 py-0.5 md:pb-0">
             {/* Desktop Table View */}
-            <div className="hidden md:block bg-white rounded-lg border border-neutral-300 shadow-sm overflow-x-auto">
+            <div className="hidden lg:block bg-white rounded-lg border border-neutral-300 shadow-sm overflow-x-auto">
               <div>
                 <table className="w-full text-xs sm:text-sm border-collapse" style={{ tableLayout: 'auto' }}>
                   <thead className="bg-neutral-100 border-b border-neutral-300 sticky top-0 z-20">
@@ -3120,7 +3120,7 @@ const PosEnterprisePage = () => {
             </div>
 
             {/* Mobile Card Layout - design lock: border only, 44px touch, auto-scroll on add */}
-            <div className="md:hidden space-y-3">
+            <div className="lg:hidden space-y-3">
               <button
                 onClick={addEmptyRow}
                 disabled={isFormDisabled}
@@ -3336,7 +3336,7 @@ const PosEnterprisePage = () => {
             disabled={isFormDisabled}
           />
 
-          <div className="hidden md:block px-2 py-1 shrink-0">
+          <div className="hidden lg:block px-2 py-1 shrink-0">
             <p className="text-xs text-neutral-600 leading-relaxed" aria-label="Keyboard shortcuts">
               <span className="font-semibold text-neutral-700">Shortcuts:</span>{' '}
               F2 customer · F3/Ctrl+L products · Tab/Enter next field · F4 payment · F6 hold · F8 discount · F9/Ctrl+S save · F10 new · Del row · Ctrl+\ menu · Scan toggle for camera
@@ -3350,7 +3350,7 @@ const PosEnterprisePage = () => {
 
   const posFooter = (
         <div className="bg-white border-t border-[#E5E7EB] p-1.5 sm:p-2 shrink-0 z-20 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
-          <div className="hidden md:block rounded-lg border border-neutral-200 bg-neutral-50/80 p-2">
+          <div className="hidden lg:block rounded-lg border border-neutral-200 bg-neutral-50/80 p-2">
           <div className="md:flex md:flex-col lg:grid lg:grid-cols-3 gap-2 lg:gap-3">
             <div className="space-y-2 min-w-0">
               <h3 className="text-xs font-bold text-neutral-900 border-b border-neutral-200 pb-1.5">Totals</h3>
@@ -3575,7 +3575,7 @@ const PosEnterprisePage = () => {
     />
 
       {/* Mobile: Sticky bottom bar — single total + one CTA (opens payment sheet) */}
-      <div className="md:hidden fixed bottom-[var(--hb-bottom-nav-h,4.75rem)] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
+      <div className="lg:hidden fixed bottom-[var(--hb-bottom-nav-h,4.75rem)] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
         <div>
           <span className="text-xs font-semibold uppercase tracking-wide text-primary-700 block">Grand Total</span>
           <span className="text-lg font-semibold text-neutral-900 tabular-nums">{currency} {totals.grandTotal.toFixed(2)}</span>
@@ -3597,7 +3597,7 @@ const PosEnterprisePage = () => {
 
       {/* Mobile: Branch / route / date sheet. Native full-width selects, so nothing is clipped at the screen edge. */}
       {showMetaSheet && (
-        <div className="md:hidden fixed inset-0 z-[60] flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="Bill details">
+        <div className="lg:hidden fixed inset-0 z-[60] flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="Bill details">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowMetaSheet(false)} aria-hidden />
           <div className="relative flex max-h-[90dvh] flex-col rounded-t-xl bg-white shadow-xl animate-slideUp">
             <div className="flex flex-shrink-0 items-center justify-between px-4 pt-4 pb-2">
@@ -3670,7 +3670,7 @@ const PosEnterprisePage = () => {
 
       {/* Mobile: Payment bottom sheet (discount, payment, notes, confirm) — CTA always visible above bottom nav */}
       {showPaymentSheet && (
-        <div className="md:hidden fixed inset-0 z-[60] flex flex-col justify-end">
+        <div className="lg:hidden fixed inset-0 z-[60] flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowPaymentSheet(false)} aria-hidden />
           <div className="relative bg-white rounded-t-xl shadow-xl max-h-[90vh] flex flex-col animate-slideUp">
             <div className="flex-shrink-0 px-4 pt-4 pb-2">
