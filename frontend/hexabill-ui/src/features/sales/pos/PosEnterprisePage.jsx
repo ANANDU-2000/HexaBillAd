@@ -2369,7 +2369,7 @@ const PosEnterprisePage = () => {
             onClick={printableSaleId ? () => handlePrintFormat('A4', printableSaleId) : undefined}
             disabled={!printableSaleId}
             title={printableSaleId ? 'Quick print invoice (A4)' : 'Save invoice first to print'}
-            className="min-h-9 min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+            className="min-h-11 min-w-11 lg:min-h-9 lg:min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
             aria-label={printableSaleId ? 'Quick print invoice' : 'Save invoice first to print'}
           >
             <Printer className="h-4 w-4" />
@@ -2379,7 +2379,7 @@ const PosEnterprisePage = () => {
             onClick={printableSaleId ? () => handleDeliveryNotePrint('A4', printableSaleId) : undefined}
             disabled={!printableSaleId}
             title={printableSaleId ? 'Print delivery note (packing list, no prices)' : 'Save invoice first for delivery note'}
-            className="min-h-9 min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+            className="min-h-11 min-w-11 lg:min-h-9 lg:min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
             aria-label={printableSaleId ? 'Print delivery note' : 'Save invoice first for delivery note'}
           >
             <Package className="h-4 w-4" />
@@ -2389,7 +2389,7 @@ const PosEnterprisePage = () => {
               type="button"
               onClick={() => handleDownloadPdf(printableSaleId, printableInvoiceNo)}
               title="Download invoice PDF"
-              className="min-h-9 min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 text-white"
+              className="min-h-11 min-w-11 lg:min-h-9 lg:min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 text-white"
               aria-label="Download invoice PDF"
             >
               <Download className="h-4 w-4" />
@@ -2400,7 +2400,7 @@ const PosEnterprisePage = () => {
           <button
             onClick={handleHold}
             disabled={isFormDisabled || cart.filter(i => i.productId && (Number(i.qty) > 0)).length === 0}
-            className="h-9 px-2 sm:px-2.5 text-xs font-medium bg-white/15 text-white border border-white/30 rounded-md hover:bg-white/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+            className="h-11 lg:h-9 px-2 sm:px-2.5 text-xs font-medium bg-white/15 text-white border border-white/30 rounded-md hover:bg-white/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
             title="Hold (F6)"
           >
             <Bookmark className="h-3.5 w-3.5" />
@@ -2409,7 +2409,7 @@ const PosEnterprisePage = () => {
           <button
             onClick={() => setShowResumeModal(true)}
             disabled={isFormDisabled || heldInvoices.length === 0 || loadingHeldInvoices}
-            className={`h-9 px-2 sm:px-2.5 text-xs font-medium rounded-md transition-colors inline-flex items-center gap-1 relative ${heldInvoices.length > 0 ? 'bg-success text-white hover:bg-emerald-700' : 'bg-white/20 text-white/60 cursor-not-allowed'}`}
+            className={`h-11 lg:h-9 px-2 sm:px-2.5 text-xs font-medium rounded-md transition-colors inline-flex items-center gap-1 relative ${heldInvoices.length > 0 ? 'bg-success text-white hover:bg-emerald-700' : 'bg-white/20 text-white/60 cursor-not-allowed'}`}
             title={heldInvoices.length > 0 ? `${heldInvoices.length} held — resume` : 'No held invoices'}
           >
             <RotateCcw className="h-3.5 w-3.5" />
@@ -2423,7 +2423,7 @@ const PosEnterprisePage = () => {
           <button
             onClick={handleRepeatLastInvoice}
             disabled={isFormDisabled || loadingSale}
-            className="h-9 px-2 sm:px-2.5 text-xs font-medium bg-white/15 text-white border border-white/30 rounded-md hover:bg-white/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+            className="h-11 lg:h-9 px-2 sm:px-2.5 text-xs font-medium bg-white/15 text-white border border-white/30 rounded-md hover:bg-white/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
             title="Repeat last invoice"
           >
             <RefreshCw className="h-3.5 w-3.5" />
@@ -2431,7 +2431,7 @@ const PosEnterprisePage = () => {
           </button>
           <button
             onClick={handleNewInvoice}
-            className="h-9 px-2 sm:px-2.5 text-xs font-medium bg-white/15 text-white border border-white/30 rounded-md hover:bg-white/25 transition-colors inline-flex items-center gap-1"
+            className="h-11 lg:h-9 px-2 sm:px-2.5 text-xs font-medium bg-white/15 text-white border border-white/30 rounded-md hover:bg-white/25 transition-colors inline-flex items-center gap-1"
             title="New invoice (F10)"
           >
             New
@@ -2668,7 +2668,7 @@ const PosEnterprisePage = () => {
                 type="button"
                 ref={customerInputRef}
                 onClick={() => setShowCustomerSearch(true)}
-                className="w-full h-9 px-2 text-left text-xs font-semibold border border-neutral-300 rounded-md hover:bg-neutral-50 truncate"
+                className="w-full h-11 lg:h-9 px-2 text-left text-xs font-semibold border border-neutral-300 rounded-md hover:bg-neutral-50 truncate"
                 title="Change customer (F2)"
               >
                 {selectedCustomer.name}
@@ -2686,7 +2686,7 @@ const PosEnterprisePage = () => {
                   }}
                   onFocus={() => setShowQuickCustomerDropdown(true)}
                   onBlur={() => setTimeout(() => setShowQuickCustomerDropdown(false), 150)}
-                  className="w-full h-9 px-2 border border-neutral-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  aria-label="Customer name or phone" className="w-full h-11 lg:h-9 px-2 border border-neutral-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {showQuickCustomerDropdown && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
@@ -2741,13 +2741,14 @@ const PosEnterprisePage = () => {
             <div className="hidden md:contents">
               <div className="relative inline-flex items-center">
                 <select
+                  aria-label="Branch"
                   value={selectedBranchId}
                   onChange={(e) => {
                     setSelectedBranchId(e.target.value)
                     setSelectedRouteId('')
                   }}
                   disabled={branchesRoutesLoading || branches.length === 0 || (!isAdminOrOwner(user) && branches.length === 1)}
-                  className="h-9 pl-2 pr-8 min-w-[7.5rem] max-w-[11rem] border border-neutral-300 rounded-md text-xs bg-white disabled:opacity-50 appearance-none truncate"
+                  className="h-11 lg:h-9 pl-2 pr-8 min-w-[7.5rem] max-w-[11rem] border border-neutral-300 rounded-md text-xs bg-white disabled:opacity-50 appearance-none truncate"
                   title="Branch"
                 >
                   <option value="">{branchesRoutesLoading ? '…' : 'Branch'}</option>
@@ -2760,9 +2761,10 @@ const PosEnterprisePage = () => {
               <div className="relative inline-flex items-center">
                 <select
                   value={selectedRouteId}
+                  aria-label="Route"
                   onChange={(e) => setSelectedRouteId(e.target.value)}
                   disabled={branchesRoutesLoading || routes.length === 0 || !selectedBranchId || (!isAdminOrOwner(user) && (selectedBranchId ? routes.filter(r => r.branchId === parseInt(selectedBranchId, 10)) : routes).length <= 1)}
-                  className="h-9 pl-2 pr-8 min-w-[7.5rem] max-w-[11rem] border border-neutral-300 rounded-md text-xs bg-white disabled:opacity-50 appearance-none truncate"
+                  className="h-11 lg:h-9 pl-2 pr-8 min-w-[7.5rem] max-w-[11rem] border border-neutral-300 rounded-md text-xs bg-white disabled:opacity-50 appearance-none truncate"
                   title="Route"
                 >
                   <option value="">Route</option>
@@ -2780,14 +2782,14 @@ const PosEnterprisePage = () => {
             type="date"
             value={invoiceDate}
             onChange={(e) => setInvoiceDate(e.target.value)}
-            className="hidden md:block h-9 px-1.5 border border-neutral-300 rounded-md text-xs font-medium bg-white"
+            className="hidden md:block h-11 lg:h-9 px-1.5 border border-neutral-300 rounded-md text-xs font-medium bg-white"
             title="Invoice date"
           />
           <button
             type="button"
             onClick={addEmptyRow}
             disabled={isFormDisabled}
-            className="hidden md:inline-flex h-9 px-2.5 text-xs font-semibold bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 items-center gap-1"
+            className="hidden md:inline-flex h-11 lg:h-11 lg:h-9 px-2.5 text-xs font-semibold bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 items-center gap-1"
             title="Add row (F3)"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -2797,7 +2799,7 @@ const PosEnterprisePage = () => {
             type="button"
             onClick={() => setScanModeOn((v) => !v)}
             disabled={isFormDisabled}
-            className={`h-9 px-2.5 text-xs font-semibold rounded-md disabled:opacity-50 inline-flex items-center gap-1 border ${
+            className={`h-11 lg:h-11 lg:h-9 px-2.5 text-xs font-semibold rounded-md disabled:opacity-50 inline-flex items-center gap-1 border ${
               scanModeOn
                 ? 'bg-amber-500 text-white border-warning hover:bg-warning'
                 : 'bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-50'
@@ -2812,7 +2814,7 @@ const PosEnterprisePage = () => {
             type="button"
             onClick={handleRefreshData}
             disabled={refreshingData}
-            className="hidden md:inline-flex h-9 px-2 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60 items-center"
+            className="hidden md:inline-flex h-11 lg:h-9 px-2 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60 items-center"
             title="Refresh"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshingData ? 'animate-spin' : ''}`} />

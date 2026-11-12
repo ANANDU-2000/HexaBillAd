@@ -471,7 +471,7 @@ const BillingHistoryPage = () => {
                 type="button"
                 onClick={() => choosePeriod(p.id)}
                 aria-pressed={period === p.id}
-                className={`shrink-0 whitespace-nowrap px-2 sm:px-2.5 py-1 rounded-md text-xs font-semibold transition ${
+                className={`shrink-0 whitespace-nowrap px-3 min-h-11 lg:min-h-0 py-1 rounded-md text-xs font-semibold transition ${
                   period === p.id ? 'bg-primary-600 text-white' : 'bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-50'
                 }`}
               >
@@ -488,7 +488,7 @@ const BillingHistoryPage = () => {
               </span>
             )}
             {period !== 'all' && period !== 'custom' && range.from && (
-              <span className="ml-1 shrink-0 whitespace-nowrap text-[11px] text-neutral-500">
+              <span className="ml-1 shrink-0 whitespace-nowrap text-xs text-neutral-500">
                 {range.from === range.to ? formatDate(range.from) : `${formatDate(range.from)} – ${formatDate(range.to)}`}
               </span>
             )}
@@ -569,7 +569,7 @@ const BillingHistoryPage = () => {
                           {formatCurrency(inv.isDeleted ? 0 : outstanding)}
                         </td>
                         <td className="px-2 py-1.5 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${badge.colorClass}`}>{badge.label}</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badge.colorClass}`}>{badge.label}</span>
                         </td>
                         <td className="px-2 py-1 whitespace-nowrap text-right sticky right-0 z-10 bg-white group-hover:bg-neutral-50">
                           <div className="flex items-center justify-end gap-1">
@@ -620,18 +620,18 @@ const BillingHistoryPage = () => {
                         <span className="shrink-0 text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(inv.grandTotal || 0)}</span>
                       </span>
                       <span className="mt-0.5 flex items-center justify-between gap-2 text-xs">
-                        <span className="truncate text-neutral-600">{inv.customerName || 'Cash customer'}</span>
+                        <span className="break-words text-neutral-600">{inv.customerName || 'Cash customer'}</span>
                         <span className="flex shrink-0 items-center gap-1.5">
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${badge.colorClass}`}>{badge.label}</span>
                           <span className="tabular-nums text-neutral-500">{formatDate(inv.invoiceDate)}</span>
                         </span>
                       </span>
                       {outstanding > 0 && !inv.isDeleted && (
-                        <span className="mt-0.5 block text-[11px] text-neutral-600 tabular-nums">Due {formatCurrency(outstanding)}</span>
+                        <span className="mt-0.5 block text-xs text-neutral-600 tabular-nums">Due {formatCurrency(outstanding)}</span>
                       )}
                     </button>
                     {collectable && (
-                      <button type="button" onClick={() => openCustomerLedger(inv)} className="btn btn-secondary btn-sm shrink-0 text-xs">
+                      <button type="button" onClick={() => openCustomerLedger(inv)} className="btn btn-secondary btn-sm shrink-0 text-xs min-h-11 lg:min-h-0">
                         Collect
                       </button>
                     )}
