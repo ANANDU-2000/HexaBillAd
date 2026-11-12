@@ -46,7 +46,11 @@ import {
   ChevronRight,
   ScanBarcode,
   Banknote,
-  CalendarDays
+  CalendarDays,
+  Receipt,
+  Percent,
+  Wallet,
+  StickyNote
 } from 'lucide-react'
 import { productsAPI, salesAPI, customersAPI, settingsAPI } from '../../../services/index'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../../utils/currency'
@@ -3458,97 +3462,120 @@ const PosEnterprisePage = () => {
         <div className="bg-white border-t border-[#E5E7EB] p-1.5 sm:p-2 shrink-0 z-20 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
           {tabletSheetOpen && <div className="hidden md:block lg:hidden fixed inset-0 z-[45] bg-black/40" onClick={() => setTabletSheetOpen(false)} aria-hidden />}
           <div className={`${tabletSheetOpen ? 'hidden md:fixed md:inset-x-0 md:bottom-[8.5rem] md:z-50 md:block md:max-h-[66vh] md:overflow-y-auto md:rounded-t-2xl md:border md:border-neutral-200 md:bg-white md:p-4 md:shadow-2xl' : 'hidden'} lg:static lg:z-auto lg:block lg:max-h-none lg:overflow-visible lg:rounded-lg lg:border lg:border-neutral-200 lg:bg-neutral-50/80 lg:p-2 lg:shadow-none`} role={tabletSheetOpen ? 'dialog' : undefined} aria-label="Payment and discount">
-          <div className="mb-2 flex items-center justify-between lg:hidden">
-            <h3 className="text-lg font-bold text-neutral-900">Payment &amp; discount</h3>
-            <button type="button" onClick={() => setTabletSheetOpen(false)} className="h-11 rounded-lg border border-neutral-300 px-5 text-sm font-bold text-neutral-800">Done</button>
+          <div className="sticky top-0 z-10 -mx-4 -mt-4 mb-3 flex items-center justify-between gap-3 rounded-t-2xl border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+            <div className="min-w-0">
+              <h3 className="text-base font-bold leading-tight text-neutral-900">Payment &amp; discount</h3>
+              <p className="text-xs text-neutral-500">Adjust totals, then take payment</p>
+            </div>
+            <button type="button" onClick={() => setTabletSheetOpen(false)} className="h-10 shrink-0 rounded-xl border border-neutral-300 bg-white px-4 text-sm font-bold text-neutral-800 shadow-sm transition-colors hover:bg-neutral-50 active:scale-[0.98]">Done</button>
           </div>
-          <div className="md:flex md:flex-col lg:grid lg:grid-cols-3 gap-2 lg:gap-3">
-            <div className="space-y-2 min-w-0">
-              <h3 className="text-xs font-bold text-neutral-900 border-b border-neutral-200 pb-1.5">Totals</h3>
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-xs font-medium text-neutral-600">INV. Amount</span>
-                  <span className="text-xs font-semibold text-neutral-900 tabular-nums whitespace-nowrap">{currency} {totals.subtotal.toFixed(2)}</span>
+          <div className="md:flex md:flex-col lg:grid lg:grid-cols-3 gap-3">
+            <section className="min-w-0 rounded-xl border border-neutral-200 bg-white p-3 shadow-sm lg:rounded-lg lg:p-2.5">
+              <div className="mb-2 flex items-center gap-1.5 border-b border-neutral-200 pb-2">
+                <Receipt className="h-4 w-4 text-primary-600" aria-hidden />
+                <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-700">Totals</h3>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2 py-1">
+                  <span className="text-sm font-medium text-neutral-600">INV. amount</span>
+                  <span className="text-sm font-bold text-neutral-900 tabular-nums whitespace-nowrap">{currency} {totals.subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-xs font-medium text-neutral-600">VAT {vatPercent}%</span>
-                  <span className="text-xs font-semibold text-neutral-900 tabular-nums whitespace-nowrap">{currency} {totals.vatTotal.toFixed(2)}</span>
+                <div className="flex items-center justify-between gap-2 py-1">
+                  <span className="text-sm font-medium text-neutral-600">VAT {vatPercent}%</span>
+                  <span className="text-sm font-bold text-neutral-900 tabular-nums whitespace-nowrap">{currency} {totals.vatTotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-xs font-medium text-neutral-600">Round Off</span>
+                <div className="flex items-center justify-between gap-2 py-1">
+                  <span className="text-sm font-medium text-neutral-600">Round off</span>
                   <div className="flex items-center gap-1.5">
-                    <button type="button" onClick={handleAutoRoundOff} disabled={isFormDisabled || isZeroInvoice} className="text-xs font-medium text-primary-600 hover:text-primary-700 disabled:opacity-50 min-h-9 px-1.5">Auto</button>
+                    <button type="button" onClick={handleAutoRoundOff} disabled={isFormDisabled || isZeroInvoice} className="inline-flex h-9 items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2 text-xs font-bold text-primary-700 transition-colors hover:bg-primary-100 disabled:opacity-50">
+                      <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                      Auto
+                    </button>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-micro font-bold text-neutral-400">{currency}</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="-1"
+                        max="1"
+                        value={roundOffInput === '' && roundOff === 0 ? '' : roundOffInput}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setRoundOffInput(v)
+                          const n = v === '' ? 0 : parseFloat(v)
+                          setRoundOff(isNaN(n) ? 0 : n)
+                        }}
+                        onBlur={() => {
+                          const n = roundOffInput === '' ? 0 : parseFloat(roundOffInput)
+                          if (!isNaN(n)) {
+                            setRoundOff(n)
+                            setRoundOffInput(n === 0 ? '' : n.toFixed(2))
+                          }
+                        }}
+                        disabled={isFormDisabled || isZeroInvoice}
+                        className="h-9 w-24 rounded-lg border border-neutral-300 bg-neutral-50/70 pl-10 pr-2 text-right text-sm font-semibold text-neutral-900 tabular-nums transition-colors placeholder:font-normal placeholder:text-neutral-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-1">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <label className="flex items-center gap-1 text-sm font-medium text-neutral-600">
+                      <Percent className="h-3.5 w-3.5 text-neutral-400" aria-hidden />
+                      Discount
+                    </label>
+                    <button type="button" onClick={() => setShowDiscountPopup(true)} disabled={isFormDisabled || isZeroInvoice} className="rounded-md border border-neutral-200 bg-white px-1.5 py-0.5 text-micro font-semibold text-primary-700 shadow-sm transition-colors hover:bg-primary-50 disabled:opacity-50" title="Open discount options (F8)">F8</button>
+                  </div>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">{currency}</span>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="-1"
-                      max="1"
-                      value={roundOffInput === '' && roundOff === 0 ? '' : roundOffInput}
+                      type="text"
+                      inputMode="decimal"
+                      disabled={isFormDisabled || isZeroInvoice}
+                      className="h-11 w-full rounded-xl border border-neutral-300 bg-neutral-50/70 pl-12 pr-3 text-right text-base font-bold text-neutral-900 tabular-nums transition-colors placeholder:font-normal placeholder:text-neutral-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 disabled:opacity-50"
+                      placeholder="0.00"
+                      value={discountInput}
                       onChange={(e) => {
-                        const v = e.target.value
-                        setRoundOffInput(v)
-                        const n = v === '' ? 0 : parseFloat(v)
-                        setRoundOff(isNaN(n) ? 0 : n)
-                      }}
-                      onBlur={() => {
-                        const n = roundOffInput === '' ? 0 : parseFloat(roundOffInput)
-                        if (!isNaN(n)) {
-                          setRoundOff(n)
-                          setRoundOffInput(n === 0 ? '' : n.toFixed(2))
+                        const value = e.target.value
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          setDiscountInput(value)
+                          const numValue = value === '' ? 0 : parseFloat(value)
+                          setDiscount(isNaN(numValue) ? 0 : numValue)
                         }
                       }}
-                      disabled={isFormDisabled || isZeroInvoice}
-                      className="w-20 min-h-11 h-11 lg:min-h-9 lg:h-9 text-right border border-neutral-300 rounded-md px-2 text-sm disabled:opacity-50"
+                      onBlur={() => {
+                        if (discountInput === '' || discountInput === '0' || discountInput === '0.') {
+                          setDiscountInput('')
+                          setDiscount(0)
+                        } else {
+                          const numValue = parseFloat(discountInput)
+                          if (!isNaN(numValue)) {
+                            setDiscountInput(numValue.toFixed(2))
+                            setDiscount(numValue)
+                          }
+                        }
+                      }}
                     />
                   </div>
                 </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm lg:text-xs font-medium text-neutral-600">Discount</label>
-                    <button type="button" onClick={() => setShowDiscountPopup(true)} disabled={isFormDisabled || isZeroInvoice} className="text-micro text-primary-600 hover:underline disabled:opacity-50">F8 popup</button>
-                  </div>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    disabled={isFormDisabled || isZeroInvoice}
-                    className="w-full min-h-11 h-11 lg:min-h-9 lg:h-9 px-2 py-1 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
-                    placeholder="0.00"
-                    value={discountInput}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                        setDiscountInput(value)
-                        const numValue = value === '' ? 0 : parseFloat(value)
-                        setDiscount(isNaN(numValue) ? 0 : numValue)
-                      }
-                    }}
-                    onBlur={() => {
-                      if (discountInput === '' || discountInput === '0' || discountInput === '0.') {
-                        setDiscountInput('')
-                        setDiscount(0)
-                      } else {
-                        const numValue = parseFloat(discountInput)
-                        if (!isNaN(numValue)) {
-                          setDiscountInput(numValue.toFixed(2))
-                          setDiscount(numValue)
-                        }
-                      }
-                    }}
-                  />
-                </div>
                 {discount > 0 && (
-                  <div className="flex justify-between items-center gap-2">
-                    <span className="text-xs font-medium text-error">Discount</span>
-                    <span className="text-xs font-semibold text-error tabular-nums whitespace-nowrap">-{currency} {Number(discount).toFixed(2)}</span>
+                  <div className="flex items-center justify-between gap-2 py-1">
+                    <span className="text-sm font-medium text-error">Discount</span>
+                    <span className="text-sm font-bold text-error tabular-nums whitespace-nowrap">-{currency} {Number(discount).toFixed(2)}</span>
                   </div>
                 )}
-                <div className="mt-1 flex items-center justify-between gap-2 rounded-lg bg-primary-50 px-3 py-2.5">
-                  <span className="text-sm font-semibold text-primary-800">Grand total</span>
-                  <span className="text-2xl font-bold text-neutral-900 tabular-nums whitespace-nowrap leading-none">{currency} {totals.grandTotal.toFixed(2)}</span>
+                <div className="mt-2 rounded-xl bg-primary-900 px-4 py-3 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-primary-200">Grand total</p>
+                      <p className="text-micro text-primary-200/80">Total payable</p>
+                    </div>
+                    <p className="text-3xl font-extrabold leading-none text-white tabular-nums whitespace-nowrap">{currency} {totals.grandTotal.toFixed(2)}</p>
+                  </div>
                 </div>
               </div>
               {!isEditMode && (
-                <div className="pt-1.5 border-t border-neutral-200 flex items-center gap-2 min-h-9">
+                <label htmlFor="pos-zero-invoice" className={`mt-2 flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 transition-colors ${isZeroInvoice ? 'border-warning-border bg-warning-bg' : 'border-neutral-200 bg-neutral-50 hover:bg-neutral-100'}`}>
                   <input
                     type="checkbox"
                     id="pos-zero-invoice"
@@ -3561,54 +3588,62 @@ const PosEnterprisePage = () => {
                         setDiscountInput('0')
                       }
                     }}
-                    className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5"
+                    className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                   />
-                  <label htmlFor="pos-zero-invoice" className="text-sm lg:text-xs font-medium text-neutral-700">Free sample / Zero invoice</label>
-                  {isZeroInvoice && <span className="text-micro bg-amber-100 text-amber-800 px-1 py-0.5 rounded">0 VAT</span>}
-                </div>
+                  <span className="text-sm font-medium text-neutral-800">Free sample / Zero invoice</span>
+                  {isZeroInvoice && <span className="ml-auto rounded-md bg-white/70 px-1.5 py-0.5 text-micro font-bold text-warning-fg">0 VAT</span>}
+                </label>
               )}
-            </div>
+            </section>
 
-            <div className="space-y-2 min-w-0 lg:border-l lg:border-neutral-200 lg:pl-4">
+            <section className="min-w-0 rounded-xl border border-neutral-200 bg-white p-3 shadow-sm lg:rounded-lg lg:p-2.5">
               <button
                 type="button"
                 onClick={() => setPaymentPanelOpen(o => !o)}
-                className="w-full flex items-center justify-between text-xs font-bold text-neutral-900 border-b border-neutral-200 pb-1.5"
+                className="mb-2 flex w-full items-center gap-1.5 border-b border-neutral-200 pb-2 text-left"
               >
-                <span>Payment <span className="text-micro font-normal text-neutral-500">(Optional · F4)</span></span>
-                <ChevronDown className={`h-4 w-4 text-neutral-500 transition-transform ${paymentPanelOpen ? 'rotate-180' : ''}`} />
+                <Wallet className="h-4 w-4 text-primary-600" aria-hidden />
+                <span className="text-xs font-bold uppercase tracking-wide text-neutral-700">Payment</span>
+                <span className="text-micro font-normal normal-case tracking-normal text-neutral-500">Optional · F4</span>
+                <ChevronDown className={`ml-auto h-4 w-4 text-neutral-500 transition-transform ${paymentPanelOpen ? 'rotate-180' : ''}`} />
               </button>
               {paymentPanelOpen && (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1">Method</label>
-                  <select
-                    disabled={isFormDisabled}
-                    className="w-full min-h-11 h-11 lg:min-h-9 lg:h-9 px-2 py-1 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                  >
-                    <option value="Pending">Credit Invoice</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Debit">Debit (Card)</option>
-                    <option value="Cheque">Cheque</option>
-                    <option value="Online">Online</option>
-                  </select>
+                  <label className="mb-1 block text-xs font-semibold text-neutral-700">Method</label>
+                  <div className="relative">
+                    <select
+                      disabled={isFormDisabled}
+                      className="h-11 w-full appearance-none rounded-xl border border-neutral-300 bg-neutral-50/70 pl-3 pr-9 text-sm font-semibold text-neutral-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 disabled:opacity-50"
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                    >
+                      <option value="Pending">Credit Invoice</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Debit">Debit (Card)</option>
+                      <option value="Cheque">Cheque</option>
+                      <option value="Online">Online</option>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" aria-hidden />
+                  </div>
                 </div>
                 {paymentMethod !== 'Pending' && (
                   <div>
-                    <label className="block text-xs font-medium text-neutral-600 mb-1">Amount</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      disabled={isFormDisabled}
-                      className="w-full min-h-11 h-11 lg:min-h-9 lg:h-9 px-2 py-1 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
-                      placeholder="Full amount if empty"
-                      value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(e.target.value)}
-                    />
-                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    <label className="mb-1 block text-xs font-semibold text-neutral-700">Amount</label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">{currency}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        disabled={isFormDisabled}
+                        className="h-11 w-full rounded-xl border border-neutral-300 bg-neutral-50/70 pl-12 pr-3 text-right text-base font-bold text-neutral-900 tabular-nums transition-colors placeholder:font-normal placeholder:text-neutral-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 disabled:opacity-50"
+                        placeholder="Full amount if empty"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
                       {[100, 500, 1000, 2000, 5000].map(amount => (
                         <button
                           key={amount}
@@ -3619,7 +3654,7 @@ const PosEnterprisePage = () => {
                             const maxAmount = Math.min(amount, t.grandTotal)
                             setPaymentAmount(maxAmount.toFixed(2))
                           }}
-                          className="min-h-11 h-11 lg:min-h-9 lg:h-9 px-2 text-xs font-medium bg-primary-50 text-primary-700 border border-primary-200 rounded-md hover:bg-primary-100 disabled:opacity-50"
+                          className="h-10 min-w-[3.25rem] rounded-lg border border-neutral-200 bg-white px-2.5 text-sm font-bold text-neutral-800 tabular-nums shadow-sm transition-all hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 active:scale-95 disabled:opacity-50"
                         >
                           {amount}
                         </button>
@@ -3628,26 +3663,33 @@ const PosEnterprisePage = () => {
                   </div>
                 )}
                 <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1">Notes</label>
+                  <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-neutral-700">
+                    <StickyNote className="h-3.5 w-3.5 text-neutral-400" aria-hidden />
+                    Notes
+                  </label>
                   <textarea
                     disabled={isFormDisabled}
-                    className="w-full min-h-[3.5rem] px-2 py-1.5 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+                    className="min-h-[3.5rem] w-full rounded-xl border border-neutral-300 bg-neutral-50/70 px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 disabled:opacity-50"
                     rows="2"
-                    placeholder="Notes..."
+                    placeholder="Add a note for this bill…"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                   />
                 </div>
               </div>
               )}
-            </div>
+            </section>
 
-            <div className="hidden lg:flex flex-col justify-end gap-1.5 min-w-0 lg:border-l lg:border-neutral-200 lg:pl-4">
+            <div className="hidden min-w-0 flex-col justify-end gap-2 self-end rounded-lg border border-neutral-200 bg-white p-2.5 shadow-sm lg:flex">
+              <div className="mb-1 flex items-center gap-1.5 border-b border-neutral-200 pb-2">
+                <CheckCircle className="h-4 w-4 text-primary-600" aria-hidden />
+                <span className="text-xs font-bold uppercase tracking-wide text-neutral-700">Checkout</span>
+              </div>
               <button
                 onClick={handleSave}
                 disabled={loading || loadingSale || cart.length === 0}
                 title={cart.length === 0 && !loading && !loadingSale ? 'Add at least one item to checkout' : undefined}
-                className={`w-full min-h-11 px-3 py-2 rounded-lg font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm transition-all active:scale-[0.98] ${isEditMode
+                className={`flex h-12 w-full items-center justify-center rounded-xl px-3 text-sm font-bold shadow-sm transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${isEditMode
                   ? 'bg-primary-600 text-white hover:bg-primary-700'
                   : 'bg-accent text-white hover:bg-accent/90'
                   }`}
