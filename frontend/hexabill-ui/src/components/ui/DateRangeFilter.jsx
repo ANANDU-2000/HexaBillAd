@@ -26,7 +26,7 @@ export const DATE_PRESETS = [
 ]
 
 const chip = 'min-h-[44px] md:min-h-0 md:h-7 rounded-full border px-3 text-xs font-medium transition-colors'
-const field = 'min-h-[44px] md:min-h-0 md:h-9 w-full min-w-0 rounded-md border bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500'
+const field = 'min-h-[44px] xl:min-h-0 xl:h-9 w-full min-w-0 rounded-md border bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500'
 
 // Preset chips only, for pages that keep their own From/To inputs. onChange receives { from, to }.
 export function DatePresetChips({ from, to, onChange, className = '', presets }) {

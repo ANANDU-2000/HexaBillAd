@@ -12,12 +12,13 @@ const variants = {
   icon: 'text-neutral-600 hover:bg-neutral-100 active:bg-neutral-200 focus-visible:ring-neutral-400',
 }
 
-// md is 44px on touch widths and 40px from md up; icon buttons keep a 44px hit area on phones.
+// Touch widths get the real 44px target (the root font is 14px, so rem sizes render smaller).
+// Desktop keeps the compact sizes from xl up.
 const sizes = {
-  sm: 'px-2.5 text-sm min-h-[32px]',
-  md: 'px-4 text-sm min-h-[44px] md:min-h-[40px]',
+  sm: 'px-2.5 text-sm min-h-[44px] xl:min-h-[32px]',
+  md: 'px-4 text-sm min-h-[44px] xl:min-h-[40px]',
   lg: 'px-5 text-sm min-h-[44px]',
-  icon: 'p-0 min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-[36px]',
+  icon: 'p-0 min-h-[44px] min-w-[44px] xl:min-h-[36px] xl:min-w-[36px]',
 }
 
 export default function Button({

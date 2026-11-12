@@ -95,7 +95,7 @@ export default function OverflowMenu({ items = [], label = 'More actions', butto
                   role="menuitem"
                   disabled={item.disabled}
                   onClick={() => { setOpen(false); item.onClick?.() }}
-                  className={`flex min-h-[44px] w-full items-center gap-2.5 px-3 text-start text-sm md:min-h-[36px] disabled:cursor-not-allowed disabled:opacity-40 ${
+                  className={`flex min-h-[44px] w-full items-center gap-2.5 px-3 text-start text-sm xl:min-h-[36px] disabled:cursor-not-allowed disabled:opacity-40 ${
  item.danger ? 'text-error-fg hover:bg-error-bg focus:bg-error-bg' : 'text-text-primary hover:bg-neutral-50 focus:bg-neutral-50'
  } focus:outline-none`}
                 >

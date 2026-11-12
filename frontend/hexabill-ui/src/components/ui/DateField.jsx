@@ -28,7 +28,7 @@ const DateField = forwardRef(({ label, value, onChange, error, disabled = false,
       <input
         {...rest} ref={ref} id={inputId} name={name} type="date" value={value || ''} disabled={disabled} required={required}
         aria-invalid={!!error} onChange={onChange}
-        className={`block w-full min-h-[44px] md:min-h-0 md:h-9 px-2 bg-white border rounded-md text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 disabled:bg-neutral-50 disabled:text-neutral-500 ${error ? 'border-error' : 'border-neutral-300'} ${className}`}
+        className={`block w-full min-h-[44px] xl:min-h-0 xl:h-9 px-2 bg-white border rounded-md text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 disabled:bg-neutral-50 disabled:text-neutral-500 ${error ? 'border-error' : 'border-neutral-300'} ${className}`}
       />
       {error && <p role="alert" className="text-xs font-medium text-error-fg">{error}</p>}
     </div>

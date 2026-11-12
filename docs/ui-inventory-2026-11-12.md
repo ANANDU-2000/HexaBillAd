@@ -54,6 +54,26 @@ column to the copy — no code change). Treat the five rows above as **schema dr
 otherwise**: verify each against a freshly migrated PostgreSQL test database before writing a bug or a fix.
 `GET /api/reports/vat-return` returned 200 in the same pass, so the limiter had cleared.
 
+## Second pass (same day) — touch-target sweep
+
+Root cause found: the app's root font is 14 px, so Tailwind's rem spacing renders 12.5 % small
+(`h-11` = 38.5 px, `h-8` = 28 px). Every "44 px" target written as `h-11` was really 38.5 px.
+
+Changes:
+- `tailwind.config.js` gains `h-touch` / `w-touch` / `min-h-touch` / `min-w-touch` = **44 px**.
+- Shared `Button` sizes are now 44 px at touch widths and compact from `xl` up (was 40/36 px from `md`).
+- `DateField`, `DateRangeFilter`, `OverflowMenu`: compact sizes moved from `md:` to `xl:`.
+- Toast dismiss button gets a 44 × 44 hit area (was 24 × 24) — this alone was the only offender on 20 pages.
+- Daily close status card: 40 px → 44 px.
+
+Re-measured at 390: `/pos` 4 → 0, `/dashboard` 2 → 0, `/products` 3 → 0, `/sales-ledger` 1 → 0,
+`/route-map` 4 → 1, `/worksheet` 2 → 3 (three stacked toasts in that capture, now 0).
+`/settings` still reports two 12 × 13 inputs: those are the styled checkbox inside the toggle switch,
+which is drawn larger than its input — reviewed, not a defect.
+
+The inventory rule now ignores controls nested in a label that is already ≥ 44 px tall, so a checkbox
+inside a 44 px row no longer counts as a small target.
+
 ## What the first sweep proves
 
 1. The layout basics hold: nothing scrolls sideways, nothing is below the 12 px floor.

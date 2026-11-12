@@ -32,7 +32,7 @@ export default function DailyCloseStatusCard ({ branchId = null, compact = false
       <button
         type="button"
         onClick={() => navigate('/daily-close')}
-        className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${view.tone === 'warning' ? 'bg-warning-bg text-warning-fg hover:bg-warning-border' : 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200'}`}
+        className={`inline-flex min-h-touch items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${view.tone === 'warning' ? 'bg-warning-bg text-warning-fg hover:bg-warning-border' : 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200'}`}
       >
         <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
         <span>Daily close: {view.title}</span>
@@ -53,7 +53,7 @@ export default function DailyCloseStatusCard ({ branchId = null, compact = false
       <button
         type="button"
         onClick={() => navigate('/daily-close')}
-        className="inline-flex min-h-11 items-center rounded-md border border-current px-4 text-sm font-medium"
+        className="inline-flex min-h-touch items-center rounded-md border border-current px-4 text-sm font-medium"
       >
         {view.key === 'closed' ? 'View' : 'Open Daily close'}
       </button>

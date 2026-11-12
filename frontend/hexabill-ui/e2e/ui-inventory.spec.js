@@ -52,8 +52,10 @@ test('ui inventory', async ({ page }, info) => {
       const controls = [...document.querySelectorAll('a,button,input,select,textarea,[role="button"],[role="tab"]')].filter(vis)
       const small = controls.map((el) => {
         const r = el.getBoundingClientRect()
-        return { l: label(el), w: Math.round(r.width), h: Math.round(r.height) }
-      }).filter((c) => c.w < 44 || c.h < 44)
+        const lab = el.closest('label')
+        const inBigLabel = !!lab && lab.getBoundingClientRect().height >= 44
+        return { l: label(el), w: Math.round(r.width), h: Math.round(r.height), inBigLabel }
+      }).filter((c) => (c.w < 44 || c.h < 44) && !c.inBigLabel)
 
       const tiny = [...document.querySelectorAll('p,span,div,label,td,th,li,small')].filter(vis)
         .filter((el) => parseFloat(getComputedStyle(el).fontSize) < 12 && (el.textContent || '').trim())

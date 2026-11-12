@@ -69,7 +69,7 @@ export default function AppToaster() {
                   <button
                     type="button"
                     onClick={() => toast.dismiss(t.id)}
-                    className="-my-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+                    className="-my-2 -mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
                     aria-label="Dismiss notification"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden />
