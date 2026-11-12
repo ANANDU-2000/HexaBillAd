@@ -35,6 +35,7 @@ import { clearAllCache, clearCache } from '../../services/api'
 import { getApiBaseUrlNoSuffix } from '../../services/apiConfig'
 import toast from 'react-hot-toast'
 import { showToast } from '../../utils/toast'
+import McpConnectionsPanel from './McpConnectionsPanel'
 import { isAdminOrOwner } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
@@ -872,6 +873,7 @@ const SettingsPage = () => {
     { id: 'notifications', label: 'Notifications', icon: Shield },
     ...(isAdminOrOwner(user) ? [{ id: 'backup', label: 'Backup', icon: Database }] : []),
     // AI connections are Owner-only (the server enforces it too).
+    ...(String(user?.role || '').toLowerCase() === 'owner' ? [{ id: 'ai', label: 'AI connections', icon: Plug }] : [])
   ]
 
   const renderTemplatePreview = (templateHtml) => {
@@ -1105,7 +1107,7 @@ const SettingsPage = () => {
                 <h2 className="text-lg font-semibold text-neutral-900">Company Logo</h2>
               </div>
 
-              <div className="flex items-center space-x-6">
+              <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:gap-6">
                 {/* Logo Preview */}
                 <div className="flex-shrink-0">
                   {(typeof logoDataUri === 'string' && logoDataUri.startsWith('data:')) || logoPreview || logoBlobUrl || (settings.logoUrl && !settings.logoUrl.includes('/api/storage/') && !settings.logoUrl.includes('storage/tenants/')) ? (
@@ -1135,8 +1137,8 @@ const SettingsPage = () => {
                 </div>
 
                 {/* Upload Controls */}
-                <div className="flex-1">
-                  <div className="space-y-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => setShowLogoModal(true)}
@@ -1150,7 +1152,7 @@ const SettingsPage = () => {
                         <button
                           type="button"
                           onClick={() => setShowInvoicePreview(true)}
-                          className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 ml-2"
+                          className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           Preview on Invoice
@@ -1167,7 +1169,7 @@ const SettingsPage = () => {
                               toast.success('App logo refresh requested.')
                             }
                           }}
-                          className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 ml-2"
+                          className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
                           title="If the logo in the header/sidebar did not update, click to refresh it"
                         >
                           <RefreshCw className="h-4 w-4 mr-2" />
@@ -1694,6 +1696,7 @@ const SettingsPage = () => {
         )}
 
         {/* AI connections (MCP) Tab - Owner only */}
+        {activeTab === 'ai' && String(user?.role || '').toLowerCase() === 'owner' && <McpConnectionsPanel />}
 
         {/* Backup Tab */}
         {activeTab === 'backup' && isAdminOrOwner(user) && (

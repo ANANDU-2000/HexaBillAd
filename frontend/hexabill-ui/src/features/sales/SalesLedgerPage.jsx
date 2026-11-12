@@ -1301,15 +1301,15 @@ const SalesLedgerPage = () => {
       ) : (
         <div className="flex flex-col md:flex-1 md:min-h-0 md:overflow-hidden bg-white w-full rounded-lg border border-neutral-200">
           {/* Desktop Table — sticky header; Actions column sticky right. Below 1280 the card list is used so no inner horizontal scrollbar. */}
-          <div className="hidden xl:flex xl:flex-col xl:flex-1 xl:min-h-0 w-full">
+          <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0 w-full">
             <div className="flex-1 min-h-0 overflow-auto w-full">
-            <table className="w-full min-w-[1100px] divide-y divide-neutral-200 text-xs lg:text-sm">
+            <table className="w-full min-w-0 xl:min-w-[1100px] divide-y divide-neutral-200 text-xs lg:text-sm">
               <thead className="bg-neutral-100 sticky top-0 z-20 border-b-2 border-neutral-300">
                 <tr>
                   <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Date
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
+                  <th className="hidden xl:table-cell px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Type
                   </th>
                   <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
@@ -1318,32 +1318,31 @@ const SalesLedgerPage = () => {
                   <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Customer
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
-                    <span className="xl:hidden" title="Payment Mode">Mode</span>
+                  <th className="hidden xl:table-cell px-2 2xl:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300"><span className="xl:hidden" title="Payment Mode">Mode</span>
                     <span className="hidden xl:inline">Payment Mode</span>
                   </th>
                   <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Bill Amount
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
+                  <th className="hidden xl:table-cell px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     VAT
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
+                  <th className="hidden xl:table-cell px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Paid Amount
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
+                  <th className="hidden xl:table-cell px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Returns
                   </th>
                   <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Pending
                   </th>
-                  <th className="px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
+                  <th className="hidden xl:table-cell px-2 2xl:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Days overdue
                   </th>
                   <th className="px-2 2xl:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap border-r border-neutral-300">
                     Status
                   </th>
-                  <th className={`px-2 2xl:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap min-w-[7rem] ${stickyActionTh}`}>
+                  <th className={`px-2 2xl:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 whitespace-nowrap min-w-[4.5rem] xl:min-w-[7rem] ${stickyActionTh}`}>
                     Actions
                   </th>
                 </tr>
@@ -1446,9 +1445,10 @@ const SalesLedgerPage = () => {
                       rows.push(
                         <tr key={ledgerRowKey(entry, idx)} className={rowBgColor}>
                         <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-900 border-r border-neutral-200">
-                          {dateStr}
+                          <span className="xl:hidden" title={dateStr}>{dateStr.slice(0, 5)}</span>
+                          <span className="hidden xl:inline">{dateStr}</span>
                         </td>
-                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-medium text-neutral-900 border-r border-neutral-200">
+                        <td className="hidden xl:table-cell px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-medium text-neutral-900 border-r border-neutral-200">
                           <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${entry.type === 'Payment'
  ? 'bg-green-100 text-green-800'
  : entry.type === 'Return'
@@ -1464,7 +1464,7 @@ const SalesLedgerPage = () => {
                         <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-900 border-r border-neutral-200">
                           {entry.customerName}
                         </td>
-                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-600 border-r border-neutral-200">
+                        <td className="hidden xl:table-cell px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-600 border-r border-neutral-200">
                           {entry.paymentMode || '-'}
                         </td>
                         {/* Bill Amount - Sales: GrandTotal; Return: -; Payment: credit amount */}
@@ -1478,11 +1478,11 @@ const SalesLedgerPage = () => {
                                 : '-'}
                         </td>
                         {/* VAT - Sale/Return: vatTotal; Payment: - */}
-                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-slate-700 border-r border-neutral-200">
+                        <td className="hidden xl:table-cell px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-slate-700 border-r border-neutral-200">
                           {entry.type === 'Payment' ? '-' : (entry.vatTotal > 0 ? formatCurrency(entry.vatTotal) : '-')}
                         </td>
                         {/* Paid Amount excludes returned goods, which have their own column. */}
-                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-success border-r border-neutral-200">
+                        <td className="hidden xl:table-cell px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-success border-r border-neutral-200">
                           {entry.type === 'Sale'
                             ? (entry.paidAmount > 0 ? formatCurrency(entry.paidAmount) : '-')
                             : entry.type === 'Return'
@@ -1491,7 +1491,7 @@ const SalesLedgerPage = () => {
                                 ? formatCurrency(entry.realGotPayment || 0)
                                 : '-'}
                         </td>
-                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-neutral-700 border-r border-neutral-200">
+                        <td className="hidden xl:table-cell px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-neutral-700 border-r border-neutral-200">
                           {entry.type === 'Return' ? formatCurrency(entry.grandTotal || 0) : '-'}
                         </td>
                         {/* Pending - Show only for Sales (unpaid amount) */}
@@ -1500,7 +1500,7 @@ const SalesLedgerPage = () => {
                             ? formatCurrency(entry.realPending)
                             : '-'}
                         </td>
-                        <td className="px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-neutral-800 border-r border-neutral-200">
+                        <td className="hidden xl:table-cell px-2 2xl:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-neutral-800 border-r border-neutral-200">
                           {(() => {
                             const d = getSaleDaysOutstanding(entry)
                             return d == null ? '—' : `${d}d`
@@ -1658,7 +1658,7 @@ const SalesLedgerPage = () => {
                   </tr>
                 )}
               </tbody>
-              <tfoot className="hidden lg:table-footer-group bg-neutral-200 sticky bottom-0 z-40 border-t-2 border-neutral-400">
+              <tfoot className="hidden xl:table-footer-group bg-neutral-200 sticky bottom-0 z-40 border-t-2 border-neutral-400">
                 <tr className="bg-primary-50">
                   <td
                     colSpan="5"
@@ -1695,7 +1695,7 @@ const SalesLedgerPage = () => {
           </div>
 
           {/* Card View — phones and tablets (no inner horizontal scroll) */}
-          <div className="xl:hidden px-2 py-2 space-y-2">
+          <div className="md:hidden px-2 py-2 space-y-2">
             {displayedLedger.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
                 {ledgerLoadFailed ? ledgerLoadFailedNotice : (
