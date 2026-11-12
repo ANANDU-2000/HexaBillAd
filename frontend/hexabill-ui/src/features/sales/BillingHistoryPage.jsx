@@ -526,16 +526,16 @@ const BillingHistoryPage = () => {
                         {allSelected ? <CheckSquare className="h-4 w-4 text-primary-600" /> : <Square className="h-4 w-4" />}
                       </button>
                     </th>
-                    <th className="px-2 py-1.5 text-left font-semibold text-neutral-600 uppercase tracking-wider">Invoice #</th>
-                    <th className="px-2 py-1.5 text-left font-semibold text-neutral-600 uppercase tracking-wider">Date</th>
-                    <th className="px-2 py-1.5 text-left font-semibold text-neutral-600 uppercase tracking-wider">Customer</th>
-                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600 uppercase tracking-wider">Subtotal</th>
-                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600 uppercase tracking-wider">VAT</th>
-                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600 uppercase tracking-wider">Total</th>
-                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600 uppercase tracking-wider">Paid</th>
-                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600 uppercase tracking-wider">Outstanding</th>
-                    <th className="px-2 py-1.5 text-left font-semibold text-neutral-600 uppercase tracking-wider">Status</th>
-                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600 uppercase tracking-wider sticky right-0 bg-neutral-50">Actions</th>
+                    <th className="px-2 py-1.5 text-left font-semibold text-neutral-600">Invoice #</th>
+                    <th className="px-2 py-1.5 text-left font-semibold text-neutral-600">Date</th>
+                    <th className="px-2 py-1.5 text-left font-semibold text-neutral-600">Customer</th>
+                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600">Subtotal</th>
+                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600">VAT</th>
+                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600">Total</th>
+                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600">Paid</th>
+                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600">Outstanding</th>
+                    <th className="px-2 py-1.5 text-left font-semibold text-neutral-600">Status</th>
+                    <th className="px-2 py-1.5 text-right font-semibold text-neutral-600 lg:sticky lg:right-0 bg-neutral-50">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-neutral-100">
@@ -571,30 +571,30 @@ const BillingHistoryPage = () => {
                         <td className="px-2 py-1.5 whitespace-nowrap">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badge.colorClass}`}>{badge.label}</span>
                         </td>
-                        <td className="px-2 py-1 whitespace-nowrap text-right sticky right-0 z-10 bg-white group-hover:bg-neutral-50">
+                        <td className="px-2 py-1 whitespace-nowrap text-right lg:sticky lg:right-0 z-10 bg-white group-hover:bg-neutral-50">
                           <div className="flex items-center justify-end gap-1">
                             {(inv.isLegacy || !inv.isDeleted) && (
-                              <button type="button" onClick={() => openInvoice(inv)} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-primary-600 hover:bg-primary-50" title={inv.isLegacy ? 'View invoice & items' : 'View invoice'} aria-label={`View invoice ${inv.invoiceNumber}`}>
+                              <button type="button" onClick={() => openInvoice(inv)} className="inline-flex h-11 w-11 lg:h-7 lg:w-7 items-center justify-center rounded-md text-primary-600 hover:bg-primary-50" title={inv.isLegacy ? 'View invoice & items' : 'View invoice'} aria-label={`View invoice ${inv.invoiceNumber}`}>
                                 <Eye className="h-4 w-4" />
                               </button>
                             )}
                             {inv.customerId && (
-                              <button type="button" onClick={() => openCustomerLedger(inv)} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-700 hover:bg-emerald-50" title="Customer ledger" aria-label={`Customer ledger for invoice ${inv.invoiceNumber}`}>
+                              <button type="button" onClick={() => openCustomerLedger(inv)} className="inline-flex h-11 w-11 lg:h-7 lg:w-7 items-center justify-center rounded-md text-emerald-700 hover:bg-emerald-50" title="Customer ledger" aria-label={`Customer ledger for invoice ${inv.invoiceNumber}`}>
                                 <Wallet className="h-4 w-4" />
                               </button>
                             )}
                             {hasReceipt(inv) && (
-                              <button type="button" onClick={() => handlePrintPaymentReceipt(inv)} disabled={loadingReceiptSaleId === inv.operatingSaleId} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-neutral-700 hover:bg-neutral-100 disabled:opacity-50" title="Print receipt" aria-label={`Print receipt for invoice ${inv.invoiceNumber}`}>
+                              <button type="button" onClick={() => handlePrintPaymentReceipt(inv)} disabled={loadingReceiptSaleId === inv.operatingSaleId} className="inline-flex h-11 w-11 lg:h-7 lg:w-7 items-center justify-center rounded-md text-neutral-700 hover:bg-neutral-100 disabled:opacity-50" title="Print receipt" aria-label={`Print receipt for invoice ${inv.invoiceNumber}`}>
                                 <Printer className="h-4 w-4" />
                               </button>
                             )}
                             {canEdit && selectable && (
-                              <button type="button" onClick={() => handleEditSale(inv)} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-neutral-700 hover:bg-neutral-100" title="Edit invoice" aria-label={`Edit invoice ${inv.invoiceNumber}`}>
+                              <button type="button" onClick={() => handleEditSale(inv)} className="inline-flex h-11 w-11 lg:h-7 lg:w-7 items-center justify-center rounded-md text-neutral-700 hover:bg-neutral-100" title="Edit invoice" aria-label={`Edit invoice ${inv.invoiceNumber}`}>
                                 <Edit className="h-4 w-4" />
                               </button>
                             )}
                             {isAdmin && selectable && (
-                              <button type="button" onClick={() => setSaleToDelete(inv.operatingSaleId)} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-rose-50 hover:text-rose-600" title="Delete invoice" aria-label={`Delete invoice ${inv.invoiceNumber}`}>
+                              <button type="button" onClick={() => setSaleToDelete(inv.operatingSaleId)} className="inline-flex h-11 w-11 lg:h-7 lg:w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-rose-50 hover:text-rose-600" title="Delete invoice" aria-label={`Delete invoice ${inv.invoiceNumber}`}>
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             )}

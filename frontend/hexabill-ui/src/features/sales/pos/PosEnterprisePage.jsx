@@ -2823,7 +2823,7 @@ const PosEnterprisePage = () => {
             type="button"
             onClick={() => !isZeroInvoice && setShowDiscountPopup(true)}
             disabled={isFormDisabled || isZeroInvoice}
-            className="h-9 px-2 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-50 hidden sm:inline-flex items-center"
+            className="h-11 lg:h-9 px-2 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-50 hidden sm:inline-flex items-center"
             title="Invoice discount (F8)"
           >
             Disc
@@ -3387,7 +3387,7 @@ const PosEnterprisePage = () => {
                         }
                       }}
                       disabled={isFormDisabled || isZeroInvoice}
-                      className="w-20 min-h-9 h-9 text-right border border-neutral-300 rounded-md px-2 text-sm disabled:opacity-50"
+                      className="w-20 min-h-11 h-11 lg:min-h-9 lg:h-9 text-right border border-neutral-300 rounded-md px-2 text-sm disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -3400,7 +3400,7 @@ const PosEnterprisePage = () => {
                     type="text"
                     inputMode="decimal"
                     disabled={isFormDisabled || isZeroInvoice}
-                    className="w-full min-h-9 h-9 px-2 py-1 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+                    className="w-full min-h-11 h-11 lg:min-h-9 lg:h-9 px-2 py-1 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
                     placeholder="0.00"
                     value={discountInput}
                     onChange={(e) => {
@@ -3473,7 +3473,7 @@ const PosEnterprisePage = () => {
                   <label className="block text-xs font-medium text-neutral-600 mb-1">Method</label>
                   <select
                     disabled={isFormDisabled}
-                    className="w-full min-h-9 h-9 px-2 py-1 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+                    className="w-full min-h-11 h-11 lg:min-h-9 lg:h-9 px-2 py-1 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                   >
@@ -3492,7 +3492,7 @@ const PosEnterprisePage = () => {
                       min="0"
                       step="0.01"
                       disabled={isFormDisabled}
-                      className="w-full min-h-9 h-9 px-2 py-1 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+                      className="w-full min-h-11 h-11 lg:min-h-9 lg:h-9 px-2 py-1 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
                       placeholder="Full amount if empty"
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
@@ -3508,7 +3508,7 @@ const PosEnterprisePage = () => {
                             const maxAmount = Math.min(amount, t.grandTotal)
                             setPaymentAmount(maxAmount.toFixed(2))
                           }}
-                          className="min-h-9 h-9 px-2 text-xs font-medium bg-primary-50 text-primary-700 border border-primary-200 rounded-md hover:bg-primary-100 disabled:opacity-50"
+                          className="min-h-11 h-11 lg:min-h-9 lg:h-9 px-2 text-xs font-medium bg-primary-50 text-primary-700 border border-primary-200 rounded-md hover:bg-primary-100 disabled:opacity-50"
                         >
                           {amount}
                         </button>
