@@ -41,6 +41,13 @@ module.exports = {
         'grid-4': '32px',
         'grid-6': '48px',
       },
+      // The root font is 14px, so rem-based sizes are 12.5% smaller than their name suggests
+      // (h-11 = 38.5px, not 44px). `h-touch` / `min-h-touch` / `w-touch` are the real 44px
+      // touch target and must be used anywhere a finger has to hit it.
+      height: { touch: '44px' },
+      width: { touch: '44px' },
+      minHeight: { touch: '44px' },
+      minWidth: { touch: '44px' },
       maxWidth: {
         'content': '1280px', // --content-max
       },

@@ -2351,7 +2351,7 @@ const PosEnterprisePage = () => {
       {/* Compact cashier header max 56px */}
       <div className="bg-primary-900 text-white px-2 sm:px-3 min-h-14 py-1.5 flex flex-wrap items-center justify-between gap-2 flex-shrink-0 md:flex-nowrap md:px-2.5">
         <div className="min-w-0 flex items-center gap-1.5 sm:gap-3 md:flex-1 md:gap-1.5 shrink">
-          <button type="button" onClick={() => navigate('/dashboard')} className="hidden md:inline-flex xl:hidden h-9 w-9 items-center justify-center rounded-lg border border-white/30 bg-white/10 hover:bg-white/20" title="Back to Dashboard" aria-label="Back to Dashboard"><ArrowLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={() => navigate('/dashboard')} className="hidden md:inline-flex xl:hidden h-touch w-touch items-center justify-center rounded-lg border border-white/30 bg-white/10 hover:bg-white/20 xl:h-9 xl:w-9" title="Back to Dashboard" aria-label="Back to Dashboard"><ArrowLeft className="h-5 w-5" /></button>
           <span className="hidden sm:inline md:hidden xl:inline text-sm sm:text-base font-bold tracking-wide whitespace-nowrap">Tax Invoice</span>
           <span className="hidden md:inline xl:hidden text-sm font-bold whitespace-nowrap">Invoice</span>
           <span className="md:hidden text-micro font-bold uppercase tracking-wide text-primary-200/70">INV</span>
@@ -2367,7 +2367,7 @@ const PosEnterprisePage = () => {
               type="text"
               value={customInvoiceNo}
               onChange={(e) => setCustomInvoiceNo(e.target.value)}
-              className="font-mono text-xs sm:text-sm bg-white/10 border border-white/30 rounded px-2 py-1 w-16 min-w-0 sm:w-20 lg:w-24 text-primary-100 placeholder:text-primary-200/60 focus:outline-none focus:ring-1 focus:ring-white/50"
+              className="font-mono text-xs sm:text-sm bg-white/10 border border-white/30 rounded px-2 py-1 w-16 min-w-0 sm:w-20 md:h-touch xl:h-9 lg:w-24 text-primary-100 placeholder:text-primary-200/60 focus:outline-none focus:ring-1 focus:ring-white/50"
               title="Invoice # (editable before save). Tab to continue · Enter to move to next field."
               placeholder={nextInvoiceNumberPreview || 'Auto'}
               maxLength={32}
@@ -2418,7 +2418,7 @@ const PosEnterprisePage = () => {
                     setSelectedRouteId('')
                   }}
                   disabled={branchesRoutesLoading || branches.length === 0 || (!isAdminOrOwner(user) && branches.length === 1)}
-                  className="h-9 w-full min-w-0 pl-2 pr-6 rounded-lg border-0 bg-white text-xs font-bold text-primary-900 disabled:opacity-60 appearance-none truncate"
+                  className="h-touch w-full min-w-0 pl-2 pr-6 rounded-lg border-0 bg-white text-xs font-bold text-primary-900 disabled:opacity-60 appearance-none truncate xl:h-9"
                   title="Branch"
                 >
                   <option value="">{branchesRoutesLoading ? '…' : 'Branch'}</option>
@@ -2434,7 +2434,7 @@ const PosEnterprisePage = () => {
                   aria-label="Route"
                   onChange={(e) => setSelectedRouteId(e.target.value)}
                   disabled={branchesRoutesLoading || routes.length === 0 || !selectedBranchId || (!isAdminOrOwner(user) && (selectedBranchId ? routes.filter(r => r.branchId === parseInt(selectedBranchId, 10)) : routes).length <= 1)}
-                  className="h-9 w-full min-w-0 pl-2 pr-6 rounded-lg border-0 bg-white text-xs font-bold text-primary-900 disabled:opacity-60 appearance-none truncate"
+                  className="h-touch w-full min-w-0 pl-2 pr-6 rounded-lg border-0 bg-white text-xs font-bold text-primary-900 disabled:opacity-60 appearance-none truncate xl:h-9"
                   title="Route"
                 >
                   <option value="">Route</option>
@@ -2448,7 +2448,7 @@ const PosEnterprisePage = () => {
               </div>
             </div>
           )}
-          <label className="relative hidden md:inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-white px-2 text-xs font-bold text-primary-900 hover:bg-primary-50 xl:gap-1.5 xl:px-2.5" title="Invoice date">
+          <label className="relative hidden md:inline-flex h-touch shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-white px-2 text-xs font-bold text-primary-900 hover:bg-primary-50 xl:h-9 xl:gap-1.5 xl:px-2.5" title="Invoice date">
             <CalendarDays className="h-4 w-4 text-primary-700" aria-hidden />
             <span className="xl:hidden">{invoiceDate ? new Date(`${invoiceDate}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Date'}</span>
             <span className="hidden xl:inline">{invoiceDate ? new Date(`${invoiceDate}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : 'Date'}</span>
@@ -2469,7 +2469,7 @@ const PosEnterprisePage = () => {
               onClick={() => setPosMenu((m) => (m === 'hold' ? null : 'hold'))}
               aria-haspopup="menu"
               aria-expanded={posMenu === 'hold'}
-              className="relative inline-flex h-9 items-center gap-1 rounded-lg border border-white/40 bg-white/15 px-2.5 text-sm font-bold text-white hover:bg-white/25"
+              className="relative inline-flex h-touch items-center gap-1 rounded-lg border border-white/40 bg-white/15 px-2.5 text-sm font-bold text-white hover:bg-white/25 xl:h-9"
               title="Hold (F6), resume a held bill, or repeat the last bill"
             >
               Hold
@@ -2495,7 +2495,7 @@ const PosEnterprisePage = () => {
           <button
             type="button"
             onClick={handleNewInvoice}
-            className="inline-flex h-9 items-center gap-1 rounded-lg bg-white px-3 text-sm font-extrabold text-primary-900 hover:bg-primary-50"
+            className="inline-flex h-touch items-center gap-1 rounded-lg bg-white px-3 text-sm font-extrabold text-primary-900 hover:bg-primary-50 xl:h-9"
             title="New invoice (F10)"
           >
             <Plus className="h-4 w-4" aria-hidden /> New
@@ -2507,7 +2507,7 @@ const PosEnterprisePage = () => {
               aria-haspopup="menu"
               aria-expanded={posMenu === 'more'}
               aria-label="More actions"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/40 bg-white/15 text-lg font-bold leading-none text-white hover:bg-white/25"
+              className="inline-flex h-touch w-touch items-center justify-center rounded-lg border border-white/40 bg-white/15 text-lg font-bold leading-none text-white hover:bg-white/25 xl:h-9 xl:w-9"
               title="Print, delivery note, refresh"
             >
               ⋯
@@ -2821,7 +2821,7 @@ const PosEnterprisePage = () => {
                   }}
                   onFocus={() => setShowQuickCustomerDropdown(true)}
                   onBlur={() => setTimeout(() => setShowQuickCustomerDropdown(false), 150)}
-                  aria-label="Customer name or phone" className="w-full h-11 lg:h-9 px-2 border border-neutral-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  aria-label="Customer name or phone" className="w-full h-touch px-2 border border-neutral-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {showQuickCustomerDropdown && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
@@ -2872,7 +2872,7 @@ const PosEnterprisePage = () => {
             type="button"
             onClick={() => setScanModeOn((v) => !v)}
             disabled={isFormDisabled}
-            className={`hidden md:inline-flex h-11 items-center gap-1.5 rounded-lg border-2 px-3 text-sm font-bold disabled:opacity-50 ${scanModeOn ? 'border-warning bg-amber-500 text-white' : 'border-primary-600 bg-primary-50 text-primary-700 hover:bg-primary-100'}`}
+            className={`hidden md:inline-flex h-touch items-center gap-1.5 rounded-lg border-2 px-3 text-sm font-bold disabled:opacity-50 xl:h-9 ${scanModeOn ? 'border-warning bg-amber-500 text-white' : 'border-primary-600 bg-primary-50 text-primary-700 hover:bg-primary-100'}`}
             title={scanModeOn ? 'Stop camera scan' : 'Start continuous camera scan'}
             aria-pressed={scanModeOn}
           >
@@ -3053,7 +3053,7 @@ const PosEnterprisePage = () => {
                                       onClick={() => openProductPicker(item.rowId || index)}
                                       onFocus={() => openProductPicker(item.rowId || index)}
                                       placeholder="Click to search…"
-                                      className="flex-1 min-w-0 px-2 py-0.5 border border-primary-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white min-h-8 h-8 font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                      className="flex-1 min-w-0 px-2 py-0.5 border border-primary-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white min-h-touch h-touch xl:min-h-8 xl:h-8 font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                       aria-label={`Product search row ${index + 1}`}
                                     />
                                     <input
@@ -3084,7 +3084,7 @@ const PosEnterprisePage = () => {
                                         }
                                       }}
                                       placeholder="Scan"
-                                      className="w-14 shrink-0 px-1 py-0.5 border border-purple-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 bg-purple-50 min-h-8 h-8 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="w-14 shrink-0 px-1 py-0.5 border border-purple-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 bg-purple-50 min-h-touch h-touch xl:min-h-8 xl:h-8 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                       title="Scan barcode or enter product code"
                                     />
                                   </div>
@@ -3102,7 +3102,7 @@ const PosEnterprisePage = () => {
                               data-pos-control="qty"
                               data-pos-row-id={item.rowId || ''}
                               disabled={isFormDisabled}
-                              className="w-full min-w-[4.5rem] px-2 py-0.5 border border-neutral-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-semibold min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="w-full min-w-[4.5rem] px-2 py-0.5 border border-neutral-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-semibold min-h-touch h-touch xl:min-h-8 xl:h-8 disabled:opacity-50 disabled:cursor-not-allowed"
                               value={item.qty === '' ? '' : item.qty}
                               onChange={(e) => updateCartItem(index, 'qty', e.target.value)}
                               onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'qty')}
@@ -3112,14 +3112,14 @@ const PosEnterprisePage = () => {
                           {/* Unit Type */}
                           <td className="px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-16">
                             {item.productId ? (
-                              <div className="w-full px-1 py-0.5 border border-neutral-200 rounded text-center text-xs font-medium uppercase min-h-8 h-8 flex items-center justify-center bg-neutral-50">
+                              <div className="w-full px-1 py-0.5 border border-neutral-200 rounded text-center text-xs font-medium uppercase min-h-touch h-touch xl:min-h-8 xl:h-8 flex items-center justify-center bg-neutral-50">
                                 {item.unitType || 'CRTN'}
                               </div>
                             ) : (
                               <select
                                 tabIndex={-1}
                                 disabled={isFormDisabled}
-                                className="w-full px-1 py-0.5 border border-neutral-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs font-medium uppercase min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full px-1 py-0.5 border border-neutral-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs font-medium uppercase min-h-touch h-touch xl:min-h-8 xl:h-8 disabled:opacity-50 disabled:cursor-not-allowed"
                                 value={item.unitType || 'CRTN'}
                                 onChange={(e) => updateCartItem(index, 'unitType', e.target.value)}
                               >
@@ -3144,7 +3144,7 @@ const PosEnterprisePage = () => {
                                 data-pos-control="unitPrice"
                                 data-pos-row-id={item.rowId || ''}
                                 disabled={isFormDisabled}
-                                className={`w-full min-w-[5.5rem] px-2 py-0.5 border rounded text-right focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-semibold ${(Number(item.unitPrice) || 0) <= 0 ? 'border-error bg-error-bg' : 'border-neutral-300'}  min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed`}
+                                className={`w-full min-w-[5.5rem] px-2 py-0.5 border rounded text-right focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-semibold ${(Number(item.unitPrice) || 0) <= 0 ? 'border-error bg-error-bg' : 'border-neutral-300'}  min-h-touch h-touch xl:min-h-8 xl:h-8 disabled:opacity-50 disabled:cursor-not-allowed`}
                                 value={item.unitPrice === '' ? '' : item.unitPrice}
                                 onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
                                 onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'unitPrice')}
@@ -3174,7 +3174,7 @@ const PosEnterprisePage = () => {
                               data-pos-control="discount"
                               data-pos-row-id={item.rowId || ''}
                               disabled={isFormDisabled}
-                              className="w-full min-w-[4.5rem] px-2 py-0.5 border border-neutral-300 rounded text-right focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-medium min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="w-full min-w-[4.5rem] px-2 py-0.5 border border-neutral-300 rounded text-right focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-medium min-h-touch h-touch xl:min-h-8 xl:h-8 disabled:opacity-50 disabled:cursor-not-allowed"
                               value={item.discount === '' || item.discount === undefined ? '' : item.discount}
                               onChange={(e) => updateCartItem(index, 'discount', e.target.value)}
                               onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'discount')}
@@ -3201,7 +3201,7 @@ const PosEnterprisePage = () => {
                                 removeFromCart(index)
                               }}
                               disabled={isFormDisabled}
-                              className="text-error hover:text-red-800 hover:bg-error-bg p-1 rounded transition-colors inline-flex items-center justify-center min-w-8 min-h-8 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="text-error hover:text-red-800 hover:bg-error-bg p-1 rounded transition-colors inline-flex items-center justify-center min-w-touch min-h-touch active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed xl:min-w-8 xl:min-h-8"
                               title="Delete item"
                               aria-label="Delete item"
                             >
@@ -3219,7 +3219,7 @@ const PosEnterprisePage = () => {
                           type="button"
                           onClick={addEmptyRow}
                           disabled={isFormDisabled}
-                          className="flex h-12 w-full items-center justify-center gap-2 border-t border-dashed border-primary-300 bg-primary-50/60 text-sm font-semibold text-primary-700 hover:bg-primary-50 disabled:opacity-50"
+                          className="flex h-touch w-full items-center justify-center gap-2 border-t border-dashed border-primary-300 bg-primary-50/60 text-sm font-semibold text-primary-700 hover:bg-primary-50 disabled:opacity-50"
                         >
                           <Plus className="h-4 w-4" aria-hidden /> Add item <span className="text-xs font-normal text-primary-600">(F3)</span>
                         </button>

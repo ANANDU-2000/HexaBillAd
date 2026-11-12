@@ -20,6 +20,7 @@ How to read severity: **P0** blocks or misleads money work · **P1** costs taps/
 | G4 | P1 | No safe-area handling on the bottom bars: on a notched phone the Checkout/Save button sits under the home indicator. | POS bottom bar uses `bottom-0`, no `env(safe-area-inset-bottom)` |
 | G5 | P2 | Headers differ per page: some have back arrow + title + 3 icons, POS has a dark strip with 6 controls, Dashboard has a bare title. No single "app bar" rule. | `/pos`, `/dashboard`, `/sales-ledger` |
 | G6 | P2 | Page transitions exist (`hb-page-in`) but sheets, filters and tab switches have no motion language; taps give no haptic-like feedback on cards. | code review |
+| G7 | P0 | **The root font is 14 px, so Tailwind's rem spacing is 12.5 % smaller than its name**: `min-h-11` renders 38.5 px, `h-8` renders 28 px. Every "44 px" target written as `h-11` is really 38.5 px. Fixed for POS with a real `h-touch` / `min-h-touch` / `w-touch` token (44 px) in `tailwind.config.js`; the rest of the app still needs the sweep. | measured: `getComputedStyle` btn height 38.5 px, root 14 px |
 
 ## 2. POS (the screen the owner uses all day)
 
