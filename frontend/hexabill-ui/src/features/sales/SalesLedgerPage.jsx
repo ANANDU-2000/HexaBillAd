@@ -1038,7 +1038,6 @@ const SalesLedgerPage = () => {
             aria-label="To date"
             className={`${mobileFormFieldClass} min-w-0 px-1.5 text-base tabular-nums [&::-webkit-calendar-picker-indicator]:ml-0.5 [&::-webkit-calendar-picker-indicator]:shrink-0`}
           />
-          <DatePresetChips from={dateRange.from} to={dateRange.to} onChange={(r) => setDateRange(r)} className="col-span-2" />
         </div>}
         <MobileActionStrip className="md:flex-nowrap md:overflow-x-auto">
             <div className="hidden md:flex md:flex-nowrap items-center gap-1.5 sm:gap-2 min-w-0 overflow-x-auto">
@@ -1054,9 +1053,7 @@ const SalesLedgerPage = () => {
                 onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
                 className={`${mobileFormFieldClass} hidden xl:block xl:min-h-0 xl:py-1.5 xl:text-xs xl:w-36`}
               />
-              <DatePresetChips from={dateRange.from} to={dateRange.to} onChange={(r) => setDateRange(r)} presets={['today', '7d', 'month', 'lastmonth', 'all']} className="items-center" />
-            </div>
-              <button
+            </div>              <button
                 type="button"
                 onClick={() => setOverdueOnly((v) => !v)}
                 className={`inline-flex items-center justify-center gap-1 shrink-0 min-h-10 md:min-h-8 px-2.5 border rounded-lg text-xs font-medium whitespace-nowrap ${overdueOnly ? 'bg-warning-fg text-white border-warning' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
@@ -1115,7 +1112,7 @@ const SalesLedgerPage = () => {
 
       {/* Filters - Collapsible */}
       {showFilters && (
-        <div className="flex-shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-2 md:overflow-y-auto md:max-h-56">
+        <div className="flex-shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-2">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center">
               <Filter className="h-4 w-4 text-primary-600 mr-2" />
@@ -1126,6 +1123,10 @@ const SalesLedgerPage = () => {
                 {Object.values(filters).filter(v => v !== '').length} active
               </span>
             )}
+          </div>
+          {/* Date presets live here, not in the toolbar: no sideways scroller above the list. */}
+          <div className="mb-3">
+            <DatePresetChips from={dateRange.from} to={dateRange.to} onChange={(r) => setDateRange(r)} />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 lg:gap-3">
             <Input
