@@ -463,7 +463,7 @@ const Layout = () => {
       )}
 
       {/* Sidebar: labelled 192px from 640px (tablets), 240px from 1024px; icon rail only when the user collapses it */}
-      <div className={`no-print hidden md:fixed md:flex md:flex-col md:min-h-0 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${sidebarCollapsed ? (railLabels ? 'md:w-24' : 'md:w-16') : 'md:w-48 lg:w-60'}`}>
+      <div className={`no-print hidden ${posCompact ? '' : 'md:fixed md:flex'} md:flex-col md:min-h-0 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${sidebarCollapsed ? (railLabels ? 'md:w-24' : 'md:w-16') : 'md:w-48 lg:w-60'}`}>
         <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
           <div className={`flex shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'h-16 justify-between gap-2' : 'min-h-16 flex-col justify-center gap-1 py-2'}`}>
             <Link to="/dashboard" className={`flex min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
@@ -557,7 +557,7 @@ const Layout = () => {
       </div>
 
       {/* Main content - Full viewport after sidebar; pt-10 when impersonation banner visible so content not covered */}
-      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none ${sidebarCollapsed ? (railLabels ? 'md:pl-24' : 'md:pl-16') : 'md:pl-48 lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
+      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none ${posCompact ? 'md:pl-0' : sidebarCollapsed ? (railLabels ? 'md:pl-24' : 'md:pl-16') : 'md:pl-48 lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
         {backendUnavailable && (
           <div className="px-4 py-2 bg-warning-bg border-b border-warning-border text-warning-fg text-sm">
             Service temporarily unavailable. Try again in a moment, or contact your company administrator.
