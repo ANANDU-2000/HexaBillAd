@@ -56,8 +56,8 @@ export const authAPI = {
 }
 
 export const productsAPI = {
-  getProducts: async (params = {}) => {
-    const response = await api.get('/products', { params })
+  getProducts: async (params = {}, config = {}) => {
+    const response = await api.get('/products', { params, ...config })
     return response.data
   },
 
@@ -192,9 +192,9 @@ export const salesAPI = {
     return response.data
   },
 
-  getSales: async (params = {}) => {
+  getSales: async (params = {}, config = {}) => {
     // Sales change constantly; never serve stale list from GET cache (was hiding updated payment status).
-    const response = await api.get('/sales', { params, _bypassCache: true })
+    const response = await api.get('/sales', { params, _bypassCache: true, ...config })
     return response.data
   },
 
@@ -531,8 +531,8 @@ export const customersAPI = {
     const response = await api.get('/customers/pending-summary')
     return response.data
   },
-  getCustomers: async (params = {}) => {
-    const response = await api.get('/customers', { params })
+  getCustomers: async (params = {}, config = {}) => {
+    const response = await api.get('/customers', { params, ...config })
     return response.data
   },
   /** Tab counts (all/outstanding/active/overdue/inactive) over the same scope and search as the list. */
@@ -546,8 +546,8 @@ export const customersAPI = {
     return response.data
   },
 
-  getCustomer: async (id) => {
-    const response = await api.get(`/customers/${id}`)
+  getCustomer: async (id, config = {}) => {
+    const response = await api.get(`/customers/${id}`, config)
     return response.data
   },
 
@@ -575,7 +575,7 @@ export const customersAPI = {
     return response.data
   },
 
-  getCustomerLedger: async (id, params = {}) => {
+  getCustomerLedger: async (id, params = {}, config = {}) => {
     const { branchId, routeId, staffId, fromDate, toDate } = params
     const query = new URLSearchParams()
     if (branchId != null) query.set('branchId', branchId)
@@ -584,17 +584,17 @@ export const customersAPI = {
     if (fromDate) query.set('fromDate', toYYYYMMDD(fromDate))
     if (toDate) query.set('toDate', toYYYYMMDD(toDate))
     const url = query.toString() ? `/customers/${id}/ledger?${query}` : `/customers/${id}/ledger`
-    const response = await api.get(url)
+    const response = await api.get(url, config)
     return response.data
   },
 
-  getCashCustomerLedger: async () => {
-    const response = await api.get('/customers/cash-customer/ledger')
+  getCashCustomerLedger: async (config = {}) => {
+    const response = await api.get('/customers/cash-customer/ledger', config)
     return response.data
   },
 
-  getOutstandingInvoices: async (id) => {
-    const response = await api.get(`/customers/${id}/outstanding-invoices`)
+  getOutstandingInvoices: async (id, config = {}) => {
+    const response = await api.get(`/customers/${id}/outstanding-invoices`, config)
     return response.data
   },
 
@@ -778,8 +778,8 @@ export const paymentsAPI = {
     return response.data
   },
 
-  getPayments: async (params = {}) => {
-    const response = await api.get('/payments', { params, _bypassCache: true })
+  getPayments: async (params = {}, config = {}) => {
+    const response = await api.get('/payments', { params, _bypassCache: true, ...config })
     return response.data
   },
 
@@ -1038,8 +1038,8 @@ export const expensesAPI = {
 }
 
 export const reportsAPI = {
-  getDashboardBatch: async (params = {}) => {
-    const response = await api.get('/dashboard/batch', { params })
+  getDashboardBatch: async (params = {}, config = {}) => {
+    const response = await api.get('/dashboard/batch', { params, ...config })
     return response.data
   },
 
@@ -1048,73 +1048,73 @@ export const reportsAPI = {
     return response.data
   },
 
-  getSummaryReport: async (params = {}) => {
-    const response = await api.get('/reports/summary', { params: normalizeDateParams(params) })
+  getSummaryReport: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/summary', { params: normalizeDateParams(params), ...config })
     return response.data
   },
 
-  getSalesReport: async (params = {}) => {
-    const response = await api.get('/reports/sales', { params: normalizeDateParams(params) })
+  getSalesReport: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/sales', { params: normalizeDateParams(params), ...config })
     return response.data
   },
   getEnhancedSalesReport: async (params = {}) => {
     const response = await api.get('/reports/sales-enhanced', { params: normalizeDateParams(params) })
     return response.data
   },
-  getProductSalesReport: async (params = {}) => {
-    const response = await api.get('/reports/product-sales', { params: normalizeDateParams(params) })
+  getProductSalesReport: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/product-sales', { params: normalizeDateParams(params), ...config })
     return response.data
   },
   getEnhancedProductSalesReport: async (params = {}) => {
     const response = await api.get('/reports/products-enhanced', { params: normalizeDateParams(params) })
     return response.data
   },
-  getOutstandingCustomers: async (params = {}) => {
-    const response = await api.get('/reports/outstanding', { params })
+  getOutstandingCustomers: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/outstanding', { params, ...config })
     return response.data
   },
   getCustomerReport: async (params = {}) => {
     const response = await api.get('/reports/customers-enhanced', { params })
     return response.data
   },
-  getAgingReport: async (params = {}) => {
-    const response = await api.get('/reports/aging', { params })
+  getAgingReport: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/aging', { params, ...config })
     return response.data
   },
-  getApAgingReport: async (params = {}) => {
-    const response = await api.get('/reports/ap-aging', { params })
+  getApAgingReport: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/ap-aging', { params, ...config })
     return response.data
   },
   getStockReport: async (params = {}) => {
     const response = await api.get('/reports/stock', { params })
     return response.data
   },
-  getComprehensiveSalesLedger: async (params = {}) => {
-    const response = await api.get('/reports/sales-ledger', { params: normalizeDateParams(params) })
+  getComprehensiveSalesLedger: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/sales-ledger', { params: normalizeDateParams(params), ...config })
     return response.data
   },
 
-  getBranchComparison: async (params = {}) => {
-    const response = await api.get('/reports/branch-comparison', { params: normalizeDateParams(params) })
+  getBranchComparison: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/branch-comparison', { params: normalizeDateParams(params), ...config })
     return response.data
   },
-  getStaffPerformance: async (params = {}) => {
-    const response = await api.get('/reports/staff-performance', { params: normalizeDateParams(params) })
-    return response.data
-  },
-
-  getChequeReport: async (params = {}) => {
-    const response = await api.get('/reports/cheque', { params: normalizeDateParams(params) })
+  getStaffPerformance: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/staff-performance', { params: normalizeDateParams(params), ...config })
     return response.data
   },
 
-  getAISuggestions: async (params = {}) => {
-    const response = await api.get('/reports/ai-suggestions', { params })
+  getChequeReport: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/cheque', { params: normalizeDateParams(params), ...config })
     return response.data
   },
 
-  getPendingBills: async (params = {}) => {
-    const response = await api.get('/reports/pending', { params: normalizeDateParams(params) })
+  getAISuggestions: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/ai-suggestions', { params, ...config })
+    return response.data
+  },
+
+  getPendingBills: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/pending', { params: normalizeDateParams(params), ...config })
     return response.data
   },
 
@@ -1253,8 +1253,8 @@ export const reportsAPI = {
     return response.data
   },
 
-  getExpensesByCategory: async (params = {}) => {
-    const response = await api.get('/reports/expenses', { params })
+  getExpensesByCategory: async (params = {}, config = {}) => {
+    const response = await api.get('/reports/expenses', { params, ...config })
     return response.data
   },
 
@@ -1575,24 +1575,24 @@ export const returnsAPI = {
     const response = await api.get('/returns/sales', { params })
     return response.data
   },
-  getSaleReturnsPaged: async (params = {}) => {
-    const response = await api.get('/returns/sales', { params })
+  getSaleReturnsPaged: async (params = {}, config = {}) => {
+    const response = await api.get('/returns/sales', { params, ...config })
     return response.data
   },
-  getCreditNotes: async (params = {}) => {
-    const response = await api.get('/returns/credit-notes', { params })
+  getCreditNotes: async (params = {}, config = {}) => {
+    const response = await api.get('/returns/credit-notes', { params, ...config })
     return response.data
   },
-  getDamageReport: async (params = {}) => {
-    const response = await api.get('/returns/damage-report', { params })
+  getDamageReport: async (params = {}, config = {}) => {
+    const response = await api.get('/returns/damage-report', { params, ...config })
     return response.data
   },
-  getDamageCategories: async () => {
-    const response = await api.get('/returns/damage-categories')
+  getDamageCategories: async (config = {}) => {
+    const response = await api.get('/returns/damage-categories', config)
     return response.data
   },
-  getFeatureFlags: async () => {
-    const response = await api.get('/returns/feature-flags')
+  getFeatureFlags: async (config = {}) => {
+    const response = await api.get('/returns/feature-flags', config)
     return response.data
   },
   approveSaleReturn: async (id) => {
@@ -1655,9 +1655,10 @@ export const returnsAPI = {
 
 // Profit API
 export const profitAPI = {
-  getProfitReport: async (fromDate, toDate) => {
+  getProfitReport: async (fromDate, toDate, config = {}) => {
     const response = await api.get('/profit/report', {
-      params: { fromDate, toDate }
+      params: { fromDate, toDate },
+      ...config
     })
     return response.data
   },
@@ -1673,9 +1674,10 @@ export const profitAPI = {
     })
     return response.data
   },
-  getBranchProfit: async (fromDate, toDate) => {
+  getBranchProfit: async (fromDate, toDate, config = {}) => {
     const response = await api.get('/profit/branch-breakdown', {
-      params: { fromDate, toDate }
+      params: { fromDate, toDate },
+      ...config
     })
     return response.data
   },

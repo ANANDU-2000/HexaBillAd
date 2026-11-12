@@ -36,6 +36,8 @@ import Modal from '../../components/Modal'
 import { customersAPI, routesAPI } from '../../services/index'
 import { TabNavigation } from '../../components/ui/index'
 import { useDebounce } from '../../hooks/useDebounce'
+import { useRequestControl } from '../../hooks/useRequestControl'
+import LoadStatusNotice from '../../components/LoadStatusNotice'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import CustomerPinField from '../../components/CustomerPinField'
@@ -249,7 +251,10 @@ const CustomersPage = () => {
     setCurrentPage((p) => (p === parsed.currentPage ? p : parsed.currentPage))
   }, [searchParams])
 
+  const customersRequest = useRequestControl()
   const fetchCustomers = async (page = 1, append = false) => {
+    // P-01: a newer request aborts this one; only the latest response is applied.
+    const ticket = customersRequest.start()
     try {
       setLoading(true)
       setLoadError(false)
@@ -264,8 +269,9 @@ const CustomersPage = () => {
         search: searchParam,
         ...(activeTab && activeTab !== 'all' ? { filter: activeTab } : {}),
         ...(sortBy && sortBy !== 'name' ? { sortBy } : {})
-      })
+      }, { signal: ticket.signal })
       await countsRequest
+      if (!ticket.isCurrent()) return
       if (response.success && response.data) {
         const newCustomers = response.data.items || []
         if (append) {
@@ -282,6 +288,12 @@ const CustomersPage = () => {
         setLoadError(true)
       }
     } catch (error) {
+      const kind = ticket.classify(error)
+      if (kind === 'superseded') return
+      if (kind === 'timedOut' || kind === 'cancelled') {
+        if (!append) setCustomers([])
+        return
+      }
       console.error('Failed to load customers:', error)
       setLoadError(true)
       // Only show error if it's not a network error (handled by interceptor)
@@ -290,8 +302,11 @@ const CustomersPage = () => {
       }
       if (!append) setCustomers([])
     } finally {
-      setLoading(false)
-      setHasLoadedOnce(true)
+      if (ticket.isCurrent()) {
+        setLoading(false)
+        setHasLoadedOnce(true)
+      }
+      ticket.finish()
     }
   }
 
@@ -760,6 +775,10 @@ const CustomersPage = () => {
     { id: 'inactive', label: 'Inactive', icon: Users, badge: count('inactive') }
   ]
 
+  const loadNotice = (
+    <LoadStatusNotice phase={customersRequest.phase} onCancel={customersRequest.cancel} onRetry={() => fetchCustomers(1)} />
+  )
+
   // Sorting is done by the server for the whole list. Header clicks map to the sorts it supports.
   const SORT_BY_COLUMN = { name: 'name', balance: 'balanceDesc', lastActivity: 'activityDesc' }
   const COLUMN_BY_SORT = { name: 'name', balanceDesc: 'balance', activityDesc: 'lastActivity' }
@@ -844,6 +863,7 @@ const CustomersPage = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 max-w-full">
+      {loadNotice}
       {/* Header: title with the real total, one primary action; search and sort on one row; tabs carry server-side counts. */}
       <div className="shrink-0 rounded-lg border border-surface-border bg-white">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 pt-3 sm:px-4">

@@ -5,9 +5,9 @@ module.exports = {
   ],
   theme: {
     extend: {
-      // `md` is the tablet breakpoint. 640px (not 768) so portrait tablets such as the 752px HONOR Pad get the tablet
-      // shell, tables and 2-column forms instead of the phone layout.
-      screens: { md: '640px' },
+      // `md` and `tab` are the tablet breakpoint at 640px (not 768) so portrait tablets such as the 752px HONOR Pad get the
+      // tablet shell, tables and 2-column forms instead of the phone layout.
+      screens: { md: '640px', tab: '640px' },
       fontFamily: {
         // Arabic glyphs fall through to Noto Sans Arabic (bilingual names, RTL screens).
         sans: ['Inter', '"Noto Sans Arabic"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],

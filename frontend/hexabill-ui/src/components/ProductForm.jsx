@@ -34,6 +34,16 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
     descriptionAr: product?.descriptionAr || ''
   })
   
+  // UX-BUG-43: warn before a reload or tab close loses typed product details.
+  const initialSnapshotRef = useRef(JSON.stringify(formData))
+  const isFormDirty = JSON.stringify(formData) !== initialSnapshotRef.current || !!imageFile || imageRemoved
+  useEffect(() => {
+    if (!isFormDirty) return undefined
+    const onBeforeUnload = (e) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [isFormDirty])
+
   const [categories, setCategories] = useState([])
   const [loadingCategories, setLoadingCategories] = useState(false)
   const [creatingCategory, setCreatingCategory] = useState(false)

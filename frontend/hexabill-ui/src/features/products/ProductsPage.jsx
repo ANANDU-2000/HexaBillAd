@@ -5,6 +5,8 @@ import { Plus, Edit, Trash2, Package, AlertTriangle, Search, Filter, RefreshCw, 
 import { productsAPI, stockAdjustmentsAPI, productCategoriesAPI } from '../../services/index'
 import ProductsTable from './ProductsTable'
 import ProductForm from '../../components/ProductForm'
+import LoadStatusNotice from '../../components/LoadStatusNotice'
+import { useRequestControl } from '../../hooks/useRequestControl'
 import ProductImage from '../../components/ProductImage'
 import StockAdjustmentModal from '../../components/StockAdjustmentModal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
@@ -18,6 +20,7 @@ import toast from 'react-hot-toast'
 import { readProductsStateFromParams, syncProductsSearchParams } from '../../utils/productsUrl'
 import { saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 import { useBranding } from '../../tenant/TenantBrandingContext'
+import { scheduler } from '../../services/scheduler'
 
 const ProductsPage = () => {
   const { currency = 'AED' } = useBranding()
@@ -121,7 +124,10 @@ const ProductsPage = () => {
     })
   }, [searchParams])
 
+  const productsRequest = useRequestControl()
   const loadProducts = useCallback(async () => {
+    // P-01: a newer filter/page aborts this request; only the latest response is applied.
+    const ticket = productsRequest.start()
     try {
       setLoading(true)
       const params = {
@@ -135,7 +141,8 @@ const ProductsPage = () => {
         inactiveOnly: activeTab === 'inactive'
       }
       
-      const response = await productsAPI.getProducts(params)
+      const response = await productsAPI.getProducts(params, { signal: ticket.signal })
+      if (!ticket.isCurrent()) return
       if (response?.success && response?.data) {
         setProducts(response.data.items || [])
         setTotalPages(response.data.totalPages || 1)
@@ -152,6 +159,13 @@ const ProductsPage = () => {
         setTotalPages(1)
       }
     } catch (error) {
+      const kind = ticket.classify(error)
+      if (kind === 'superseded') return
+      if (kind === 'timedOut' || kind === 'cancelled') {
+        setProducts([])
+        setTotalPages(1)
+        return
+      }
       console.error('Error loading products:', error)
       // Only show error if it's not a network error (handled by interceptor)
       if (!error?._handledByInterceptor && (error.response || (!error.code || error.code !== 'ERR_NETWORK'))) {
@@ -160,9 +174,10 @@ const ProductsPage = () => {
       setProducts([])
       setTotalPages(1)
     } finally {
-      setLoading(false)
+      if (ticket.isCurrent()) setLoading(false)
+      ticket.finish()
     }
-  }, [currentPage, pageSize, debouncedSearchTerm, activeTab, activeFilters])
+  }, [currentPage, pageSize, debouncedSearchTerm, activeTab, activeFilters, productsRequest.start])
 
   const loadStockMovements = useCallback(async () => {
     try {
@@ -199,13 +214,10 @@ const ProductsPage = () => {
     loadProducts()
     // Auto-refresh products every 60 seconds (reduced frequency for better performance)
     // Only refresh if page is visible and not in edit mode
-    const refreshInterval = setInterval(() => {
-      if (document.visibilityState === 'visible' && !showForm && !showStockModal) {
-        loadProducts()
-      }
-    }, 60000) // 60 seconds - reduced from 20
-
-    return () => clearInterval(refreshInterval)
+    // P-02: one scheduler (pauses when hidden/offline/modal/typing, jitter, backoff).
+    return scheduler.register('products-list', () => {
+      if (!showForm && !showStockModal) return loadProducts()
+    }, { intervalMs: 60000 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, pageSize, debouncedSearchTerm, activeTab, activeFilters]) // Only refresh when filters change
 
@@ -1108,7 +1120,8 @@ const ProductsPage = () => {
         />
       </div>
 
-      {/* Product cards (phones only; tablets and up use the table) */}
+      <LoadStatusNotice phase={productsRequest.phase} onCancel={productsRequest.cancel} onRetry={loadProducts} className="mb-2" />
+      {/* Product cards (below 1280px: phones, tablets, small laptops) */}
       {loading ? (
         <div className="md:hidden">
           <ListSkeleton count={4} />

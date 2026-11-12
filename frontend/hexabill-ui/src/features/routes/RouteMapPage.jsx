@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import RoutesSetupGuide from '../branches/RoutesSetupGuide'
 import { useSearchParams } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -14,6 +15,7 @@ import { loadRoadLine } from './routeLine'
 import StopCard from './StopCard'
 import StopDetail from './StopDetail'
 import MapBottomSheet from './MapBottomSheet'
+import { scheduler } from '../../services/scheduler'
 
 const unwrap = (res) => res?.data ?? res
 const selectClass = 'block h-10 w-full border border-neutral-300 bg-white px-2 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30'
@@ -122,8 +124,7 @@ export default function RouteMapPage() {
   useEffect(() => {
     setStops([]); setSelectedId(null); setDrivers([]); setLine({ path: null, source: 'straight' })
     loadStops(false)
-    const timer = setInterval(() => { if (document.visibilityState !== 'hidden') loadStops(true) }, POLL_INTERVAL_MS)
-    return () => clearInterval(timer)
+    return scheduler.register('route-map-stops', () => loadStops(true), { intervalMs: POLL_INTERVAL_MS })
   }, [loadStops])
 
   // Live drivers for this route.
@@ -140,8 +141,8 @@ export default function RouteMapPage() {
       }
     }
     poll()
-    const timer = setInterval(poll, POLL_INTERVAL_MS)
-    return () => { cancelled = true; clearInterval(timer) }
+    const unregister = scheduler.register('route-map-live', poll, { intervalMs: POLL_INTERVAL_MS })
+    return () => { cancelled = true; unregister() }
   }, [liveOn, routeId])
 
   // Road line through the pins in route order; straight dashed line when the service cannot answer.
@@ -319,7 +320,8 @@ export default function RouteMapPage() {
   if (!routes.length) {
     return (
       <div className="p-4" data-testid="route-map-page">
-        <Alert tone="info" title="No routes yet">Routes you can see will appear here with their customers on a map.</Alert>
+        <RoutesSetupGuide branchCount={undefined} routeCount={0} />
+        <p className="mt-2 text-sm text-neutral-700">Routes you can see appear here with their customers on a map.</p>
       </div>
     )
   }

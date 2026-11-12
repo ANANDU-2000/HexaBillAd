@@ -73,11 +73,20 @@ export function endRouteWarning(run) {
 }
 
 /** One tap on an action button -> the request body for the visit endpoint. Never includes coordinates. */
-export function visitRequest({ customerId, date, status, reason }) {
+export function visitRequest({ customerId, date, status, reason, fix = null, canSetPin = false, stopHasPin = true }) {
   const body = { customerId, visitDate: date, status }
   if (needsReason(status)) body.notes = (reason || '').trim()
+  // UX-F02: Delivered at a stop with no saved pin carries the current fix as a proposed pin (the office confirms; owners/admins save it).
+  if (status === 'Delivered' && !stopHasPin && fix?.ok && isValidPoint(fix.lat, fix.lng)) {
+    body.latitude = round6(fix.lat)
+    body.longitude = round6(fix.lng)
+    if (canSetPin && !(Number(fix.accuracy) > LOW_ACCURACY_METERS)) body.updateSavedLocation = true
+  }
   return body
 }
+
+/** True when a Delivered request carries a proposed pin. */
+export const sendsProposedPin = (body) => body?.status === 'Delivered' && body.latitude != null && body.longitude != null
 
 /** Today's stops that can still be acted on (not delivered). */
 export const openStops = (stops) => orderedStops(stops).filter((s) => s.mapStatus !== 'delivered')
@@ -116,12 +125,13 @@ const round6 = (n) => Math.round(Number(n) * 1e6) / 1e6
  * when the person may change it (owner/admin), the stop has no pin yet, and the fix is accurate; otherwise the fix stays on the visit.
  * @returns {{ body: object, savesPin: boolean } | null}
  */
-export function arrivalRequest({ customerId, date, fix, canSetPin, stopHasPin, now = new Date() }) {
+export function arrivalRequest({ customerId, date, fix, canSetPin, stopHasPin, now = new Date(), source = null }) {
   if (!fix?.ok || !isValidPoint(fix.lat, fix.lng)) return null
   const accurate = !(Number(fix.accuracy) > LOW_ACCURACY_METERS)
   const savesPin = Boolean(canSetPin && !stopHasPin && accurate)
   const body = { customerId, visitDate: date, status: 'Arrived', reachedAt: now.toISOString(), latitude: round6(fix.lat), longitude: round6(fix.lng) }
   if (savesPin) body.updateSavedLocation = true
+  if (source) body.source = source // NEEDS-BACKEND: optional "auto" | "manual"; ignored by servers that do not know it
   return { body, savesPin }
 }
 
@@ -133,3 +143,29 @@ export function arrivalMessage({ savesPin, canSetPin, stopHasPin, accuracy }) {
   if (!canSetPin && !stopHasPin) return 'Arrived. Your location was sent to the office to confirm as the shop location.'
   return 'Arrived.'
 }
+
+/** Stops with a final outcome (delivered, failed or skipped) count as done. */
+export const DONE_STATUSES = ['delivered', 'failed', 'skipped']
+export function routeProgress(stops) {
+  const all = orderedStops(stops)
+  const done = all.filter((s) => DONE_STATUSES.includes(s.mapStatus)).length
+  return { done, total: all.length, text: `${done} / ${all.length} done` }
+}
+
+/** Preset reasons for the Problem sheet. status is what the API receives; the preset text is sent as the reason. */
+export const PROBLEM_REASONS = [
+  { id: 'closed', label: 'Shop closed', status: 'Failed', text: 'Shop closed' },
+  { id: 'nobody', label: 'No one to receive', status: 'Failed', text: 'No one to receive' },
+  { id: 'refused', label: 'Customer refused', status: 'Failed', text: 'Customer refused' },
+  { id: 'skip', label: 'Skip for now', status: 'Skipped', text: 'Skipped for now' },
+]
+
+/** Preset id (or 'other' + typed text) -> { status, reason } for visitRequest. Other needs a valid typed reason. */
+export function problemOutcome(id, otherText = '') {
+  if (id === 'other') return reasonIsValid(otherText) ? { status: 'Failed', reason: otherText.trim() } : null
+  const p = PROBLEM_REASONS.find((r) => r.id === id)
+  return p ? { status: p.status, reason: p.text } : null
+}
+
+/** [Collect] is offered only when the stop's customer owes money (needs a balance on the stop; NEEDS-BACKEND). */
+export const hasBalance = (stop) => Number(stop?.balance) > 0

@@ -1,0 +1,21 @@
+import { call, sql } from './lib.mjs'
+import { getContext, newProduct, newCustomer, saleBody } from './setup.mjs'
+const ctx = await getContext(); const g = ctx['gulfharvest-test']
+console.log('users ok', g.cashiers.length, g.cashiers[0].role)
+const p = await newProduct(g.owner, { stock: 100 }); console.log('product', p.id)
+const c = await newCustomer(g.owner)
+const s = await call(g.cashiers[0], 'POST', '/api/sales', saleBody({ productId: p.id, customerId: c.id, qty: 2 }))
+console.log('sale', s.status, JSON.stringify(s.json).slice(0, 700))
+const pay = await call(g.owner, 'POST', '/api/payments', { saleId: s.data.id, customerId: c.id, amount: 5, mode: 'CASH' }, { 'Idempotency-Key': crypto.randomUUID() })
+console.log('pay', pay.status, JSON.stringify(pay.json).slice(0, 700))
+const al = await call(g.owner, 'POST', '/api/payments/allocate', { customerId: c.id, amount: 5, mode: 'CASH', allocations: [{ invoiceId: s.data.id, amount: 5 }] }, { 'Idempotency-Key': crypto.randomUUID() })
+console.log('alloc', al.status, JSON.stringify(al.json).slice(0, 500))
+console.log(sql(`select "Id","InvoiceNo","GrandTotal","PaidAmount","PaymentStatus" from "Sales" where "Id"=${s.data.id}`))
+console.log(sql(`select "Id","SaleId","Amount","Status" from "Payments" where "CustomerId"=${c.id}`))
+console.log(sql(`select "Balance","PendingBalance","TotalSales","TotalPayments" from "Customers" where "Id"=${c.id}`))
+console.log(sql(`select "ProductId","ChangeQty","TransactionType" from "InventoryTransactions" where "ProductId"=${p.id}`))
+console.log(sql(`select "StockQty" from "Products" where "Id"=${p.id}`))
+const dc = await call(g.owner, 'GET', '/api/daily-close/status?businessDate=2026-11-01'); console.log('dc', dc.status, JSON.stringify(dc.json).slice(0, 300))
+const v = await call(g.owner, 'GET', '/api/reports/vat-return?from=2026-10-01&to=2026-11-30'); console.log('vat', v.status, JSON.stringify(v.json).slice(0, 200))
+const l = await call(g.owner, 'GET', `/api/customers/${c.id}/ledger`); console.log('ledger', l.status, JSON.stringify(l.json).slice(0, 200))
+const sl = await call(g.owner, 'GET', `/api/reports/sales-ledger?fromDate=2026-10-01&toDate=2026-11-30`); console.log('sl', sl.status, JSON.stringify(sl.json).slice(0, 200))

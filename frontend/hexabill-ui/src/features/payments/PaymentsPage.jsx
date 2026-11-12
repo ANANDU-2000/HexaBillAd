@@ -50,6 +50,7 @@ import Alert from '../../components/ui/Alert'
 import TableSkeleton from '../../components/ui/TableSkeleton'
 import { ModernTable, Badge, OverflowMenu } from '../../components/ui'
 import { statusKind } from '../../utils/statusTone'
+import UnconfirmedPaymentsAlert from './UnconfirmedPaymentsAlert'
 import { bulkRowFromSaved, createLedgerPaymentJournal, createPaymentBatchJournal, isDefinitivePaymentRejection, ledgerPaymentAccountPrefix, ledgerPaymentForm, ledgerPaymentScope, paymentBatchScope, paymentRejectionMessage, reconcilePaymentKey, settleAllPendingPayments } from '../../utils/ledgerPaymentIntent'
 
 // Historical payments come from the old system and are read-only. Their ids live in a different number
@@ -868,15 +869,13 @@ const PaymentsPage = () => {
       )}
       {/* Header */}
       {recoveryError && <Alert tone="error">{recoveryError}</Alert>}
-      {unconfirmedPayments.map(intent => (
-        <Alert
-          key={intent.idempotencyKey}
-          tone="warning"
-          action={<button type="button" disabled={submitting} onClick={() => executePayment(intent)} className="min-h-[36px] rounded-sm border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 disabled:opacity-50">Retry previous payment</button>}
-        >
-          Previous payment of {money(intent.request.amount)} for customer {customerLabel(intent.request.customerId)} is unconfirmed. Confirm it before recording another payment for this customer.
-        </Alert>
-      ))}
+      <UnconfirmedPaymentsAlert
+        intents={unconfirmedPayments}
+        money={money}
+        customerLabel={customerLabel}
+        submitting={submitting}
+        onRetry={executePayment}
+      />
       {savedBatch && (
         <Alert
           tone="warning"

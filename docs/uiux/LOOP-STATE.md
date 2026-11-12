@@ -86,6 +86,10 @@ Add one line per fact. Delete a line when it is no longer true.
 - Files modified in the primary (dirty) tree overlap loop work: App.jsx, Layout.jsx, PosEnterprisePage.jsx, PosPageLegacy.jsx, BillingHistoryPage, SalesLedgerPage, CustomersPage, ExpensesPage, PaymentsPage, ProductsPage, ModernTable, Badge, OverflowMenu etc. Expect merge conflicts when the owner commits that work onto main; the loop never touches the primary tree.
 - Native-confirm replacement pattern: `const [askConfirm, confirmDialog] = useConfirmDialog()`; `if (!(await askConfirm({title, message, confirmLabel}))) return`; render `{confirmDialog}` in the component root. Name it askConfirm (the task grep flags `confirm(`).
 - Page tests that bundle a page with esbuild stub `lucide-react` with a fixed icon list (tests/vatManagementPage.test.js); add any new icon a page transitively imports.
+- ONE DATABASE PER TEAM (2026-11-08): the runner rotates the seeded user's password on every run, so teams sharing a DB lock each other out (429, 15 min). Databases: T1 `hexabill_codex_browser_loopa_20261108`, T2 `..._loop_20261107`, T3 `..._loopd_20261108`, T4 `..._loopb_20261108`, T5 `..._loopc_20261108`. First run on a new DB needs `-FirstSeed`; wrapper has `-Database`.
+- Render: the connected Render MCP account (ANANDU SBSOL TESTING) cannot see the HexaBill workspace (tea-ctr63al2ng1s73ersr5g): log reading is BLOCKED until the owner provides a read-only API key through the secret prompt. Vercel CLI works (project hexabill-ui under scope anandukrishnapa2000-gmailcoms-projects); tenant hosts verified to serve the same build after the 2026-11-08 deploy.
+- Same-name files differing only by case (`returnInvoicePicker.js` vs `ReturnInvoicePicker.jsx`) shadow each other on Windows imports: never create them.
+- Helper scripts outside the repo: `~/.claude-worktrees/_loop-tools/` (run-spec.ps1, rm-worktree.ps1 = safe worktree removal, add_row.py = append a history row). Never run add_row.py without a real row.
 - LOCAL QA STACK (works, verified 2026-11-07): PG cluster `%TEMP%\hexabill-unified-pg-20261101` on port 55481 (start with `pg_ctl ... -o "-p 55481" -W start >/dev/null 2>&1 </dev/null`; first start takes ~30 s crash recovery). Loop DB `hexabill_codex_browser_loop_20261107` (seeded; tenant `gulfharvest-test`, owner `owner@gulfharvest-test.hexabill.local`). Run a spec: `cmd //c "powershell -NoProfile -File C:\Users\anand\.claude-worktrees\_loop-tools\run-spec.ps1 -Root <worktree> -Spec e2e/x.spec.js -Projects d1440 > out.txt 2>&1"` (wrapper lives outside the repo; `-FirstSeed` only on a new DB). Needs `dotnet build tools/HexaBill.SyntheticSeed` and `tools/HexaBill.SyntheticBrowserHost` once per worktree.
 - Port plan (runner now takes -ApiPort/-FePort): T1 5178/5179, T2 5180/5181, T3 5182/5183, T4 5184/5185, T5 5186/5187. Default 5078/5175 can be blocked by a phantom PID-0 Listen socket for ~30 s after a run; the wrapper waits.
 - NEW BASELINE after BUG-1..4: lint 0 errors, unit 411/411, build 0. (Old, at HEAD 9183b31e: `npm run lint` = 3 errors + 256 warnings (errors are BUG-1..3, none from the loop); `npm test` = 403 tests, 401 pass, 2 fail (customerLedgerUrl, BUG-4); `npm run build` exit 0 (~16 s).
@@ -96,15 +100,15 @@ Add one line per fact. Delete a line when it is no longer true.
 
 `[ ]` todo · `[~]` doing/blocked · `[x]` done · `STUCK` · `BLOCKED-BACKEND`
 
-- Perf: P-00 [x] P-01 [ ] P-02 [ ] P-03 [ ] P-04 [ ] P-05 [ ] P-06 [ ] P-07 [ ] P-08 [ ] P-09 [ ] P-10 [ ]
-- A: A01 [x] A02 BLOCKED-BACKEND (D-A02 decided; waits for `grounded` on ChatReply) A03 [x] (A03b open: useUnsavedChangesGuard.js still uses window.confirm) A04 [ ] A05 [x] A06 [ ]
-- B: B01 [ ] B02 [ ] B03 [ ] B04 [ ] B05 [ ] B06 [ ]
+- Perf: P-00 [x] P-01 [x] P-02 [x] P-03 [x] P-04 [~] (client side done; backend paging BLOCKED-BACKEND) P-05 [ ] P-06 [ ] P-07 [ ] P-08 [ ] P-09 [ ] P-10 [ ]
+- A: A01 [x] A02 BLOCKED-BACKEND (D-A02 decided; waits for `grounded` on ChatReply) A03 [x] A03b [x] (guard uses app dialog) A04 [x] A05 [x] A06 [x]
+- B: B01 [ ] B02 [ ] B03 [ ] B04 [ ] B05 [ ] B06 [x] (tab 700px breakpoint: shell switched from md; 700-1023 gets icon rail, no bottom nav; spec tablet-shell 2/2 at t768 + m360)
 - C: C01 [ ] C02 [ ] C03 [ ] C04 [ ] C05 [ ] C06 [ ] C07 [ ] C08 [ ] C09 [ ]
 - D: D01 [ ] D02 [ ] D03 [ ]
-- E: E01 [ ] E02 [ ] E03 [ ] E04 [ ] E05 [ ] E06 [ ]
-- F: F01 [ ] F02 [ ] F03 [ ] F04 [ ] F05 [ ]
+- E: E01 [x] E02 [x] E03 [~] (adapter built; backend stream BLOCKED-BACKEND) E04 [x] E05 [~] (adapter; backend voice BLOCKED-BACKEND) E06 [~] (More sheet + invoice/ledger entries done; ledger row prefill read pending)
+- F: F01 [x] F02 [x] F03 [x] F04 [x] F05 [x]
 - G: G01 [ ] G02 [ ] G03 [ ] G04 [ ] G05 [ ] G06 [ ] G07 [ ] G08 [ ] G09 [ ] G10 [ ]
-- H / E2E gates: H01 [ ] H02 [ ] H03 [ ] E2E-G1 [ ] E2E-G2 [ ] E2E-G3 [ ]
+- H / E2E gates: H01 [ ] H02 [x] H03 [~] (harness done; snapshot compare needs fix) E2E-G1 [~] (FAIL on H03 snapshot; J3 flake; perf regressions) E2E-G2 [ ] E2E-G3 [ ]
 
 ## 6. Iteration history (append; newest at the bottom)
 
@@ -117,8 +121,13 @@ Add one line per fact. Delete a line when it is no longer true.
 | 5 | 2026-11-07 | BUG-1 + BUG-3 (S1) | PASS | a67da7a9 | lint errors 3 -> 1 (only BUG-2 left), unit 409/411 (BUG-4 same 2), build 0 | - | BUG-1: import Link in ReportsPage. BUG-3: stray `)}` left by commit a566bcfe rendered literal text under the Customer Ledger filter bar (esbuild tolerates it, ESLint did not) |
 | 6 | 2026-11-07 | BUG-2 + BUG-4 (S1) | PASS | 9c98505c | lint 0 errors (baseline now clean), unit 411/411, build 0 | - | BUG-2: dropped undefined debouncedSearch (page search is client-side). BUG-4: stale tests updated to the intentional Pending default tab. Built on committed main, not the owner's WIP |
 | 7 | 2026-11-07 | P-00 perf baseline + harness (T2) | PASS | 7ab8ee33 | merged; lint 0 errors, unit 411/411, build 0; perf runs exit 0 (desktop 18, phone 18 passed) | docs/uiux/evidence/2026-11-07/perf/ (README, baseline.json, bundle.json) | Visualizer skipped (bundle size by script). Runner honours HEXABILL_FE_MODE=preview. NOT TESTED: 30-min soak, server time on a large tenant |
+| 8 | 2026-11-08 | A04 returns invoice picker | PASS | e476cff1 | unit 416/416, lint 0 errors, build 0, e2e returns-picker 4/4 (d1440, m360) | docs/uiux/evidence/2026-11-08/A04-*.png | Recent 30 days, typed search covers all dates; helper renamed invoicePickerQuery.js (a same-name-different-case file shadowed the component on Windows) |
+| 9 | 2026-11-08 | A06 unconfirmed payment alert | PASS | 6e97cf37 | unit 416/416, lint 0, build 0, e2e payments-unconfirmed 4/4 (d1440, m360); two intents = one alert <=64 px | docs/uiux/evidence/2026-11-08/A06-*.png | Time not shown (journal stores none; adding it touches ledgerPaymentIntent.js recovery code, REVIEW-INBOX). Shared-DB lesson: runner rotates password per run, one DB per team |
+| 10 | 2026-11-08 | BUG-6 bell on phone/portrait tablet (S2) | PASS | 93d742fe | unit 416/416, lint 0, build 0, e2e notifications-language 3/3 (d1440, t768, m360) | docs/uiux/evidence/2026-11-08/BUG6-*.png | Bell added to mobile header; panel = fixed full-width sheet <640 px. Closes the A05 m360 gap |
+| 11 | 2026-11-08 | T4 bug hunt 1 (tests only) | MERGED | fad3343f | 29/31 new e2e pass; 2 fail on purpose (BUG-8, BUG-9) | docs/uiux/evidence/2026-11-08/bug-hunt-1.md | 6 features, 4 viewports. Render logs BLOCKED (account cannot see HexaBill workspace). Vercel: no failed prod deploys, static SPA |
 | | | | | | | | |
-
+| 12 | 2026-11-08 | H02 slop lint; P-01 request control; P-03 POS data; P-04 client side; T5 concurrency C1-C9 | MERGED | a4447296 | lint 0 errors, unit 430/430, build 0; POS idle requests 11 -> 1 (d1440), 9 -> 1 (m360); concurrency 8 tests x3 runs | docs/uiux/evidence/concurrency/2026-11-08.md | BUG-20 (S1) and BUG-21 (S2) found. P-04 backend part, Reports cancel wiring and ledger tab split still open |
+| 14 | 2026-11-08 | BUG-45 Dashboard Needs attention always shown; B06 tablet shell at 700px | MERGED (commit pending) | 9bc649eb | lint 0 errors, unit 459/459, build 0; J1 d1440 2/2; tablet-shell t768 + m360 2/2 | docs/uiux/evidence/2026-11-08/ | Shell breakpoints in Layout.jsx and BottomNav.jsx moved md -> tab. Pages keep md. Not yet checked at 752 exactly (t768 used) |
 
 ## 6b. Claims (files a team is editing; release on merge)
 
@@ -137,9 +146,36 @@ Format: BUG-n | feature | severity | repro | failing test | suspected file | sta
 - BUG-4 | Customer Ledger tests | S3 | `tests/customerLedgerUrl.test.js` has 2 failures at HEAD (normalizeLedgerTab default, syncLedgerTabSearchParam). Primary tree has uncommitted edits to the test AND source | `npm test` | features/customers + utils | FIXED 9c98505c (tests were stale)
 
 - BUG-5 | Notifications | S2 | Category chips (All/Stock/Overdue/System) set `activeCategory` but the list rendered every alert, so the filter did nothing | tests/alertPresentation.test.js (filterByCategory) + e2e notifications-language | AlertNotifications.jsx | FIXED in A05
-- BUG-6 | Shell / Notifications | S2 | The alerts bell exists only in the desktop header (Layout.jsx:529, md+). The phone shell (<768, which includes the HONOR Pad portrait at 752) has no bell, so owners there cannot see stock/overdue/mismatch alerts at all | e2e/notifications-language.spec.js at m360 times out on the bell | components/Layout.jsx (mobile header ~L375). File has uncommitted edits in the primary tree | OPEN, give to task B/C shell work (add bell to mobile header or More menu)
+- BUG-6 | Shell / Notifications | S2 | The alerts bell exists only in the desktop header (Layout.jsx:529, md+). The phone shell (<768, which includes the HONOR Pad portrait at 752) has no bell, so owners there cannot see stock/overdue/mismatch alerts at all | e2e/notifications-language.spec.js at m360 times out on the bell | components/Layout.jsx (mobile header ~L375). File has uncommitted edits in the primary tree | FIXED 93d742fe
 
-- BUG-7 | Reports | S1 (wrong data shown to other tenants) | ReportsPage.jsx ~L1388-1410 'legacy' block has hardcoded fallbacks and copy from one tenant's migration: `|| '5,325'` cleared receipts, `|| 93` pending bills, '21 customers (+ AED 100.80 Inv 2158)', '21 customer accounts with approved opening balances'. Any tenant that reaches this block sees another company's numbers | grep those literals in ReportsPage.jsx | ReportsPage.jsx | OPEN: money/tenant display, owner review first (REVIEW-INBOX). Needs the gating condition checked (is the block only for the migrated tenant?)
+- BUG-7 | Reports | S1 (wrong data shown to other tenants) | FIXED (hardcoded fallbacks removed; counts from server) | ReportsPage.jsx ~L1388-1410 'legacy' block has hardcoded fallbacks and copy from one tenant's migration: `|| '5,325'` cleared receipts, `|| 93` pending bills, '21 customers (+ AED 100.80 Inv 2158)', '21 customer accounts with approved opening balances'. Any tenant that reaches this block sees another company's numbers | grep those literals in ReportsPage.jsx | ReportsPage.jsx | OPEN: money/tenant display, owner review first (REVIEW-INBOX). Needs the gating condition checked (is the block only for the migrated tenant?)
+
+- BUG-8 | Products/Stock backend | S1 authorization | Staff can POST /api/products/recompute-stock (200) and rewrite tenant stock from movement history; sibling reset-all-stock is Admin/Owner only | e2e/bughunt/roles-permissions.spec.js (BUG-8) | ProductsController.cs:723 `Roles = "Admin,Owner,Staff"` | NEEDS-BACKEND / REVIEW-INBOX (auth change is owner's; loop adds tests only)
+- BUG-9 | Purchases backend | S3 latent | Owner gets 403 on POST /api/purchases/{id}/upload (`Roles = "Admin,Staff"`); no UI calls it today | same spec (BUG-9) | PurchasesController.cs:527 | NEEDS-BACKEND
+
+- BUG-20 | Payments backend | S1 money | Concurrent payments without saleId: all 201 but cached Customers.Balance drops only a fraction (C2: 961/965/979 vs expected 905). PaymentService.cs:596-600 reads customer row unlocked, recomputes in memory | tests/concurrency (C2, c2-diag.mjs) | NEEDS-BACKEND, owner decision (money path)
+- BUG-21 | Reports backend | S2 perf | /api/reports/summary p50 408-504 ms with 15 users vs 8-11 ms solo; cache key includes user id (ReportService.cs:92) | tests/concurrency C7 | NEEDS-BACKEND
+
+- BUG-31 | Supplier payment | S1 money | 1e12 payment accepted on zero balance | e2e/bughunt hunt-2 | NEEDS-BACKEND
+- BUG-32 | Expenses | S1 money | Expense 0 or negative accepted | hunt-2 | NEEDS-BACKEND
+- BUG-33 | Expenses | S1 money | Expense 1e12 accepted | hunt-2 | NEEDS-BACKEND
+- BUG-35 | Expenses | S1 data | Idempotency-Key not honoured on expense create | hunt-2 | NEEDS-BACKEND
+- BUG-38 | Driver | S1 isolation | Driver reads another route's customer by id (confirm intended scope) | hunt-2 | OWNER-DECISION
+- BUG-41 | Driver visit | S1 money | Collected amount negative or 1e12 accepted | hunt-2 | NEEDS-BACKEND
+- BUG-42 | Products | S1 data | Stale edit in tab 2 silently reverts tab 1 price | hunt-2 | FE+BE
+- BUG-30 | Suppliers | S2 | 500-char supplier name gives 500 | hunt-2 | NEEDS-BACKEND
+- BUG-34 | Expenses | S2 | 5000-char note gives 500 | hunt-2 | NEEDS-BACKEND
+- BUG-36 | Stock adj | S2 | Adjustment to 1e12 accepted | hunt-2 | NEEDS-BACKEND
+- BUG-39 | Driver | S2 | Driver summary shows tenant-wide pending bills | hunt-2 | NEEDS-BACKEND
+- BUG-40 | Driver visit | S2 | Latitude 999 / longitude -500 accepted | hunt-2 | NEEDS-BACKEND
+- BUG-37 | Stock adj | S3 | No-op adjustment logs phantom row | hunt-2 | NEEDS-BACKEND
+- BUG-43 | Add Product | S3 | No beforeunload warning on unsaved form | hunt-2 | FE (T1)
+- BUG-44 | POS | S3 perf | 56.9 s on slow 3G, over 45 s limit | hunt-2 | FE (T2)
+
+- BUG-45 | Dashboard | S2 UX | No 'Needs attention' block; shows 'Critical alerts' and 'Operational status' (DashboardTally.jsx ~L919/L827) | e2e/gate/j1-login-dashboard.spec.js | FE (T1)
+- GATE-G1 | Gate | S2 | H03 money snapshot compare fails on as-of-today fields (worksheet.pendingAmount, VAT outside-period count); snapshot definition needs fixing | scripts/money-snapshot.mjs | OWNER-DECISION
+- J3-FLAKE | Ledger receipt | S3 | d1440 run left invoice pending 21.00 not 12.60 once; passed on rerun. Suspect async invoice list in receipt modal | e2e/gate/j3* | investigate
+| 13 | 2026-11-08 | Gate G1 (tests only) | MERGED, GATE FAIL | 7046a74d | lint 0 err, unit 459/459; J1 FAIL (BUG-45), J2 PASS, J3 FAIL once (flake) then PASS, J4 PASS, J11 PASS, H03 FAIL, perf 27 regressions | docs/uiux/evidence/2026-11-08/gate-g1/README.md | G2 and phase B blocked until G1 green |
 
 ## 7. Stuck log
 
@@ -152,6 +188,7 @@ Format: BUG-n | feature | severity | repro | failing test | suspected file | sta
 | Task | Contract | Status |
 |---|---|---|
 | A02 | `ChatReply` gains `grounded: bool` + `sources[]` (+ asOf). Owner implements. UI part (when this lands): in `describeChatReply` mode `reply`, show `data.text` only if `data.grounded === true`, render sources/as-of, else keep canned text. Keep the existing 'unsupported model text' test for ungrounded | waiting |
+| BUG-8 | Restrict POST /products/recompute-stock to Admin,Owner (S1). BUG-9: add Owner to purchases/{id}/upload | waiting |
 | E03 | `POST /assistant/chat/stream` SSE: token / tool / card / done | waiting |
 | E05 | `POST /assistant/voice/session` → `{url, token, room, expiresAt, provider}` | waiting |
 | F02 | `source:"auto"|"manual"` on the visit body; live-position ping endpoint if not reusable | waiting |

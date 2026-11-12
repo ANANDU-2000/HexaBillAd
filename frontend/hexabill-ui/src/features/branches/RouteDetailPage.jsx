@@ -16,6 +16,8 @@ import ErrorState from '../../components/ui/ErrorState'
 import { readApiErrorReason } from '../../utils/apiError'
 import { moveStop, moveStopToTop, orderedStops, locationNeededStops, runSummaryParts, statusLabel, stopNavigationUrl } from './driverRoute'
 import { describeDrivers, POLL_INTERVAL_MS } from './liveLocation'
+import { scheduler } from '../../services/scheduler'
+import { nearestOrder, sameOrder, moveBefore } from './routeOrder'
 
 const EXPENSE_CATEGORIES = ['Fuel', 'Staff', 'Delivery', 'Vehicle Maintenance', 'Toll/Parking', 'Misc']
 const ROUTE_TABS = ['overview', 'customers', 'sales', 'expenses', 'staff', 'performance', 'stops']
@@ -92,6 +94,8 @@ const RouteDetailPage = () => {
   const [liveError, setLiveError] = useState(false)
   const [stopsMap, setStopsMap] = useState([])
   const [stopsMapLoading, setStopsMapLoading] = useState(false)
+  const [optPreview, setOptPreview] = useState(null) // proposed order (customer ids) waiting for Save
+  const [dragId, setDragId] = useState(null)
   const [pinModal, setPinModal] = useState({
     open: false,
     customerId: null,
@@ -418,7 +422,34 @@ const RouteDetailPage = () => {
       selected: gps,
       saving: false,
     })
-    if (!gps) toast('GPS unavailable — drop a pin on the map', { icon: '📍' })
+    if (!gps) toast('GPS unavailable. Tap the map to drop a pin.')
+  }
+
+  // F04: "Pin now" opens the pin sheet on this stop. If the driver sent a position with a visit, it is offered as the starting pin;
+  // otherwise tap the map. Nothing is saved until Confirm.
+  const openPinNow = (stop, useProposed = false) => {
+    const has = stop.visitLatitude != null && stop.visitLongitude != null
+    setPinModal({
+      open: true,
+      customerId: stop.customerId,
+      customerName: stop.customerName || 'Customer',
+      mode: 'update_saved',
+      selected: useProposed && has ? { lat: Number(stop.visitLatitude), lng: Number(stop.visitLongitude) } : null,
+      saving: false,
+    })
+  }
+
+  // F04: nearest-first from the first stop that has a pin. Shown as a preview; saved only when the owner confirms.
+  const previewOptimize = () => {
+    const current = stopsMap.map((x) => x.customerId)
+    const proposed = nearestOrder(stopsMap, null)
+    if (sameOrder(current, proposed)) { toast('The stops are already in the shortest order.'); return }
+    setOptPreview(proposed)
+  }
+  const saveOptimized = async () => {
+    const ids = optPreview
+    setOptPreview(null)
+    await saveStopOrder(ids)
   }
 
   const confirmPinAction = async () => {
@@ -466,8 +497,8 @@ const RouteDetailPage = () => {
       }
     }
     poll()
-    const timer = setInterval(poll, POLL_INTERVAL_MS)
-    return () => { cancelled = true; clearInterval(timer) }
+    const unregister = scheduler.register('route-detail-live', poll, { intervalMs: POLL_INTERVAL_MS })
+    return () => { cancelled = true; unregister() }
   }, [liveOn, activeTab, routeRunning, id])
 
   useEffect(() => {
@@ -1154,7 +1185,27 @@ const RouteDetailPage = () => {
             >
               Refresh
             </button>
+            {canManage && stopsMap.length > 1 && (
+              <button type="button" onClick={previewOptimize} disabled={orderSaving} data-testid="optimize-order" className="px-3 py-1.5 border border-neutral-300 bg-white rounded-lg text-sm disabled:opacity-50">
+                Optimize order
+              </button>
+            )}
           </div>
+          {optPreview && (
+            <div className="rounded-lg border border-neutral-200 bg-white p-3 text-sm space-y-2" data-testid="optimize-preview">
+              <p className="font-medium text-neutral-900">Proposed order (nearest stop first, starting from the first stop with a location)</p>
+              <ol className="list-decimal pl-5 text-neutral-800">
+                {optPreview.map((cid) => <li key={cid}>{stopsMap.find((x) => x.customerId === cid)?.customerName}</li>)}
+              </ol>
+              <p className="text-xs text-neutral-600">Stops without a location stay at the end. Nothing changes until you save.</p>
+              <div className="flex gap-2">
+                <button type="button" onClick={saveOptimized} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg text-sm">Save this order</button>
+                <button type="button" onClick={() => setOptPreview(null)} className="px-3 py-1.5 border border-neutral-300 rounded-lg text-sm">Cancel</button>
+              </div>
+            </div>
+          )}
+          <div className="grid gap-4 lg:grid-cols-2 lg:items-start" data-testid="planner-split">
+          <div className="space-y-4 lg:sticky lg:top-4">
           {stopLocationEnabled && (stopsMapLoading ? (
             <p className="text-sm text-neutral-500">Loading stops…</p>
           ) : (
@@ -1182,6 +1233,8 @@ const RouteDetailPage = () => {
               </ul>
             </div>
           )}
+          </div>
+          <div className="space-y-4 min-w-0">
           {stopLocationEnabled && locationNeededStops(stopsMap).length > 0 && (
             <div className="rounded-sm border border-neutral-200 bg-white p-3 text-sm" data-testid="planner-location-needed">
               <p className="font-medium text-warning-fg">Location needed</p>
@@ -1202,7 +1255,16 @@ const RouteDetailPage = () => {
               </thead>
               <tbody>
                 {(stopsMap || []).map((s, index) => (
-                  <tr key={s.customerId} className="border-b border-neutral-100" data-testid={`planner-stop-${s.customerId}`}>
+                  <tr
+                    key={s.customerId}
+                    className={`border-b border-neutral-100 ${dragId === s.customerId ? 'opacity-50' : ''}`}
+                    data-testid={`planner-stop-${s.customerId}`}
+                    draggable={canManage && !orderSaving}
+                    onDragStart={() => setDragId(s.customerId)}
+                    onDragEnd={() => setDragId(null)}
+                    onDragOver={(e) => { if (dragId != null) e.preventDefault() }}
+                    onDrop={(e) => { e.preventDefault(); const from = dragId; setDragId(null); if (from != null) saveStopOrder(moveBefore(stopsMap.map((x) => x.customerId), from, s.customerId)) }}
+                  >
                     <td className="px-3 py-2 font-semibold">{s.position}</td>
                     <td className="px-3 py-2">
                       <div className="font-medium">{s.customerName}</div>
@@ -1211,7 +1273,13 @@ const RouteDetailPage = () => {
                     {stopLocationEnabled && (
                       <td className="px-3 py-2 text-neutral-600">
                         {s.needsLocation
-                          ? <span className="text-warning-fg">No location yet</span>
+                          ? (
+                            <span className="inline-flex flex-wrap items-center gap-1">
+                              <span className="text-warning-fg">No location yet</span>
+                              {canManage && <button type="button" onClick={() => openPinNow(s)} className="text-xs px-2 py-1 rounded border border-neutral-300 bg-white" data-testid={`pin-now-${s.customerId}`}>Pin now</button>}
+                              {canManage && s.visitLatitude != null && <button type="button" onClick={() => openPinNow(s, true)} className="text-xs px-2 py-1 rounded border border-neutral-300 bg-white" data-testid={`use-driver-pin-${s.customerId}`}>Use driver's pin</button>}
+                            </span>
+                          )
                           : <>Location saved{stopNavigationUrl(s) && <> · <a href={stopNavigationUrl(s)} target="_blank" rel="noopener noreferrer" className="text-primary-700 underline">Open in maps</a></>}</>}
                       </td>
                     )}
@@ -1274,6 +1342,8 @@ const RouteDetailPage = () => {
               <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-warning-fg mr-1" />Skipped</span>
             </div>
           )}
+          </div>
+          </div>
         </div>
       )}
       </div>

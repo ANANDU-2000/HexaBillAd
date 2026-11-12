@@ -1,0 +1,446 @@
+{
+  "label": "after",
+  "period": {
+    "from": "2026-10-01",
+    "to": "2026-10-31"
+  },
+  "sections": {
+    "salesLedger": {
+      "entries": [
+        {
+          "customerBalance": 0,
+          "customerName": "H03 snapshot customer B",
+          "date": "2026-10-21T00:00:00.0000000Z",
+          "grandTotal": 252.5,
+          "invoiceNo": "0022",
+          "isSettlementAdjustment": false,
+          "paidAmount": 0,
+          "paymentLineStatus": "CLEARED",
+          "paymentMode": "CASH",
+          "planDate": null,
+          "realGotPayment": 252.5,
+          "realPending": 0,
+          "status": "Paid",
+          "subtotal": 0,
+          "type": "Payment",
+          "vatTotal": 0
+        },
+        {
+          "customerBalance": 104.99,
+          "customerName": "H03 snapshot customer C",
+          "date": "2026-10-17T00:00:00.0000000Z",
+          "grandTotal": 104.99,
+          "invoiceNo": "0023",
+          "isSettlementAdjustment": false,
+          "paidAmount": 0,
+          "paymentLineStatus": null,
+          "paymentMode": "NOT PAID",
+          "planDate": "2026-11-16T00:00:00.0000000Z",
+          "realGotPayment": 0,
+          "realPending": 104.99,
+          "status": "Unpaid",
+          "subtotal": 99.99,
+          "type": "Sale",
+          "vatTotal": 5
+        },
+        {
+          "customerBalance": 160,
+          "customerName": "H03 snapshot customer A",
+          "date": "2026-10-20T00:00:00.0000000Z",
+          "grandTotal": 50,
+          "invoiceNo": "0021",
+          "isSettlementAdjustment": false,
+          "paidAmount": 0,
+          "paymentLineStatus": "CLEARED",
+          "paymentMode": "CASH",
+          "planDate": null,
+          "realGotPayment": 50,
+          "realPending": 0,
+          "status": "Paid",
+          "subtotal": 0,
+          "type": "Payment",
+          "vatTotal": 0
+        },
+        {
+          "customerBalance": 210,
+          "customerName": "H03 snapshot customer A",
+          "date": "2026-10-15T00:00:00.0000000Z",
+          "grandTotal": 210,
+          "invoiceNo": "0021",
+          "isSettlementAdjustment": false,
+          "paidAmount": 50,
+          "paymentLineStatus": null,
+          "paymentMode": "CASH",
+          "planDate": "2026-11-14T00:00:00.0000000Z",
+          "realGotPayment": 50,
+          "realPending": 160,
+          "status": "Partial",
+          "subtotal": 200,
+          "type": "Sale",
+          "vatTotal": 10
+        },
+        {
+          "customerBalance": 252.5,
+          "customerName": "H03 snapshot customer B",
+          "date": "2026-10-16T00:00:00.0000000Z",
+          "grandTotal": 252.5,
+          "invoiceNo": "0022",
+          "isSettlementAdjustment": false,
+          "paidAmount": 252.5,
+          "paymentLineStatus": null,
+          "paymentMode": "CASH",
+          "planDate": "2026-11-15T00:00:00.0000000Z",
+          "realGotPayment": 252.5,
+          "realPending": 0,
+          "status": "Paid",
+          "subtotal": 250,
+          "type": "Sale",
+          "vatTotal": 12.5
+        }
+      ],
+      "summary": {
+        "netCashIn": 302.5,
+        "netSales": 567.49,
+        "outstandingBalance": 264.99,
+        "refundsPaid": 0,
+        "totalCredit": 302.5,
+        "totalDebit": 264.99,
+        "totalPayments": 302.5,
+        "totalReturns": 0,
+        "totalReturnsVat": 0,
+        "totalSales": 567.49,
+        "totalSalesVat": 27.5,
+        "totalVat": 27.5
+      }
+    },
+    "customerLedgerA": [
+      {
+        "balance": 160,
+        "credit": 50,
+        "date": "2026-10-20T00:00:00.0000000Z",
+        "debit": 0,
+        "isLegacy": false,
+        "paidAmount": 0,
+        "paymentMode": "CASH",
+        "reference": "0021",
+        "remarks": null,
+        "returnWorkflowStatus": null,
+        "status": "",
+        "type": "Payment"
+      },
+      {
+        "balance": 210,
+        "credit": 0,
+        "date": "2026-10-15T00:00:00.0000000Z",
+        "debit": 210,
+        "isLegacy": false,
+        "paidAmount": 0,
+        "paymentMode": null,
+        "reference": "0021",
+        "remarks": null,
+        "returnWorkflowStatus": null,
+        "status": "Partial",
+        "type": "Invoice"
+      }
+    ],
+    "customerLedgerB": [
+      {
+        "balance": 0,
+        "credit": 252.5,
+        "date": "2026-10-21T00:00:00.0000000Z",
+        "debit": 0,
+        "isLegacy": false,
+        "paidAmount": 0,
+        "paymentMode": "CASH",
+        "reference": "0022",
+        "remarks": null,
+        "returnWorkflowStatus": null,
+        "status": "",
+        "type": "Payment"
+      },
+      {
+        "balance": 252.5,
+        "credit": 0,
+        "date": "2026-10-16T00:00:00.0000000Z",
+        "debit": 252.5,
+        "isLegacy": false,
+        "paidAmount": 0,
+        "paymentMode": null,
+        "reference": "0022",
+        "remarks": null,
+        "returnWorkflowStatus": null,
+        "status": "Paid",
+        "type": "Invoice"
+      }
+    ],
+    "customerLedgerC": [
+      {
+        "balance": 104.99,
+        "credit": 0,
+        "date": "2026-10-17T00:00:00.0000000Z",
+        "debit": 104.99,
+        "isLegacy": false,
+        "paidAmount": 0,
+        "paymentMode": null,
+        "reference": "0023",
+        "remarks": null,
+        "returnWorkflowStatus": null,
+        "status": "Unpaid",
+        "type": "Invoice"
+      }
+    ],
+    "vatReturn": {
+      "address": null,
+      "box10": 0,
+      "box11": 0,
+      "box12": 200,
+      "box13a": 0,
+      "box13b": 172.5,
+      "box1a": 549.99,
+      "box1b": 27.5,
+      "box2": 0,
+      "box3": 0,
+      "box4": 0,
+      "box9b": 200,
+      "calculatedAt": null,
+      "canFreezeVatReport": false,
+      "companyName": "Synthetic gulfharvest-test",
+      "companyNameAr": null,
+      "creditNoteLines": [],
+      "dueDate": "2026-11-28T00:00:00.0000000",
+      "estimatedCostLineCount": 0,
+      "expenseCountInPeriod": 0,
+      "expensesExcludedReasons": null,
+      "filingCycle": "Custom / management period",
+      "form201Projection": [
+        {
+          "amount": 0,
+          "calculationState": "VerifiedZero",
+          "label": "Exempt supplies",
+          "note": null,
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Complete",
+          "vatAmount": 0
+        },
+        {
+          "amount": 0,
+          "calculationState": "VerifiedZero",
+          "label": "Supplies subject to reverse charge (purchases)",
+          "note": null,
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Complete",
+          "vatAmount": 0
+        },
+        {
+          "amount": 0,
+          "calculationState": "VerifiedZero",
+          "label": "Zero-rated supplies",
+          "note": null,
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Complete",
+          "vatAmount": 0
+        },
+        {
+          "amount": 549.99,
+          "calculationState": "Calculated",
+          "label": "Standard-rated supplies (1a-1g total)",
+          "note": "Emirate split (1a-1g) is not tracked; total only.",
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Partial",
+          "vatAmount": 27.5
+        },
+        {
+          "amount": 549.99,
+          "calculationState": "Incomplete",
+          "label": "Total supplies and output tax (partial)",
+          "note": "Excludes boxes 2, 3, 6, 7 (no source data).",
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Partial",
+          "vatAmount": 27.5
+        },
+        {
+          "amount": null,
+          "calculationState": "Calculated",
+          "label": "Payable / (refundable) tax",
+          "note": "Payable positive, refundable negative. Depends on incomplete output boxes.",
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Partial",
+          "vatAmount": -172.5
+        },
+        {
+          "amount": null,
+          "calculationState": "Calculated",
+          "label": "Standard-rated expenses (recoverable input VAT)",
+          "note": "VAT only; net amounts are in the transaction detail.",
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Complete",
+          "vatAmount": 200
+        },
+        {
+          "amount": null,
+          "calculationState": "Calculated",
+          "label": "Total due tax (output)",
+          "note": "Excludes output tax for boxes 3, 6, 7 (no source data).",
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Partial",
+          "vatAmount": 27.5
+        },
+        {
+          "amount": null,
+          "calculationState": "Calculated",
+          "label": "Total recoverable input tax after purchase returns",
+          "note": "Box 9 + 10 less 0.00 purchase-return adjustment.",
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Complete",
+          "vatAmount": 200
+        },
+        {
+          "amount": null,
+          "calculationState": "Calculated",
+          "label": "Total recoverable tax",
+          "note": null,
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Complete",
+          "vatAmount": 200
+        },
+        {
+          "amount": null,
+          "calculationState": "NotCalculable",
+          "label": "Adjustments to goods imported",
+          "note": "Import declarations are not tracked.",
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Unavailable",
+          "vatAmount": null
+        },
+        {
+          "amount": null,
+          "calculationState": "NotCalculable",
+          "label": "Goods imported into the UAE",
+          "note": "Import declarations are not tracked.",
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Unavailable",
+          "vatAmount": null
+        },
+        {
+          "amount": null,
+          "calculationState": "NotCalculable",
+          "label": "Supplies subject to reverse charge",
+          "note": "Sales-side reverse charge is not tracked.",
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Unavailable",
+          "vatAmount": null
+        },
+        {
+          "amount": null,
+          "calculationState": "NotCalculable",
+          "label": "Supplies to tourists - tax refunds",
+          "note": "Tourist refund source not tracked.",
+          "reviewState": "PendingAccountantReview",
+          "sourceCompleteness": "Unavailable",
+          "vatAmount": null
+        }
+      ],
+      "hasDerivedValues": false,
+      "inputLines": [
+        {
+          "categoryName": "",
+          "claimableVat": 200,
+          "date": "2026-10-01T00:00:00.0000000Z",
+          "isDerived": false,
+          "isEntertainment": false,
+          "isTaxClaimable": true,
+          "netAmount": 4000,
+          "reference": "H03-PUR-1",
+          "supplierName": "H03 snapshot supplier",
+          "taxType": "Standard",
+          "type": "Purchase",
+          "vatAmount": 200
+        }
+      ],
+      "isEstimatedDueDate": true,
+      "netVatPayable": -172.5,
+      "outputLines": [
+        {
+          "customerName": "H03 snapshot customer A",
+          "date": "2026-10-15T00:00:00.0000000Z",
+          "isDerived": false,
+          "netAmount": 200,
+          "reference": "0021",
+          "type": "Sale",
+          "vatAmount": 10,
+          "vatScenario": "Standard"
+        },
+        {
+          "customerName": "H03 snapshot customer B",
+          "date": "2026-10-16T00:00:00.0000000Z",
+          "isDerived": false,
+          "netAmount": 250,
+          "reference": "0022",
+          "type": "Sale",
+          "vatAmount": 12.5,
+          "vatScenario": "Standard"
+        },
+        {
+          "customerName": "H03 snapshot customer C",
+          "date": "2026-10-17T00:00:00.0000000Z",
+          "isDerived": false,
+          "netAmount": 99.99,
+          "reference": "0023",
+          "type": "Sale",
+          "vatAmount": 5,
+          "vatScenario": "Standard"
+        }
+      ],
+      "periodEnd": "2026-10-31T00:00:00.0000000Z",
+      "periodLabel": "Q3-2026",
+      "periodStart": "2026-08-01T00:00:00.0000000Z",
+      "petroleumExcluded": 0,
+      "phone": null,
+      "profitAmount": 0,
+      "profitCogs": 0,
+      "profitEstimateNotForFiling": false,
+      "profitExpenses": 0,
+      "profitSales": 0,
+      "profitVat": 0,
+      "profitVatEstimate": null,
+      "purchaseCountInPeriod": 1,
+      "purchasesExcludedReasons": null,
+      "recoverableInputVat": 200,
+      "reportKind": "management",
+      "reverseChargeLines": [],
+      "snapshotAt": null,
+      "snapshotVersion": 0,
+      "standardOutputNet": 549.99,
+      "standardOutputVat": 27.5,
+      "status": "Draft",
+      "transactionCount": 4,
+      "trnStatus": "Missing",
+      "validationIssues": [
+        {
+          "entityRef": "VATReturn:Period",
+          "message": "33 invoices are outside this period, e.g. ZZ-TEST-gulfharvest-test-002 (2026-11-08), ZZ-TEST-gulfharvest-test-003 (2026-11-08), ZZ-TEST-gulfharvest-test-001 (2026-11-08). Choose a period that includes your sales dates.",
+          "severity": "Warning"
+        }
+      ],
+      "vatCalculationBasis": "SalesBased",
+      "vatTrn": "",
+      "warnings": []
+    },
+    "worksheet": {
+      "pendingAmount": 579.99,
+      "totalExpenses": 0,
+      "totalPurchases": 4200,
+      "totalReceived": 302.5,
+      "totalSales": 567.49
+    }
+  },
+  "sectionSha256": {
+    "salesLedger": "51d8d412b481512263ea50e92dbc57bbfa7a76b2185374f52fcc21d7f9a4dd1a",
+    "customerLedgerA": "91ded2a18e87416d682d4d87faff67130a3c20fc7a79d789d35961b345d03728",
+    "customerLedgerB": "fe6e0eb846e4dfa515c179d91bba5fff578d951edc0bfd5e813d3df3f05ac6c5",
+    "customerLedgerC": "79952c47f11683e6c35830c9466fcb59a04c91e78a84f040979b60f41c164c0a",
+    "vatReturn": "72a2a5ff295a6d2bb3aba254327fcfffa782eaff180ce3732f2310aa8b0a9992",
+    "worksheet": "854a85cd255e8dfb7ad28d79f2b0d2a56a4cadb0eaa5ab3707aa6f0083cc7b93"
+  },
+  "overallSha256": "5261ecbb5598428890bd68c199753c3e507480f6f25a6bba006f07ee3027cd7d"
+}

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { buildCustomerLedgerCollectHref, buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import { useDebounce } from '../../hooks/useDebounce'
+import { useRequestControl } from '../../hooks/useRequestControl'
+import LoadStatusNotice from '../../components/LoadStatusNotice'
 import ReportSwitcher from '../../components/ui/ReportSwitcher'
 import {
   Download,
@@ -327,6 +329,8 @@ const ReportsPage = () => {
   }
 
   // Define fetchReportData FIRST before any useEffect that uses it
+  // Whole multi-call tab load may legitimately exceed 15 s; each GET still times out at 15 s on its own.
+  const reportRequest = useRequestControl({ timeoutMs: 60000 })
   const fetchReportData = useCallback(async (force = false) => {
     // AGGRESSIVE: Prevent ALL requests if one is in flight (unless forced)
     if (!force && isFetchingRef.current) {
@@ -388,6 +392,15 @@ const ReportsPage = () => {
     fetchAbortControllerRef.current = new AbortController()
     const signal = fetchAbortControllerRef.current.signal
 
+    // P-01: the 3 s / 15 s notice and Cancel. A newer fetch (or Cancel / timeout) aborts this ticket.
+    const ticket = reportRequest.start()
+    ticket.signal.addEventListener('abort', () => {
+      if (!ticket.isCurrent()) return
+      lastRequestParamsRef.current = null // allow Retry with the same filters
+      setLoading(false)
+      isFetchingRef.current = false
+    })
+
     // Mark as fetching and store request signature
     isFetchingRef.current = true
     lastFetchTimeRef.current = now
@@ -413,10 +426,10 @@ const ReportsPage = () => {
       }
 
       // Note: Most API calls don't support AbortSignal directly, but we track cancellation
-      const summaryResponse = await reportsAPI.getSummaryReport(summaryParams)
+      const summaryResponse = await reportsAPI.getSummaryReport(summaryParams, { signal: ticket.signal })
 
-      // Check if request was cancelled
-      if (fetchAbortControllerRef.current?.signal?.aborted) {
+      // Check if request was cancelled or superseded
+      if (fetchAbortControllerRef.current?.signal?.aborted || !ticket.isCurrent()) {
         return
       }
       if (summaryResponse?.success && summaryResponse?.data) {
@@ -451,7 +464,7 @@ const ReportsPage = () => {
             fromDate: dateRange.from,
             toDate: `${dateRange.to}T23:59:59`,
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined
-          })
+          }, { signal: ticket.signal })
           if (expensesResponse?.success && expensesResponse?.data) {
             const expenses = (expensesResponse.data || []).map((e, index) => ({
               categoryId: e.categoryId ?? e.CategoryId ?? e.id ?? index,
@@ -473,7 +486,7 @@ const ReportsPage = () => {
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
             routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined,
             pageSize: 100
-          })
+          }, { signal: ticket.signal })
           if (summarySalesResp?.success && summarySalesResp?.data?.items) {
             const salesItems = summarySalesResp.data.items || []
             const salesByDate = salesItems.reduce((acc, sale) => {
@@ -508,12 +521,12 @@ const ReportsPage = () => {
             search: appliedFilters.search || undefined, // BUG #2.5 FIX: Add search parameter
             pageSize: SALES_PAGE_SIZE
           }
-          const salesResponse = await reportsAPI.getSalesReport({ ...salesParams, page: 1 })
+          const salesResponse = await reportsAPI.getSalesReport({ ...salesParams, page: 1 }, { signal: ticket.signal })
           let allSalesItems = salesResponse?.data?.items || []
           const salesTotalPages = salesResponse?.data?.totalPages || 1
           const salesTotalCount = salesResponse?.data?.totalCount ?? allSalesItems.length
           for (let pageNo = 2; pageNo <= Math.min(salesTotalPages, SALES_MAX_PAGES); pageNo += 1) {
-            const nextPage = await reportsAPI.getSalesReport({ ...salesParams, page: pageNo })
+            const nextPage = await reportsAPI.getSalesReport({ ...salesParams, page: pageNo }, { signal: ticket.signal })
             allSalesItems = allSalesItems.concat(nextPage?.data?.items || [])
           }
           if (salesResponse?.success && salesResponse?.data) {
@@ -592,7 +605,7 @@ const ReportsPage = () => {
             productId: appliedFilters.product ? parseInt(appliedFilters.product) : undefined,
             category: appliedFilters.category || undefined,
             top: 20
-          })
+          }, { signal: ticket.signal })
 
           console.log('Product Analysis response:', productsResponse)
 
@@ -621,7 +634,7 @@ const ReportsPage = () => {
         try {
           setLoading(true)
           const daysParam = activeTab === 'overdue' ? 30 : 1
-          const customersResponse = await reportsAPI.getOutstandingCustomers({ days: daysParam, page: 1, pageSize: 100 })
+          const customersResponse = await reportsAPI.getOutstandingCustomers({ days: daysParam, page: 1, pageSize: 100 }, { signal: ticket.signal })
 
           if (customersResponse?.success && customersResponse?.data) {
             // PagedResponse: data has { items, totalCount, page } - use items array
@@ -667,7 +680,7 @@ const ReportsPage = () => {
             fromDate: dateRange.from,
             toDate: `${dateRange.to}T23:59:59`,
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined
-          })
+          }, { signal: ticket.signal })
 
           console.log('Expenses response:', expensesResponse)
 
@@ -707,7 +720,7 @@ const ReportsPage = () => {
             toDate: dateRange.to
           }
           if (appliedFilters.branch) branchParams.branchId = parseInt(appliedFilters.branch, 10)
-          const branchRes = await reportsAPI.getBranchComparison(branchParams)
+          const branchRes = await reportsAPI.getBranchComparison(branchParams, { signal: ticket.signal })
           if (branchRes?.success && branchRes?.data) {
             const branchData = Array.isArray(branchRes.data)
               ? branchRes.data
@@ -731,7 +744,7 @@ const ReportsPage = () => {
           // FIX: Use agingAsOfDate instead of dateRange.to for historical aging analysis
           const agingRes = await reportsAPI.getAgingReport({
             asOfDate: agingAsOfDate || localDateString(new Date())
-          })
+          }, { signal: ticket.signal })
           if (agingRes?.success && agingRes?.data) {
             setReportData(prev => ({ ...prev, agingReport: agingRes.data }))
           } else {
@@ -748,7 +761,7 @@ const ReportsPage = () => {
           setLoading(true)
           const apRes = await reportsAPI.getApAgingReport({
             asOfDate: agingAsOfDate || localDateString(new Date())
-          })
+          }, { signal: ticket.signal })
           if (apRes?.success && apRes?.data) {
             setReportData(prev => ({ ...prev, apAgingReport: apRes.data }))
           } else {
@@ -767,7 +780,7 @@ const ReportsPage = () => {
           const chequeRes = await reportsAPI.getChequeReport({
             fromDate: dateRange.from,
             toDate: dateRange.to
-          })
+          }, { signal: ticket.signal })
           if (chequeRes?.success && chequeRes?.data) {
             setReportData(prev => ({ ...prev, chequeReport: chequeRes.data || [] }))
           } else {
@@ -784,7 +797,7 @@ const ReportsPage = () => {
           setLoading(true)
           console.log('Loading Profit & Loss report:', { from: dateRange.from, to: dateRange.to })
 
-          const profitResponse = await profitAPI.getProfitReport(dateRange.from, dateRange.to)
+          const profitResponse = await profitAPI.getProfitReport(dateRange.from, dateRange.to, { signal: ticket.signal })
 
           console.log('Profit & Loss response:', profitResponse)
 
@@ -837,7 +850,7 @@ const ReportsPage = () => {
       } else if (activeTab === 'branch-profit') {
         try {
           setLoading(true)
-          const res = await profitAPI.getBranchProfit(dateRange.from, dateRange.to)
+          const res = await profitAPI.getBranchProfit(dateRange.from, dateRange.to, { signal: ticket.signal })
           const raw = res?.data ?? res ?? []
           const branchData = Array.isArray(raw)
             ? raw
@@ -856,7 +869,7 @@ const ReportsPage = () => {
           // Backend returns all pending/partial invoices when from/to omitted
           const pendingBillsResponse = await reportsAPI.getPendingBills({
             status: 'all'
-          })
+          }, { signal: ticket.signal })
           console.log('Outstanding bills response:', pendingBillsResponse)
           // API returns { success, data: { items: [...], totalCount, page, pageSize, totalPages } }
           const rawData = pendingBillsResponse?.data
@@ -880,7 +893,7 @@ const ReportsPage = () => {
       } else if (activeTab === 'collections') {
         try {
           setLoading(true)
-          const res = await reportsAPI.getOutstandingCustomers({ days: 365 })
+          const res = await reportsAPI.getOutstandingCustomers({ days: 365 }, { signal: ticket.signal })
           const list = (res?.success && res?.data) ? res.data : (Array.isArray(res?.data) ? res.data : [])
           setReportData(prev => ({ ...prev, collectionsList: list }))
         } catch (error) {
@@ -897,7 +910,7 @@ const ReportsPage = () => {
             fromDate: dateRange.from,
             toDate: dateRange.to,
             routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined
-          })
+          }, { signal: ticket.signal })
           if (staffRes?.success && staffRes?.data) {
             setReportData(prev => ({ ...prev, staffReport: staffRes.data || [] }))
           } else {
@@ -929,9 +942,9 @@ const ReportsPage = () => {
               staffId: appliedFilters.staffId ? parseInt(appliedFilters.staffId, 10) : undefined,
               page: 1,
               pageSize: 50
-            }),
-            returnsAPI.getDamageCategories().catch(() => ({ success: true, data: [] })),
-            returnsAPI.getFeatureFlags().catch(() => ({ success: true, data: {} }))
+            }, { signal: ticket.signal }),
+            returnsAPI.getDamageCategories({ signal: ticket.signal }).catch(() => ({ success: true, data: [] })),
+            returnsAPI.getFeatureFlags({ signal: ticket.signal }).catch(() => ({ success: true, data: {} }))
           ])
           const retData = returnsRes?.success && returnsRes?.data ? returnsRes.data : { items: [], totalCount: 0, page: 1, pageSize: 50, totalPages: 0 }
           const cats = (categoriesRes?.success && categoriesRes?.data) ? categoriesRes.data : []
@@ -971,7 +984,7 @@ const ReportsPage = () => {
             toDate: effectiveDateRange.to,
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
             routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined
-          })
+          }, { signal: ticket.signal })
           const list = (res?.success && res?.data) ? res.data : []
           setReportData(prev => ({ ...prev, damageReport: Array.isArray(list) ? list : [] }))
         } catch (error) {
@@ -987,7 +1000,7 @@ const ReportsPage = () => {
             fromDate: dateRange.from,
             toDate: dateRange.to,
             customerId: appliedFilters.customer ? parseInt(appliedFilters.customer, 10) : undefined
-          })
+          }, { signal: ticket.signal })
           const list = (res?.success && res?.data) ? res.data : []
           setReportData(prev => ({ ...prev, creditNotesReport: Array.isArray(list) ? list : [] }))
         } catch (error) {
@@ -1004,7 +1017,7 @@ const ReportsPage = () => {
             toDate: dateRange.to,
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
             routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined
-          })
+          }, { signal: ticket.signal })
           const d = (res?.success && res?.data) ? res.data : null
           const totalSales = d ? (parseFloat(d.totalSales ?? d.TotalSales ?? d.salesToday ?? d.SalesToday) || 0) : 0
           const totalReturns = d ? (parseFloat(d.totalReturns ?? d.TotalReturns ?? d.returnsToday ?? d.ReturnsToday) || 0) : 0
@@ -1021,7 +1034,7 @@ const ReportsPage = () => {
         }
       } else if (activeTab === 'ai') {
         try {
-          const aiResponse = await reportsAPI.getAISuggestions({ periodDays: 30 })
+          const aiResponse = await reportsAPI.getAISuggestions({ periodDays: 30 }, { signal: ticket.signal })
           if (aiResponse?.success && aiResponse?.data) {
             const suggestions = []
             const aiData = aiResponse.data
@@ -1087,6 +1100,8 @@ const ReportsPage = () => {
       // Lazy load: mark this tab as loaded so we skip refetch when switching back
       tabDataCacheRef.current[tabCacheKey] = true
     } catch (error) {
+      const requestKind = ticket.classify(error)
+      if (requestKind !== 'error') return // superseded, timed out or cancelled: the notice explains it
       // Check if request was aborted (cancelled)
       const currentSignal = fetchAbortControllerRef.current?.signal
       if (error.name === 'AbortError' || (currentSignal && currentSignal.aborted)) {
@@ -1113,10 +1128,13 @@ const ReportsPage = () => {
       // Error toast is already handled by API interceptor with throttling
       // Don't show duplicate error messages
     } finally {
-      setLoading(false)
-      isFetchingRef.current = false
+      if (ticket.isCurrent()) {
+        setLoading(false)
+        isFetchingRef.current = false
+      }
+      ticket.finish()
     }
-  }, [dateRange, activeTab, appliedFilters, dateRange?.from, dateRange?.to])
+  }, [dateRange, activeTab, appliedFilters, dateRange?.from, dateRange?.to, reportRequest.start])
 
   // Store latest fetchReportData in ref to avoid dependency issues
   useEffect(() => {
@@ -1381,22 +1399,22 @@ const ReportsPage = () => {
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
               <div className="text-xs font-semibold text-neutral-500 ">Historical Total Sales</div>
               <div className="mt-1 text-xl font-bold text-neutral-900">{formatCurrency(legacyMetrics?.activeGrandTotal ?? 0)}</div>
-              <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.activeInvoices?.toLocaleString() || '4,916'} active bills</div>
+              <div className="mt-0.5 text-xs text-neutral-500">{(legacyMetrics?.activeInvoices ?? 0).toLocaleString()} active bills</div>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
               <div className="text-xs font-semibold text-neutral-500 ">Historical Collections</div>
               <div className="mt-1 text-xl font-bold text-emerald-600">{formatCurrency(legacyMetrics?.activePaidTotal ?? 0)}</div>
-              <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.clearedPayments?.toLocaleString() || '5,325'} cleared receipts</div>
+              <div className="mt-0.5 text-xs text-neutral-500">{(legacyMetrics?.clearedPayments ?? 0).toLocaleString()} cleared receipts</div>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
               <div className="text-xs font-semibold text-neutral-500 ">Cutover Receivables (Pending)</div>
               <div className="mt-1 text-xl font-bold text-rose-600">{formatCurrency(legacyMetrics?.positiveOutstandingSum ?? 0)}</div>
-              <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.positiveOutstandingCount || 93} pending bills</div>
+              <div className="mt-0.5 text-xs text-neutral-500">{legacyMetrics?.positiveOutstandingCount ?? 0} pending bills</div>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
               <div className="text-xs font-semibold text-neutral-500 ">Approved Transferred AR</div>
               <div className="mt-1 text-xl font-bold text-blue-600">{formatCurrency(legacyMetrics?.customerOpeningReceivablesTotal ?? 0)}</div>
-              <div className="mt-0.5 text-xs text-neutral-500">21 customers (+ AED 100.80 Inv 2158)</div>
+              <div className="mt-0.5 text-xs text-neutral-500">{legacyArList.length} customers</div>
             </div>
           </div>
 
@@ -1404,7 +1422,7 @@ const ReportsPage = () => {
             <div className="px-5 py-4 border-b border-neutral-200 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-neutral-900 ">Top Historical Customer Receivables</h3>
-                <p className="text-xs text-neutral-500">21 customer accounts with approved opening balances transferred at cutover</p>
+                <p className="text-xs text-neutral-500">{legacyArList.length} customer accounts with approved opening balances transferred at cutover</p>
               </div>
               <Link to="/billing-history?status=unpaid" className="text-xs font-semibold text-primary-700 hover:underline">
                 View all pending bills &rarr;
@@ -1620,6 +1638,7 @@ const ReportsPage = () => {
       <p className="-mt-1 shrink-0 px-1 text-xs text-slate-500">{dateRange.from === dateRange.to ? dateRange.from : `${dateRange.from} to ${dateRange.to}`}</p>
 
       {/* Report body fills the remaining height and scrolls on its own */}
+      <LoadStatusNotice phase={reportRequest.phase} onCancel={reportRequest.cancel} onRetry={() => fetchReportDataRef.current?.(true)} className="mb-2" />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white">
         <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
           {loading ? (

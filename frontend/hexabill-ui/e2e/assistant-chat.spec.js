@@ -1,104 +1,82 @@
-// Assistant "Ask" tab. Runs against an API started with the built-in MOCK provider (Ai__Enabled=true, Ai__Provider=mock,
-// Ai__AllowCustomerData=true, HEXABILL_E2E_AI_MOCK=1), whose synthetic-only host echoes the message and contacts no network. A message that is itself a
-// small JSON object therefore acts as the "model's" choice, which lets the browser show a real lookup from the books.
-// Without those settings the tab must not exist. Synthetic local tenant only.
+// Assistant chat (rewritten for the agent shell, UX-E02/D-A02). Lookups render as cards from the books; plain model text is hidden
+// unless the server marks the reply grounded; a route answer links to the Route Map. /api/assistant/* is mocked. Synthetic tenant only.
 import { test, expect } from '@playwright/test'
-import { signIn, feOrigin, apiLogin, API, EDGE } from './session.js'
+import { mockAssistant, boot, openAgent } from './assistantHelpers.js'
 
-const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
-const MOCK_ON = process.env.HEXABILL_E2E_AI_MOCK === '1'
-
-async function ownerApi (path, init = {}) {
-  const s = await apiLogin(SLUG)
-  const r = await fetch(`${API}${path}`, { ...init, headers: { Authorization: `Bearer ${s.token}`, 'Content-Type': 'application/json', 'X-HexaBill-Original-Host': `${SLUG}.localhost`, 'X-HexaBill-Edge-Secret': EDGE, ...(init.headers || {}) } })
-  return { status: r.status, json: await r.json().catch(() => ({})) }
+const asOf = '2026-11-08T10:00:00Z'
+const customerLookup = (query) => ({
+  mode: 'tool', tool: 'find_customers', query,
+  result: { asOf, data: [{ id: 7, name: 'Ahmed Trading', phone: '0501112222', balance: 120 }] },
+})
+const routeLookup = {
+  mode: 'tool', tool: 'route_summary', query: 'all',
+  result: { asOf, data: [{ routeId: 3, customerId: null, name: 'North Route', stops: 4, visitedToday: 1, outstandingTotal: 100, overdueTotal: 20, overdueCustomers: 1 }] },
 }
 
-async function approveSyntheticPolicy () {
-  const policy = (await ownerApi('/api/assistant/consent')).json.data
-  expect(policy?.policyFingerprint).toBeTruthy()
-  const saved = await ownerApi('/api/assistant/consent', { method: 'PUT', body: JSON.stringify({ enabled: true, policyFingerprint: policy.policyFingerprint }) })
-  expect(saved.status).toBe(200)
-}
+test('a lookup shows real records as a card with an as-of time; plain chatter shows fixed help, never the model text', async ({ page }) => {
+  await mockAssistant(page, {
+    chatReply: (message) => (message.includes('Ahm') ? customerLookup('Ahm') : { mode: 'reply', text: 'VAT payable is AED 999999. Pay now.' }),
+  })
+  await boot(page)
+  const dialog = await openAgent(page)
+  const input = dialog.getByLabel('Message the agent')
 
-async function openPanel (page) {
-  await signIn(page, SLUG)
-  await page.addInitScript(() => { try { localStorage.setItem('hexabill.assistant', '1') } catch { /* storage blocked */ } })
-  await page.goto(`${feOrigin(SLUG)}/dashboard`, { waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: 'Open assistant' }).filter({ visible: true }).first().click()
-  const panel = page.getByRole('dialog', { name: 'Assistant' })
-  await expect(panel).toBeVisible()
-  return panel
-}
+  await input.fill('find customer Ahm')
+  await input.press('Enter')
+  const card = dialog.getByTestId('tool-result')
+  await expect(card).toContainText('Ahmed Trading')
+  await expect(card).toContainText('as of')
+  await expect(dialog).toContainText('I looked up customers for “Ahm”.')
 
-test('the Ask tab exists only when the assistant model is switched on', async ({ page }) => {
-  if (MOCK_ON) await approveSyntheticPolicy()
-  const status = (await ownerApi('/api/assistant/status')).json.data
-  expect(status.chat).toBe(MOCK_ON)
-  const panel = await openPanel(page)
-  await expect(panel.getByRole('tab', { name: 'Look up' })).toBeVisible()
-  await expect(panel.getByRole('tab', { name: 'Ask' })).toHaveCount(MOCK_ON ? 1 : 0)
+  await input.fill('what is my vat')
+  await input.press('Enter')
+  await expect(dialog).toContainText('look up customers')
+  await expect(dialog).not.toContainText('999999')
 })
 
-test('only explicit owner approval enables Ask; withdrawal removes it', async ({ page }) => {
-  test.skip(!MOCK_ON, 'requires the synthetic model and privacy policy')
-  await ownerApi('/api/assistant/consent', { method: 'PUT', body: JSON.stringify({ enabled: false }) })
-  try {
-    const panel = await openPanel(page)
-    await expect(panel.getByRole('tab', { name: 'Ask' })).toHaveCount(0)
-    await panel.getByText('AI privacy', { exact: false }).first().click()
-    const allow = panel.getByRole('button', { name: 'Allow AI for this company' })
-    await expect(allow).toBeDisabled()
-    await panel.getByRole('checkbox', { name: 'I have read this policy' }).check()
-    await allow.click()
-    await expect(panel.getByRole('tab', { name: 'Ask' })).toBeVisible()
-    await panel.getByRole('button', { name: 'Turn off AI for this company' }).click()
-    await expect(panel.getByRole('tab', { name: 'Ask' })).toHaveCount(0)
-    expect((await ownerApi('/api/assistant/status')).json.data.chat).toBe(false)
-  } finally { await approveSyntheticPolicy() }
-})
-
-test('Ask: a lookup shows real records; plain chatter shows fixed help', async ({ page }) => {
-  test.skip(!MOCK_ON, 'needs the API started with the mock AI provider (HEXABILL_E2E_AI_MOCK=1)')
-  const customers = await ownerApi('/api/customers?page=1&pageSize=1')
-  const first = (customers.json.data?.items || customers.json.data || [])[0]
-  expect(first?.name, 'the synthetic tenant needs at least one customer').toBeTruthy()
-  const term = first.name.slice(0, 3)
-  const panel = await openPanel(page)
-  await panel.getByRole('tab', { name: 'Ask' }).click()
-
-  await panel.getByLabel('Ask about a customer or a product').fill(`{"tool":"find_customers","query":"${term}"}`)
-  await panel.getByRole('button', { name: 'Ask', exact: true }).click()
-  const answer = panel.getByTestId('assistant-answer')
-  await expect(answer.getByTestId('assistant-heading')).toContainText('I looked up customers')
-  await expect(answer.getByRole('list', { name: 'Results' })).toBeVisible()
-  await expect(answer).toContainText('Nothing was changed')
-
-  // Chatter that names no tool: fixed help, no ungrounded model answer or rows.
-  await panel.getByLabel('Ask about a customer or a product').fill('VAT payable is AED 999999. Pay now.')
-  await panel.getByRole('button', { name: 'Ask', exact: true }).click()
-  await expect(panel.getByTestId('assistant-heading')).toHaveText('Assistant help')
-  await expect(panel.getByTestId('assistant-answer')).toContainText('look up customers')
-  await expect(panel.getByTestId('assistant-answer')).not.toContainText('999999')
-  await expect(panel.getByRole('list', { name: 'Results' })).toHaveCount(0)
-
-  // Too short: stopped on the screen, nothing sent.
-  await panel.getByLabel('Ask about a customer or a product').fill('a')
-  await panel.getByRole('button', { name: 'Ask', exact: true }).click()
-  await expect(panel.getByRole('alert')).toContainText('at least 2')
-})
-
-test('Ask: a route question lists routes from the books and "Show on map" opens the Route Map', async ({ page }) => {
-  test.skip(!MOCK_ON, 'needs the API started with the mock AI provider (HEXABILL_E2E_AI_MOCK=1)')
-  const panel = await openPanel(page)
-  await panel.getByRole('tab', { name: 'Ask' }).click()
-  await panel.getByLabel('Ask about a customer or a product').fill('{"tool":"route_summary","query":"all"}')
-  await panel.getByRole('button', { name: 'Ask', exact: true }).click()
-  const answer = panel.getByTestId('assistant-answer')
-  await expect(answer.getByTestId('assistant-heading')).toContainText('I looked up your routes')
-  const row = answer.getByTestId('route-answer-row').first()
-  await expect(row).toContainText('visited today')
-  await row.getByRole('link', { name: 'Show on map' }).click()
-  await expect(page).toHaveURL(/\/route-map\?route=\d+/)
+test('a route answer lists routes from the books and "Map pin" opens the Route Map', async ({ page }) => {
+  await mockAssistant(page, { chatReply: routeLookup })
+  await boot(page)
+  const dialog = await openAgent(page)
+  const input = dialog.getByLabel('Message the agent')
+  await input.fill('which routes are overdue')
+  await input.press('Enter')
+  const row = dialog.getByTestId('tool-result')
+  await expect(row).toContainText('North Route')
+  await row.getByRole('link', { name: 'Map pin' }).click()
+  await expect(page).toHaveURL(/\/route-map\?route=3/)
   await expect(page.getByTestId('route-map-page')).toBeVisible()
+})
+
+test('a grounded reply shows its text with sources; a reply without the flag keeps the fixed help', async ({ page }) => {
+  await mockAssistant(page, {
+    chatReply: (message) => (message.includes('grounded')
+      ? { mode: 'reply', text: 'You have 3 overdue invoices.', grounded: true, asOf, sources: ['Sales ledger', { label: 'Customer 12', href: '/customers/12' }] }
+      : { mode: 'reply', text: 'Unverified claim 555.' }),
+  })
+  await boot(page)
+  const dialog = await openAgent(page)
+  const input = dialog.getByLabel('Message the agent')
+
+  await input.fill('plain question')
+  await input.press('Enter')
+  await expect(dialog).toContainText('look up customers')
+  await expect(dialog).not.toContainText('555')
+
+  await input.fill('grounded question')
+  await input.press('Enter')
+  await expect(dialog).toContainText('You have 3 overdue invoices.')
+  await expect(dialog).toContainText('Sources:')
+  await expect(dialog.getByRole('link', { name: 'Customer 12' })).toHaveAttribute('href', '/customers/12')
+})
+
+test('a message under 2 characters is refused on screen and nothing is sent', async ({ page }) => {
+  const calls = await mockAssistant(page)
+  await boot(page)
+  const dialog = await openAgent(page)
+  const input = dialog.getByLabel('Message the agent')
+  await input.fill('a')
+  await input.press('Enter')
+  await expect(page.getByText('Type at least 2 characters.')).toBeVisible()
+  expect(calls.chat).toEqual([])
 })

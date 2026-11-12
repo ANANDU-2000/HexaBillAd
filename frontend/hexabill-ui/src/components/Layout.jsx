@@ -34,6 +34,7 @@ import { isAdminOrOwner } from '../utils/roles'
 import { isSystemAdmin } from '../utils/superAdmin'  // Super Admin checking
 import { useBranding } from '../tenant/TenantBrandingContext'
 import { visibleSidebar, isItemActive } from '../navigation/moreMenuConfig'
+import { scheduler } from '../services/scheduler'
 
 const Layout = () => {
   const { user, logout, impersonatedTenantId, stopImpersonation } = useAuth()
@@ -99,8 +100,8 @@ const Layout = () => {
       }
     }
     ping()
-    const interval = setInterval(ping, 180000) // Increased from 90s to 180s (3 minutes) to reduce API requests
-    return () => clearInterval(interval)
+    // P-02: one scheduler (pauses when hidden/offline/modal/typing, jitter, backoff).
+    return scheduler.register('presence-ping', ping, { intervalMs: 180000 })
   }, [user?.id])
 
   const toggleSidebar = useCallback(() => {
@@ -404,7 +405,7 @@ const Layout = () => {
       {/* Mobile top bar — one title per screen. The menu button appears only where the bottom
           navigation (and its More sheet) is hidden, so phones never show two menu entry points. */}
       {(
-      <header className={`md:hidden fixed left-0 right-0 z-50 border-b border-surface-border bg-white text-text-primary safe-area-top ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+      <header className={`tab:hidden fixed left-0 right-0 z-50 border-b border-surface-border bg-white text-text-primary safe-area-top ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
         <div className="flex h-14 items-center gap-1 px-1">
           {!routeShowsBottomNav ? (
           <button
@@ -433,6 +434,8 @@ const Layout = () => {
               <Sparkles className="h-5 w-5" strokeWidth={1.75} />
             </button>
           )}
+          {/* BUG-6: owners and admins on phones and portrait tablets (<768) had no way to open alerts. */}
+          {isAdminOrOwner(user) && <AlertNotifications />}
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
@@ -653,7 +656,7 @@ const Layout = () => {
           </div>
         </main>
         {/* Mobile Bottom Navigation */}
-        <div className="md:hidden">
+        <div className="tab:hidden">
           {bottomNavVisible && (
             <BottomNav moreOpen={moreOpen} onOpenMore={() => setMoreOpen(true)} onCloseMore={closeMore} onOpenCreate={() => setCreateOpen(true)} />
           )}

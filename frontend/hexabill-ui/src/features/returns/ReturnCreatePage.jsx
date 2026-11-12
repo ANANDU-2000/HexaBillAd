@@ -8,6 +8,7 @@ import { ArrowLeft, Save, FileText } from 'lucide-react'
 import { salesAPI, returnsAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
+import ReturnInvoicePicker from './ReturnInvoicePicker'
 
 const CONDITION_OPTIONS = [
   { value: 'resellable', label: 'Resellable' },
@@ -180,12 +181,7 @@ export default function ReturnCreatePage() {
   const goBack = () => (returnTo ? navigate(returnTo) : navigate(-1))
 
   if (!saleId) {
-    return (
-      <div className="p-4">
-        <p className="text-sm text-neutral-800">Open a return from an invoice.</p>
-        <button type="button" className="mt-3 min-h-11 text-sm text-primary-700" onClick={goBack}>Back</button>
-      </div>
-    )
+    return <ReturnInvoicePicker onBack={goBack} />
   }
 
   if (loading) {

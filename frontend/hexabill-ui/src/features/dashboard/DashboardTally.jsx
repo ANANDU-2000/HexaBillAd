@@ -15,7 +15,10 @@ import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
 import Button from '../../components/ui/Button'
 import DailyCloseStatusCard from './DailyCloseStatusCard'
+import LoadStatusNotice from '../../components/LoadStatusNotice'
+import { useRequestControl } from '../../hooks/useRequestControl'
 import { localDateString } from '../../utils/dateFormat'
+import { scheduler } from '../../services/scheduler'
 
 const GET_STARTED_DISMISSED_KEY = 'hexabill_get_started_dismissed'
 
@@ -233,7 +236,10 @@ const DashboardTally = () => {
         }
     }
 
+    const summaryRequest = useRequestControl()
     const fetchStats = async (skipCache = false) => {
+        // P-01: a newer fetch aborts this one; only the latest response is applied.
+        const ticket = summaryRequest.start()
         try {
             setRefreshing(true)
             const { from, to } = getDateRange()
@@ -243,7 +249,8 @@ const DashboardTally = () => {
             if (selectedBranchId && !isAdminOrOwner(user)) params.branchId = selectedBranchId
             if (skipCache) params.refresh = true
 
-            const response = await reportsAPI.getSummaryReport(params)
+            const response = await reportsAPI.getSummaryReport(params, { signal: ticket.signal })
+            if (!ticket.isCurrent()) return
 
             if (response?.success && response?.data) {
                 const data = response.data
@@ -278,13 +285,15 @@ const DashboardTally = () => {
                 setBranchBreakdown([])
                 setSummaryError(true)
             }
-        } catch {
+        } catch (error) {
+            if (ticket.classify(error) === 'superseded') return
             console.error('Failed to fetch dashboard stats')
             setHasFigures(false)
             setBranchBreakdown([])
             setSummaryError(true)
         } finally {
-            setRefreshing(false)
+            if (ticket.isCurrent()) setRefreshing(false)
+            ticket.finish()
         }
     }
 
@@ -340,9 +349,10 @@ const DashboardTally = () => {
                 isFetchingRef.current = false
             }
         }
-        const interval = setInterval(() => {
-            if (document.visibilityState === 'visible' && !isFetchingRef.current) fetchStatsThrottled()
-        }, 120000)
+        // P-02: one scheduler (pauses when hidden/offline/modal/typing, jitter, backoff).
+        const unregisterPoll = scheduler.register('dashboard-summary', () => {
+            if (!isFetchingRef.current) return fetchStatsThrottled()
+        }, { intervalMs: 120000 })
         let debounceTimer = null
         const handleDataUpdate = () => {
             if (debounceTimer) clearTimeout(debounceTimer)
@@ -369,7 +379,7 @@ const DashboardTally = () => {
         window.addEventListener('customerCreated', handleDataUpdate)
         document.addEventListener('visibilitychange', handleVisibilityChange)
         return () => {
-            clearInterval(interval)
+            unregisterPoll()
             if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
             if (debounceTimer) clearTimeout(debounceTimer)
             window.removeEventListener('dataUpdated', handleDataUpdate)
@@ -638,6 +648,8 @@ const DashboardTally = () => {
                     />
                 </div>
             )}
+
+            <LoadStatusNotice phase={summaryRequest.phase} onCancel={summaryRequest.cancel} onRetry={handleRefresh} />
 
             {summaryError && (
                 <div className={`${surfaceClass} flex flex-wrap items-center justify-between gap-3 p-4`} role="alert">
@@ -918,11 +930,16 @@ const DashboardTally = () => {
             )}
 
             {/* Additional Needs Attention Rows (e.g. Overdue or Damage) */}
-            {hasFigures && attention.filter(a => a.key === 'overdue' || a.key === 'damage').length > 0 && (
-            <section className="space-y-2">
-                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Critical alerts</h2>
+            {hasFigures && (() => {
+              const urgentRows = attention.filter(a => a.key === 'overdue' || a.key === 'damage')
+              return (
+            <section className="space-y-2" aria-label="Needs attention">
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Needs attention</h2>
+                {urgentRows.length === 0 && (
+                  <p className="text-sm text-[var(--text-secondary)]">Nothing needs attention right now.</p>
+                )}
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    {attention.filter(a => a.key === 'overdue' || a.key === 'damage').map((row) => (
+                    {urgentRows.map((row) => (
                         <AttentionRow
                             key={row.key}
                             label={row.label}
@@ -936,7 +953,8 @@ const DashboardTally = () => {
                     ))}
                 </div>
             </section>
-            )}
+              )
+            })()}
 
             {showGetStarted && (
                 <div className={`${surfaceClass} relative p-4`}>

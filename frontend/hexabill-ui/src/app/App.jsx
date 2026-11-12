@@ -68,6 +68,7 @@ const PendingBillsPage = lazy(() => import('../features/customers/PendingBillsPa
 const CustomerDetailPage = lazy(() => import('../features/customers/CustomerDetailPage'))
 const LegacyInvoicesPage = lazy(() => import('../features/legacy/LegacyInvoicesPage'))
 const MorePage = lazy(() => import('../pages/company/MorePage'))
+const AssistantPage = lazy(() => import('../features/assistant/AssistantPage'))
 const DailyClosePage = lazy(() => import('../features/dailyClose/DailyClosePage'))
 const QuotationsPage = lazy(() => import('../features/documents/QuotationsPage'))
 const QuotationEditorPage = lazy(() => import('../features/documents/QuotationEditorPage'))
@@ -307,6 +308,7 @@ function App() {
               <Route path="/customers/:id" element={<CustomerDetailPage />} />
               <Route path="/legacy/invoices" element={<LegacyInvoicesPage />} />
               <Route path="/more" element={<MorePage />} />
+              <Route path="/assistant" element={<AssistantPage />} />
               <Route path="/users" element={<UsersPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/audit" element={<AuditLogPage />} />

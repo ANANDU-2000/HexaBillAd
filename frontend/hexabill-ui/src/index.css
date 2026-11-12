@@ -467,3 +467,13 @@ button, a, select, input, textarea, [role="button"], [role="tab"] {
   @media (min-width: 768px) { .hb-dialog-in { animation-name: hb-scale-in; animation-duration: 0.2s; } }
   .hb-route-bar { transform-origin: left; animation: hb-route-bar 0.8s var(--hb-ease) both; }
 }
+/* UX-E01: the assistant drawer (>=1024px) pushes the page instead of covering it.
+   Body padding moves the flowing content; the fixed desktop header is pulled in by the same amount. */
+@media (min-width: 1024px) {
+  body.assistant-docked {
+    padding-right: var(--assistant-dock, 0px);
+  }
+  body.assistant-docked header.fixed.right-0 {
+    right: var(--assistant-dock, 0px);
+  }
+}

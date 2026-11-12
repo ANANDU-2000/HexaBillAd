@@ -203,7 +203,7 @@ export default function QuotationEditorPage() {
 
   const isDirty = Boolean(baseline) && currentSnapshot !== baseline
   isDirtyRef.current = isDirty
-  useUnsavedChangesGuard(isDirty)
+  const unsavedDialog = useUnsavedChangesGuard(isDirty)
 
   useEffect(() => {
     const onBeforeUnload = (e) => {
@@ -658,6 +658,7 @@ export default function QuotationEditorPage() {
 
   return (
     <div className="p-2 md:p-3 w-full max-w-full flex flex-col gap-2">
+      {unsavedDialog}
       <BackLink to="/quotations" label="Back to quotations" />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>

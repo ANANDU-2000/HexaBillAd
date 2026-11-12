@@ -65,6 +65,11 @@ import { buildCustomerLedgerHref } from '../../../utils/customerLedgerUrl'
 import { getReturnLabel } from '../../../utils/returnNavigation'
 import { localDateString } from '../../../utils/dateFormat'
 import { loadAllProductPages } from '../../../utils/loadAllProductPages'
+import {
+  buildSearchIndex, searchIndex, isCatalogFresh, shouldBackgroundRefresh,
+  readProductCatalog, writeProductCatalog, readCustomerCache, writeCustomerCache,
+} from '../../../utils/posCatalog'
+import { useDebounce } from '../../../hooks/useDebounce'
 import { findPricelessCartRows } from '../../../utils/posCartRows'
 const API_BASE_URL = getApiBaseUrl()
 
@@ -206,22 +211,48 @@ const PosEnterprisePage = () => {
     else if (allZeroPrice) setIsZeroInvoice(true)
   }, [cart])
 
+  // P-03: the catalog is loaded once per session (memory + IndexedDB keyed by tenant). Network reloads happen on
+  // explicit actions (sale saved, Refresh) and, in the background, only when the data is >10 min old and the cart is idle.
+  const catalogTenantId = user?.tenantId ?? null
+  const customerCacheScope = `${user?.id ?? 'u'}:${selectedBranchId || ''}:${selectedRouteId || ''}`
+  const catalogLoadedAtRef = useRef(0)
+  const customersLoadedAtRef = useRef(0)
+  const lastCartEditAtRef = useRef(0)
+  const productsLoadingRef = useRef(false)
+  useEffect(() => { lastCartEditAtRef.current = Date.now() }, [cart])
+
   // Define loadProducts before useEffect
   const loadProducts = useCallback(async () => {
     try {
+      productsLoadingRef.current = true
       setLoadingProducts(true)
       // Every active product, not just the first 200 by name: picker search and barcode scan read only this list.
       const { items, complete, totalCount } = await loadAllProductPages((params) => productsAPI.getProducts(params))
       setProducts(items)
+      catalogLoadedAtRef.current = Date.now()
+      writeProductCatalog(catalogTenantId, items)
       if (!complete) {
         toast(`POS loaded ${items.length} of ${totalCount} products. Search cannot reach the rest.`, { icon: '⚠️' })
       }
     } catch (error) {
       if (!error?._handledByInterceptor) toast.error('Failed to load products')
     } finally {
+      productsLoadingRef.current = false
       setLoadingProducts(false)
     }
-  }, [])
+  }, [catalogTenantId])
+
+  /** Mount path: show the cached catalog instantly; only hit the network when there is none or it is >10 min old. */
+  const ensureProducts = useCallback(async () => {
+    const cached = await readProductCatalog(catalogTenantId)
+    if (cached) {
+      setProducts(cached.items)
+      setLoadingProducts(false)
+      catalogLoadedAtRef.current = cached.loadedAt
+      if (isCatalogFresh(cached.loadedAt)) return
+    }
+    await loadProducts()
+  }, [catalogTenantId, loadProducts])
 
   const loadCustomers = useCallback(async () => {
     try {
@@ -233,12 +264,25 @@ const PosEnterprisePage = () => {
         // Dedupe by id so the same customer never appears twice (e.g. after invoice or refetch)
         const byId = new Map()
         response.data.items.forEach(c => { if (c?.id != null && !byId.has(c.id)) byId.set(c.id, c) })
-        setCustomers(Array.from(byId.values()))
+        const list = Array.from(byId.values())
+        setCustomers(list)
+        customersLoadedAtRef.current = Date.now()
+        writeCustomerCache(catalogTenantId, customerCacheScope, list)
       }
     } catch (error) {
       if (!error?._handledByInterceptor) toast.error('Failed to load customers')
     }
-  }, [selectedBranchId, selectedRouteId])
+  }, [selectedBranchId, selectedRouteId, catalogTenantId, customerCacheScope])
+
+  const ensureCustomers = useCallback(async () => {
+    const cached = readCustomerCache(catalogTenantId, customerCacheScope)
+    if (cached) {
+      setCustomers(cached.items)
+      customersLoadedAtRef.current = cached.loadedAt
+      if (isCatalogFresh(cached.loadedAt)) return
+    }
+    await loadCustomers()
+  }, [catalogTenantId, customerCacheScope, loadCustomers])
 
   // Auto-select branch and route when only one option (all users: Owner, Admin, Staff)
   useEffect(() => {
@@ -523,18 +567,21 @@ const PosEnterprisePage = () => {
     }
   }, [isEditMode, editingSale, branches, routes])
 
+  useEffect(() => { ensureProducts() }, [ensureProducts])
+  useEffect(() => { ensureCustomers() }, [ensureCustomers])
+
+  // Background refresh (P-03): checked every 30 s but only hits the network when the catalog is >10 min old and the
+  // cart has been idle for 30 s. Latest values are read through refs so this effect registers once.
+  const backgroundRefreshRef = useRef(() => {})
+  backgroundRefreshRef.current = () => {
+    const now = Date.now()
+    const base = { now, lastCartEditAt: lastCartEditAtRef.current, hidden: document.visibilityState !== 'visible', editMode: isEditMode, busy: loading }
+    if (!productsLoadingRef.current && shouldBackgroundRefresh({ ...base, loadedAt: catalogLoadedAtRef.current })) loadProducts()
+    if (shouldBackgroundRefresh({ ...base, loadedAt: customersLoadedAtRef.current })) loadCustomers()
+  }
+
   useEffect(() => {
-    loadProducts()
-    loadCustomers()
-    // Branches/routes from shared context - no per-page fetch
-    // Auto-refresh products and customers every 60 seconds (reduced frequency)
-    // Only refresh if page is visible and not in edit mode
-    const refreshInterval = setInterval(() => {
-      if (document.visibilityState === 'visible' && !isEditMode && !loading) {
-        loadProducts()
-        loadCustomers()
-      }
-    }, 60000) // 60 seconds - reduced from 15
+    const refreshInterval = setInterval(() => backgroundRefreshRef.current(), 30000)
 
     // Click outside handler for product dropdowns - use mousedown to prevent conflicts
     const handleClickOutside = (e) => {
@@ -548,10 +595,7 @@ const PosEnterprisePage = () => {
 
     // Auto-refresh when page becomes visible (user returns from other tab/window)
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        loadProducts()
-        loadCustomers()
-      }
+      if (!document.hidden) backgroundRefreshRef.current()
     }
 
     // Use mousedown instead of click to avoid conflicts with onClick handlers
@@ -563,7 +607,7 @@ const PosEnterprisePage = () => {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [loadProducts, loadCustomers])
+  }, [])
 
   // Held invoices are now stored server-side - no localStorage needed
 
@@ -608,15 +652,6 @@ const PosEnterprisePage = () => {
     }
   }, [loadProducts, loadCustomers])
 
-  // Refetch customers when user returns to POS (fixes customer list not showing after tab switch or navigation)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') loadCustomers()
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [loadCustomers])
-
   // Update customer when customers are loaded and we're in edit mode
   // CRITICAL: Only set customer on INITIAL load, not when user changes it
   useEffect(() => {
@@ -634,29 +669,35 @@ const PosEnterprisePage = () => {
     }
   }, [customers, isEditMode, editingSale, customerChangedDuringEdit])
 
-  const filteredCustomers = customers
-    .filter((c, i, arr) => arr.findIndex(x => String(x.id) === String(c.id)) === i)
-    .filter(customer =>
-      customer.name?.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-      customer.phone?.includes(customerSearchTerm)
-    )
+  // P-03: the cached customers match instantly; a debounced (250 ms) server search, limit 20, reaches the rest.
+  const debouncedCustomerSearch = useDebounce(customerSearchTerm, 250)
+  const [serverCustomerMatches, setServerCustomerMatches] = useState([])
+  useEffect(() => {
+    const q = debouncedCustomerSearch.trim()
+    if (!q) { setServerCustomerMatches([]); return undefined }
+    let cancelled = false
+    const params = { search: q, pageSize: 20 }
+    if (selectedBranchId) params.branchId = parseInt(selectedBranchId, 10)
+    if (selectedRouteId) params.routeId = parseInt(selectedRouteId, 10)
+    customersAPI.getCustomers(params)
+      .then((res) => { if (!cancelled) setServerCustomerMatches(res?.success && res.data?.items ? res.data.items : []) })
+      .catch(() => { if (!cancelled) setServerCustomerMatches([]) })
+    return () => { cancelled = true }
+  }, [debouncedCustomerSearch, selectedBranchId, selectedRouteId])
+  const filteredCustomers = (() => {
+    const local = customers.filter(customer =>
+      customer.name?.toLowerCase().includes(customerSearchTerm.toLowerCase()) || customer.phone?.includes(customerSearchTerm))
+    const merged = customerSearchTerm.trim() ? [...local, ...serverCustomerMatches] : local
+    return merged.filter((c, i, arr) => arr.findIndex(x => String(x.id) === String(c.id)) === i)
+  })()
 
   // Filter products based on search term for each row
+  // P-03: pre-normalized lowercase index, rebuilt only when the catalog changes (not per keystroke).
+  const productSearchIndex = useMemo(() => buildSearchIndex(products), [products])
   const getFilteredProducts = (rowIndex) => {
     const searchTerm = productSearchTerms[rowIndex] || ''
-    if (!searchTerm.trim()) {
-      // Show all products when no search (or first 50 for better performance)
-      return products.slice(0, 50)
-    }
-
-    // Every word must match somewhere, in any order: "1000 seara" finds "FROZEN CHICKEN 1000GM SEARA".
-    const tokens = searchTerm.toLowerCase().split(/\s+/).filter(Boolean)
-    const filtered = products.filter(product => {
-      const haystack = [product.nameEn, product.nameAr, product.sku, product.barcode]
-        .filter(Boolean).join(' ').toLowerCase()
-      return tokens.every(t => haystack.includes(t))
-    })
-    return filtered.slice(0, 200)
+    // No search: first 50 products; otherwise up to 50 matches on name, Arabic name, SKU or barcode.
+    return searchIndex(productSearchIndex, searchTerm, 50)
   }
 
   /** Unique products already in this cart session (most recently added first). Client-side only. */
@@ -2655,10 +2696,7 @@ const PosEnterprisePage = () => {
                     >
                       <p className="font-medium text-neutral-900 text-xs">Cash Customer</p>
                     </div>
-                    {customers.filter((c, i, arr) => arr.findIndex(x => String(x.id) === String(c.id)) === i).filter(c =>
-                      c.name?.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-                      c.phone?.includes(customerSearchTerm)
-                    ).slice(0, 8).map((c) => (
+                    {filteredCustomers.slice(0, 8).map((c) => (
                       <div
                         key={c.id}
                         className="p-2 hover:bg-primary-50 cursor-pointer"
