@@ -682,7 +682,7 @@ const DashboardTally = () => {
                     <MetricCard
                         label={dateRange === 'today' ? 'Profit Today' : 'Period Profit'}
                         value={stats.profitToday}
-                        helper="View Breakdown →"
+                        helper="View Breakdown"
                         icon={TrendingUp}
                         accent="primary"
                         className="cursor-pointer hover:ring-2 hover:ring-blue-500 transition"
@@ -842,7 +842,7 @@ const DashboardTally = () => {
                         </div>
                         <div className="min-w-0">
                             <p className="text-sm font-medium text-neutral-600">Sales Ledger</p>
-                            <p className="text-sm font-semibold leading-tight text-neutral-900 break-words">View Register →</p>
+                            <p className="text-sm font-semibold leading-tight text-neutral-900 truncate">Open register</p>
                         </div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" aria-hidden />
@@ -858,7 +858,7 @@ const DashboardTally = () => {
                         </div>
                         <div className="min-w-0">
                             <p className="text-sm font-medium text-neutral-600">Expenses</p>
-                            <p className="text-sm font-semibold leading-tight text-neutral-900 break-words">Manage Expenses →</p>
+                            <p className="text-sm font-semibold leading-tight text-neutral-900 truncate">Spending</p>
                         </div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" aria-hidden />
@@ -916,7 +916,7 @@ const DashboardTally = () => {
                                 onClick={() => navigate('/vat-return')}
                                 className="text-primary-700 font-semibold hover:underline"
                             >
-                                Open VAT return →
+                                Open VAT return
                             </button>
                         </div>
                     )}
@@ -926,12 +926,10 @@ const DashboardTally = () => {
             {/* Additional Needs Attention Rows (e.g. Overdue or Damage) */}
             {hasFigures && (() => {
               const urgentRows = attention.filter(a => a.key === 'overdue' || a.key === 'damage')
+              if (urgentRows.length === 0) return null
               return (
             <section className="space-y-2" aria-label="Needs attention">
                 <h2 className="text-sm font-semibold text-[var(--text-primary)]">Needs attention</h2>
-                {urgentRows.length === 0 && (
-                  <p className="text-sm text-[var(--text-secondary)]">Nothing needs attention right now.</p>
-                )}
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     {urgentRows.map((row) => (
                         <AttentionRow
