@@ -460,7 +460,7 @@ const BillingHistoryPage = () => {
                 <span className="hidden lg:inline text-xs">Clear</span>
               </button>
             )}
-            <button type="button" onClick={() => fetchDataRef.current()} className="btn btn-ghost shrink-0" aria-label="Refresh">
+            <button type="button" onClick={() => fetchDataRef.current()} className="btn btn-ghost h-touch w-touch shrink-0 xl:h-10 xl:w-10" aria-label="Refresh">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden />
             </button>
           </div>
@@ -471,7 +471,7 @@ const BillingHistoryPage = () => {
                 type="button"
                 onClick={() => choosePeriod(p.id)}
                 aria-pressed={period === p.id}
-                className={`shrink-0 whitespace-nowrap px-3 min-h-11 lg:min-h-0 py-1 rounded-md text-xs font-semibold transition ${
+                className={`shrink-0 whitespace-nowrap px-3 min-h-touch xl:min-h-0 py-1 rounded-md text-xs font-semibold transition ${
                   period === p.id ? 'bg-primary-600 text-white' : 'bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-50'
                 }`}
               >

@@ -474,7 +474,7 @@ const Layout = () => {
       <div className={`no-print ${posCompact ? 'hidden xl:flex' : 'flex'} fixed inset-y-0 left-0 z-[80] flex-col transition-transform duration-200 ease-out motion-reduce:transition-none ${sidebarDrawerOpen ? 'translate-x-0' : '-translate-x-full'} xl:translate-x-0 xl:transition-none ${userIsSystemAdmin && selectedTenantId ? 'top-10' : ''} ${sidebarCollapsed ? 'xl:w-24' : 'xl:w-56 2xl:w-64'} ${posCompact ? '' : 'w-72'} xl:min-h-0`}>
         <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
           <div className={`flex shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'h-16 justify-between gap-2' : 'min-h-16 flex-col justify-center gap-1 py-2'}`}>
-            <Link to="/dashboard" className={`flex min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
+            <Link to="/dashboard" className={`flex h-touch w-touch items-center gap-2 rounded-md xl:h-auto xl:w-auto ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
               <Logo size="small" showText={false} className="!space-x-0" />
               {labelsVisible && (
                 <span className="line-clamp-3 break-words text-sm font-semibold leading-tight text-white">{companyName}</span>
@@ -603,7 +603,7 @@ const Layout = () => {
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="flex min-h-11 lg:min-h-[40px] w-full max-w-md items-center gap-2 rounded-md border border-surface-border bg-neutral-50 px-3 text-sm text-neutral-500 transition-colors hover:border-neutral-300 hover:bg-white"
+              className="flex h-touch xl:min-h-[40px] w-full max-w-md items-center gap-2 rounded-md border border-surface-border bg-neutral-50 px-3 text-sm text-neutral-500 transition-colors hover:border-neutral-300 hover:bg-white"
               aria-label="Search (Ctrl+K)"
             >
               <Search className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
@@ -615,7 +615,7 @@ const Layout = () => {
                 <button
                   type="button"
                   onClick={() => setAssistantOpen(true)}
-                  className="flex min-h-11 min-w-11 lg:min-h-[40px] lg:min-w-[40px] items-center justify-center rounded-md text-neutral-600 transition-colors hover:bg-neutral-100"
+                  className="flex h-touch w-touch items-center justify-center rounded-md text-neutral-600 xl:h-10 xl:w-10 transition-colors hover:bg-neutral-100"
                   aria-label="Open assistant"
                   title="Assistant"
                 >

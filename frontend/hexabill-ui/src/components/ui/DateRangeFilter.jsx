@@ -25,7 +25,7 @@ export const DATE_PRESETS = [
   { key: 'all', label: 'All dates', range: () => ({ from: '', to: '' }) },
 ]
 
-const chip = 'shrink-0 whitespace-nowrap min-h-[44px] md:min-h-0 md:h-7 rounded-full border px-3 text-xs font-medium transition-colors'
+const chip = 'shrink-0 whitespace-nowrap min-h-touch rounded-full border px-3 text-xs font-medium transition-colors xl:min-h-0 xl:h-7'
 const field = 'min-h-[44px] xl:min-h-0 xl:h-9 w-full min-w-0 rounded-md border bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500'
 
 // Preset chips only, for pages that keep their own From/To inputs. onChange receives { from, to }.
