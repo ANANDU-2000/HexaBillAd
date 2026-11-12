@@ -424,7 +424,8 @@
 
 /* UI/UX loop B1 (2026-11-12): calm page transition, press feedback, touch comfort (never on POS, Dashboard, Billing History). */
 @media (prefers-reduced-motion: no-preference) {
-  .hb-page-in { animation: hb-page-in 0.18s ease-out both; }
+  /* "backwards" (not "both"): a finished transform animation must not keep a containing block, or every position:fixed bar/sheet inside a page anchors to the page bottom instead of the screen. */
+  .hb-page-in { animation: hb-page-in 0.18s ease-out backwards; }
   @keyframes hb-page-in { from { opacity: 0; transform: translateY(6px); } }
   button:not(:disabled):active, [role="button"]:not([aria-disabled="true"]):active { transform: scale(0.985); }
 }
@@ -481,3 +482,9 @@ button, a, select, input, textarea, [role="button"], [role="tab"] {
 /* Toasts sit at the bottom so they never cover a page's header buttons; above the phone bottom nav. */
 .hb-toaster { bottom: 24px !important; }
 @media (max-width: 1023px) { .hb-toaster { bottom: calc(env(safe-area-inset-bottom, 0px) + 84px) !important; } }
+
+/* Number fields: no tiny spinner arrows on touch widths (they cover the digits and are hard to hit). */
+@media (max-width: 1023px) {
+  input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+}

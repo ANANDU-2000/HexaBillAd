@@ -147,6 +147,7 @@ const PosEnterprisePage = () => {
   const [showPaymentSheet, setShowPaymentSheet] = useState(false) // Mobile: payment in bottom sheet
   const [showMetaSheet, setShowMetaSheet] = useState(false) // Mobile: branch, route and date live in one sheet
   const [paymentPanelOpen, setPaymentPanelOpen] = useState(true) // Desktop: payment panel open by default
+  const [tabletSheetOpen, setTabletSheetOpen] = useState(false) // Tablet: Payment & discount bottom sheet
   const [showDiscountPopup, setShowDiscountPopup] = useState(false)
   const [discountMode, setDiscountMode] = useState('flat') // 'flat' | 'percent'
   const [discountPercentInput, setDiscountPercentInput] = useState('')
@@ -2781,6 +2782,7 @@ const PosEnterprisePage = () => {
               </div>
             </div>
           )}
+          <span className="hidden h-10 items-center rounded-full bg-primary-50 px-3 text-sm font-bold text-primary-700 md:inline-flex lg:hidden" aria-live="polite">Items {cart.length}</span>
           <label className="relative hidden md:inline-flex h-10 lg:h-9 cursor-pointer items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-2.5 text-xs font-medium text-neutral-800 hover:bg-neutral-50" title="Invoice date">
             <CalendarDays className="h-4 w-4 text-neutral-500" aria-hidden />
             {invoiceDate ? new Date(`${invoiceDate}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : 'Date'}
@@ -2870,7 +2872,7 @@ const PosEnterprisePage = () => {
                 <table className="w-full text-xs sm:text-sm border-collapse" style={{ tableLayout: 'auto' }}>
                   <thead className="bg-neutral-100 border-b border-neutral-300 sticky top-0 z-20">
                     <tr>
-                      <th className="hidden lg:table-cell px-1 sm:px-1.5 py-1 text-left font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-10 text-xs sticky left-0 z-[2] bg-neutral-100">SL<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">رقم</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-center lg:text-left font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-10 text-xs sticky left-0 z-[2] bg-neutral-100">SL<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">رقم</span></th>
                       <th className="px-1 sm:px-1.5 py-1 text-left font-bold text-neutral-900 border-r border-neutral-300 text-xs lg:w-[28%] max-w-xs lg:sticky lg:left-10 z-[2] bg-neutral-100">Description<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">التفاصيل</span></th>
                       <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-20 lg:w-28 text-xs">Qty<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">الكمية</span></th>
                       <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-16 text-xs">Unit<br className="hidden lg:inline" /><span className="hidden lg:block text-micro font-normal text-neutral-600">الوحدة</span></th>
@@ -2928,7 +2930,7 @@ const PosEnterprisePage = () => {
                           }}
                           onMouseEnter={() => selection.setSelection({ hoverRow: index })}
                         >
-                          <td className={`hidden lg:table-cell px-1 sm:px-1.5 py-0.5 text-center border-r border-neutral-200 font-medium text-xs align-middle sticky left-0 z-[1] ${(item.rowId && (item.rowId === activeInvoiceRowId || item.rowId === drawerOwnerRowId)) ? 'bg-primary-50' : 'bg-white'}`}>{index + 1}</td>
+                          <td className={`px-1 sm:px-1.5 py-0.5 text-center border-r border-neutral-200 font-bold text-sm lg:text-xs align-middle sticky left-0 z-[1] ${(item.rowId && (item.rowId === activeInvoiceRowId || item.rowId === drawerOwnerRowId)) ? 'bg-primary-50' : 'bg-white'}`}>{index + 1}</td>
                           <td className={`px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle lg:w-[28%] max-w-xs lg:sticky lg:left-10 z-[1] ${(item.rowId && (item.rowId === activeInvoiceRowId || item.rowId === drawerOwnerRowId)) ? 'bg-primary-50' : 'bg-white'}`}>
                             <div className="relative product-dropdown-container max-w-xs">
                               {item.productId ? (
@@ -3059,13 +3061,16 @@ const PosEnterprisePage = () => {
                                 data-pos-control="unitPrice"
                                 data-pos-row-id={item.rowId || ''}
                                 disabled={isFormDisabled}
-                                className="w-full min-w-[5.5rem] px-2 py-0.5 border border-neutral-300 rounded text-right focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-semibold min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className={`w-full min-w-[5.5rem] px-2 py-0.5 border rounded text-right focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-semibold ${(Number(item.unitPrice) || 0) <= 0 ? 'border-error bg-error-bg' : 'border-neutral-300'}  min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed`}
                                 value={item.unitPrice === '' ? '' : item.unitPrice}
                                 onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
                                 onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'unitPrice')}
                               />
                               {item.priceSource === 'last' && (
                                 <span className="text-micro text-primary-600 font-medium leading-none">Last price</span>
+                              )}
+                              {(Number(item.unitPrice) || 0) <= 0 && (
+                                <span className="text-xs font-semibold leading-none text-error-fg">Enter price</span>
                               )}
                             </div>
                           </td>
@@ -3373,7 +3378,12 @@ const PosEnterprisePage = () => {
 
   const posFooter = (
         <div className="bg-white border-t border-[#E5E7EB] p-1.5 sm:p-2 shrink-0 z-20 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
-          <div className="hidden md:block rounded-lg border border-neutral-200 bg-neutral-50/80 p-2">
+          {tabletSheetOpen && <div className="hidden md:block lg:hidden fixed inset-0 z-[45] bg-black/40" onClick={() => setTabletSheetOpen(false)} aria-hidden />}
+          <div className={`${tabletSheetOpen ? 'hidden md:fixed md:inset-x-0 md:bottom-[8.5rem] md:z-50 md:block md:max-h-[66vh] md:overflow-y-auto md:rounded-t-2xl md:border md:border-neutral-200 md:bg-white md:p-4 md:shadow-2xl' : 'hidden'} lg:static lg:z-auto lg:block lg:max-h-none lg:overflow-visible lg:rounded-lg lg:border lg:border-neutral-200 lg:bg-neutral-50/80 lg:p-2 lg:shadow-none`} role={tabletSheetOpen ? 'dialog' : undefined} aria-label="Payment and discount">
+          <div className="mb-2 flex items-center justify-between lg:hidden">
+            <h3 className="text-lg font-bold text-neutral-900">Payment &amp; discount</h3>
+            <button type="button" onClick={() => setTabletSheetOpen(false)} className="h-11 rounded-lg border border-neutral-300 px-5 text-sm font-bold text-neutral-800">Done</button>
+          </div>
           <div className="md:flex md:flex-col lg:grid lg:grid-cols-3 gap-2 lg:gap-3">
             <div className="space-y-2 min-w-0">
               <h3 className="text-xs font-bold text-neutral-900 border-b border-neutral-200 pb-1.5">Totals</h3>
@@ -3416,7 +3426,7 @@ const PosEnterprisePage = () => {
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-medium text-neutral-600">Discount</label>
+                    <label className="block text-sm lg:text-xs font-medium text-neutral-600">Discount</label>
                     <button type="button" onClick={() => setShowDiscountPopup(true)} disabled={isFormDisabled || isZeroInvoice} className="text-micro text-primary-600 hover:underline disabled:opacity-50">F8 popup</button>
                   </div>
                   <input
@@ -3475,7 +3485,7 @@ const PosEnterprisePage = () => {
                     }}
                     className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5"
                   />
-                  <label htmlFor="pos-zero-invoice" className="text-xs font-medium text-neutral-700">Free sample / Zero invoice</label>
+                  <label htmlFor="pos-zero-invoice" className="text-sm lg:text-xs font-medium text-neutral-700">Free sample / Zero invoice</label>
                   {isZeroInvoice && <span className="text-micro bg-amber-100 text-amber-800 px-1 py-0.5 rounded">0 VAT</span>}
                 </div>
               )}
@@ -3554,7 +3564,7 @@ const PosEnterprisePage = () => {
               )}
             </div>
 
-            <div className="flex flex-col justify-end gap-1.5 min-w-0 lg:border-l lg:border-neutral-200 lg:pl-4">
+            <div className="hidden lg:flex flex-col justify-end gap-1.5 min-w-0 lg:border-l lg:border-neutral-200 lg:pl-4">
               <button
                 onClick={handleSave}
                 disabled={loading || loadingSale || cart.length === 0}
@@ -3598,6 +3608,31 @@ const PosEnterprisePage = () => {
     />
 
       {/* Mobile: Sticky bottom bar — single total + one CTA (opens payment sheet) */}
+      <div className="hidden md:block lg:hidden h-36 shrink-0" aria-hidden />
+      <div className="hidden md:block lg:hidden fixed bottom-0 left-0 right-0 z-[60] border-t border-neutral-300 bg-white px-4 pb-3 pt-2 shadow-[0_-4px_14px_rgba(15,23,42,0.12)]" data-testid="pos-tablet-savebar">
+        <div className="flex items-center justify-between gap-3 border-b border-neutral-200 pb-2 text-sm text-neutral-600">
+          <span>Items <b className="text-base text-neutral-900 tabular-nums">{cart.length}</b></span>
+          <span>Subtotal <b className="text-base text-neutral-900 tabular-nums">{totals.subtotal.toFixed(2)}</b></span>
+          <span>VAT {vatPercent}% <b className="text-base text-neutral-900 tabular-nums">{totals.vatTotal.toFixed(2)}</b></span>
+          <span>Discount <b className="text-base tabular-nums text-neutral-900">{Number(discount || 0).toFixed(2)}</b></span>
+        </div>
+        <div className="mt-2 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-neutral-600">Grand total</p>
+            <p className="text-3xl font-extrabold tabular-nums leading-tight text-neutral-900">{currency} {totals.grandTotal.toFixed(2)}</p>
+          </div>
+          <button type="button" onClick={() => setTabletSheetOpen((o) => !o)} aria-expanded={tabletSheetOpen} className="h-14 rounded-lg border-2 border-primary-600 bg-white px-4 text-sm font-bold text-primary-700 hover:bg-primary-50">Payment · Discount {tabletSheetOpen ? '▾' : '▴'}</button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={loading || loadingSale || cart.length === 0}
+            className="inline-flex h-14 min-w-[9.5rem] items-center justify-center gap-2 rounded-lg bg-accent px-5 text-base font-bold text-white shadow-sm hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Save className="h-5 w-5" aria-hidden />
+            {(loading || loadingSale) ? 'Saving...' : isEditMode ? 'Update' : 'Save Invoice'}
+          </button>
+        </div>
+      </div>
       <div className="md:hidden fixed bottom-[var(--hb-bottom-nav-h,4.75rem)] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
         <div>
           <span className="text-xs font-semibold uppercase tracking-wide text-primary-700 block">Grand Total</span>
