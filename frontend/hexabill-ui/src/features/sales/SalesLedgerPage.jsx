@@ -1786,9 +1786,9 @@ const SalesLedgerPage = () => {
                     })()}
                     <div
                       className={`rounded-lg border p-2.5 ${entry.type === 'Payment'
- ? 'bg-success-bg border-success-border'
+ ? 'bg-white border-neutral-200'
  : entry.type === 'Return'
-                          ? 'bg-warning-bg border-warning-border'
+                          ? 'bg-white border-warning-border'
                           : 'bg-white border-neutral-200'
                         }`}
                     >

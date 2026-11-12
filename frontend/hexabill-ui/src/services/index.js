@@ -1323,7 +1323,7 @@ export const usersAPI = {
     return response.data
   },
   pingMe: async () => {
-    const response = await api.patch('/users/me/ping')
+    const response = await api.patch('/users/me/ping', null, { silent: true })
     return response.data
   }
 }

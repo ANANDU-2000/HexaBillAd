@@ -108,7 +108,7 @@
 
 /* Notifications: a short fade and 4px slide, nothing bouncy */
 @keyframes hb-toast-in {
-  from { opacity: 0; transform: translateY(-4px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes hb-toast-out {
@@ -477,3 +477,7 @@ button, a, select, input, textarea, [role="button"], [role="tab"] {
     right: var(--assistant-dock, 0px);
   }
 }
+
+/* Toasts sit at the bottom so they never cover a page's header buttons; above the phone bottom nav. */
+.hb-toaster { bottom: 24px !important; }
+@media (max-width: 1023px) { .hb-toaster { bottom: calc(env(safe-area-inset-bottom, 0px) + 84px) !important; } }

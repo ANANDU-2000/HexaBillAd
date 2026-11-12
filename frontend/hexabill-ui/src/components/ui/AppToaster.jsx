@@ -7,20 +7,19 @@ const TOAST_LIMIT = 3
 
 // react-hot-toast types -> notice tone. Plain toast() and custom toasts read as information.
 const toneOf = (type) => (type === 'success' || type === 'error' ? type : 'info')
-const BAR = { success: '#059669', error: '#dc2626', info: '#3b82f6', loading: '#9ca3af' }
 
 // Flat ERP toast: no bounce, no animated icon, no pill. Colour lives only in the left bar and icon.
 const toastStyle = {
   background: '#ffffff',
   color: '#1f2937',
-  borderRadius: '2px',
+  borderRadius: '10px',
   border: '1px solid #e5e7eb',
   padding: '10px 10px 10px 12px',
   boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.06)',
   width: 'min(380px, calc(100vw - 24px))',
   maxWidth: 'none',
-  fontSize: '13px',
-  lineHeight: '18px',
+  fontSize: '14px',
+  lineHeight: '20px',
 }
 
 export default function AppToaster() {
@@ -35,9 +34,9 @@ export default function AppToaster() {
 
   return (
     <Toaster
-      position="top-right"
+      position="bottom-center"
       toastOptions={{ duration: 3000, className: 'hb-toast', style: toastStyle, error: { duration: 5000 } }}
-      containerStyle={{ top: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}
+      containerClassName="hb-toaster"
       gutter={6}
     >
       {(t) => {
@@ -48,7 +47,6 @@ export default function AppToaster() {
             toast={t}
             style={{
               ...toastStyle,
-              borderLeft: `4px solid ${loading ? BAR.loading : BAR[toneOf(t.type)]}`,
               // Short fade only; the library default is a scale/bounce.
               animation: t.visible ? 'hb-toast-in 140ms ease-out both' : 'hb-toast-out 100ms ease-in both',
             }}

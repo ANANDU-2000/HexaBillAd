@@ -58,7 +58,7 @@ export const mobilePeriodChipClass = (active) =>
 /** Horizontal icon actions — no multi-row button wrap on narrow screens */
 export const MobileActionStrip = ({ children, className = '' }) => (
   <div
-    className={`flex items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-1 -mx-1 px-1 scrollbar-hide ${className}`}
+    className={`flex flex-wrap items-center gap-1.5 pb-1 ${className}`}
   >
     {children}
   </div>
