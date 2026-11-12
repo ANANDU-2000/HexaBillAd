@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives",
+    "ui-lint": "node scripts/ui-lint.mjs",
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "perf": "node scripts/perf-report.mjs",

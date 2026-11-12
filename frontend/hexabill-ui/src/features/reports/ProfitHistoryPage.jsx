@@ -41,7 +41,7 @@ export function rangeForPreset(preset, today = dubaiToday()) {
 const money = (v) => formatCurrency(Number(v) || 0)
 const marginTone = (pct, hasWarning) => {
   if (pct >= 10 && !hasWarning) return 'bg-emerald-100 text-emerald-800'
-  if (pct >= 3 && !hasWarning) return 'bg-amber-100 text-amber-800'
+  if (pct >= 3 && !hasWarning) return 'bg-warning-bg text-warning-fg'
   return 'bg-red-100 text-red-800'
 }
 const warningLabel = (inv) => {
@@ -52,11 +52,11 @@ const warningLabel = (inv) => {
   return null
 }
 
-function SummaryCard({ accent, title, value, valueClass = '', children }) {
+function SummaryCard({ title, value, valueClass = '', children }) {
   return (
-    <div className={`min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm border-l-4 ${accent}`}>
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-600">{title}</p>
-      <p className={`mt-1 text-[20px] font-bold tabular-nums leading-tight ${valueClass}`}>{value}</p>
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
+      <p className="text-xs font-medium text-slate-600">{title}</p>
+      <p className={`mt-1 text-[20px] font-semibold tabular-nums leading-tight ${valueClass}`}>{value}</p>
       <div className="mt-1 text-xs text-slate-600">{children}</div>
     </div>
   )
@@ -226,25 +226,25 @@ export default function ProfitHistoryPage() {
       {summary && (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <SummaryCard accent="border-l-blue-600" title="Net Sales (Excl. VAT)" value={money(summary.netSalesExclVat)}>
+            <SummaryCard title="Net sales (excl. VAT)" value={money(summary.netSalesExclVat)}>
               Gross: {money(summary.grossSalesInclVat)} · VAT Excl: {money(summary.outputVatExcluded)} · Disc: {money(summary.discountsAndRoundOff)}
               {summary.returnsExclVat > 0 && <> · Returns: {money(summary.returnsExclVat)}</>}
             </SummaryCard>
-            <SummaryCard accent="border-l-amber-500" title="Product Cost (COGS)" value={money(summary.totalCogsExclVat)}>Verified Purchase Cost Basis</SummaryCard>
-            <SummaryCard accent="border-l-emerald-600" title="Gross Profit" value={money(summary.grossProfit)} valueClass={summary.grossProfit < 0 ? 'text-red-700' : 'text-emerald-700'}>
+            <SummaryCard title="Product cost (COGS)" value={money(summary.totalCogsExclVat)}>Verified Purchase Cost Basis</SummaryCard>
+            <SummaryCard title="Gross profit" value={money(summary.grossProfit)} valueClass={summary.grossProfit < 0 ? 'text-red-700' : 'text-emerald-700'}>
               <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${summary.grossProfit < 0 ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>{summary.grossMarginPercent}% Margin</span>
             </SummaryCard>
-            <SummaryCard accent="border-l-indigo-600" title="Net Profit (After Expenses)" value={money(summary.netProfit)} valueClass={summary.netProfit < 0 ? 'text-red-700' : 'text-indigo-700'}>
+            <SummaryCard title="Net profit (after expenses)" value={money(summary.netProfit)} valueClass={summary.netProfit < 0 ? 'text-red-700' : 'text-slate-900'}>
               Expenses: {summary.totalExpenses > 0 ? '-' : ''}{money(summary.totalExpenses)} · 5% Profit VAT: {money(summary.vatOnNetProfit5Percent)}
             </SummaryCard>
           </div>
           {(data.notes || []).map((n) => (
-            <p key={n} className="flex items-start gap-2 rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{n}</p>
+            <p key={n} className="flex items-start gap-2 rounded-lg bg-warning-bg p-2 text-xs font-medium text-warning-fg"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{n}</p>
           ))}
 
           <div className="rounded-xl border border-slate-200 bg-white">
             <table className="w-full table-fixed border-collapse text-left text-[15px]">
-              <thead className="sticky top-0 z-10 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-600 md:top-16">
+              <thead className="sticky top-0 z-10 bg-slate-100 text-xs font-medium text-slate-600 md:top-16">
                 <tr>
                   <th className="w-[28%] p-2">Invoice</th>
                   <th className="hidden p-2 lg:table-cell lg:w-[18%]">Customer</th>
@@ -279,16 +279,16 @@ export default function ProfitHistoryPage() {
                         <td className={`whitespace-nowrap p-2 text-right font-bold tabular-nums ${inv.grossProfit > 0 ? 'text-emerald-700' : 'text-red-700'}`}>{money(inv.grossProfit)}</td>
                         <td className="p-2 text-right">
                           <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${marginTone(inv.marginPercent, inv.hasMarginWarning)}`}>{inv.marginPercent}%</span>
-                          {label && <span className="mt-0.5 block text-[11px] font-bold text-red-700">{label}</span>}
+                          {label && <span className="mt-0.5 block text-xs font-bold text-red-700">{label}</span>}
                         </td>
                       </tr>
                       {open && (
                         <tr className="border-t border-slate-200">
                           <td colSpan={6} className="p-0">
-                            <div className="border-l-4 border-blue-500 bg-slate-50/90 p-3">
+                            <div className="border-t border-slate-200 bg-slate-50 p-3">
                               {inv.warningReason && <p className="mb-2 text-sm font-bold text-red-700">{inv.warningReason}</p>}
                               <table className="w-full table-fixed text-left text-sm">
-                                <thead className="text-xs font-bold uppercase text-slate-600">
+                                <thead className="text-xs font-medium text-slate-600">
                                   <tr>
                                     <th className="w-[30%] pb-1">Product</th>
                                     <th className="w-[12%] pb-1">Qty</th>
@@ -306,9 +306,9 @@ export default function ProfitHistoryPage() {
                                       <td className="py-2 text-right tabular-nums">{money(it.lineNetRevenue)}</td>
                                       <td className="py-2 text-right tabular-nums">
                                         {money(it.lineTotalCost)}
-                                        <span className={`mt-0.5 block text-[11px] font-semibold ${it.costDiffersFromLatestPurchase || it.costSource === 'Missing cost' ? 'text-red-700' : 'text-slate-500'}`}>{it.costSource}</span>
+                                        <span className={`mt-0.5 block text-xs font-semibold ${it.costDiffersFromLatestPurchase || it.costSource === 'Missing cost' ? 'text-red-700' : 'text-slate-500'}`}>{it.costSource}</span>
                                         {it.costDiffersFromLatestPurchase && it.latestPurchaseUnitCostExclVat != null && (
-                                          <span className="block text-[11px] text-red-700">Latest purchase: {money(it.latestPurchaseUnitCostExclVat)} per {it.unit}</span>
+                                          <span className="block text-xs text-red-700">Latest purchase: {money(it.latestPurchaseUnitCostExclVat)} per {it.unit}</span>
                                         )}
                                       </td>
                                       <td className={`py-2 text-right font-bold tabular-nums ${it.lineProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{it.lineProfit >= 0 ? '+' : '-'}{money(Math.abs(it.lineProfit))}</td>
