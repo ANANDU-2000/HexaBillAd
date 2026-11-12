@@ -2345,8 +2345,8 @@ const PosEnterprisePage = () => {
   const posHeader = (
       <>
       {/* Compact cashier header max 56px */}
-      <div className="bg-primary-900 text-white px-2 sm:px-3 min-h-14 py-1.5 flex flex-wrap items-center justify-between gap-2 flex-shrink-0 md:min-h-14 md:py-1.5">
-        <div className="min-w-0 flex items-center gap-1.5 sm:gap-3 shrink">
+      <div className="bg-primary-900 text-white px-2 sm:px-3 min-h-14 py-1.5 flex flex-wrap items-center justify-between gap-2 flex-shrink-0 md:flex-nowrap md:px-2.5">
+        <div className="min-w-0 flex items-center gap-1.5 sm:gap-3 md:flex-1 md:gap-1.5 shrink">
           <button type="button" onClick={() => navigate('/dashboard')} className="hidden md:inline-flex xl:hidden h-9 w-9 items-center justify-center rounded-lg border border-white/30 bg-white/10 hover:bg-white/20" title="Back to Dashboard" aria-label="Back to Dashboard"><ArrowLeft className="h-5 w-5" /></button>
           <span className="hidden sm:inline md:hidden xl:inline text-sm sm:text-base font-bold tracking-wide whitespace-nowrap">Tax Invoice</span>
           <span className="hidden md:inline xl:hidden text-sm font-bold whitespace-nowrap">Invoice</span>
@@ -2362,7 +2362,7 @@ const PosEnterprisePage = () => {
               type="text"
               value={customInvoiceNo}
               onChange={(e) => setCustomInvoiceNo(e.target.value)}
-              className="font-mono text-xs sm:text-sm bg-white/10 border border-white/30 rounded px-2 py-1 w-16 min-w-0 sm:w-24 text-primary-100 placeholder:text-primary-200/60 focus:outline-none focus:ring-1 focus:ring-white/50"
+              className="font-mono text-xs sm:text-sm bg-white/10 border border-white/30 rounded px-2 py-1 w-16 min-w-0 sm:w-20 lg:w-24 text-primary-100 placeholder:text-primary-200/60 focus:outline-none focus:ring-1 focus:ring-white/50"
               title="Invoice # (editable before save). Tab to continue · Enter to move to next field."
               placeholder={nextInvoiceNumberPreview || 'Auto'}
               maxLength={32}
@@ -2402,7 +2402,7 @@ const PosEnterprisePage = () => {
           )}
           {!staffHasNoAssignments && (
             <div className="hidden md:flex items-center gap-1.5">
-              <div className="relative inline-flex items-center">
+              <div className="relative inline-flex min-w-0 w-[9rem] xl:w-[10rem] items-center">
                 <select
                   aria-label="Branch"
                   value={selectedBranchId}
@@ -2411,7 +2411,7 @@ const PosEnterprisePage = () => {
                     setSelectedRouteId('')
                   }}
                   disabled={branchesRoutesLoading || branches.length === 0 || (!isAdminOrOwner(user) && branches.length === 1)}
-                  className="h-9 pl-2.5 pr-7 min-w-[5.5rem] max-w-[9rem] rounded-lg border-0 bg-white text-xs font-bold text-primary-900 disabled:opacity-60 appearance-none truncate"
+                  className="h-9 w-full min-w-0 pl-2 pr-6 rounded-lg border-0 bg-white text-xs font-bold text-primary-900 disabled:opacity-60 appearance-none truncate"
                   title="Branch"
                 >
                   <option value="">{branchesRoutesLoading ? '…' : 'Branch'}</option>
@@ -2421,13 +2421,13 @@ const PosEnterprisePage = () => {
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary-700" aria-hidden />
               </div>
-              <div className="relative inline-flex items-center">
+              <div className="relative inline-flex min-w-0 w-[9rem] xl:w-[10rem] items-center">
                 <select
                   value={selectedRouteId}
                   aria-label="Route"
                   onChange={(e) => setSelectedRouteId(e.target.value)}
                   disabled={branchesRoutesLoading || routes.length === 0 || !selectedBranchId || (!isAdminOrOwner(user) && (selectedBranchId ? routes.filter(r => r.branchId === parseInt(selectedBranchId, 10)) : routes).length <= 1)}
-                  className="h-9 pl-2.5 pr-7 min-w-[5.5rem] max-w-[9rem] rounded-lg border-0 bg-white text-xs font-bold text-primary-900 disabled:opacity-60 appearance-none truncate"
+                  className="h-9 w-full min-w-0 pl-2 pr-6 rounded-lg border-0 bg-white text-xs font-bold text-primary-900 disabled:opacity-60 appearance-none truncate"
                   title="Route"
                 >
                   <option value="">Route</option>
@@ -2441,9 +2441,10 @@ const PosEnterprisePage = () => {
               </div>
             </div>
           )}
-          <label className="relative hidden md:inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-white px-2.5 text-xs font-bold text-primary-900 hover:bg-primary-50" title="Invoice date">
+          <label className="relative hidden md:inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-white px-2 text-xs font-bold text-primary-900 hover:bg-primary-50 xl:gap-1.5 xl:px-2.5" title="Invoice date">
             <CalendarDays className="h-4 w-4 text-primary-700" aria-hidden />
-            {invoiceDate ? new Date(`${invoiceDate}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : 'Date'}
+            <span className="xl:hidden">{invoiceDate ? new Date(`${invoiceDate}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Date'}</span>
+            <span className="hidden xl:inline">{invoiceDate ? new Date(`${invoiceDate}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : 'Date'}</span>
             <input
               type="date"
               aria-label="Invoice date"
@@ -2454,14 +2455,14 @@ const PosEnterprisePage = () => {
             />
           </label>
         </div>
-        <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+        <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
           <div className="relative">
             <button
               type="button"
               onClick={() => setPosMenu((m) => (m === 'hold' ? null : 'hold'))}
               aria-haspopup="menu"
               aria-expanded={posMenu === 'hold'}
-              className="relative inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/40 bg-white/15 px-3 text-sm font-bold text-white hover:bg-white/25"
+              className="relative inline-flex h-9 items-center gap-1 rounded-lg border border-white/40 bg-white/15 px-2.5 text-sm font-bold text-white hover:bg-white/25"
               title="Hold (F6), resume a held bill, or repeat the last bill"
             >
               Hold
@@ -2487,7 +2488,7 @@ const PosEnterprisePage = () => {
           <button
             type="button"
             onClick={handleNewInvoice}
-            className="inline-flex h-9 items-center gap-1 rounded-lg bg-white px-4 text-sm font-extrabold text-primary-900 hover:bg-primary-50"
+            className="inline-flex h-9 items-center gap-1 rounded-lg bg-white px-3 text-sm font-extrabold text-primary-900 hover:bg-primary-50"
             title="New invoice (F10)"
           >
             <Plus className="h-4 w-4" aria-hidden /> New
