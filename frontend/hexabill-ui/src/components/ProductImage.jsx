@@ -8,10 +8,12 @@ export default function ProductImage ({ productId, src, alt = '', ...props }) {
   const { user } = useAuth()
   const scope = `${user?.tenantId ?? ''}:${user?.id ?? ''}:${user?.role ?? ''}:${productId ?? ''}`
   const [resolved, setResolved] = useState(null)
+  const [failed, setFailed] = useState(false)
   useEffect(() => {
     let live = true
     let objectUrl
     setResolved(null)
+    setFailed(false)
     if (!src) return undefined
     const legacy = /^(?:\/?uploads\/)?\d+\/products\//.test(src)
     if (!legacy) {
@@ -29,5 +31,9 @@ export default function ProductImage ({ productId, src, alt = '', ...props }) {
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
   }, [productId, src, scope])
-  return resolved?.scope === scope && resolved?.source === src ? <img src={resolved.url} alt={alt} loading="lazy" decoding="async" {...props} /> : <span role={alt ? 'img' : undefined} aria-label={alt ? `${alt} unavailable` : undefined} className={props.className} />
+  return resolved?.scope === scope && resolved?.source === src && !failed ? (
+    <img src={resolved.url} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} {...props} />
+  ) : (
+    <span role={alt ? 'img' : undefined} aria-label={alt ? `${alt} unavailable` : undefined} className={props.className} />
+  )
 }

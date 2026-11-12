@@ -791,7 +791,7 @@ const ProductsPage = () => {
                 Import
               </button>
             )}
-            <button type="button" onClick={() => setShowForm(true)} className="btn btn-primary flex-1 md:flex-none">
+            <button type="button" onClick={() => setShowForm(true)} className="btn btn-primary flex-1 whitespace-nowrap md:flex-none">
               <Plus className="h-4 w-4" aria-hidden />
               Add product
             </button>
@@ -1088,7 +1088,7 @@ const ProductsPage = () => {
       {canManageInventory && products.length > 0 && (
         <label className="md:hidden flex min-h-[44px] items-center gap-2 text-sm text-neutral-700">
           <input type="checkbox" aria-label="Select all products on this page" checked={products.every(p => selectedIds.has(p.id))} onChange={(e) => togglePage(e.target.checked)} className="h-5 w-5 rounded border-neutral-400" />
-          Select page ({products.length}) — only the products shown here
+          Select all {products.length} on this page
         </label>
       )}
       {selectedIds.size > 0 && canManageInventory && (
