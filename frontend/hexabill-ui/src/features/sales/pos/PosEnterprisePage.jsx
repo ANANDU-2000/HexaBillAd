@@ -2529,50 +2529,47 @@ const PosEnterprisePage = () => {
             )}
           </div>
         </div>
-        <div className="flex md:hidden items-center gap-1 sm:gap-1.5 flex-shrink-0">
-          <button
-            onClick={handleHold}
-            disabled={isFormDisabled || cart.filter(i => i.productId && (Number(i.qty) > 0)).length === 0}
-            className="h-11 lg:h-9 px-2 sm:px-2.5 text-xs font-medium bg-white/15 text-white border border-white/30 rounded-md hover:bg-white/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
-            title="Hold (F6)"
-          >
-            <Bookmark className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Hold</span>
-          </button>
-          <button
-            onClick={() => setShowResumeModal(true)}
-            disabled={isFormDisabled || heldInvoices.length === 0 || loadingHeldInvoices}
-            className={`h-11 lg:h-9 px-2 sm:px-2.5 text-xs font-medium rounded-md transition-colors inline-flex items-center gap-1 relative ${heldInvoices.length > 0 ? 'bg-success text-white hover:bg-emerald-700' : 'bg-white/20 text-white/60 cursor-not-allowed'}`}
-            title={heldInvoices.length > 0 ? `${heldInvoices.length} held — resume` : 'No held invoices'}
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Resume</span>
-            {heldInvoices.length > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 text-micro font-bold bg-red-500 text-white rounded-full flex items-center justify-center px-0.5">
-                {heldInvoices.length}
-              </span>
+        <div className="flex md:hidden items-center gap-1.5 flex-shrink-0">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setPosMenu((m) => (m === 'hold' ? null : 'hold'))}
+              aria-haspopup="menu"
+              aria-expanded={posMenu === 'hold'}
+              aria-label="Hold, resume or repeat a bill"
+              className="relative inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-white/30 bg-white/15 px-2.5 text-white transition-colors active:bg-white/25"
+            >
+              <Bookmark className="h-4 w-4" aria-hidden />
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              {heldInvoices.length > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-micro font-bold text-white">{heldInvoices.length}</span>
+              )}
+            </button>
+            {posMenu === 'hold' && (
+              <div role="menu" className="absolute right-0 top-12 z-[80] w-56 rounded-xl border border-neutral-200 bg-white p-1.5 text-neutral-900 shadow-xl">
+                <button role="menuitem" type="button" disabled={isFormDisabled || cart.filter(i => i.productId && (Number(i.qty) > 0)).length === 0} onClick={() => { setPosMenu(null); handleHold() }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-neutral-100 disabled:opacity-40">
+                  <Bookmark className="h-4 w-4 text-neutral-500" aria-hidden /> Hold this bill <span className="ml-auto text-xs font-normal text-neutral-500">F6</span>
+                </button>
+                <button role="menuitem" type="button" disabled={isFormDisabled || heldInvoices.length === 0 || loadingHeldInvoices} onClick={() => { setPosMenu(null); setShowResumeModal(true) }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-neutral-100 disabled:opacity-40">
+                  <RotateCcw className="h-4 w-4 text-neutral-500" aria-hidden /> Resume held bill {heldInvoices.length > 0 && <span className="ml-auto rounded-full bg-red-500 px-2 text-xs font-bold text-white">{heldInvoices.length}</span>}
+                </button>
+                <button role="menuitem" type="button" disabled={isFormDisabled || loadingSale} onClick={() => { setPosMenu(null); handleRepeatLastInvoice() }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-neutral-100 disabled:opacity-40">
+                  <RefreshCw className="h-4 w-4 text-neutral-500" aria-hidden /> Repeat last bill
+                </button>
+              </div>
             )}
-          </button>
-          <button
-            onClick={handleRepeatLastInvoice}
-            disabled={isFormDisabled || loadingSale}
-            className="h-11 lg:h-9 px-2 sm:px-2.5 text-xs font-medium bg-white/15 text-white border border-white/30 rounded-md hover:bg-white/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
-            title="Repeat last invoice"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Repeat</span>
-          </button>
+          </div>
           <button
             onClick={handleNewInvoice}
-            className="h-11 lg:h-9 px-2 sm:px-2.5 text-xs font-medium bg-white/15 text-white border border-white/30 rounded-md hover:bg-white/25 transition-colors inline-flex items-center gap-1"
-            title="New invoice (F10)"
+            aria-label="New invoice"
+            className="inline-flex h-11 min-w-11 items-center justify-center rounded-lg bg-white px-3 text-xs font-bold text-primary-900 transition-colors active:bg-primary-50"
           >
             New
           </button>
         </div>
       </div>
 
-      {posMenu && <div className="fixed inset-0 z-[75] hidden md:block" onClick={() => setPosMenu(null)} aria-hidden />}
+      {posMenu && <div className="fixed inset-0 z-[75]" onClick={() => setPosMenu(null)} aria-hidden />}
 
       {/* Hold Invoice Modal */}
       {showHoldModal && (
@@ -2910,16 +2907,17 @@ const PosEnterprisePage = () => {
             type="button"
             onClick={() => setScanModeOn((v) => !v)}
             disabled={isFormDisabled}
-            className={`md:hidden h-10 lg:h-9 px-2.5 text-xs font-semibold rounded-md disabled:opacity-50 inline-flex items-center gap-1 border ${
+            className={`md:hidden inline-flex h-11 min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border px-2.5 text-xs font-semibold disabled:opacity-50 lg:h-9 lg:min-h-9 lg:min-w-0 ${
               scanModeOn
                 ? 'bg-amber-500 text-white border-warning hover:bg-warning'
                 : 'bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-50'
             }`}
             title={scanModeOn ? 'Stop camera scan' : 'Start continuous camera scan'}
+            aria-label={scanModeOn ? 'Stop camera scan' : 'Start camera scan'}
             aria-pressed={scanModeOn}
           >
-            <ScanBarcode className="h-4 w-4" />
-            <span className="hidden lg:inline">Scan</span>
+            <ScanBarcode className="h-4 w-4" aria-hidden />
+            <span>Scan</span>
           </button>
         </div>
         {selectedCustomer && selectedCustomer.id !== 'cash' && (() => {
