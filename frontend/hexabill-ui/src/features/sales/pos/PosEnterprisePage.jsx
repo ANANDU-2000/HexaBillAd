@@ -2906,22 +2906,6 @@ const PosEnterprisePage = () => {
             <Plus className="h-3.5 w-3.5" />
             Add Row
           </button>
-          <button
-            type="button"
-            onClick={() => setScanModeOn((v) => !v)}
-            disabled={isFormDisabled}
-            className={`md:hidden inline-flex h-11 min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border px-2.5 text-xs font-semibold disabled:opacity-50 lg:h-9 lg:min-h-9 lg:min-w-0 ${
-              scanModeOn
-                ? 'bg-amber-500 text-white border-warning hover:bg-warning'
-                : 'bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-50'
-            }`}
-            title={scanModeOn ? 'Stop camera scan' : 'Start continuous camera scan'}
-            aria-label={scanModeOn ? 'Stop camera scan' : 'Start camera scan'}
-            aria-pressed={scanModeOn}
-          >
-            <ScanBarcode className="h-4 w-4" aria-hidden />
-            <span>Scan</span>
-          </button>
         </div>
         {selectedCustomer && selectedCustomer.id !== 'cash' && (() => {
           const creditLimit = Number(selectedCustomer?.creditLimit) || 0
@@ -3232,14 +3216,30 @@ const PosEnterprisePage = () => {
 
             {/* Mobile Card Layout - design lock: border only, 44px touch, auto-scroll on add */}
             <div className="md:hidden space-y-3">
-              <button
-                onClick={addEmptyRow}
-                disabled={isFormDisabled}
-                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary-300 bg-primary-50/60 px-4 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary-50 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Plus className="h-5 w-5" />
-                Add Product to Bill
-              </button>
+              <div className="flex items-stretch gap-2">
+                <button
+                  onClick={addEmptyRow}
+                  disabled={isFormDisabled}
+                  className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-primary-300 bg-primary-50/60 px-4 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary-50 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Plus className="h-5 w-5" />
+                  Add Product
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScanModeOn((v) => !v)}
+                  disabled={isFormDisabled}
+                  aria-pressed={scanModeOn}
+                  aria-label={scanModeOn ? 'Stop camera scan' : 'Start camera scan'}
+                  className={`inline-flex min-h-[44px] w-touch shrink-0 items-center justify-center rounded-xl border transition-colors active:scale-[0.99] disabled:opacity-50 ${
+                    scanModeOn
+                      ? 'border-warning bg-amber-500 text-white'
+                      : 'border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50'
+                  }`}
+                >
+                  <ScanBarcode className="h-5 w-5" aria-hidden />
+                </button>
+              </div>
 
               {cart.length === 0 ? (
                 <div className="bg-white rounded-lg border border-dashed border-neutral-300 p-4 text-center">
@@ -3247,7 +3247,7 @@ const PosEnterprisePage = () => {
                     <Calculator className="h-12 w-12 mx-auto" />
                   </div>
                   <p className="text-neutral-600 font-medium">No items in cart</p>
-                  <p className="text-neutral-500 text-sm mt-1">Tap &apos;Add Product to Bill&apos; above</p>
+                  <p className="text-neutral-500 text-sm mt-1">Tap &apos;Add Product&apos; above</p>
                 </div>
               ) : (
                 cart.map((item, index) => (
