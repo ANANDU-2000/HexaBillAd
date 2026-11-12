@@ -19,7 +19,8 @@ import {
   Shield,
   RotateCcw,
   Printer,
-  Plug
+  Plug,
+  ChevronDown
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { Input, Select, TextArea } from '../../components/Form'
@@ -1233,27 +1234,33 @@ const SettingsPage = () => {
                   Place stamp on the left
                 </label>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <Input label="Top margin (mm)" type="number" step="1" {...register('printMarginTopMm')} />
-                  <Input label="Bottom margin (mm)" type="number" step="1" {...register('printMarginBottomMm')} />
-                  <Input label="Stamp width (mm)" type="number" step="1" {...register('stampWidthMm')} />
-                  <Input label="Signature width (mm)" type="number" step="1" {...register('signatureWidthMm')} />
-                  <Input
-                    label={watch('stampAlignLeft') ? 'Stamp inset left (mm)' : 'Stamp offset right (mm)'}
-                    type="number"
-                    step="0.1"
-                    {...register('stampOffsetRightMm')}
-                  />
-                  <Input label="Stamp offset bottom (mm)" type="number" step="0.1" {...register('stampOffsetBottomMm')} />
-                  <Input
-                    label={watch('stampAlignLeft') ? 'Sig inset left (mm)' : 'Sig offset right (mm)'}
-                    type="number"
-                    step="0.1"
-                    {...register('signatureOffsetRightMm')}
-                  />
-                  <Input label="Sig offset bottom (mm)" type="number" step="0.1" {...register('signatureOffsetBottomMm')} />
-                </div>
-                <p className="text-xs text-neutral-500">Drag on the preview below or edit mm fields. Save settings after placing stamp/sign.</p>
+                <details className="rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-2">
+                  <summary className="flex min-h-touch cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-neutral-800">
+                    Advanced placement (mm)
+                    <ChevronDown className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+                  </summary>
+                  <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <Input label="Top margin (mm)" type="number" step="1" {...register('printMarginTopMm')} />
+                    <Input label="Bottom margin (mm)" type="number" step="1" {...register('printMarginBottomMm')} />
+                    <Input label="Stamp width (mm)" type="number" step="1" {...register('stampWidthMm')} />
+                    <Input label="Signature width (mm)" type="number" step="1" {...register('signatureWidthMm')} />
+                    <Input
+                      label={watch('stampAlignLeft') ? 'Stamp inset left (mm)' : 'Stamp offset right (mm)'}
+                      type="number"
+                      step="0.1"
+                      {...register('stampOffsetRightMm')}
+                    />
+                    <Input label="Stamp offset bottom (mm)" type="number" step="0.1" {...register('stampOffsetBottomMm')} />
+                    <Input
+                      label={watch('stampAlignLeft') ? 'Sig inset left (mm)' : 'Sig offset right (mm)'}
+                      type="number"
+                      step="0.1"
+                      {...register('signatureOffsetRightMm')}
+                    />
+                    <Input label="Sig offset bottom (mm)" type="number" step="0.1" {...register('signatureOffsetBottomMm')} />
+                  </div>
+                  <p className="pt-2 text-xs text-neutral-500">Drag on the preview below or edit mm fields. Save settings after placing stamp/sign.</p>
+                </details>
 
                 {watch('documentStampSignatureEnabled') ? (
                   <>
