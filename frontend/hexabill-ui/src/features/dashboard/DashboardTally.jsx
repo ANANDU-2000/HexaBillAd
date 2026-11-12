@@ -676,13 +676,14 @@ const DashboardTally = () => {
                     <MetricCard
                         label={dateRange === 'today' ? 'Profit Today' : 'Period Profit'}
                         value={stats.profitToday}
-                        helper="Net margin"
+                        helper="View Breakdown →"
                         icon={TrendingUp}
                         accent="primary"
+                        className="cursor-pointer hover:ring-2 hover:ring-blue-500 transition"
                         valueClass={stats.profitToday > 0 ? 'text-primary-700' : stats.profitToday < 0 ? 'text-rose-700' : ''}
                         tooltip={profitNote}
                         loading={showSkeleton}
-                        onClick={canOpenReports ? () => navigate('/reports?tab=profit-loss') : undefined}
+                        onClick={canOpenReports ? () => { const r = getDateRange(); navigate(`/profit-history?preset=${dateRange}&from=${r.from}&to=${r.to}`) } : undefined}
                     />
                 )}
                 {canShow('purchasesToday') !== false && (

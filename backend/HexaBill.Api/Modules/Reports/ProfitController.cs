@@ -16,12 +16,43 @@ namespace HexaBill.Api.Modules.Reports
     public class ProfitController : TenantScopedController // MULTI-TENANT: Owner-scoped profit
     {
         private readonly IProfitService _profitService;
+        private readonly IProfitBreakdownService _breakdown;
         private readonly ILogger<ProfitController> _logger;
 
-        public ProfitController(IProfitService profitService, ILogger<ProfitController> logger)
+        public ProfitController(IProfitService profitService, IProfitBreakdownService breakdown, ILogger<ProfitController> logger)
         {
             _profitService = profitService;
+            _breakdown = breakdown;
             _logger = logger;
+        }
+
+        /// <summary>Profit &amp; Margin Inspector: summary, daily trend and invoice -> line cost drill-down (Dubai business dates).</summary>
+        [HttpGet("breakdown")]
+        [Authorize(Roles = "Admin,Owner")]
+        public async Task<ActionResult<ApiResponse<ProfitBreakdownDto>>> GetBreakdown(
+            [FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate = null,
+            [FromQuery] int? branchId = null, [FromQuery] string? search = null)
+        {
+            var today = HexaBill.Api.Core.Infrastructure.BusinessDateRange.BusinessDateOf(DateTime.UtcNow);
+            var from = (fromDate ?? today).Date;
+            var to = (toDate ?? from).Date;
+            if (to < from) return BadRequest(new ApiResponse<ProfitBreakdownDto> { Success = false, Message = "To date must not be before From date." });
+            if ((to - from).TotalDays > 366) return BadRequest(new ApiResponse<ProfitBreakdownDto> { Success = false, Message = "Choose a range of one year or less." });
+            var data = await _breakdown.GetBreakdownAsync(CurrentTenantId, from, to, branchId, search);
+            return Ok(new ApiResponse<ProfitBreakdownDto> { Success = true, Data = data });
+        }
+
+        /// <summary>Re-syncs sale cost snapshots in a date range from the latest verified purchase cost (VAT-exclusive).</summary>
+        [HttpPost("recalculate-costs")]
+        [Authorize(Roles = "Admin,Owner")]
+        public async Task<ActionResult<ApiResponse<RecalculateCostsResultDto>>> RecalculateCosts(
+            [FromQuery] DateTime fromDate, [FromQuery] DateTime toDate)
+        {
+            var from = fromDate.Date; var to = toDate.Date;
+            if (to < from || (to - from).TotalDays > 92)
+                return BadRequest(new ApiResponse<RecalculateCostsResultDto> { Success = false, Message = "Choose a valid range of 92 days or less." });
+            var data = await _breakdown.RecalculateCostsAsync(CurrentTenantId, from, to, int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : 0);
+            return Ok(new ApiResponse<RecalculateCostsResultDto> { Success = true, Message = $"{data.LinesUpdated} of {data.LinesChecked} lines updated.", Data = data });
         }
 
         /// <summary>Export P&amp;L as PDF for accountant (#58).</summary>

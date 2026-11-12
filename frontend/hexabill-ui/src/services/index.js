@@ -1679,6 +1679,16 @@ export const profitAPI = {
     })
     return response.data
   },
+  /** Profit & Margin Inspector: summary, daily trend and invoice -> line cost drill-down. Dates are Dubai business dates (YYYY-MM-DD). */
+  getBreakdown: async (params) => {
+    const response = await api.get('/profit/breakdown', { params })
+    return response.data
+  },
+  /** Re-sync sale cost snapshots in the range from the latest verified purchase cost (audited). */
+  recalculateCosts: async (fromDate, toDate) => {
+    const response = await api.post('/profit/recalculate-costs', null, { params: { fromDate, toDate } })
+    return response.data
+  },
   /** Export P&L as PDF for accountant (#58). Returns blob; caller creates download. */
   exportProfitLossPdf: async (fromDate, toDate) => {
     const response = await api.get('/profit/export/pdf', {

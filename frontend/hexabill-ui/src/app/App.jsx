@@ -2,7 +2,7 @@ import { useEffect, Suspense, lazy } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { isSystemAdmin } from '../utils/superAdmin'
-import { canAccessPage, canManagePayments, isOwner } from '../utils/roles'
+import { canAccessPage, canManagePayments, isAdminOrOwner, isOwner } from '../utils/roles'
 import { getApiBaseUrlNoSuffix } from '../services/apiConfig'
 import { getTenantHost } from '../tenant/tenantHost'
 import Login from '../auth/Login'
@@ -35,6 +35,7 @@ const ExpensesPage = lazy(() => import('../features/expenses/ExpensesPage'))
 const ReportsPage = lazy(() => import('../features/reports/ReportsPage'))
 const VatReturnPage = lazy(() => import('../features/reports/VatReturnPage'))
 const WorksheetPage = lazy(() => import('../features/reports/WorksheetPage'))
+const ProfitHistoryPage = lazy(() => import('../features/reports/ProfitHistoryPage'))
 const SalesLedgerPage = lazy(() => import('../features/sales/SalesLedgerPage'))
 const BillingHistoryPage = lazy(() => import('../features/sales/BillingHistoryPage'))
 const SettingsPage = lazy(() => import('../features/settings/SettingsPage'))
@@ -192,6 +193,11 @@ function App() {
     return <Navigate to="/dashboard" replace />
   }
 
+  // Profit & Margin Inspector shows purchase costs: Admin and Owner only
+  if (path === '/profit-history' && !isAdminOrOwner(user)) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   // Staff page-level access: redirect if they don't have permission for this page
   const getPageIdForPath = (p) => {
     if (p === '/pos' || p === '/billing-history' || p.startsWith('/billing-history/')) return 'pos'
@@ -286,6 +292,7 @@ function App() {
               <Route path="/daily-close" element={<DailyClosePage />} />
               <Route path="/vat-return" element={<VatReturnPage />} />
               <Route path="/worksheet" element={<WorksheetPage />} />
+              <Route path="/profit-history" element={<ProfitHistoryPage />} />
               {/* Staff cannot access branches/routes — redirect (defense in depth with early return above) */}
               <Route path="/branches" element={isStaffOnly ? <Navigate to="/dashboard" replace /> : <BranchesPage />} />
               <Route path="/branches/:id" element={isStaffOnly ? <Navigate to="/dashboard" replace /> : <BranchDetailPage />} />

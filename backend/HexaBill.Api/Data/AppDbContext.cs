@@ -63,6 +63,12 @@ namespace HexaBill.Api.Data
             return ids;
         }
 
+        /// <summary>
+        /// Opened only by the audited profit cost re-sync (purchase posted after a same-day sale, or owner "Sync costs").
+        /// It lifts the saved-sale-cost guard for one SaveChanges, and only when an audit row is written in the same save.
+        /// </summary>
+        public bool AllowAuditedSaleCostCorrection { get; set; }
+
         private void ValidateTenantWrites()
         {
             // The business audit trail is append-only through the ORM: saved rows can be added, never edited or removed.
@@ -73,7 +79,9 @@ namespace HexaBill.Api.Data
                 if (entry.State is EntityState.Modified or EntityState.Deleted)
                     throw new InvalidOperationException("Audit log rows are immutable. Append a new audit entry instead.");
             }
-            foreach (var entry in ChangeTracker.Entries<SaleItem>().Where(e => e.State == EntityState.Modified))
+            var auditedCostCorrection = AllowAuditedSaleCostCorrection &&
+                ChangeTracker.Entries<AuditLog>().Any(e => e.State == EntityState.Added && e.Entity.Action.StartsWith("Sale costs"));
+            foreach (var entry in ChangeTracker.Entries<SaleItem>().Where(e => !auditedCostCorrection && e.State == EntityState.Modified))
             {
                 if (entry.Property(i => i.CostCapturedAt).OriginalValue.HasValue &&
                     (entry.Property(i => i.UnitCostAtSale).IsModified || entry.Property(i => i.ConversionAtSale).IsModified ||

@@ -376,6 +376,7 @@ else
 }
 builder.Services.AddScoped<IReturnService, ReturnService>();
 builder.Services.AddScoped<IProfitService, ProfitService>();
+builder.Services.AddScoped<IProfitBreakdownService, ProfitBreakdownService>();
 builder.Services.AddScoped<IStockAdjustmentService, StockAdjustmentService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<IVendorDiscountService, VendorDiscountService>();

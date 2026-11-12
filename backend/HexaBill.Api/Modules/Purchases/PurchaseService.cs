@@ -594,6 +594,8 @@ namespace HexaBill.Api.Modules.Purchases
                 }
 
                 await _context.SaveChangesAsync();
+                // Sales punched earlier the same Dubai day get this purchase cost (VAT-exclusive, per base unit).
+                await HexaBill.Api.Modules.Reports.SaleCostSync.ApplyPurchaseAsync(_context, tenantId, purchase, purchaseItems);
                 await transaction.CommitAsync();
 
                 return await GetPurchaseByIdAsync(purchase.Id, tenantId) ?? throw new InvalidOperationException("Failed to retrieve created purchase");
@@ -788,6 +790,8 @@ namespace HexaBill.Api.Modules.Purchases
                 _context.AuditLogs.Add(auditLog);
 
                 await _context.SaveChangesAsync();
+                var syncedItems = await _context.PurchaseItems.Where(pi => pi.PurchaseId == id).ToListAsync();
+                await HexaBill.Api.Modules.Reports.SaleCostSync.ApplyPurchaseAsync(_context, tenantId, purchase, syncedItems);
                 await transaction.CommitAsync();
 
                 return await GetPurchaseByIdAsync(id, tenantId);
