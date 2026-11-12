@@ -2354,6 +2354,7 @@ const PosEnterprisePage = () => {
           <button type="button" onClick={() => navigate('/dashboard')} className="hidden md:inline-flex xl:hidden h-9 w-9 items-center justify-center rounded-lg border border-white/30 bg-white/10 hover:bg-white/20" title="Back to Dashboard" aria-label="Back to Dashboard"><ArrowLeft className="h-5 w-5" /></button>
           <span className="hidden sm:inline md:hidden xl:inline text-sm sm:text-base font-bold tracking-wide whitespace-nowrap">Tax Invoice</span>
           <span className="hidden md:inline xl:hidden text-sm font-bold whitespace-nowrap">Invoice</span>
+          <span className="md:hidden text-micro font-bold uppercase tracking-wide text-primary-200/70">INV</span>
           {isEditMode ? (
             <span
               className="font-mono text-xs sm:text-sm truncate text-amber-200 max-w-[6rem] sm:max-w-[8rem]"
@@ -2373,26 +2374,28 @@ const PosEnterprisePage = () => {
               aria-label="Invoice number"
             />
           )}
-          <button
-            type="button"
-            onClick={printableSaleId ? () => handlePrintFormat('A4', printableSaleId) : undefined}
-            disabled={!printableSaleId}
-            title={printableSaleId ? 'Quick print invoice (A4)' : 'Save invoice first to print'}
-            className="md:hidden min-h-11 min-w-11 lg:min-h-9 lg:min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
-            aria-label={printableSaleId ? 'Quick print invoice' : 'Save invoice first to print'}
-          >
-            <Printer className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={printableSaleId ? () => handleDeliveryNotePrint('A4', printableSaleId) : undefined}
-            disabled={!printableSaleId}
-            title={printableSaleId ? 'Print delivery note (packing list, no prices)' : 'Save invoice first for delivery note'}
-            className="md:hidden min-h-11 min-w-11 lg:min-h-9 lg:min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
-            aria-label={printableSaleId ? 'Print delivery note' : 'Save invoice first for delivery note'}
-          >
-            <Package className="h-4 w-4" />
-          </button>
+          {printableSaleId && (
+            <button
+              type="button"
+              onClick={() => handlePrintFormat('A4', printableSaleId)}
+              title="Quick print invoice (A4)"
+              className="md:hidden min-h-11 min-w-11 p-1.5 rounded flex items-center justify-center hover:bg-white/10 text-white"
+              aria-label="Quick print invoice"
+            >
+              <Printer className="h-4 w-4" />
+            </button>
+          )}
+          {printableSaleId && (
+            <button
+              type="button"
+              onClick={() => handleDeliveryNotePrint('A4', printableSaleId)}
+              title="Print delivery note (packing list, no prices)"
+              className="md:hidden min-h-11 min-w-11 p-1.5 rounded flex items-center justify-center hover:bg-white/10 text-white"
+              aria-label="Print delivery note"
+            >
+              <Package className="h-4 w-4" />
+            </button>
+          )}
           {printableSaleId && (
             <button
               type="button"
@@ -2848,9 +2851,9 @@ const PosEnterprisePage = () => {
               {[selectedCustomer.phone, selectedCustomer.address, selectedCustomer.trn ? `TRN ${selectedCustomer.trn}` : null].filter(Boolean).join(' · ') || '—'}
             </span>
           )}
-          {selectedCustomer && selectedCustomer.id !== 'cash' && (
-            <span className={`md:hidden text-micro font-semibold tabular-nums ${selectedCustomer?.balance < 0 ? 'text-[#10B981]' : selectedCustomer?.balance > 0 ? 'text-primary-600' : 'text-neutral-500'}`}>
-              {formatBalance(selectedCustomer?.balance || 0)}
+          {selectedCustomer && selectedCustomer.id !== 'cash' && (Number(selectedCustomer?.balance) || 0) !== 0 && (
+            <span className={`md:hidden shrink-0 text-micro font-semibold tabular-nums ${selectedCustomer?.balance < 0 ? 'text-[#10B981]' : 'text-error-fg'}`}>
+              {selectedCustomer?.balance < 0 ? 'Cr' : 'Due'} {formatCurrency(Math.abs(Number(selectedCustomer?.balance) || 0))}
             </span>
           )}
           {selectedCustomer && selectedCustomer.id !== 'cash' && (() => {
@@ -3353,7 +3356,7 @@ const PosEnterprisePage = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs font-semibold text-neutral-600">Price</label>
+                        <label className="mb-1 block text-xs font-semibold text-neutral-600">Price ({currency})</label>
                         <input
                           type="number"
                           min="0"
