@@ -3234,9 +3234,9 @@ const PosEnterprisePage = () => {
               <button
                 onClick={addEmptyRow}
                 disabled={isFormDisabled}
-                className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center justify-center text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-transform min-h-[44px]"
+                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary-300 bg-primary-50/60 px-4 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary-50 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Plus className="h-5 w-5 mr-2" />
+                <Plus className="h-5 w-5" />
                 Add Product to Bill
               </button>
 
@@ -3250,9 +3250,9 @@ const PosEnterprisePage = () => {
                 </div>
               ) : (
                 cart.map((item, index) => (
-                  <div key={index} className="bg-white rounded-lg border border-neutral-200 p-4">
+                  <div key={index} className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
                     {/* Header: Product Name or Search */}
-                    <div className="bg-neutral-50 p-3 border-b border-neutral-200">
+                    <div className="px-3 pt-2.5">
                       <div className="flex items-start gap-2 mb-2">
                         {/* Product Image Thumbnail */}
                         {item.productId && (() => {
@@ -3318,49 +3318,44 @@ const PosEnterprisePage = () => {
                     </div>
 
                     {/* Body: Input Fields - Large Touch Targets - Mobile Only */}
-                    <div className="p-2 grid grid-cols-4 gap-2">
-                      {/* Row 1: Quantity and Unit - min-h-11 (44px) touch targets */}
-                      <div className="col-span-2 grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs font-bold text-neutral-700 mb-1">Quantity</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            ref={(el) => { /* mobile: do not overwrite desktop cell refs */ }}
-                            data-pos-control="qty"
-                            data-pos-row-id={item.rowId || ''}
-                            disabled={isFormDisabled}
-                            className="w-full min-h-[44px] px-2 py-2 border border-neutral-300 rounded-lg text-center text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                            value={item.qty === '' ? '' : item.qty}
-                            onChange={(e) => updateCartItem(index, 'qty', e.target.value)}
-                            onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'qty')}
-                            placeholder="1"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-neutral-700 mb-1">Unit Type</label>
-                          <select
-                            disabled={isFormDisabled}
-                            className="w-full min-h-[44px] px-2 py-2.5 border border-neutral-300 rounded-lg text-center text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                            value={item.unitType || 'CRTN'}
-                            onChange={(e) => updateCartItem(index, 'unitType', e.target.value)}
-                          >
-                            <option value="CRTN">CRTN</option>
-                            <option value="KG">KG</option>
-                            <option value="PIECE">PIECE</option>
-                            <option value="BOX">BOX</option>
-                            <option value="PKG">PKG</option>
-                            <option value="BAG">BAG</option>
-                            <option value="PC">PC</option>
-                            <option value="UNIT">UNIT</option>
-                          </select>
-                        </div>
+                    <div className="grid grid-cols-3 gap-2 px-3 pb-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-neutral-600">Qty</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          ref={(el) => { /* mobile: do not overwrite desktop cell refs */ }}
+                          data-pos-control="qty"
+                          data-pos-row-id={item.rowId || ''}
+                          disabled={isFormDisabled}
+                          className="h-11 w-full rounded-lg border border-neutral-300 bg-neutral-50/70 px-2 text-center text-sm font-bold tabular-nums transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50"
+                          value={item.qty === '' ? '' : item.qty}
+                          onChange={(e) => updateCartItem(index, 'qty', e.target.value)}
+                          onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'qty')}
+                          placeholder="1"
+                        />
                       </div>
-
-                      {/* Row 2: Unit Price */}
-                      <div className="col-span-2">
-                        <label className="block text-xs font-bold text-neutral-700 mb-1">Unit Price ({currency})</label>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-neutral-600">Unit</label>
+                        <select
+                          disabled={isFormDisabled}
+                          className="h-11 w-full appearance-none rounded-lg border border-neutral-300 bg-neutral-50/70 px-2 text-center text-sm font-bold uppercase text-neutral-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50"
+                          value={item.unitType || 'CRTN'}
+                          onChange={(e) => updateCartItem(index, 'unitType', e.target.value)}
+                        >
+                          <option value="CRTN">CRTN</option>
+                          <option value="KG">KG</option>
+                          <option value="PIECE">PIECE</option>
+                          <option value="BOX">BOX</option>
+                          <option value="PKG">PKG</option>
+                          <option value="BAG">BAG</option>
+                          <option value="PC">PC</option>
+                          <option value="UNIT">UNIT</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-neutral-600">Price</label>
                         <input
                           type="number"
                           min="0"
@@ -3369,35 +3364,23 @@ const PosEnterprisePage = () => {
                           data-pos-control="unitPrice"
                           data-pos-row-id={item.rowId || ''}
                           disabled={isFormDisabled}
-                          className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-right text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="h-11 w-full rounded-lg border border-neutral-300 bg-neutral-50/70 px-2 text-right text-sm font-bold tabular-nums text-neutral-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50"
                           value={item.unitPrice === '' ? '' : item.unitPrice}
                           onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
                           onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'unitPrice')}
                           placeholder="0.00"
                         />
                       </div>
+                    </div>
 
-                      {/* Row 3: Calculated Values - Read Only */}
-                      <div className="col-span-4 bg-neutral-50 rounded-lg p-2 border border-neutral-200">
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <div className="text-center">
-                            <p className="text-neutral-600 font-medium">Total</p>
-                            <p className="font-bold text-neutral-900">{(() => {
-                              const qty = typeof item.qty === 'number' ? item.qty : 0
-                              const price = typeof item.unitPrice === 'number' ? item.unitPrice : 0
-                              return (qty * price).toFixed(2)
-                            })()}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-neutral-600 font-medium">VAT {vatPercent}%</p>
-                            <p className="font-bold text-neutral-900">{item.vatAmount.toFixed(2)}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-neutral-600 font-medium">Amount</p>
-                            <p className="font-bold text-success text-sm">{item.lineTotal.toFixed(2)}</p>
-                          </div>
-                        </div>
-                      </div>
+                    <div className="flex items-center justify-between gap-3 border-t border-neutral-100 bg-neutral-50/70 px-3 py-2">
+                      <span className="text-xs font-medium text-neutral-500">
+                        VAT {vatPercent}% <b className="ml-1 font-semibold tabular-nums text-neutral-700">{item.vatAmount.toFixed(2)}</b>
+                      </span>
+                      <span className="flex items-baseline gap-1.5">
+                        <span className="text-xs font-medium text-neutral-500">Amount</span>
+                        <b className="text-base font-extrabold tabular-nums text-neutral-900">{Number(item.unitPrice) > 0 ? item.lineTotal.toFixed(2) : '—'}</b>
+                      </span>
                     </div>
                   </div>
                 ))
@@ -3732,7 +3715,7 @@ const PosEnterprisePage = () => {
 
       {/* Mobile: Sticky bottom bar — single total + one CTA (opens payment sheet) */}
       <div className="hidden md:block lg:hidden h-36 shrink-0" aria-hidden />
-      <div className="hidden md:block lg:hidden fixed bottom-0 left-0 right-0 z-[60] rounded-t-2xl border-t border-neutral-200 bg-white/95 px-4 pb-3 pt-2.5 shadow-[0_-8px_24px_rgba(15,23,42,0.10)] backdrop-blur" data-testid="pos-tablet-savebar">
+      <div className="hidden md:block lg:hidden fixed bottom-0 left-0 right-0 z-[60] rounded-t-2xl border-t border-neutral-200 bg-white/95 px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.10)] backdrop-blur" data-testid="pos-tablet-savebar">
         <div className="flex items-center justify-between gap-3 border-b border-neutral-200 pb-2">
           <span className="text-micro font-semibold uppercase tracking-wide text-neutral-500">Items <b className="ml-0.5 text-sm font-bold tabular-nums text-neutral-900">{cart.length}</b></span>
           <span className="text-micro font-semibold uppercase tracking-wide text-neutral-500">Subtotal <b className="ml-0.5 text-sm font-bold tabular-nums text-neutral-900">{totals.subtotal.toFixed(2)}</b></span>
@@ -3760,7 +3743,7 @@ const PosEnterprisePage = () => {
           </button>
         </div>
       </div>
-      <div className="md:hidden fixed bottom-[var(--hb-bottom-nav-h,4.75rem)] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
+      <div className="md:hidden fixed bottom-[var(--hb-bottom-nav-h,4.75rem)] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
         <div>
           <span className="text-xs font-semibold uppercase tracking-wide text-primary-700 block">Grand Total</span>
           <span className="text-lg font-semibold text-neutral-900 tabular-nums">{currency} {totals.grandTotal.toFixed(2)}</span>

@@ -136,14 +136,10 @@ namespace HexaBill.Api.Modules.Users
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "PingMe error");
-                
-                return StatusCode(500, new ApiResponse<object> 
-                { 
-                    Success = false, 
-                    Message = "An error occurred while updating user activity",
-                    Errors = new List<string> { ex.Message, ex.InnerException?.Message }.Where(s => !string.IsNullOrEmpty(s)).ToList()
-                });
+                // Presence heartbeat: best effort. A failed ping (e.g. SQLite write contention) must never
+                // surface as an error toast on the page the cashier is working on.
+                _logger.LogDebug(ex, "PingMe skipped (best effort)");
+                return Ok(new ApiResponse<object> { Success = true, Data = new { lastActiveAt = (DateTime?)null } });
             }
         }
 
