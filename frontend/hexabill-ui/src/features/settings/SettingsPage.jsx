@@ -18,7 +18,8 @@ import {
   FolderDown,
   Shield,
   RotateCcw,
-  Printer
+  Printer,
+  Plug
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { Input, Select, TextArea } from '../../components/Form'
@@ -50,7 +51,7 @@ const SettingsPage = () => {
   const [showLogoModal, setShowLogoModal] = useState(false)
   const [backups, setBackups] = useState([])
   const [loadingBackups, setLoadingBackups] = useState(false)
-  const [activeTab, setActiveTab] = useState(location.state?.tab === 'backup' ? 'backup' : 'company')
+  const [activeTab, setActiveTab] = useState(['backup', 'ai'].includes(location.state?.tab) ? location.state.tab : 'company')
   const [showClearDataModal, setShowClearDataModal] = useState(false)
   const [clearDataConfirmation, setClearDataConfirmation] = useState('')
   const [clearDataCheckbox, setClearDataCheckbox] = useState(false)
@@ -868,7 +869,8 @@ const SettingsPage = () => {
     { id: 'billing', label: 'Billing', icon: DollarSign },
     { id: 'email', label: 'Email', icon: Globe },
     { id: 'notifications', label: 'Notifications', icon: Shield },
-    ...(isAdminOrOwner(user) ? [{ id: 'backup', label: 'Backup', icon: Database }] : [])
+    ...(isAdminOrOwner(user) ? [{ id: 'backup', label: 'Backup', icon: Database }] : []),
+    // AI connections are Owner-only (the server enforces it too).
   ]
 
   const renderTemplatePreview = (templateHtml) => {
@@ -983,12 +985,12 @@ const SettingsPage = () => {
               </div>
 
               {!settings.companyTrn && (
-                <p role="status" className="mb-4 rounded border border-neutral-200 border-l-4 border-l-warning bg-white p-3 text-sm text-neutral-800">
+                <p role="status" className="mb-4 rounded border border-neutral-200 bg-white p-3 text-sm text-neutral-800">
                   VAT TRN missing: update in Settings &gt; Company. Documents print as Invoice (not Tax Invoice) until a real 15-digit VAT TRN is entered.
                 </p>
               )}
               {!!settings.companyTrn && ['900000000000001', '900000000000002', '900000000000003', '123456789012345', '543210987654321'].includes(String(settings.companyTrn).trim()) && (
-                <p role="status" className="mb-4 rounded border border-neutral-200 border-l-4 border-l-warning bg-white p-3 text-sm text-neutral-800">
+                <p role="status" className="mb-4 rounded border border-neutral-200 bg-white p-3 text-sm text-neutral-800">
                   Sample TRN in use: printed documents are labelled SAMPLE, not Tax Invoice. Update in Settings &gt; Company with the real VAT registration.
                 </p>
               )}
@@ -1076,7 +1078,7 @@ const SettingsPage = () => {
               <h2 className="text-lg font-semibold text-neutral-900 mb-2">Invoice print details</h2>
               <p className="text-sm text-neutral-600 mb-4">Bank details appear on full A4 and A5 invoices when all three fields are filled. Verify them against the bank document before saving. The account number is never printed.</p>
               {!bankReadiness.ready && (
-                <p role="status" data-testid="invoice-bank-readiness" className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                <p role="status" data-testid="invoice-bank-readiness" className="mb-4 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-sm text-warning-fg">
                   Bank details will not print on invoices until these are filled in: {bankReadiness.missing.join(', ')}.
                 </p>
               )}
@@ -1125,7 +1127,7 @@ const SettingsPage = () => {
                     </div>
                   ) : (
                     <div className="h-24 w-24 border-2 border-dashed border-neutral-300 rounded-lg flex items-center justify-center">
-                      <Image className="h-8 w-8 text-neutral-400" />
+                      <Image className="h-8 w-8 text-slate-500" />
                     </div>
                   )}
                 </div>
@@ -1261,7 +1263,7 @@ const SettingsPage = () => {
                             className="h-24 object-contain border border-neutral-200 rounded mb-2 bg-white"
                           />
                         ) : (
-                          <div className="h-24 border-2 border-dashed border-neutral-300 rounded mb-2 flex items-center justify-center text-xs text-neutral-400">No stamp</div>
+                          <div className="h-24 border-2 border-dashed border-neutral-300 rounded mb-2 flex items-center justify-center text-xs text-slate-500">No stamp</div>
                         )}
                         <div className="flex gap-2">
                           <label className="inline-flex items-center px-3 py-1.5 text-sm border border-neutral-300 rounded-md bg-white hover:bg-neutral-50 cursor-pointer">
@@ -1283,7 +1285,7 @@ const SettingsPage = () => {
                             className="h-24 object-contain border border-neutral-200 rounded mb-2 bg-white"
                           />
                         ) : (
-                          <div className="h-24 border-2 border-dashed border-neutral-300 rounded mb-2 flex items-center justify-center text-xs text-neutral-400">No signature</div>
+                          <div className="h-24 border-2 border-dashed border-neutral-300 rounded mb-2 flex items-center justify-center text-xs text-slate-500">No signature</div>
                         )}
                         <div className="flex gap-2">
                           <label className="inline-flex items-center px-3 py-1.5 text-sm border border-neutral-300 rounded-md bg-white hover:bg-neutral-50 cursor-pointer">
@@ -1320,7 +1322,7 @@ const SettingsPage = () => {
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm text-neutral-800 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm px-3 py-2">
+                  <p className="text-sm text-neutral-800 bg-white border border-neutral-200 rounded-sm px-3 py-2">
                     Enable stamp &amp; signature above, then upload images and drag them into place. Save when done.
                   </p>
                 )}
@@ -1459,14 +1461,14 @@ const SettingsPage = () => {
                 <p className="text-xs text-neutral-500">
                   When set, products with reorder level 0 are treated as low stock when quantity is at or below this value. Leave empty to use only each product&apos;s reorder level.
                 </p>
-                <label className="flex items-center gap-3 mt-4 p-3 bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm cursor-pointer">
+                <label className="flex items-center gap-3 mt-4 p-3 bg-white border border-neutral-200 rounded-sm cursor-pointer">
                   <input
                     type="checkbox"
                     {...register('allowNegativeStock')}
-                    className="rounded border-amber-400 text-warning focus:ring-amber-500 h-4 w-4"
+                    className="rounded border-warning-border text-warning focus:ring-warning-border h-4 w-4"
                   />
                   <div>
-                    <span className="text-sm font-medium text-amber-800">Allow selling when stock is zero or insufficient</span>
+                    <span className="text-sm font-medium text-warning-fg">Allow selling when stock is zero or insufficient</span>
                     <p className="text-xs text-warning mt-0.5">Enable emergency billing — invoices can be created even if product stock is 0 or negative. Stock will go into negative values.</p>
                   </div>
                 </label>
@@ -1481,7 +1483,7 @@ const SettingsPage = () => {
               </div>
               <div className="max-w-md">
                 <label className="block text-sm font-medium text-neutral-700 mb-2">Default print format</label>
-                <select
+                <select aria-label="A4 Invoice"
                   value={defaultPrintFormat}
                   onChange={(e) => {
                     const v = e.target.value
@@ -1567,8 +1569,8 @@ const SettingsPage = () => {
               <p className="text-sm text-neutral-600 mb-4">
                 Configure SMTP settings to enable email notifications and invoice delivery.
               </p>
-              <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4">
-                <p className="text-sm text-amber-800">
+              <div className="bg-white border border-neutral-200 rounded-sm p-4">
+                <p className="text-sm text-warning-fg">
                   <strong>Note:</strong> Email functionality is not yet implemented. This feature will allow you to:
                 </p>
                 <ul className="list-disc list-inside text-sm text-warning-fg mt-2 space-y-1">
@@ -1612,7 +1614,7 @@ const SettingsPage = () => {
                   type="checkbox"
                   id="enableEmail"
                   disabled
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-neutral-300 rounded opacity-60"
+                  className="h-4 w-4 text-slate-700 focus:ring-slate-200 border-neutral-300 rounded opacity-60"
                 />
                 <label htmlFor="enableEmail" className="ml-2 block text-sm text-neutral-500">
                   Enable email notifications (Coming soon)
@@ -1633,8 +1635,8 @@ const SettingsPage = () => {
               <p className="text-sm text-neutral-600 mb-4">
                 Configure how and when you receive notifications for important events.
               </p>
-              <div className="bg-white border border-neutral-200 border-l-4 border-l-warning rounded-sm p-4">
-                <p className="text-sm text-amber-800">
+              <div className="bg-white border border-neutral-200 rounded-sm p-4">
+                <p className="text-sm text-warning-fg">
                   <strong>Note:</strong> Notification settings are not yet implemented. This feature will allow you to:
                 </p>
                 <ul className="list-disc list-inside text-sm text-warning-fg mt-2 space-y-1">
@@ -1649,11 +1651,11 @@ const SettingsPage = () => {
                   <h3 className="text-md font-medium text-neutral-800 mb-3">Payment Reminders</h3>
                   <div className="space-y-2">
                     <label className="flex items-center">
-                      <input type="checkbox" disabled className="h-4 w-4 text-indigo-600 opacity-60" />
+                      <input type="checkbox" disabled className="h-4 w-4 text-slate-700 opacity-60" />
                       <span className="ml-2 text-sm text-neutral-500">Email notification for overdue payments</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" disabled className="h-4 w-4 text-indigo-600 opacity-60" />
+                      <input type="checkbox" disabled className="h-4 w-4 text-slate-700 opacity-60" />
                       <span className="ml-2 text-sm text-neutral-500">SMS notification for overdue payments</span>
                     </label>
                   </div>
@@ -1662,11 +1664,11 @@ const SettingsPage = () => {
                   <h3 className="text-md font-medium text-neutral-800 mb-3">Inventory Alerts</h3>
                   <div className="space-y-2">
                     <label className="flex items-center">
-                      <input type="checkbox" disabled className="h-4 w-4 text-indigo-600 opacity-60" />
+                      <input type="checkbox" disabled className="h-4 w-4 text-slate-700 opacity-60" />
                       <span className="ml-2 text-sm text-neutral-500">Alert when product stock is low</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" disabled className="h-4 w-4 text-indigo-600 opacity-60" />
+                      <input type="checkbox" disabled className="h-4 w-4 text-slate-700 opacity-60" />
                       <span className="ml-2 text-sm text-neutral-500">Daily inventory summary</span>
                     </label>
                   </div>
@@ -1675,11 +1677,11 @@ const SettingsPage = () => {
                   <h3 className="text-md font-medium text-neutral-800 mb-3">Sales & Orders</h3>
                   <div className="space-y-2">
                     <label className="flex items-center">
-                      <input type="checkbox" disabled className="h-4 w-4 text-indigo-600 opacity-60" />
+                      <input type="checkbox" disabled className="h-4 w-4 text-slate-700 opacity-60" />
                       <span className="ml-2 text-sm text-neutral-500">Notify on new orders</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" disabled className="h-4 w-4 text-indigo-600 opacity-60" />
+                      <input type="checkbox" disabled className="h-4 w-4 text-slate-700 opacity-60" />
                       <span className="ml-2 text-sm text-neutral-500">Weekly sales report</span>
                     </label>
                   </div>
@@ -1689,13 +1691,15 @@ const SettingsPage = () => {
           </div>
         )}
 
+        {/* AI connections (MCP) Tab - Owner only */}
+
         {/* Backup Tab */}
         {activeTab === 'backup' && isAdminOrOwner(user) && (
           <>
             {/* Cloud Backup Settings */}
             <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <div className="flex items-center mb-6">
-                <Globe className="h-6 w-6 text-purple-600 mr-3" />
+                <Globe className="h-6 w-6 text-slate-700 mr-3" />
                 <h2 className="text-lg font-semibold text-neutral-900">Cloud Backup Settings</h2>
               </div>
 
@@ -1705,7 +1709,7 @@ const SettingsPage = () => {
                     type="checkbox"
                     id="cloudBackupEnabled"
                     {...register('cloudBackupEnabled')}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-neutral-300 rounded"
+                    className="h-4 w-4 text-slate-700 focus:ring-slate-200 border-neutral-300 rounded"
                   />
                   <label htmlFor="cloudBackupEnabled" className="ml-2 block text-sm text-neutral-900">
                     Enable Google Drive Cloud Backup
@@ -1713,7 +1717,7 @@ const SettingsPage = () => {
                 </div>
 
                 {watch('cloudBackupEnabled') && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6 border-l-2 border-purple-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6 border-l-2 border-slate-200">
                     <Input
                       label="Client ID"
                       type="text"
@@ -1756,7 +1760,7 @@ const SettingsPage = () => {
             <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <div className="mb-6">
                 <div className="flex items-center mb-4">
-                  <Database className="h-6 w-6 text-indigo-600 mr-3" />
+                  <Database className="h-6 w-6 text-slate-700 mr-3" />
                   <h2 className="text-lg font-semibold text-neutral-900">Platform Backup</h2>
                 </div>
                 <p className="text-sm text-neutral-500 mb-4">Full database and files for system administration. Use &quot;My Data Export&quot; (Backup menu) to export only your company&apos;s data.</p>
@@ -1766,7 +1770,7 @@ const SettingsPage = () => {
                     type="button"
                     onClick={handleCreateBackup}
                     disabled={loadingBackups}
-                    className="inline-flex items-center px-4 py-2 border border-indigo-300 rounded-md shadow-sm text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50"
+                    className="inline-flex items-center px-4 py-2 border border-slate-200 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 disabled:opacity-50"
                     title="Create database backup only"
                   >
                     <Database className="h-4 w-4 mr-2" />
@@ -1804,7 +1808,7 @@ const SettingsPage = () => {
                     type="button"
                     onClick={fetchBackups}
                     disabled={loadingBackups}
-                    className="text-indigo-600 hover:text-indigo-700 disabled:opacity-50 flex items-center"
+                    className="text-slate-700 hover:text-slate-700 disabled:opacity-50 flex items-center"
                   >
                     <RefreshCw className={`h-4 w-4 mr-1 ${loadingBackups ? 'animate-spin' : ''}`} />
                     Refresh
@@ -1869,7 +1873,7 @@ const SettingsPage = () => {
             <div className="mt-8 bg-white rounded-lg border-2 border-error-border shadow-sm p-6">
               <div className="flex items-start gap-4">
                 <div className="flex-1">
-                  <h3 className="text-sm font-bold text-red-900 uppercase tracking-wider">Clear transactional data</h3>
+                  <h3 className="text-sm font-bold text-red-900 ">Clear transactional data</h3>
                   <p className="text-sm text-error-fg mt-1">
                     Same as &quot;reset company data&quot;. Wipes sales, purchases, expenses, and returns. Keeps users, products, and customers; resets stock and balances to zero.
                   </p>
@@ -1891,12 +1895,12 @@ const SettingsPage = () => {
           </>
         )}
 
-        {/* Save Button */}
-        <div className="flex justify-end">
+        {/* Save Button: stays reachable on long pages (sits above the phone bottom nav) */}
+        <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-20 -mx-3 flex justify-end border-t border-slate-200 bg-white/95 px-3 py-2 backdrop-blur md:bottom-0 md:mx-0 md:border-0 md:bg-transparent md:px-0 md:backdrop-blur-none">
           <LoadingButton
             type="submit"
             loading={saving}
-            className="px-8 py-3"
+            className="w-full px-8 py-3 sm:w-auto"
           >
             <Save className="h-4 w-4 mr-2" />
             Save Settings
@@ -1921,7 +1925,7 @@ const SettingsPage = () => {
               </div>
             ) : (
               <>
-                <Upload className="mx-auto h-12 w-12 text-neutral-400" />
+                <Upload className="mx-auto h-12 w-12 text-slate-500" />
                 <div className="mt-4">
                   <label htmlFor="logo-upload" className="cursor-pointer">
                     <span className="mt-2 block text-sm font-medium text-neutral-900">Click to upload logo</span>
@@ -1963,7 +1967,7 @@ const SettingsPage = () => {
           <div className="border-2 border-neutral-200 rounded-lg p-4 bg-white">
             <div className="grid grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 items-start max-w-full overflow-hidden">
               <div className="text-left min-w-0">
-                <h3 className="font-bold text-sm uppercase break-words">{settings.companyNameEn || 'Company Name'}</h3>
+                <h3 className="font-bold text-sm break-words">{settings.companyNameEn || 'Company Name'}</h3>
                 <p className="text-xs text-neutral-500 mt-0.5 break-words">Mob: {settings.companyPhone || '—'}</p>
                 {settings.companyEmail && <p className="text-xs text-neutral-500 break-words">{settings.companyEmail}</p>}
                 {settings.companyAddress && <p className="text-xs text-neutral-500 break-words">{settings.companyAddress}</p>}
@@ -2039,7 +2043,7 @@ const SettingsPage = () => {
               <p className="text-sm font-bold text-white mt-2">This action cannot be undone.</p>
             </div>
           </div>
-          <div className="space-y-3 bg-white border border-neutral-200 border-l-4 border-l-error rounded-sm p-3">
+          <div className="space-y-3 bg-white border border-neutral-200 rounded-sm p-3">
             <label className="flex items-start gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -2050,8 +2054,8 @@ const SettingsPage = () => {
               <span className="text-sm font-medium text-red-800">I understand this will permanently delete all transactional data, and I have a backup I can restore from.</span>
             </label>
             <div>
-              <label className="block text-xs font-bold text-error-fg uppercase tracking-wider mb-1">Type CLEAR to confirm</label>
-              <input
+              <label className="block text-xs font-bold text-error-fg mb-1">Type CLEAR to confirm</label>
+              <input aria-label="CLEAR"
                 type="text"
                 className="w-full px-4 py-3 border-2 border-red-300 rounded-lg bg-white text-red-800 font-bold focus:ring-2 focus:ring-red-400 outline-none transition-all"
                 placeholder="CLEAR"
@@ -2060,7 +2064,7 @@ const SettingsPage = () => {
               />
             </div>
             <div>
-              <label htmlFor="clear-data-reason" className="block text-xs font-bold text-error-fg uppercase tracking-wider mb-1">Reason (recorded in the audit log)</label>
+              <label htmlFor="clear-data-reason" className="block text-xs font-bold text-error-fg mb-1">Reason (recorded in the audit log)</label>
               <input
                 id="clear-data-reason"
                 type="text"
@@ -2072,7 +2076,7 @@ const SettingsPage = () => {
               />
             </div>
             <div>
-              <label htmlFor="clear-data-password" className="block text-xs font-bold text-error-fg uppercase tracking-wider mb-1">Your password</label>
+              <label htmlFor="clear-data-password" className="block text-xs font-bold text-error-fg mb-1">Your password</label>
               <input
                 id="clear-data-password"
                 type="password"
@@ -2099,7 +2103,7 @@ const SettingsPage = () => {
               onClick={handleClearAllData}
               loading={loadingClearData}
               disabled={clearDataConfirmation.trim() !== 'CLEAR' || !clearDataCheckbox || clearDataReason.trim().length < 10 || !clearDataPassword}
-              className="flex-2 px-8 py-3 bg-error text-white font-bold rounded-lg hover:bg-red-700 shadow-lg border-2 border-red-700 disabled:opacity-50 disabled:grayscale transition-all"
+              className="flex-2 px-8 py-3 bg-error text-white font-bold rounded-lg hover:bg-red-700 shadow-sm border-2 border-red-700 disabled:opacity-50 disabled:grayscale transition-all"
             >
               Clear all data
             </LoadingButton>

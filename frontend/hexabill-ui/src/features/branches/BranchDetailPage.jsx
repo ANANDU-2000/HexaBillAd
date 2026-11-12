@@ -604,9 +604,9 @@ const BranchDetailPage = () => {
           </div>
           <p className="text-xs text-neutral-500 mb-1">Date range: {fromDate} to {toDate}</p>
           <div className="flex items-center gap-2 mb-3 flex-wrap">
-            <input type="date" value={dateDraft.from} onChange={(e) => setDateDraft(prev => ({ ...prev, from: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-xs" />
+            <input aria-label="Date" type="date" value={dateDraft.from} onChange={(e) => setDateDraft(prev => ({ ...prev, from: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-xs" />
             <span className="text-neutral-500 text-sm">to</span>
-            <input type="date" value={dateDraft.to} onChange={(e) => setDateDraft(prev => ({ ...prev, to: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-xs" />
+            <input aria-label="Date" type="date" value={dateDraft.to} onChange={(e) => setDateDraft(prev => ({ ...prev, to: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-xs" />
             <button type="button" onClick={applyDateRange} className="inline-flex items-center gap-1 px-2 py-1 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700"><Filter className="h-3 w-3" />Apply</button>
           </div>
           <h2 className="text-sm font-medium text-neutral-800 mb-2">Routes</h2>
@@ -639,9 +639,9 @@ const BranchDetailPage = () => {
         <div>
           <p className="text-xs text-neutral-500 mb-1">Date range: {fromDate} to {toDate}</p>
           <div className="flex items-center gap-2 mb-3 flex-wrap">
-            <input type="date" value={dateDraft.from} onChange={(e) => setDateDraft(prev => ({ ...prev, from: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-xs" />
+            <input aria-label="Date" type="date" value={dateDraft.from} onChange={(e) => setDateDraft(prev => ({ ...prev, from: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-xs" />
             <span className="text-neutral-500 text-sm">to</span>
-            <input type="date" value={dateDraft.to} onChange={(e) => setDateDraft(prev => ({ ...prev, to: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-xs" />
+            <input aria-label="Date" type="date" value={dateDraft.to} onChange={(e) => setDateDraft(prev => ({ ...prev, to: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-xs" />
             <button type="button" onClick={applyDateRange} className="inline-flex items-center gap-1 px-2 py-1 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700"><Filter className="h-3 w-3" />Apply</button>
           </div>
           {(!summary?.routes || summary.routes.length === 0) ? (
@@ -937,9 +937,9 @@ const BranchDetailPage = () => {
         <div>
           <p className="text-sm text-neutral-500 mb-2">Date range: {fromDate} to {toDate}</p>
           <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <input type="date" value={dateDraft.from} onChange={(e) => setDateDraft(prev => ({ ...prev, from: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
+            <input aria-label="Date" type="date" value={dateDraft.from} onChange={(e) => setDateDraft(prev => ({ ...prev, from: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
             <span className="text-neutral-500">to</span>
-            <input type="date" value={dateDraft.to} onChange={(e) => setDateDraft(prev => ({ ...prev, to: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
+            <input aria-label="Date" type="date" value={dateDraft.to} onChange={(e) => setDateDraft(prev => ({ ...prev, to: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
             <button type="button" onClick={applyDateRange} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded hover:bg-primary-700"><Filter className="h-3.5 w-3.5" />Apply</button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -1033,9 +1033,9 @@ const BranchDetailPage = () => {
         <div>
           <p className="text-sm text-neutral-500 mb-2">Date range: {fromDate} to {toDate}</p>
           <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <input type="date" value={dateDraft.from} onChange={(e) => setDateDraft(prev => ({ ...prev, from: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
+            <input aria-label="Date" type="date" value={dateDraft.from} onChange={(e) => setDateDraft(prev => ({ ...prev, from: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
             <span className="text-neutral-500">to</span>
-            <input type="date" value={dateDraft.to} onChange={(e) => setDateDraft(prev => ({ ...prev, to: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
+            <input aria-label="Date" type="date" value={dateDraft.to} onChange={(e) => setDateDraft(prev => ({ ...prev, to: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
             <button type="button" onClick={applyDateRange} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded hover:bg-primary-700"><Filter className="h-3.5 w-3.5" />Apply</button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -1122,7 +1122,7 @@ const BranchDetailPage = () => {
             <p className="text-sm text-neutral-600">Branch: <strong>{displayBranch.name}</strong></p>
             <div>
               <label className="block text-sm font-semibold text-neutral-700 mb-1">Category <span className="text-red-500">*</span></label>
-              <select
+              <select aria-label="category"
                 value={expenseForm.categoryId}
                 onChange={(e) => setExpenseForm(prev => ({ ...prev, categoryId: e.target.value }))}
                 className="block w-full px-3 py-2.5 bg-white border border-neutral-200 rounded-lg text-neutral-900 sm:text-sm"
@@ -1190,7 +1190,7 @@ const BranchDetailPage = () => {
             
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Target Branch <span className="text-red-500">*</span></label>
-              <select
+              <select aria-label="branch"
                 value={transferTargetBranchId}
                 onChange={(e) => {
                   setTransferTargetBranchId(e.target.value)
@@ -1208,7 +1208,7 @@ const BranchDetailPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Target Route (optional)</label>
-              <select
+              <select aria-label="No route assignment"
                 value={transferTargetRouteId}
                 onChange={(e) => setTransferTargetRouteId(e.target.value)}
                 disabled={!transferTargetBranchId}

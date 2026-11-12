@@ -200,7 +200,7 @@ const CustomerDetailPage = () => {
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-3">
           <div>
             <label className="block text-xs font-medium text-neutral-600 mb-1">From</label>
-            <input
+            <input aria-label="From"
               type="date"
               value={statementFrom}
               onChange={(e) => setStatementFrom(e.target.value)}
@@ -210,7 +210,7 @@ const CustomerDetailPage = () => {
           </div>
           <div>
             <label className="block text-xs font-medium text-neutral-600 mb-1">To</label>
-            <input
+            <input aria-label="To"
               type="date"
               value={statementTo}
               onChange={(e) => setStatementTo(e.target.value)}

@@ -624,7 +624,7 @@ const SuperAdminTenantsPage = () => {
             <label className="block text-sm font-semibold text-neutral-700">
               Reason for Suspension
             </label>
-            <textarea
+            <textarea aria-label="Reason for Suspension"
               value={suspendReason}
               onChange={(e) => setSuspendReason(e.target.value)}
               className="w-full border border-neutral-300 rounded-lg p-3 focus:ring-2 focus:ring-warning-border focus:border-warning-border outline-none transition-all"
@@ -666,7 +666,7 @@ const SuperAdminTenantsPage = () => {
           </p>
           <div className="space-y-2 mb-6">
             <label className="block text-sm font-semibold text-neutral-700">Days to add</label>
-            <input
+            <input aria-label="Days to add"
               type="number"
               min={1}
               max={365}
@@ -708,7 +708,7 @@ const SuperAdminTenantsPage = () => {
           </div>
           <div className="space-y-2 mb-4">
             <label className="block text-sm font-semibold text-neutral-700">Message</label>
-            <textarea
+            <textarea aria-label="Message"
               value={bulkAnnouncementMessage}
               onChange={(e) => setBulkAnnouncementMessage(e.target.value)}
               placeholder="Optional message..."
@@ -718,7 +718,7 @@ const SuperAdminTenantsPage = () => {
           </div>
           <div className="space-y-2 mb-6">
             <label className="block text-sm font-semibold text-neutral-700">Severity</label>
-            <select
+            <select aria-label="Info"
               value={bulkAnnouncementSeverity}
               onChange={(e) => setBulkAnnouncementSeverity(e.target.value)}
               className="w-full border border-neutral-300 rounded-lg px-3 py-2"

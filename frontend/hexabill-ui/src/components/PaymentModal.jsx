@@ -425,7 +425,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
               <DollarSign className="w-4 h-4 inline mr-1" />
               Payment Amount *
             </label>
-            <input
+            <input aria-label="Number"
               type="number"
               step="0.01"
               min="0.01"
@@ -481,7 +481,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
             <label className="block text-sm font-medium text-neutral-700 mb-2">
               Payment Mode *
             </label>
-            <select
+            <select aria-label="Cash"
               value={formData.mode}
               onChange={(e) => setFormData(prev => ({ ...prev, mode: e.target.value }))}
               className="w-full px-4 py-2.5 min-h-[44px] border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
@@ -518,7 +518,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
               <Calendar className="w-4 h-4 inline mr-1" />
               Payment Date *
             </label>
-            <input
+            <input aria-label="Date"
               type="date"
               value={formData.paymentDate}
               onChange={(e) => setFormData(prev => ({ ...prev, paymentDate: e.target.value }))}

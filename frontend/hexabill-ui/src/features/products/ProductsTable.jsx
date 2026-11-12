@@ -151,12 +151,25 @@ export default function ProductsTable({
                 <td className="hidden px-2 py-1.5 text-xs xl:table-cell">{expiryCell(p.expiryDate)}</td>
                 <td className="px-2 py-2 lg:py-1.5" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-1 lg:gap-0.5">
-                    <IconBtn label="View" onClick={() => navigate(`/products/${p.id}`)}><Eye className="h-5 w-5 lg:h-4 lg:w-4" /></IconBtn>
-                    {canManageInventory && <IconBtn label="Edit" onClick={() => navigate(`/products/${p.id}?edit=1`)}><Edit className="h-5 w-5 lg:h-4 lg:w-4" /></IconBtn>}
-                    {canAdjustStock && <IconBtn label="Adjust stock" onClick={() => onAdjustStock(p)}><Package className="h-5 w-5 lg:h-4 lg:w-4" /></IconBtn>}
+                    {/* Tablet and phone: one clear word button; View and Adjust stock live in the menu. Desktop keeps the icon trio. */}
+                    <button
+                      type="button"
+                      onClick={() => navigate(canManageInventory ? `/products/${p.id}?edit=1` : `/products/${p.id}`)}
+                      className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 hover:bg-slate-50 lg:hidden"
+                    >
+                      {canManageInventory ? <Edit className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+                      {canManageInventory ? 'Edit' : 'View'}
+                    </button>
+                    <span className="hidden items-center gap-0.5 lg:flex">
+                      <IconBtn label="View" onClick={() => navigate(`/products/${p.id}`)}><Eye className="h-5 w-5 lg:h-4 lg:w-4" /></IconBtn>
+                      {canManageInventory && <IconBtn label="Edit" onClick={() => navigate(`/products/${p.id}?edit=1`)}><Edit className="h-5 w-5 lg:h-4 lg:w-4" /></IconBtn>}
+                      {canAdjustStock && <IconBtn label="Adjust stock" onClick={() => onAdjustStock(p)}><Package className="h-5 w-5 lg:h-4 lg:w-4" /></IconBtn>}
+                    </span>
                     <OverflowMenu
                       label={`More actions for ${p.nameEn}`}
                       items={[
+                        { label: 'View details', icon: Eye, onClick: () => navigate(`/products/${p.id}`) },
+                        { label: 'Adjust stock', icon: Package, hidden: !canAdjustStock, onClick: () => onAdjustStock(p) },
                         { label: 'Print barcode', icon: Printer, hidden: !p.barcode, onClick: () => onPrintBarcode([p.id]) },
                         { label: 'Stock history', icon: History, hidden: !canAdjustStock, onClick: () => navigate(`/stock-adjustments?productId=${p.id}`) },
                         inactive

@@ -285,7 +285,7 @@ const AuditLogPage = () => {
           </div>
           <button
             type="button"
-            onClick={() => fetchLogs(page)}
+            aria-label="Refresh activity log" onClick={() => fetchLogs(page)}
             disabled={loading}
             className="inline-flex items-center justify-center gap-2 min-h-[44px] px-3 rounded-md border border-neutral-200 bg-white text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 shrink-0"
           >

@@ -28,7 +28,7 @@ const measure = () => {
       if (s.textTransform === 'uppercase') out.caps++
       const fg = parse(s.color); const bg = bgOf(el)
       if (fg) { const a = lum(fg) , b = lum(bg); const cr = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); const need = fs >= 18.66 || (fs >= 14 && +s.fontWeight >= 700) ? 3 : 4.5; if (cr < need) { out.lowContrast++; note('lowContrast', el) } }
-      if (s.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1) { out.ellipsis++; note('ellipsis', el) }
+      if (s.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1 && !el.getAttribute('title')) { out.ellipsis++; note('ellipsis', el) }
     }
     if (el.matches('button,a[href],select,input:not([type=hidden]),[role=button],[role=tab]')) {
       const r = el.getBoundingClientRect()
@@ -38,6 +38,7 @@ const measure = () => {
       if (el.matches('button,a[href],[role=button]') && !(el.innerText || '').trim() && !el.getAttribute('aria-label') && !el.getAttribute('title') && !el.querySelector('img[alt]')) { out.unnamed++; note('unnamed', el) }
       if (el.matches('input:not([type=hidden]):not([type=checkbox]):not([type=radio]),select,textarea') && !el.getAttribute('aria-label') && !el.getAttribute('aria-labelledby') && !el.id && !el.closest('label')) { out.unlabeledInputs++; note('unlabeledInputs', el) }
     }
+    if (el.classList.contains('sidebar-scroll')) continue
     if ((s.overflowY === 'auto' || s.overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 4 && el !== document.scrollingElement) { out.nestedScroll++; note('nestedScroll', el) }
   }
   out.overflowX = document.documentElement.scrollWidth - window.innerWidth

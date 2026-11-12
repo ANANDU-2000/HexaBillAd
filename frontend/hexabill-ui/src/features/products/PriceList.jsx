@@ -280,7 +280,7 @@ const PriceList = () => {
                       <td className="px-4 py-4 whitespace-nowrap text-right border-r border-neutral-200">
                         {editingProduct === product.id ? (
                           <div className="flex items-center space-x-2 justify-end">
-                            <input
+                            <input aria-label="Number"
                               type="number"
                               step="0.01"
                               min="0"

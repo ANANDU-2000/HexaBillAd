@@ -176,15 +176,15 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
                 <form onSubmit={handleRecordPayment} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-primary-700 mb-1">Amount ({cashUnit}) *</label>
-                    <input type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className="w-full border rounded px-3 py-2" />
+                    <input aria-label="Number" type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className="w-full border rounded px-3 py-2" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-primary-700 mb-1">Date *</label>
-                    <input type="date" required value={paymentForm.paymentDate} onChange={e => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })} className="w-full border rounded px-3 py-2" />
+                    <input aria-label="Date" type="date" required value={paymentForm.paymentDate} onChange={e => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })} className="w-full border rounded px-3 py-2" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-primary-700 mb-1">Mode</label>
-                    <select value={paymentForm.mode} onChange={e => setPaymentForm({ ...paymentForm, mode: e.target.value })} className="w-full border rounded px-3 py-2">
+                    <select aria-label="Cash" value={paymentForm.mode} onChange={e => setPaymentForm({ ...paymentForm, mode: e.target.value })} className="w-full border rounded px-3 py-2">
                       <option value="Cash">Cash</option>
                       <option value="Bank">Bank</option>
                       <option value="Cheque">Cheque</option>
@@ -196,7 +196,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
                   </div>
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-medium text-primary-700 mb-1">Notes</label>
-                    <input type="text" value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} className="w-full border rounded px-3 py-2" />
+                    <input aria-label="Notes" type="text" value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} className="w-full border rounded px-3 py-2" />
                   </div>
                   <div className="sm:col-span-2 flex gap-2">
                     <button type="submit" disabled={saving} className="px-4 py-2 bg-success text-white rounded hover:bg-green-700 disabled:opacity-50">

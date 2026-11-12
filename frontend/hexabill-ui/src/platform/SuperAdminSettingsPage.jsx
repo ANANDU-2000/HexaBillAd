@@ -200,7 +200,7 @@ const SuperAdminSettingsPage = () => {
           <p className="text-sm text-neutral-500">Variables: {'{companyName}'}, {'{trialEndDate}'}, {'{ownerEmail}'}</p>
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">Welcome Email</label>
-            <textarea
+            <textarea aria-label="Welcome Email"
               value={form.welcomeEmail}
               onChange={(e) => setForm({ ...form, welcomeEmail: e.target.value })}
               rows={4}
@@ -210,7 +210,7 @@ const SuperAdminSettingsPage = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">Suspension Notice</label>
-            <textarea
+            <textarea aria-label="Suspension Notice"
               value={form.suspensionEmail}
               onChange={(e) => setForm({ ...form, suspensionEmail: e.target.value })}
               rows={4}
@@ -220,7 +220,7 @@ const SuperAdminSettingsPage = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">Trial Expiry Warning</label>
-            <textarea
+            <textarea aria-label="Trial Expiry Warning"
               value={form.trialExpiryEmail}
               onChange={(e) => setForm({ ...form, trialExpiryEmail: e.target.value })}
               rows={4}

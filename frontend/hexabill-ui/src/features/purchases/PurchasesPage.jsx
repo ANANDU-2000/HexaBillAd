@@ -1206,7 +1206,7 @@ const PurchasesPage = () => {
                 onToggle={toggleVoucherSection}
               >
                 <div className="flex flex-wrap gap-4 items-center">
-                  <select className={tallySelectClass} value={formData.paymentType} onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}>
+                  <select aria-label="Cash (Pay Now)" className={tallySelectClass} value={formData.paymentType} onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}>
                     <option value="Cash">Cash (Pay Now)</option>
                     <option value="Credit">Credit (Pay Later)</option>
                   </select>
@@ -1290,7 +1290,7 @@ const PurchasesPage = () => {
                             </div>
                             <div>
                               <label className="text-xs text-primary-500">Unit</label>
-                              <select className="w-full px-2 py-1 border border-neutral-200 rounded text-xs " value={item.unitType || 'PCS'} onChange={(e) => updateItem(index, 'unitType', e.target.value)}>
+                              <select aria-label="PCS" className="w-full px-2 py-1 border border-neutral-200 rounded text-xs " value={item.unitType || 'PCS'} onChange={(e) => updateItem(index, 'unitType', e.target.value)}>
                                 <option value="PCS">PCS</option>
                                 <option value="CRTN">CRTN</option>
                                 <option value="KG">KG</option>
@@ -1375,7 +1375,7 @@ const PurchasesPage = () => {
                               </div>
                             </td>
                             <td className="px-2 py-2 border-r border-neutral-100">
-                              <select
+                              <select aria-label="CRTN"
                                 className="w-full min-h-[44px] px-1 border border-neutral-200 rounded text-sm "
                                 value={item.unitType || 'CRTN'}
                                 onChange={(e) => updateItem(index, 'unitType', e.target.value)}
@@ -1395,7 +1395,7 @@ const PurchasesPage = () => {
                               </select>
                             </td>
                             <td className="px-2 py-2 border-r border-neutral-100">
-                              <input
+                              <input aria-label="Number"
                                 type="number"
                                 min="0"
                                 step="0.01"
@@ -1408,7 +1408,7 @@ const PurchasesPage = () => {
                               />
                             </td>
                             <td className="px-2 py-2 border-r border-neutral-100">
-                              <input
+                              <input aria-label="Number"
                                 type="number"
                                 min="0"
                                 step="0.01"

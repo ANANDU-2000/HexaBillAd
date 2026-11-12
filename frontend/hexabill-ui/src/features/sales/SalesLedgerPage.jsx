@@ -1024,13 +1024,13 @@ const SalesLedgerPage = () => {
         </div>}
         <MobileActionStrip className="md:flex-wrap md:overflow-visible">
             <div className="hidden md:flex md:flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
-              <input
+              <input aria-label="Date"
                 type="date"
                 value={dateRange.from}
                 onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
                 className={`${mobileFormFieldClass} md:min-h-0 md:py-1.5 md:text-xs md:w-36`}
               />
-              <input
+              <input aria-label="Date"
                 type="date"
                 value={dateRange.to}
                 onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}

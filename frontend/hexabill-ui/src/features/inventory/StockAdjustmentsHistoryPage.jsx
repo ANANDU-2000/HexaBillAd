@@ -72,7 +72,7 @@ const StockAdjustmentsHistoryPage = () => {
       <div data-sticky-toolbar className="sticky top-0 z-20 bg-white border border-neutral-200 rounded-lg p-4 shadow-sm flex flex-wrap items-end gap-3">
         <div>
           <label className="block text-xs font-medium text-neutral-600 mb-1">From</label>
-          <input
+          <input aria-label="From"
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
@@ -81,7 +81,7 @@ const StockAdjustmentsHistoryPage = () => {
         </div>
         <div>
           <label className="block text-xs font-medium text-neutral-600 mb-1">To</label>
-          <input
+          <input aria-label="To"
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
@@ -97,7 +97,7 @@ const StockAdjustmentsHistoryPage = () => {
           <RefreshCw className="h-4 w-4" />
           Refresh
         </button>
-        <Link to="/products" className="text-sm text-primary-700 hover:underline ml-auto">
+        <Link to="/products" className="ml-auto inline-flex min-h-11 items-center text-sm text-primary-700 hover:underline">
           Back to products
         </Link>
       </div>

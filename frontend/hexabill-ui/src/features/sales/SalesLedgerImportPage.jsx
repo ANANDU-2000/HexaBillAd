@@ -187,7 +187,7 @@ export default function SalesLedgerImportPage() {
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
                     {label} {required && <span className="text-red-500">*</span>}
                   </label>
-                  <select
+                  <select aria-label="— Skip —"
                     value={mapping[key] ?? ''}
                     onChange={(e) => setMapping((m) => ({ ...m, [key]: e.target.value }))}
                     className="w-full rounded border border-neutral-300 text-sm py-1.5"

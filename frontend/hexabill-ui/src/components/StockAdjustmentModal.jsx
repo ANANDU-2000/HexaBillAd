@@ -86,7 +86,7 @@ const StockAdjustmentModal = ({ product, onSave, onCancel }) => {
               Reason *
             </label>
             {/* No native "required": the app's own message below explains what is missing. */}
-            <textarea
+            <textarea aria-label="Reason"
               name="reason"
               aria-required="true"
               rows="3"

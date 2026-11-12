@@ -2375,7 +2375,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">New basis</label>
-            <select
+            <select aria-label="Sales-based (default)"
               value={vatBasisDraft}
               onChange={(e) => setVatBasisDraft(e.target.value)}
               className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-base min-h-[44px]"
@@ -2386,7 +2386,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">Effective from (UTC date)</label>
-            <input
+            <input aria-label="Effective from (UTC date)"
               type="date"
               value={vatEffectiveFrom}
               onChange={(e) => setVatEffectiveFrom(e.target.value)}

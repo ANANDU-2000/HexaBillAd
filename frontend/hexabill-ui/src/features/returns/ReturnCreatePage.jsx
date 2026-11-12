@@ -235,7 +235,7 @@ export default function ReturnCreatePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700">Reason</label>
-            <select
+            <select aria-label="— Select —"
               value={reasonCategoryId ?? ''}
               onChange={e => {
                 const id = e.target.value ? Number(e.target.value) : null
@@ -274,7 +274,7 @@ export default function ReturnCreatePage() {
                     <td className="px-4 py-2 text-sm text-neutral-900">{line.productName}</td>
                     <td className="px-4 py-2 text-sm text-right text-neutral-600">{line.soldQty} {line.unitType}</td>
                     <td className="px-4 py-2">
-                      <input
+                      <input aria-label="Number"
                         type="number"
                         min={0}
                         max={line.maxReturnable}

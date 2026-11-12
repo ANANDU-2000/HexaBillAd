@@ -235,7 +235,7 @@ const ProfilePage = () => {
                 <Mail className="h-4 w-4 text-neutral-500" />
                 Email
               </label>
-              <input
+              <input aria-label="Email"
                 type="email"
                 value={profile?.email || currentUser?.email || ''}
                 readOnly
@@ -342,7 +342,7 @@ const ProfilePage = () => {
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">Current Password *</label>
-            <input
+            <input aria-label="Current Password"
               type="password"
               {...registerPassword('currentPassword', { required: 'Current password is required' })}
               className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -352,7 +352,7 @@ const ProfilePage = () => {
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">New Password *</label>
-            <input
+            <input aria-label="New Password"
               type="password"
               {...registerPassword('newPassword', {
                 required: 'New password is required',
@@ -383,7 +383,7 @@ const ProfilePage = () => {
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">Confirm New Password *</label>
-            <input
+            <input aria-label="Confirm New Password"
               type="password"
               {...registerPassword('confirmPassword', { required: 'Please confirm your new password' })}
               className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"

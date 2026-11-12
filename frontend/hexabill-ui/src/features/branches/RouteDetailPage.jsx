@@ -664,8 +664,8 @@ const RouteDetailPage = () => {
       {activeTab === 'overview' && (
         <>
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <input type="date" value={dateDraftFrom} onChange={(e) => setDateDraftFrom(e.target.value)} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
-            <input type="date" value={dateDraftTo} onChange={(e) => setDateDraftTo(e.target.value)} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
+            <input aria-label="Date" type="date" value={dateDraftFrom} onChange={(e) => setDateDraftFrom(e.target.value)} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
+            <input aria-label="Date" type="date" value={dateDraftTo} onChange={(e) => setDateDraftTo(e.target.value)} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
             <button type="button" onClick={applyDateRange} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium">Apply</button>
           </div>
           {summary && (
@@ -1025,8 +1025,8 @@ const RouteDetailPage = () => {
       {activeTab === 'performance' && (
         <div>
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <input type="date" value={dateDraftFrom} onChange={(e) => setDateDraftFrom(e.target.value)} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
-            <input type="date" value={dateDraftTo} onChange={(e) => setDateDraftTo(e.target.value)} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
+            <input aria-label="Date" type="date" value={dateDraftFrom} onChange={(e) => setDateDraftFrom(e.target.value)} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
+            <input aria-label="Date" type="date" value={dateDraftTo} onChange={(e) => setDateDraftTo(e.target.value)} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
             <button type="button" onClick={applyDateRange} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium">Apply</button>
           </div>
           {summary && (
@@ -1141,7 +1141,7 @@ const RouteDetailPage = () => {
           )}
           <div className="flex flex-wrap items-center gap-2">
             <label className="text-sm text-neutral-600">Date</label>
-            <input
+            <input aria-label="Date"
               type="date"
               value={collectionSheetDate}
               onChange={(e) => setCollectionSheetDate(e.target.value)}
@@ -1287,7 +1287,7 @@ const RouteDetailPage = () => {
           <form onSubmit={selectedExpenseForEdit ? handleUpdateExpense : handleAddExpense} className="space-y-4">
             <div className="space-y-1">
               <label className="block text-sm font-semibold text-neutral-700">Category</label>
-              <select
+              <select aria-label="Category"
                 value={expenseCategory}
                 onChange={(e) => setExpenseCategory(e.target.value)}
                 className="block w-full px-3 py-2.5 bg-white border border-neutral-200 rounded-lg shadow-sm text-neutral-900 sm:text-sm"
@@ -1404,7 +1404,7 @@ const RouteDetailPage = () => {
                       <td className="py-2 px-2 print:py-1 print:px-1 text-right">{c.todayInvoiceAmount != null ? formatCurrency(c.todayInvoiceAmount) : '—'}</td>
                       <td className="py-2 px-2 print:py-1 print:px-1 text-center print:hidden">
                         <div className="flex flex-col items-center gap-1">
-                          <select
+                          <select aria-label="Not Visited"
                             value={currentStatus}
                             onChange={(e) => {
                               const newStatus = e.target.value
@@ -1580,7 +1580,7 @@ const RouteDetailPage = () => {
             />
             <div className="space-y-1">
               <label className="block text-sm font-medium text-neutral-700">Branch</label>
-              <select
+              <select aria-label="branch"
                 value={editRouteForm.branchId}
                 onChange={(e) => setEditRouteForm(prev => ({ ...prev, branchId: e.target.value }))}
                 required

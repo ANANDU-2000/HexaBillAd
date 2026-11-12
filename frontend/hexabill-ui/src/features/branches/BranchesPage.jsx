@@ -331,7 +331,7 @@ const BranchesPage = () => {
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-3">
               <span className="text-sm text-neutral-600">Filter by Branch:</span>
-              <select
+              <select aria-label="branches"
                 value={routeBranchFilter}
                 onChange={(e) => setRouteBranchFilter(e.target.value)}
                 className="border border-neutral-300 rounded-lg px-3 py-2 text-sm bg-white min-w-[150px]"
@@ -512,7 +512,7 @@ const BranchesPage = () => {
             />
             <div className="space-y-1">
               <label className="block text-sm font-medium text-neutral-700">Branch</label>
-              <select
+              <select aria-label="branch"
                 value={routeForm.branchId}
                 onChange={(e) => setRouteForm({ ...routeForm, branchId: e.target.value })}
                 required

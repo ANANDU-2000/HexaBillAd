@@ -496,15 +496,15 @@ const SupplierDetailPage = () => {
                   <>
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">Amount *</label>
-                      <input type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className={fieldClass} />
+                      <input aria-label="Amount" type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className={fieldClass} />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">Date *</label>
-                      <input type="date" required value={paymentForm.paymentDate} onChange={e => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })} className={fieldClass} />
+                      <input aria-label="Date" type="date" required value={paymentForm.paymentDate} onChange={e => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })} className={fieldClass} />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">Mode</label>
-                      <select value={paymentForm.mode} onChange={e => setPaymentForm({ ...paymentForm, mode: e.target.value })} className={fieldClass}>
+                      <select aria-label="Cash" value={paymentForm.mode} onChange={e => setPaymentForm({ ...paymentForm, mode: e.target.value })} className={fieldClass}>
                         <option value="Cash">Cash</option>
                         <option value="Bank">Bank</option>
                         <option value="Cheque">Cheque</option>
@@ -512,32 +512,32 @@ const SupplierDetailPage = () => {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">Reference</label>
-                      <input type="text" value={paymentForm.reference} onChange={e => setPaymentForm({ ...paymentForm, reference: e.target.value })} className={fieldClass} />
+                      <input aria-label="Reference" type="text" value={paymentForm.reference} onChange={e => setPaymentForm({ ...paymentForm, reference: e.target.value })} className={fieldClass} />
                     </div>
                     <div className="sm:col-span-2">
                       <label className="block text-xs font-medium text-neutral-700 mb-1">Notes</label>
-                      <input type="text" value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} className={fieldClass} />
+                      <input aria-label="Notes" type="text" value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} className={fieldClass} />
                     </div>
                   </>
                 ) : (
                   <>
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">Amount *</label>
-                      <input type="number" step="0.01" min="0.01" required value={ledgerCreditForm.amount} onChange={e => setLedgerCreditForm({ ...ledgerCreditForm, amount: e.target.value })} className={fieldClass} />
+                      <input aria-label="Amount" type="number" step="0.01" min="0.01" required value={ledgerCreditForm.amount} onChange={e => setLedgerCreditForm({ ...ledgerCreditForm, amount: e.target.value })} className={fieldClass} />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">Date *</label>
-                      <input type="date" required value={ledgerCreditForm.creditDate} onChange={e => setLedgerCreditForm({ ...ledgerCreditForm, creditDate: e.target.value })} className={fieldClass} />
+                      <input aria-label="Date" type="date" required value={ledgerCreditForm.creditDate} onChange={e => setLedgerCreditForm({ ...ledgerCreditForm, creditDate: e.target.value })} className={fieldClass} />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">Type *</label>
-                      <select value={ledgerCreditForm.creditType} onChange={e => setLedgerCreditForm({ ...ledgerCreditForm, creditType: e.target.value })} className={fieldClass}>
+                      <select aria-label="Type" value={ledgerCreditForm.creditType} onChange={e => setLedgerCreditForm({ ...ledgerCreditForm, creditType: e.target.value })} className={fieldClass}>
                         {DISCOUNT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-neutral-700 mb-1">Notes</label>
-                      <input type="text" value={ledgerCreditForm.notes} onChange={e => setLedgerCreditForm({ ...ledgerCreditForm, notes: e.target.value })} className={fieldClass} />
+                      <input aria-label="Notes" type="text" value={ledgerCreditForm.notes} onChange={e => setLedgerCreditForm({ ...ledgerCreditForm, notes: e.target.value })} className={fieldClass} />
                     </div>
                   </>
                 )}
@@ -789,15 +789,15 @@ const SupplierDetailPage = () => {
         <form onSubmit={saveEditPayment} className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-neutral-700 mb-1">Amount *</label>
-            <input type="number" step="0.01" min="0.01" required value={editPaymentForm.amount} onChange={e => setEditPaymentForm(f => ({ ...f, amount: e.target.value }))} className={fieldClass} />
+            <input aria-label="Amount" type="number" step="0.01" min="0.01" required value={editPaymentForm.amount} onChange={e => setEditPaymentForm(f => ({ ...f, amount: e.target.value }))} className={fieldClass} />
           </div>
           <div>
             <label className="block text-xs font-medium text-neutral-700 mb-1">Date *</label>
-            <input type="date" required max={localDateString(new Date())} value={editPaymentForm.paymentDate} onChange={e => setEditPaymentForm(f => ({ ...f, paymentDate: e.target.value }))} className={fieldClass} />
+            <input aria-label="Date" type="date" required max={localDateString(new Date())} value={editPaymentForm.paymentDate} onChange={e => setEditPaymentForm(f => ({ ...f, paymentDate: e.target.value }))} className={fieldClass} />
           </div>
           <div>
             <label className="block text-xs font-medium text-neutral-700 mb-1">Mode</label>
-            <select value={editPaymentForm.mode} onChange={e => setEditPaymentForm(f => ({ ...f, mode: e.target.value }))} className={fieldClass}>
+            <select aria-label="Cash" value={editPaymentForm.mode} onChange={e => setEditPaymentForm(f => ({ ...f, mode: e.target.value }))} className={fieldClass}>
               <option value="Cash">Cash</option>
               <option value="Bank">Bank</option>
               <option value="Cheque">Cheque</option>
@@ -805,11 +805,11 @@ const SupplierDetailPage = () => {
           </div>
           <div>
             <label className="block text-xs font-medium text-neutral-700 mb-1">Reference</label>
-            <input type="text" value={editPaymentForm.reference} onChange={e => setEditPaymentForm(f => ({ ...f, reference: e.target.value }))} className={fieldClass} />
+            <input aria-label="Reference" type="text" value={editPaymentForm.reference} onChange={e => setEditPaymentForm(f => ({ ...f, reference: e.target.value }))} className={fieldClass} />
           </div>
           <div>
             <label className="block text-xs font-medium text-neutral-700 mb-1">Notes</label>
-            <input type="text" value={editPaymentForm.notes} onChange={e => setEditPaymentForm(f => ({ ...f, notes: e.target.value }))} className={fieldClass} />
+            <input aria-label="Notes" type="text" value={editPaymentForm.notes} onChange={e => setEditPaymentForm(f => ({ ...f, notes: e.target.value }))} className={fieldClass} />
           </div>
           <div className="flex gap-2 justify-end">
             <button type="button" onClick={() => { setShowEditPaymentModal(false); setEditingPayment(null) }} className={btnOutline}>Cancel</button>

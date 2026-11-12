@@ -888,7 +888,7 @@ export default function QuotationEditorPage() {
                           />
                         </td>
                         <td className="p-1">
-                          <input
+                          <input aria-label="Number"
                             data-quote-cell={`${idx}-qty`}
                             type="number"
                             className="w-full border rounded px-1 py-1 text-right"
@@ -908,7 +908,7 @@ export default function QuotationEditorPage() {
                           />
                         </td>
                         <td className="p-1">
-                          <input
+                          <input aria-label="Number"
                             data-quote-cell={`${idx}-unitPrice`}
                             type="number"
                             step="0.01"
@@ -920,7 +920,7 @@ export default function QuotationEditorPage() {
                           />
                         </td>
                         <td className="p-1">
-                          <input
+                          <input aria-label="Number"
                             data-quote-cell={`${idx}-vatRate`}
                             type="number"
                             className="w-full border rounded px-1 py-1 text-right"

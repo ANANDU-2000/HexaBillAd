@@ -433,4 +433,9 @@
   [data-comfort="on"] input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]) { min-height: 44px; }
   [data-comfort="on"] button, [data-comfort="on"] a[class*="inline-flex"] { min-width: 44px; }
   [data-comfort="on"] .text-xs { font-size: 13px; line-height: 1.25rem; }
+  [data-comfort="on"] a.inline-flex, [data-comfort="on"] a.flex.items-center { min-height: 44px; }
+}
+/* Phones: names and labels wrap to two lines instead of being cut with an ellipsis (table cells keep their layout). */
+@media (max-width: 767px) {
+  [data-comfort="on"] :not(td):not(th).truncate { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; }
 }

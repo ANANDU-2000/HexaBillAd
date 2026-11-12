@@ -1505,7 +1505,7 @@ const ReportsPage = () => {
             <button type="button" onClick={() => fetchReportData()} title="Refresh" aria-label="Refresh" className="inline-flex h-9 w-9 items-center justify-center rounded text-neutral-600 hover:bg-neutral-100">
               <RefreshCw className="h-4 w-4" />
             </button>
-            <button type="button" onClick={() => handleExport('pdf')} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary-600 px-3 text-[13px] font-medium text-white hover:bg-primary-700">
+            <button type="button" aria-label="Export PDF" onClick={() => handleExport('pdf')} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary-600 px-3 text-[13px] font-medium text-white hover:bg-primary-700">
               <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Export PDF</span>
             </button>

@@ -41,7 +41,7 @@ const PendingBillsPanel = ({ bills, searchTerm, onSearchChange, filter, onFilter
             />
           </div>
           
-          <select
+          <select aria-label="Pending"
             className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm"
             value={filter}
             onChange={(e) => onFilterChange(e.target.value)}

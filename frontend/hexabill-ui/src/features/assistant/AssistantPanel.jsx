@@ -296,7 +296,7 @@ function PaymentActionCard({ fields = {}, language = 'en' }) {
           </div>
           <div>
             <label className="block font-medium text-neutral-700 mb-0.5">Payment Mode</label>
-            <select className={inputClass} value={mode} onChange={(e) => setMode(e.target.value)}>
+            <select aria-label="CASH" className={inputClass} value={mode} onChange={(e) => setMode(e.target.value)}>
               <option value="CASH">CASH</option>
               <option value="ONLINE">ONLINE / BANK</option>
               <option value="CHEQUE">CHEQUE</option>
@@ -555,7 +555,7 @@ function ExpenseActionCard({ fields = {}, language = 'en' }) {
       <div className="space-y-2 text-xs">
         <div>
           <label className="block font-medium text-neutral-700 mb-0.5">Category *</label>
-          <select className={inputClass} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+          <select aria-label="Category" className={inputClass} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             <option value="">Select Category</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
@@ -566,7 +566,7 @@ function ExpenseActionCard({ fields = {}, language = 'en' }) {
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block font-medium text-neutral-700 mb-0.5">Amount (AED) *</label>
-            <input
+            <input aria-label="Amount (AED)"
               type="number"
               step="0.01"
               min="0.01"
@@ -577,7 +577,7 @@ function ExpenseActionCard({ fields = {}, language = 'en' }) {
           </div>
           <div>
             <label className="block font-medium text-neutral-700 mb-0.5">Date *</label>
-            <input
+            <input aria-label="Date"
               type="date"
               className={inputClass}
               value={date}
@@ -724,7 +724,7 @@ function CustomerActionCard({ fields = {}, language = 'en' }) {
       <div className="space-y-2 text-xs">
         <div>
           <label className="block font-medium text-neutral-700 mb-0.5">Customer Name *</label>
-          <input
+          <input aria-label="Customer Name"
             type="text"
             className={inputClass}
             value={form.name}
@@ -735,7 +735,7 @@ function CustomerActionCard({ fields = {}, language = 'en' }) {
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block font-medium text-neutral-700 mb-0.5">Phone</label>
-            <input
+            <input aria-label="Phone"
               type="tel"
               className={inputClass}
               value={form.phone}
@@ -744,7 +744,7 @@ function CustomerActionCard({ fields = {}, language = 'en' }) {
           </div>
           <div>
             <label className="block font-medium text-neutral-700 mb-0.5">TRN (Tax #)</label>
-            <input
+            <input aria-label="TRN (Tax #)"
               type="text"
               className={inputClass}
               value={form.trn}
@@ -756,7 +756,7 @@ function CustomerActionCard({ fields = {}, language = 'en' }) {
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block font-medium text-neutral-700 mb-0.5">Credit Limit (AED)</label>
-            <input
+            <input aria-label="Credit Limit (AED)"
               type="number"
               className={inputClass}
               value={form.creditLimit}
@@ -765,7 +765,7 @@ function CustomerActionCard({ fields = {}, language = 'en' }) {
           </div>
           <div>
             <label className="block font-medium text-neutral-700 mb-0.5">Type</label>
-            <select
+            <select aria-label="Credit"
               className={inputClass}
               value={form.customerType}
               onChange={(e) => setForm({ ...form, customerType: e.target.value })}

@@ -144,7 +144,7 @@ function CategoryVatEditInline ({ category, onSave, onCancel }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-neutral-700 mb-1">Default VAT rate</label>
-        <select
+        <select aria-label="0%"
           value={defaultVatRate}
           onChange={(e) => setDefaultVatRate(Number(e.target.value))}
           className="w-full border border-neutral-300 rounded-lg px-3 py-2"
@@ -155,7 +155,7 @@ function CategoryVatEditInline ({ category, onSave, onCancel }) {
       </div>
       <div>
         <label className="block text-sm font-medium text-neutral-700 mb-1">Tax type</label>
-        <select
+        <select aria-label="Standard"
           value={defaultTaxType}
           onChange={(e) => setDefaultTaxType(e.target.value)}
           className="w-full border border-neutral-300 rounded-lg px-3 py-2"

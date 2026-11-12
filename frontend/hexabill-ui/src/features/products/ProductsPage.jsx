@@ -845,15 +845,15 @@ const ProductsPage = () => {
             <div className="flex flex-wrap items-center gap-3 mb-4">
               <div>
                 <label className="block text-xs font-medium text-neutral-600 mb-1">From</label>
-                <input type="date" value={movementsFilter.fromDate} onChange={(e) => { setMovementsFilter(f => ({ ...f, fromDate: e.target.value })); setMovementsPage(1) }} className="border border-neutral-300 rounded px-2 py-1.5 text-sm" />
+                <input aria-label="From" type="date" value={movementsFilter.fromDate} onChange={(e) => { setMovementsFilter(f => ({ ...f, fromDate: e.target.value })); setMovementsPage(1) }} className="border border-neutral-300 rounded px-2 py-1.5 text-sm" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-600 mb-1">To</label>
-                <input type="date" value={movementsFilter.toDate} onChange={(e) => { setMovementsFilter(f => ({ ...f, toDate: e.target.value })); setMovementsPage(1) }} className="border border-neutral-300 rounded px-2 py-1.5 text-sm" />
+                <input aria-label="To" type="date" value={movementsFilter.toDate} onChange={(e) => { setMovementsFilter(f => ({ ...f, toDate: e.target.value })); setMovementsPage(1) }} className="border border-neutral-300 rounded px-2 py-1.5 text-sm" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-600 mb-1">Type</label>
-                <select value={movementsFilter.transactionType} onChange={(e) => { setMovementsFilter(f => ({ ...f, transactionType: e.target.value })); setMovementsPage(1) }} className="border border-neutral-300 rounded px-2 py-1.5 text-sm">
+                <select aria-label="Types" value={movementsFilter.transactionType} onChange={(e) => { setMovementsFilter(f => ({ ...f, transactionType: e.target.value })); setMovementsPage(1) }} className="border border-neutral-300 rounded px-2 py-1.5 text-sm">
                   <option value="">All Types</option>
                   <option value="Sale">Sale</option>
                   <option value="Purchase">Purchase</option>
@@ -1538,7 +1538,7 @@ const ProductsPage = () => {
                   <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                     Description (Optional)
                   </label>
-                  <textarea
+                  <textarea aria-label="Description (Optional)"
                     value={categoryFormData.description}
                     onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
                     className="input"
@@ -1550,7 +1550,7 @@ const ProductsPage = () => {
                   <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                     Color
                   </label>
-                  <input
+                  <input aria-label="Color"
                     type="color"
                     value={categoryFormData.colorCode}
                     onChange={(e) => setCategoryFormData({ ...categoryFormData, colorCode: e.target.value })}

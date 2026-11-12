@@ -1003,7 +1003,7 @@ const CustomersPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Customer Type</label>
-              <select
+              <select aria-label="Credit (Can have outstanding balance)"
                 {...register('customerType')}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
               >
@@ -1015,7 +1015,7 @@ const CustomersPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Payment Terms</label>
-              <select
+              <select aria-label="payment terms"
                 {...register('paymentTerms')}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
               >
@@ -1242,7 +1242,7 @@ const CustomersPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Customer Type</label>
-              <select
+              <select aria-label="Credit (Can have outstanding balance)"
                 {...register('customerType')}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
               >
@@ -1346,7 +1346,7 @@ const CustomersPage = () => {
             {/* Payment Terms */}
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Payment Terms</label>
-              <select
+              <select aria-label="payment terms"
                 {...register('paymentTerms')}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
               >

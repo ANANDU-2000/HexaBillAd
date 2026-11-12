@@ -1093,7 +1093,7 @@ const UsersPage = () => {
               <>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-0.5">Name *</label>
-                  <input
+                  <input aria-label="Name"
                     type="text"
                     {...registerAdd('name', { required: 'Name is required' })}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
@@ -1102,7 +1102,7 @@ const UsersPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-0.5">Email *</label>
-                  <input
+                  <input aria-label="Email"
                     type="email"
                     {...registerAdd('email', {
                       required: 'Email is required',
@@ -1114,7 +1114,7 @@ const UsersPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-0.5">Password *</label>
-                  <input
+                  <input aria-label="Password"
                     type="password"
                     {...registerAdd('password', {
                       required: 'Password is required',
@@ -1150,7 +1150,7 @@ const UsersPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-0.5">Role *</label>
-                  <select
+                  <select aria-label="role"
                     {...registerAdd('role', { required: 'Role is required' })}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                   >
@@ -1171,7 +1171,7 @@ const UsersPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-0.5">Phone</label>
-                  <input
+                  <input aria-label="Phone"
                     type="text"
                     {...registerAdd('phone')}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
@@ -1272,7 +1272,7 @@ const UsersPage = () => {
               <>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-0.5">Name *</label>
-                  <input
+                  <input aria-label="Name"
                     type="text"
                     {...registerEdit('name', { required: 'Name is required' })}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
@@ -1281,7 +1281,7 @@ const UsersPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-0.5">Email</label>
-                  <input
+                  <input aria-label="Email"
                     type="email"
                     value={selectedUser?.email || ''}
                     disabled
@@ -1291,7 +1291,7 @@ const UsersPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-0.5">Role *</label>
-                  <select
+                  <select aria-label="role"
                     {...registerEdit('role', { required: 'Role is required' })}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                   >
@@ -1304,7 +1304,7 @@ const UsersPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-0.5">Phone</label>
-                  <input
+                  <input aria-label="Phone"
                     type="text"
                     {...registerEdit('phone')}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
@@ -1378,7 +1378,7 @@ const UsersPage = () => {
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">New Password *</label>
-            <input
+            <input aria-label="New Password"
               type="password"
               {...registerPassword('newPassword', {
                 required: 'Password is required',

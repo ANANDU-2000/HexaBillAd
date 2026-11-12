@@ -2936,7 +2936,7 @@ const CustomerLedgerPage = () => {
                         <span className="text-micro font-medium text-neutral-500 shrink-0">To</span>
                         <input type="date" value={filterDraft.to} onChange={(e) => setFilterDraft(prev => ({ ...prev, to: e.target.value }))} className="h-9 text-sm px-2 rounded-md border bg-white" />
                       </label>
-                      <select
+                      <select aria-label="branches"
                         value={filterDraft.branchId}
                         onChange={(e) => setFilterDraft(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
                         className={`input min-w-0 text-sm md:min-h-9 md:max-w-[11rem] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
@@ -2946,7 +2946,7 @@ const CustomerLedgerPage = () => {
                         {isAdminOrOwner(user) && <option value="">All branches</option>}
                         {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                       </select>
-                      <select
+                      <select aria-label="routes"
                         value={filterDraft.routeId}
                         onChange={(e) => setFilterDraft(prev => ({ ...prev, routeId: e.target.value }))}
                         className={`input min-w-0 text-sm md:min-h-9 md:max-w-[11rem] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
@@ -2958,7 +2958,7 @@ const CustomerLedgerPage = () => {
                           <option key={r.id} value={r.id}>{r.name}</option>
                         ))}
                       </select>
-                      <select
+                      <select aria-label="staff"
                         value={filterDraft.staffId}
                         onChange={(e) => setFilterDraft(prev => ({ ...prev, staffId: e.target.value }))}
                         className={`input min-w-0 text-sm md:min-h-9 md:max-w-[11rem] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
@@ -3538,7 +3538,7 @@ const CustomerLedgerPage = () => {
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
                     Branch {branches.length > 0 && <span className="text-red-500">*</span>}
                   </label>
-                  <select
+                  <select aria-label="branch"
                     className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.branchId ? 'border-red-500' : 'border-neutral-300'}`}
                     {...customerRegister('branchId', {
                       required: branches.length > 0 ? 'Branch is required when company has branches' : false,
@@ -3604,7 +3604,7 @@ const CustomerLedgerPage = () => {
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Payment Terms {(watchCustomer('creditLimit') || 0) > 0 && <span className="text-red-500">*</span>}
               </label>
-              <select
+              <select aria-label="payment terms"
                 className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.paymentTerms ? 'border-red-500' : 'border-neutral-300'}`}
                 {...customerRegister('paymentTerms', {
                   validate: (v) => {
@@ -3781,7 +3781,7 @@ const CustomerLedgerPage = () => {
               <>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">Branch</label>
-                  <select
+                  <select aria-label="branches"
                     className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     {...(function () {
                       const r = customerRegister('branchId')
@@ -3802,7 +3802,7 @@ const CustomerLedgerPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">Route</label>
-                  <select
+                  <select aria-label="Route"
                     className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 disabled:cursor-not-allowed"
                     {...customerRegister('routeId')}
                     disabled={!watchCustomer('branchId')}
@@ -3840,7 +3840,7 @@ const CustomerLedgerPage = () => {
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Payment Terms {(watchCustomer('creditLimit') || 0) > 0 && <span className="text-red-500">*</span>}
               </label>
-              <select
+              <select aria-label="payment terms"
                 className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.paymentTerms ? 'border-red-500' : 'border-neutral-300'}`}
                 {...customerRegister('paymentTerms', {
                   validate: (v) => {
@@ -4043,7 +4043,7 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
           </p>
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-neutral-700 mb-2">Apply to invoice</p>
-            <select
+            <select aria-label="invoice"
               value={applySaleId}
               onChange={(e) => setApplySaleId(e.target.value)}
               className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm mb-2"

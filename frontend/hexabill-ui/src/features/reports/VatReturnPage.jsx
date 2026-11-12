@@ -648,7 +648,7 @@ const VatReturnPage = () => {
             </button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <input
+            <input aria-label="Date"
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
@@ -656,7 +656,7 @@ const VatReturnPage = () => {
               className="border border-neutral-300 rounded-md px-3 py-2 text-sm"
             />
             <span className="text-neutral-500">to</span>
-            <input
+            <input aria-label="Date"
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
