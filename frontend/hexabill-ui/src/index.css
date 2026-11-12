@@ -488,3 +488,20 @@ button, a, select, input, textarea, [role="button"], [role="tab"] {
   input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 }
+
+/*
+ * Checkboxes and radios keep their 20px visual but get a 44px touch area, so a row can stay dense
+ * without asking a finger to hit an 18px square. Applies below 1280 (phones and tablets).
+ */
+@media (max-width: 1279px) {
+  input[type="checkbox"], input[type="radio"] {
+    position: relative;
+    min-width: 20px;
+    min-height: 20px;
+  }
+  input[type="checkbox"]::after, input[type="radio"]::after {
+    content: "";
+    position: absolute;
+    inset: -12px;
+  }
+}
