@@ -602,6 +602,9 @@ const SalesLedgerPage = () => {
   }, [reportData.salesLedger, filters.date, filters.name, filters.type, filters.status, filters.invoiceNo, filters.branchId, filters.routeId, filters.staffId, filters.realPendingMin, filters.realPendingMax, filters.realGotPaymentMin, filters.realGotPaymentMax, overdueOnly])
   
   const hasActiveFilters = overdueOnly || Object.values(filters).some(v => v !== '')
+  const rangeLabel = dateRange.from && dateRange.to
+    ? `${new Date(dateRange.from).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} – ${new Date(dateRange.to).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`
+    : 'Any date'
 
   // Sale-only: flat global timeline (newest invoices at top of whole list). Otherwise: grouped by customer + subtotals.
   const displayLedgerSorted = React.useMemo(() => {
@@ -1015,7 +1018,8 @@ const SalesLedgerPage = () => {
             className={`mb-2 flex w-full min-h-11 items-center gap-2 rounded-lg border px-3 text-sm ${hasActiveFilters ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-neutral-300 bg-white text-neutral-700'}`}
           >
             <Filter className="h-4 w-4 shrink-0" />
-            <span className="truncate tabular-nums">{dateRange.from || '…'} → {dateRange.to || '…'}</span>
+            <span className="shrink-0 font-semibold">Filters</span>
+            <span className="truncate text-xs text-neutral-500">{rangeLabel}</span>
             {hasActiveFilters && <span className="ml-auto shrink-0 rounded-full bg-primary-600 px-2 py-0.5 text-xs font-medium text-white">Filtered</span>}
           </button>
         )}
@@ -1873,10 +1877,10 @@ const SalesLedgerPage = () => {
                       ) : null}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-1.5 text-xs">
-                      <div>
-                        <div className="text-xs text-neutral-500 ">{entry.type === 'Return' ? 'Returns' : 'Bill'}</div>
-                        <div className="font-bold text-primary-600">
+                    <div className="flex items-end justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-neutral-500">{entry.type === 'Return' ? 'Returns' : 'Bill'}</div>
+                        <div className="text-base font-bold tabular-nums text-neutral-900">
                           {entry.type === 'Sale'
                             ? formatCurrency(entry.grandTotal || 0)
                             : entry.type === 'Return'
@@ -1884,42 +1888,9 @@ const SalesLedgerPage = () => {
                               : formatCurrency(entry.realGotPayment || 0)}
                         </div>
                       </div>
-                      {(entry.vatTotal > 0 && entry.type !== 'Payment') && (
-                        <div>
-                          <div className="text-xs text-neutral-500 ">VAT</div>
-                          <div className="font-bold text-slate-700">{formatCurrency(entry.vatTotal)}</div>
-                        </div>
-                      )}
-                      <div>
-                        <div className="text-xs text-neutral-500 ">Paid</div>
-                        <div className="font-bold text-success">
-                          {entry.type === 'Sale'
-                            ? (entry.paidAmount > 0 ? formatCurrency(entry.paidAmount) : '-')
-                            : entry.type === 'Return' ? '-' : formatCurrency(entry.realGotPayment || 0)}
-                        </div>
-                      </div>
-                      {entry.type === 'Sale' && entry.realPending > 0 && (
-                        <div>
-                          <div className="text-xs text-neutral-500 ">Pending</div>
-                          <div className="font-bold text-error">
-                            {formatCurrency(entry.realPending)}
-                          </div>
-                        </div>
-                      )}
-                      {entry.type === 'Sale' && (Number(entry.realPending) || 0) > LEDGER_PENDING_EPS && (
-                        <div>
-                          <div className="text-xs text-neutral-500 ">Days overdue</div>
-                          <div className="font-bold text-neutral-900">
-                            {(() => {
-                              const d = getSaleDaysOutstanding(entry)
-                              return d == null ? '—' : `${d}d`
-                            })()}
-                          </div>
-                        </div>
-                      )}
-                      <div>
-                        <div className="text-xs text-neutral-500 ">Balance</div>
-                        <div className={`font-bold ${(entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)) < 0 ? 'text-success' :
+                      <div className="text-right">
+                        <div className="text-xs font-medium text-neutral-500">Balance</div>
+                        <div className={`text-base font-extrabold tabular-nums ${(entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)) < 0 ? 'text-success' :
  (entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)) > 0 ? 'text-error' :
  'text-neutral-900'
                           }`}>
@@ -1928,11 +1899,35 @@ const SalesLedgerPage = () => {
                       </div>
                     </div>
 
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-neutral-500">
+                      {(entry.vatTotal > 0 && entry.type !== 'Payment') && (
+                        <span>VAT <b className="font-semibold tabular-nums text-neutral-700">{formatCurrency(entry.vatTotal)}</b></span>
+                      )}
+                      <span>
+                        Paid <b className="font-semibold tabular-nums text-success-fg">
+                          {entry.type === 'Sale'
+                            ? (entry.paidAmount > 0 ? formatCurrency(entry.paidAmount) : '-')
+                            : entry.type === 'Return' ? '-' : formatCurrency(entry.realGotPayment || 0)}
+                        </b>
+                      </span>
+                      {entry.type === 'Sale' && entry.realPending > 0 && (
+                        <span>Pending <b className="font-semibold tabular-nums text-error">{formatCurrency(entry.realPending)}</b></span>
+                      )}
+                      {entry.type === 'Sale' && (Number(entry.realPending) || 0) > LEDGER_PENDING_EPS && (
+                        <span>
+                          {(() => {
+                            const d = getSaleDaysOutstanding(entry)
+                            return d == null ? '—' : `${d}d overdue`
+                          })()}
+                        </span>
+                      )}
+                    </div>
+
                     {entry.type === 'Sale' && (Number(entry.realPending) || 0) > LEDGER_PENDING_EPS && entry.customerId ? (
                       <button
                         type="button"
                         onClick={() => goRecordPaymentForSale(entry)}
-                        className="mt-2 w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-lg bg-warning-fg text-white text-sm font-bold hover:bg-warning-fg active:scale-[0.99] transition-transform"
+                        className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-warning-border bg-warning-bg text-sm font-bold text-warning-fg transition-all hover:bg-warning-bg/70 active:scale-[0.99]"
                       >
                         <Banknote className="h-4 w-4 shrink-0" aria-hidden />
                         Record payment

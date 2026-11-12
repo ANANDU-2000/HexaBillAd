@@ -589,15 +589,15 @@ const DashboardTally = () => {
         <div className={`${mobilePageShellClass} max-w-[1600px] space-y-4`}>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <h1 className="sr-only">Dashboard</h1>
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="grid min-w-0 flex-1 grid-cols-4 gap-2 sm:flex sm:flex-none sm:flex-wrap">
-                        <button type="button" onClick={() => applyPeriod('today')} className={periodChip(dateRange === 'today')} aria-pressed={dateRange === 'today'}>Today</button>
-                        <button type="button" onClick={() => applyPeriod('week')} className={periodChip(dateRange === 'week')} aria-pressed={dateRange === 'week'}>Week</button>
-                        <button type="button" onClick={() => applyPeriod('last30')} className={periodChip(dateRange === 'last30')} aria-pressed={dateRange === 'last30'}>30 Days</button>
-                        <button type="button" onClick={() => applyPeriod('month')} className={periodChip(dateRange === 'month')} aria-pressed={dateRange === 'month'}>Month</button>
-                        <button type="button" onClick={() => applyPeriod('lastMonth')} className={periodChip(dateRange === 'lastMonth')} aria-pressed={dateRange === 'lastMonth'}>Last Month</button>
-                        <button type="button" onClick={() => applyPeriod('allTime')} className={periodChip(dateRange === 'allTime')} aria-pressed={dateRange === 'allTime'}>All Time</button>
-                        <button type="button" onClick={selectCustom} className={periodChip(dateRange === 'custom')} aria-pressed={dateRange === 'custom'}>Custom</button>
+                <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-none sm:flex-wrap sm:overflow-visible">
+                        <button type="button" onClick={() => applyPeriod('today')} className={`${periodChip(dateRange === 'today')} shrink-0 whitespace-nowrap`} aria-pressed={dateRange === 'today'}>Today</button>
+                        <button type="button" onClick={() => applyPeriod('week')} className={`${periodChip(dateRange === 'week')} shrink-0 whitespace-nowrap`} aria-pressed={dateRange === 'week'}>Week</button>
+                        <button type="button" onClick={() => applyPeriod('last30')} className={`${periodChip(dateRange === 'last30')} shrink-0 whitespace-nowrap`} aria-pressed={dateRange === 'last30'}>30 Days</button>
+                        <button type="button" onClick={() => applyPeriod('month')} className={`${periodChip(dateRange === 'month')} shrink-0 whitespace-nowrap`} aria-pressed={dateRange === 'month'}>Month</button>
+                        <button type="button" onClick={() => applyPeriod('lastMonth')} className={`${periodChip(dateRange === 'lastMonth')} shrink-0 whitespace-nowrap`} aria-pressed={dateRange === 'lastMonth'}>Last Month</button>
+                        <button type="button" onClick={() => applyPeriod('allTime')} className={`${periodChip(dateRange === 'allTime')} shrink-0 whitespace-nowrap`} aria-pressed={dateRange === 'allTime'}>All Time</button>
+                        <button type="button" onClick={selectCustom} className={`${periodChip(dateRange === 'custom')} shrink-0 whitespace-nowrap`} aria-pressed={dateRange === 'custom'}>Custom</button>
                     </div>
                     {!isAdminOrOwner(user) && availableBranches.length > 1 && (
                         <select

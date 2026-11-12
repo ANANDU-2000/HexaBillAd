@@ -37,9 +37,9 @@ How to read severity: **P0** blocks or misleads money work · **P1** costs taps/
 
 | # | Sev | Problem |
 |---|-----|---------|
-| L1 | P0 | The filter form is always open: two date inputs + 6 selects/inputs = ~500 px before the first invoice. On a 844 px screen the list is below the fold. |
+| L1 | P2 | Verified: the filter panel is **closed by default** (0 date inputs visible on load); the collapsed button showed `… → …` instead of a readable range, so it looked broken. Fixed to "Filters · Any date". | `/sales-ledger` at 390 |
 | L2 | P1 | Two chip rows (Today…All dates, then Overdue/Newest/Oldest/filter/download) + a download button on its own line: four rows of chrome. |
-| L3 | P1 | Each card repeats Bill / Paid / Pending / Days overdue / Balance / Mode — six numbers, three of them zero, in 12 px text. |
+| L3 | P1 | Each card repeated Bill / Paid / Pending / Days overdue / Balance / Mode as six equal tiles — no hierarchy, three of them zero. |
 | L4 | P1 | "Record payment" is a full-width orange bar per card, the loudest thing on the screen for a secondary action. |
 | L5 | P2 | Date inputs show `dd - mm - yyyy` placeholders in an order that does not match the app's `12-11` display. |
 
@@ -56,7 +56,7 @@ How to read severity: **P0** blocks or misleads money work · **P1** costs taps/
 
 | # | Sev | Problem |
 |---|-----|---------|
-| PR1 | P1 | Tab strip clips: "All Products · Low Stock 0 · Mis…" — third tab cut with no scroll cue. |
+| PR1 | — | Verified OK: the tab strip scrolls horizontally with an edge fade (`TabNavigation`), it is not clipped. |
 | PR2 | P1 | "Add product" wraps to two lines inside its button; the `1 total` pill floats alone. |
 | PR3 | P2 | "Select page (1) — only the products shown here" is internal jargon above a per-card checkbox. |
 | PR4 | P2 | Missing image renders a broken-image glyph instead of a neutral placeholder. |
