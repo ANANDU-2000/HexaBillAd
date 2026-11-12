@@ -1805,16 +1805,14 @@ const ExpensesPage = () => {
                       ? 'Expenses could not be loaded. Check your connection, then try again.'
                       : 'No expenses for this period.'}
                   </p>
-                  {listError && (
+                  {listError ? (
                     <button type="button" onClick={() => handleRefresh()} className="btn btn-secondary mt-3">
                       Try again
                     </button>
-                  )}
-                  {!listError && isAdminOrOwner(user) && (
-                    <button type="button" onClick={() => setShowAddModal(true)} className="btn btn-primary mt-3">
-                      <Plus className="h-4 w-4" aria-hidden />
-                      Add expense
-                    </button>
+                  ) : (
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {isAdminOrOwner(user) ? 'Use “Add expense” above to record the first one.' : 'Ask an owner or admin to add expenses.'}
+                    </p>
                   )}
                 </div>
                 )
