@@ -467,18 +467,18 @@ const Layout = () => {
         <div className="fixed inset-0 z-[75] bg-black/40 xl:hidden" onClick={closeSidebarDrawer} aria-hidden />
       )}
       <div className={`no-print ${posCompact ? 'hidden xl:flex' : 'flex'} fixed inset-y-0 left-0 z-[80] w-72 flex-col transition-transform duration-200 ease-out motion-reduce:transition-none ${sidebarDrawerOpen ? 'translate-x-0' : '-translate-x-full'} xl:w-[var(--hb-nav-w)] xl:translate-x-0 xl:transition-[width] xl:duration-150 ${userIsSystemAdmin && selectedTenantId ? 'top-10' : ''} xl:min-h-0`}>
-        <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-white/10 bg-primary-900 text-white">
-          <div className={`flex min-h-16 shrink-0 items-center border-b border-white/10 ${labelsVisible ? 'gap-2 px-3 py-1' : 'justify-center px-2'}`}>
-            <Link to="/dashboard" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1" title={companyName} aria-label={`${companyName} — dashboard`}>
+        <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-neutral-200 bg-white text-neutral-900">
+          <div className={`flex min-h-16 shrink-0 items-center border-b border-neutral-200 ${labelsVisible ? 'gap-2 px-3 py-1' : 'justify-center px-2'}`}>
+            <Link to="/dashboard" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 hover:bg-neutral-100" title={companyName} aria-label={`${companyName} — dashboard`}>
               <Logo size="small" showText={false} className="!space-x-0" />
               {labelsVisible && (
-                <span className="line-clamp-3 min-w-0 flex-1 break-words text-sm font-semibold leading-tight text-white">{companyName}</span>
+                <span className="line-clamp-3 min-w-0 flex-1 break-words text-sm font-semibold leading-tight text-neutral-900">{companyName}</span>
               )}
             </Link>
             <button
               type="button"
               onClick={closeSidebarDrawer}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white xl:hidden"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 xl:hidden"
               aria-label="Close menu"
             >
               <X className="h-[18px] w-[18px]" aria-hidden />
@@ -493,14 +493,14 @@ const Layout = () => {
                     <button
                       type="button"
                       onClick={() => toggleGroup(group)}
-                      className="flex h-8 w-full items-center justify-between rounded-md px-2 text-left text-micro font-semibold tracking-[0.08em] text-white/50 transition-colors hover:text-white/80"
+                      className="flex h-8 w-full items-center justify-between rounded-md px-2 text-left text-micro font-semibold tracking-[0.08em] text-neutral-500 transition-colors hover:text-neutral-800"
                       aria-expanded={open}
                     >
                       <span className="truncate">{group.label}</span>
                       <ChevronDown className={`h-3 w-3 shrink-0 transition-transform duration-150 motion-reduce:transition-none ${open ? '' : '-rotate-90'}`} aria-hidden />
                     </button>
                   ) : groupIndex > 0 ? (
-                    <div className="mx-2 mb-2 border-t border-white/10" aria-hidden />
+                    <div className="mx-2 mb-2 border-t border-neutral-200" aria-hidden />
                   ) : null}
                   {open && (
                     <div className="space-y-0.5">
@@ -514,11 +514,11 @@ const Layout = () => {
                             className={`group/nav relative flex transition-colors duration-150 motion-reduce:transition-none ${
                               labelsVisible
                                 ? 'h-11 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium xl:h-9'
-                                : 'h-10 items-center justify-center rounded-xl'
+                                : 'h-11 items-center justify-center rounded-xl'
                             } ${
                               active
-                                ? 'bg-white/[0.14] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
-                                : 'text-white/65 hover:bg-white/[0.07] hover:text-white'
+                                ? 'bg-primary-50 text-primary-700 font-semibold'
+                                : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
                             }`}
                             aria-label={item.label}
                             title={item.label}
@@ -529,7 +529,7 @@ const Layout = () => {
                             onBlur={() => setNavTip(null)}
                           >
                             {active && labelsVisible && (
-                              <span className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary-300" aria-hidden />
+                              <span className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary-600" aria-hidden />
                             )}
                             <Icon className={`shrink-0 ${labelsVisible ? 'h-[18px] w-[18px]' : 'h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
                             {labelsVisible ? <span className="truncate">{item.label}</span> : <span className="sr-only">{item.label}</span>}
@@ -541,17 +541,17 @@ const Layout = () => {
                 </div>
               )
             })}
-            <div className={`${labelsVisible ? 'mt-3 border-t border-white/10 pt-3' : 'mt-2 border-t border-white/10 pt-2'}`}>
+            <div className={`${labelsVisible ? 'mt-3 border-t border-neutral-200 pt-3' : 'mt-2 border-t border-neutral-200 pt-2'}`}>
               <Link
                 to="/more"
                 className={`group/nav relative flex transition-colors duration-150 motion-reduce:transition-none ${
                   labelsVisible
                     ? 'h-11 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium xl:h-9'
-                    : 'h-10 items-center justify-center rounded-xl'
+                    : 'h-11 items-center justify-center rounded-xl'
                 } ${
                   location.pathname === '/more'
-                    ? 'bg-white/[0.14] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
-                    : 'text-white/65 hover:bg-white/[0.07] hover:text-white'
+                    ? 'bg-primary-50 text-primary-700 font-semibold'
+                    : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
                 }`}
                 aria-label="More"
                 title="More tools"
@@ -562,18 +562,18 @@ const Layout = () => {
                 onBlur={() => setNavTip(null)}
               >
                 {location.pathname === '/more' && labelsVisible && (
-                  <span className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary-300" aria-hidden />
+                  <span className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary-600" aria-hidden />
                 )}
                 <MoreHorizontal className={`shrink-0 ${labelsVisible ? 'h-[18px] w-[18px]' : 'h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
                 {labelsVisible ? <span className="truncate">More tools</span> : <span className="sr-only">More</span>}
               </Link>
             </div>
           </nav>
-          <div className="hidden shrink-0 border-t border-white/10 p-2 xl:block">
+          <div className="hidden shrink-0 border-t border-neutral-200 p-2 xl:block">
             <button
               type="button"
               onClick={toggleSidebar}
-              className={`flex h-9 w-full items-center rounded-lg text-sm font-medium text-white/55 transition-colors hover:bg-white/[0.07] hover:text-white ${labelsVisible ? 'gap-2.5 px-2.5' : 'justify-center'}`}
+              className={`flex h-9 w-full items-center rounded-lg text-sm font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 ${labelsVisible ? 'gap-2.5 px-2.5' : 'justify-center'}`}
               title={isSidebarCollapsed ? 'Expand sidebar (Ctrl+\\)' : 'Collapse sidebar (Ctrl+\\)'}
               aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
