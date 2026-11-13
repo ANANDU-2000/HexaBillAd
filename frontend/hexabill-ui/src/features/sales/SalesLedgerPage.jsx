@@ -12,7 +12,8 @@ import {
   Pencil,
   Banknote,
   Printer,
-  Trash2
+  Trash2,
+  ChevronDown
 } from 'lucide-react'
 import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -285,6 +286,8 @@ const SalesLedgerPage = () => {
       return v === null ? false : v === 'true'
     } catch { return false }
   })
+  // Day-to-day filters stay visible; branch/route/staff and the amount ranges are one tap away.
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [sortOrder, setSortOrder] = useState(() => {
     const fromUrl = searchParams.get('sort')
     if (fromUrl === 'oldest' || fromUrl === 'newest') return fromUrl
@@ -602,6 +605,25 @@ const SalesLedgerPage = () => {
   }, [reportData.salesLedger, filters.date, filters.name, filters.type, filters.status, filters.invoiceNo, filters.branchId, filters.routeId, filters.staffId, filters.realPendingMin, filters.realPendingMax, filters.realGotPaymentMin, filters.realGotPaymentMax, overdueOnly])
   
   const hasActiveFilters = overdueOnly || Object.values(filters).some(v => v !== '')
+  const activeFilterCount = Object.values(filters).filter(v => v !== '').length + (overdueOnly ? 1 : 0)
+  const clearAllFilters = () => {
+    setFilters({
+      date: '',
+      name: '',
+      type: '',
+      status: '',
+      invoiceNo: '',
+      branchId: '',
+      routeId: '',
+      staffId: '',
+      realPendingMin: '',
+      realPendingMax: '',
+      realGotPaymentMin: '',
+      realGotPaymentMax: ''
+    })
+    setOverdueOnly(false)
+    setShowAdvancedFilters(false)
+  }
   const rangeLabel = dateRange.from && dateRange.to
     ? `${new Date(dateRange.from).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} – ${new Date(dateRange.to).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`
     : 'Any date'
@@ -1113,16 +1135,36 @@ const SalesLedgerPage = () => {
       {/* Filters - Collapsible */}
       {showFilters && (
         <div className="flex-shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-2">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center">
-              <Filter className="h-4 w-4 text-primary-600 mr-2" />
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-primary-600" />
               <h3 className="text-sm lg:text-base font-semibold text-neutral-900">Filters</h3>
+              {hasActiveFilters && (
+                <span className="rounded-full bg-primary-600 px-2 py-0.5 text-xs font-medium text-white">
+                  {activeFilterCount} active
+                </span>
+              )}
             </div>
-            {hasActiveFilters && (
-              <span className="px-2 py-1 bg-primary-600 text-white text-xs font-medium rounded-full">
-                {Object.values(filters).filter(v => v !== '').length} active
-              </span>
-            )}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFilters((v) => !v)}
+                aria-expanded={showAdvancedFilters}
+                className="inline-flex min-h-8 items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+              >
+                {showAdvancedFilters ? 'Fewer filters' : 'More filters'}
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} aria-hidden />
+              </button>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="inline-flex min-h-8 items-center rounded-lg px-2.5 text-xs font-medium text-neutral-600 hover:bg-neutral-100"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
           {/* Date presets live here, not in the toolbar: no sideways scroller above the list. */}
           <div className="mb-3">
@@ -1171,6 +1213,8 @@ const SalesLedgerPage = () => {
               value={filters.invoiceNo}
               onChange={(e) => setFilters(prev => ({ ...prev, invoiceNo: e.target.value }))}
             />
+            {showAdvancedFilters && (
+              <>
             {branches.length > 0 && (
               <Select
                 label="Branch"
@@ -1244,30 +1288,8 @@ const SalesLedgerPage = () => {
                 />
               </div>
             </div>
-            <div className="col-span-2 sm:col-span-1 flex items-end">
-              <button
-                onClick={() => {
-                setFilters({
-                  date: '',
-                  name: '',
-                  type: '',
-                  status: '',
-                  invoiceNo: '',
-                  branchId: '',
-                  routeId: '',
-                  staffId: '',
-                  realPendingMin: '',
-                  realPendingMax: '',
-                  realGotPaymentMin: '',
-                  realGotPaymentMax: ''
-                })
-                setOverdueOnly(false)
-              }}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md text-xs font-medium text-neutral-700 bg-white hover:bg-neutral-50 transition-colors"
-              >
-                Clear All
-              </button>
-            </div>
+            </>
+            )}
           </div>
         </div>
       )}

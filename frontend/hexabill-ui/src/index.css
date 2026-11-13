@@ -445,7 +445,14 @@
 :root { --hb-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
 .hb-skeleton { background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%); background-size: 200% 100%; border-radius: 8px; }
 button, a, select, input, textarea, [role="button"], [role="tab"] {
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.12s ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* A small press response makes taps feel acknowledged; opt out with data-no-press. */
+  button:not(:disabled):not([data-no-press]):active,
+  [role="button"][aria-disabled="false"]:active {
+    transform: scale(0.985);
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
   .hb-skeleton { animation: hb-shimmer 1.3s linear infinite; }
