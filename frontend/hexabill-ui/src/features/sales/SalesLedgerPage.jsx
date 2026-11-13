@@ -406,7 +406,7 @@ const SalesLedgerPage = () => {
       if (!ticket.isCurrent()) return
 
       if (ledgerResponse?.success && ledgerResponse?.data) {
-        const entries = ledgerResponse.data.entries || []
+        const entries = Array.isArray(ledgerResponse?.data?.entries) ? ledgerResponse.data.entries : []
         const summary = ledgerResponse.data.summary || {}
 
         const ledgerWithBalance = entries.map(entry => ({

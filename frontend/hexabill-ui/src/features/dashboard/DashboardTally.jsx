@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import {
@@ -6,7 +6,6 @@ import {
     ChevronRight, RefreshCw, CheckCircle, X,
     Banknote, DollarSign, TrendingUp, AlertTriangle, Package, Database, BookOpen, Info
 } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
 import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency } from '../../utils/currency'
 import { reportsAPI } from '../../services/index'
@@ -34,6 +33,9 @@ const num = (value) => {
     const n = parseFloat(value)
     return Number.isFinite(n) ? n : 0
 }
+
+// Recharts is a ~550KB chunk; keep it out of the landing page's first paint.
+const SalesTrendChart = lazy(() => import('./SalesTrendChart'))
 
 const surfaceClass = 'rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-primary)]'
 const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2'
@@ -990,28 +992,9 @@ const DashboardTally = () => {
                     <div className="h-[140px] animate-pulse rounded bg-[var(--bg-elevated)] md:h-[160px]" aria-hidden />
                 ) : trendHasSales ? (
                     <div className="h-[140px] md:h-[160px]" role="img" aria-label={`Sales trend, ${rangeLabel}, ${formatCurrency(trendSales)}`}>
-                        <ResponsiveContainer width="100%" height={150} minWidth={0}>
-                            <BarChart data={dailySalesTrend}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                                <XAxis
-                                    dataKey="date"
-                                    tickFormatter={(d) => formatDisplayDate(d).slice(0, 5)}
-                                    stroke="var(--text-tertiary)"
-                                    fontSize={12}
-                                />
-                                <YAxis
-                                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))}
-                                    stroke="var(--text-tertiary)"
-                                    fontSize={12}
-                                />
-                                <Tooltip
-                                    formatter={(value) => formatCurrency(value)}
-                                    labelFormatter={(label) => formatDisplayDate(label)}
-                                    contentStyle={{ backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)' }}
-                                />
-                                <Bar dataKey="sales" fill="var(--primary)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                        <Suspense fallback={<div className="h-[140px] animate-pulse rounded bg-[var(--bg-elevated)] md:h-[160px]" aria-hidden />}>
+                            <SalesTrendChart data={dailySalesTrend} formatDisplayDate={formatDisplayDate} />
+                        </Suspense>
                     </div>
                 ) : (
                     <div className="flex flex-wrap items-center gap-3 py-2">

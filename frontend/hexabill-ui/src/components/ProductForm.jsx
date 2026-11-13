@@ -35,15 +35,6 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
   })
   
   // UX-BUG-43: warn before a reload or tab close loses typed product details.
-  const initialSnapshotRef = useRef(JSON.stringify(formData))
-  const isFormDirty = JSON.stringify(formData) !== initialSnapshotRef.current || !!imageFile || imageRemoved
-  useEffect(() => {
-    if (!isFormDirty) return undefined
-    const onBeforeUnload = (e) => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', onBeforeUnload)
-    return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [isFormDirty])
-
   const [categories, setCategories] = useState([])
   const [loadingCategories, setLoadingCategories] = useState(false)
   const [creatingCategory, setCreatingCategory] = useState(false)
@@ -60,6 +51,17 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
   const [scanCamError, setScanCamError] = useState(null)
   const [barcodePdfBusy, setBarcodePdfBusy] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
+
+  // Must sit AFTER the image state: referencing imageFile/imageRemoved earlier threw
+  // "Cannot access 'imageFile' before initialization" and crashed Add product.
+  const initialSnapshotRef = useRef(JSON.stringify(formData))
+  const isFormDirty = JSON.stringify(formData) !== initialSnapshotRef.current || !!imageFile || imageRemoved
+  useEffect(() => {
+    if (!isFormDirty) return undefined
+    const onBeforeUnload = (e) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [isFormDirty])
 
   const handleAutoCreateBarcode = () => {
     const sku = (formData.sku || '').trim()

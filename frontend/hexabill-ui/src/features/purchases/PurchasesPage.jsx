@@ -302,8 +302,9 @@ const PurchasesPage = () => {
       } else {
         const response = await purchasesAPI.getPurchases(params)
         if (response.success) {
-          setPurchases(response.data.items)
-          setTotalPages(response.data.totalPages)
+          // The API can answer success without items (empty filter / older shape); never store undefined.
+          setPurchases(response.data?.items || [])
+          setTotalPages(response.data?.totalPages || 1)
           setListError(false)
         } else {
           setListError(true)

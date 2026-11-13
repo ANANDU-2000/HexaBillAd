@@ -219,12 +219,31 @@ export default function ProfitHistoryPage() {
           )}
           <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search invoice # or customer..." aria-label="Search invoice number or customer"
             className="h-10 min-w-[200px] flex-1 rounded-lg border border-slate-300 px-3 text-sm" />
-          <div className="flex gap-2" role="group" aria-label="Bill filter">
-            <button type="button" className={pill(!issuesOnly)} aria-pressed={!issuesOnly} onClick={() => setIssuesOnly(false)}>All Bills</button>
-            <button type="button" className={pill(issuesOnly)} aria-pressed={issuesOnly} onClick={() => setIssuesOnly(true)}>Margin Issues Only ({summary?.anomalousMarginCount ?? 0})</button>
-          </div>
         </div>
         <p className="text-xs text-slate-500">UAE business dates: {from === to ? from : `${from} to ${to}`}</p>
+      </div>
+
+      <div className="flex items-center gap-1 border-b border-slate-200" role="tablist" aria-label="Invoice scope">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={!issuesOnly}
+          onClick={() => setIssuesOnly(false)}
+          className={`-mb-px inline-flex min-h-10 items-center gap-2 border-b-2 px-3 text-sm font-semibold ${!issuesOnly ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-600 hover:text-slate-900'}`}
+        >
+          All bills
+          <span className={`rounded-full px-2 py-0.5 text-xs ${!issuesOnly ? 'bg-primary-50 text-primary-700' : 'bg-slate-100 text-slate-600'}`}>{invoices.length}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={issuesOnly}
+          onClick={() => setIssuesOnly(true)}
+          className={`-mb-px inline-flex min-h-10 items-center gap-2 border-b-2 px-3 text-sm font-semibold ${issuesOnly ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-600 hover:text-slate-900'}`}
+        >
+          Margin issues
+          <span className={`rounded-full px-2 py-0.5 text-xs ${issuesOnly ? 'bg-primary-50 text-primary-700' : 'bg-slate-100 text-slate-600'}`}>{summary?.anomalousMarginCount ?? 0}</span>
+        </button>
       </div>
 
       {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">{error} <button type="button" className="underline" onClick={load}>Try again</button></div>}
