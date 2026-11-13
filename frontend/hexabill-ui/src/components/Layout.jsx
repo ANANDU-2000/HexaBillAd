@@ -606,12 +606,11 @@ const Layout = () => {
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="flex h-touch xl:min-h-[40px] w-full max-w-md items-center gap-2 rounded-md border border-surface-border bg-neutral-50 px-3 text-sm text-neutral-500 transition-colors hover:border-neutral-300 hover:bg-white"
+              className="flex h-touch w-touch shrink-0 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 xl:h-10 xl:w-10"
               aria-label="Search (Ctrl+K)"
+              title="Search (Ctrl+K)"
             >
-              <Search className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
-              <span className="flex-1 truncate text-left">Search pages, customers, products…</span>
-              <kbd className="hidden rounded border border-surface-border bg-white px-1.5 font-sans text-micro text-neutral-500 lg:block">Ctrl K</kbd>
+              <Search className="h-[19px] w-[19px]" strokeWidth={1.75} aria-hidden />
             </button>
             <div className="ml-auto flex shrink-0 items-center gap-1 text-neutral-600">
               {assistantEnabled && (

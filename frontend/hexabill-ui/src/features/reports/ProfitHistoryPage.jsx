@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ChevronRight, ChevronDown, RefreshCw, Download, Printer, FileText, AlertTriangle } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { ChevronRight, ChevronDown, RefreshCw, Download, Printer, FileText, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { profitAPI, salesAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
@@ -64,7 +64,6 @@ function SummaryCard({ title, amount, valueClass = '', children }) {
 }
 
 export default function ProfitHistoryPage() {
-  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [askConfirm, confirmDialog] = useConfirmDialog()
   const urlPreset = searchParams.get('preset')
@@ -117,6 +116,16 @@ export default function ProfitHistoryPage() {
       (!issuesOnly || i.hasMarginWarning) &&
       (!q || i.invoiceNo.toLowerCase().includes(q) || i.customerName.toLowerCase().includes(q)))
   }, [data, search, issuesOnly])
+
+  // Keep the list short: 20 invoices per page instead of an endless scroll.
+  const PAGE_SIZE = 20
+  const [page, setPage] = useState(1)
+  useEffect(() => { setPage(1) }, [search, issuesOnly, from, to])
+  const pageCount = Math.max(1, Math.ceil(invoices.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount)
+  const firstRow = invoices.length ? (safePage - 1) * PAGE_SIZE + 1 : 0
+  const lastRow = Math.min(safePage * PAGE_SIZE, invoices.length)
+  const pageRows = invoices.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   const toggle = (id) => setExpanded((prev) => {
     const next = new Set(prev)
@@ -179,9 +188,6 @@ export default function ProfitHistoryPage() {
     <div className="mx-auto w-full max-w-7xl space-y-3 p-3 sm:p-4 text-slate-900">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <button type="button" onClick={() => navigate('/dashboard')} className="mb-1 inline-flex min-h-9 items-center gap-1 text-sm font-bold text-blue-700 hover:underline">
-            <ArrowLeft className="h-4 w-4" aria-hidden /> Back to Dashboard
-          </button>
           <h1 className="text-xl font-bold sm:text-2xl">Profit &amp; Margin Inspector</h1>
           <p className="text-sm text-slate-600">See exact product costs, sales margins &amp; 5% profit VAT</p>
         </div>
@@ -259,7 +265,7 @@ export default function ProfitHistoryPage() {
                 {invoices.length === 0 && (
                   <tr><td colSpan={6} className="p-6 text-center text-sm text-slate-600">{data.invoices.length ? 'No bills match this filter.' : 'No bills in this period.'}</td></tr>
                 )}
-                {invoices.map((inv) => {
+                {pageRows.map((inv) => {
                   const open = expanded.has(inv.saleId)
                   const label = warningLabel(inv)
                   return (
@@ -333,6 +339,32 @@ export default function ProfitHistoryPage() {
                 })}
               </tbody>
             </table>
+            {invoices.length > PAGE_SIZE && (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-3 py-2.5 print:hidden">
+                <p className="text-sm text-slate-600 tabular-nums">
+                  {firstRow}–{lastRow} of {invoices.length} invoices
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                    className="inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-2 text-sm font-medium tabular-nums text-slate-700">{safePage} / {pageCount}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                    disabled={safePage >= pageCount}
+                    className="inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
