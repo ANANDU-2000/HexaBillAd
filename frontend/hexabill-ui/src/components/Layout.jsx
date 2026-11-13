@@ -36,6 +36,10 @@ import { useBranding } from '../tenant/TenantBrandingContext'
 import { visibleSidebar, isItemActive } from '../navigation/moreMenuConfig'
 import { scheduler } from '../services/scheduler'
 
+// One width drives the rail, the content padding and the top-bar offset, so the three can never drift apart.
+const NAV_RAIL_PX = 76
+const NAV_EXPANDED_PX = 216
+
 const Layout = () => {
   const { user, logout, impersonatedTenantId, stopImpersonation } = useAuth()
   const { companyName } = useBranding()
@@ -64,25 +68,13 @@ const Layout = () => {
   const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false)
   const closeSidebarDrawer = useCallback(() => setSidebarDrawerOpen(false), [])
   useEffect(() => { setSidebarDrawerOpen(false) }, [location.pathname])
-  // Tablet portrait/landscape (<1024px): the rail shows a short text label under every icon (older users cannot decode icons alone).
-  const [isTabletWidth, setIsTabletWidth] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches)
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1023px)')
-    const on = () => setIsTabletWidth(mq.matches)
-    mq.addEventListener('change', on)
-    return () => mq.removeEventListener('change', on)
-  }, [])
-  // POS needs the whole width: below 1280px its side menu shrinks to a slim icon rail. Phones (<640px) own the bottom bar.
+  // POS needs the whole width: below 1280px its side menu is hidden (focus mode). Phones (<640px) own the bottom bar.
   const [isNarrowPos, setIsNarrowPos] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1279px)').matches)
-  const [isPhoneWidth, setIsPhoneWidth] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches)
   useEffect(() => {
     const narrow = window.matchMedia('(max-width: 1279px)')
-    const phone = window.matchMedia('(max-width: 639px)')
     const onNarrow = () => setIsNarrowPos(narrow.matches)
-    const onPhone = () => setIsPhoneWidth(phone.matches)
     narrow.addEventListener('change', onNarrow)
-    phone.addEventListener('change', onPhone)
-    return () => { narrow.removeEventListener('change', onNarrow); phone.removeEventListener('change', onPhone) }
+    return () => narrow.removeEventListener('change', onNarrow)
   }, [])
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
@@ -259,7 +251,7 @@ const Layout = () => {
   const sidebarCollapsed = isSidebarCollapsed || posCompact
   // The drawer always shows labels: on a phone/tablet the rail icons alone are unreadable.
   const labelsVisible = sidebarDrawerOpen || (isDesktopNav && !sidebarCollapsed)
-  const railLabels = !labelsVisible && isTabletWidth && !posCompact
+  const navWidthPx = sidebarCollapsed ? NAV_RAIL_PX : NAV_EXPANDED_PX
 
   const groupIsOpen = (group) => {
     if (!labelsVisible) return true
@@ -398,7 +390,7 @@ const Layout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 overflow-x-hidden" style={{ '--hb-bottom-nav-h': bottomNavVisible ? '4.75rem' : '0px' }}>
+    <div className="min-h-screen bg-neutral-50 overflow-x-hidden" style={{ '--hb-bottom-nav-h': bottomNavVisible ? '4.75rem' : '0px', '--hb-nav-w': `${navWidthPx}px` }}>
       <div key={location.pathname} aria-hidden="true" className="hb-route-bar pointer-events-none fixed inset-x-0 top-0 z-[70] h-0.5 bg-primary-600" />
       {/* Skip Link */}
       <a
@@ -467,113 +459,131 @@ const Layout = () => {
       </header>
       )}
 
-      {/* Sidebar: labelled 192px from 640px (tablets), 240px from 1024px; icon rail only when the user collapses it */}
+      {/* Sidebar: labelled drawer below 1280, slim icon rail on desktop. Its width lives in --hb-nav-w,
+          which also pads the content and offsets the top bar — so the two can never overlap. */}
       {!posCompact && sidebarDrawerOpen && (
         <div className="fixed inset-0 z-[75] bg-black/40 xl:hidden" onClick={closeSidebarDrawer} aria-hidden />
       )}
-      <div className={`no-print ${posCompact ? 'hidden xl:flex' : 'flex'} fixed inset-y-0 left-0 z-[80] flex-col transition-transform duration-200 ease-out motion-reduce:transition-none ${sidebarDrawerOpen ? 'translate-x-0' : '-translate-x-full'} xl:translate-x-0 xl:transition-none ${userIsSystemAdmin && selectedTenantId ? 'top-10' : ''} ${sidebarCollapsed ? 'xl:w-24' : 'xl:w-56 2xl:w-64'} ${posCompact ? '' : 'w-72'} xl:min-h-0`}>
-        <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
-          <div className={`flex shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'h-16 justify-between gap-2' : 'min-h-16 flex-col justify-center gap-1 py-2'}`}>
-            <Link to="/dashboard" className={`flex h-touch w-touch items-center gap-2 rounded-md xl:h-auto xl:w-auto ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
+      <div className={`no-print ${posCompact ? 'hidden xl:flex' : 'flex'} fixed inset-y-0 left-0 z-[80] w-72 flex-col transition-transform duration-200 ease-out motion-reduce:transition-none ${sidebarDrawerOpen ? 'translate-x-0' : '-translate-x-full'} xl:w-[var(--hb-nav-w)] xl:translate-x-0 xl:transition-[width] xl:duration-150 ${userIsSystemAdmin && selectedTenantId ? 'top-10' : ''} xl:min-h-0`}>
+        <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-white/10 bg-primary-900 text-white">
+          <div className={`flex min-h-16 shrink-0 items-center border-b border-white/10 ${labelsVisible ? 'gap-2 px-3 py-1' : 'justify-center px-2'}`}>
+            <Link to="/dashboard" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1" title={companyName} aria-label={`${companyName} — dashboard`}>
               <Logo size="small" showText={false} className="!space-x-0" />
               {labelsVisible && (
-                <span className="line-clamp-3 break-words text-sm font-semibold leading-tight text-white">{companyName}</span>
+                <span className="line-clamp-3 min-w-0 flex-1 break-words text-sm font-semibold leading-tight text-white">{companyName}</span>
               )}
             </Link>
             <button
               type="button"
-              onClick={toggleSidebar}
-              className="hidden min-h-touch min-w-touch items-center justify-center rounded-md text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white motion-reduce:transition-none xl:flex"
-              title={isSidebarCollapsed ? 'Expand sidebar (Ctrl+\\)' : 'Collapse sidebar (Ctrl+\\)'}
-              aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            </button>
-            <button
-              type="button"
               onClick={closeSidebarDrawer}
-              className="flex min-h-touch min-w-touch items-center justify-center rounded-md text-primary-200 transition-colors hover:bg-primary-800 hover:text-white xl:hidden"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white xl:hidden"
               aria-label="Close menu"
             >
-              <X className="h-5 w-5" aria-hidden />
+              <X className="h-[18px] w-[18px]" aria-hidden />
             </button>
           </div>
-          <nav className={`sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain py-4 ${labelsVisible ? 'px-3' : 'px-2'}`} aria-label="Main">
+          <nav className={`sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain py-3 ${labelsVisible ? 'px-2.5' : 'px-2'}`} aria-label="Main">
             {navGroups.map((group, groupIndex) => {
               const open = groupIsOpen(group)
               return (
-                <div key={group.id} className="space-y-1">
+                <div key={group.id} className={groupIndex > 0 ? 'mt-3' : ''}>
                   {labelsVisible ? (
                     <button
                       type="button"
                       onClick={() => toggleGroup(group)}
-                      className="flex min-h-8 w-full items-center justify-between rounded-md px-2 text-left text-micro font-semibold text-primary-300/80 transition-colors hover:text-white"
+                      className="flex h-8 w-full items-center justify-between rounded-md px-2 text-left text-micro font-semibold tracking-[0.08em] text-white/50 transition-colors hover:text-white/80"
                       aria-expanded={open}
                     >
                       <span className="truncate">{group.label}</span>
-                      <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform duration-150 motion-reduce:transition-none ${open ? '' : '-rotate-90'}`} aria-hidden />
+                      <ChevronDown className={`h-3 w-3 shrink-0 transition-transform duration-150 motion-reduce:transition-none ${open ? '' : '-rotate-90'}`} aria-hidden />
                     </button>
                   ) : groupIndex > 0 ? (
-                    <div className="mx-2 border-t border-primary-800" aria-hidden />
+                    <div className="mx-2 mb-2 border-t border-white/10" aria-hidden />
                   ) : null}
-                  {open && group.items.map((item) => {
-                    const Icon = item.icon
-                    const active = isItemActive(location.pathname, item)
-                    return (
-                      <Link
-                        key={item.id}
-                        to={item.href}
-                        className={`group/nav relative flex rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${
- labelsVisible
- ? 'items-center min-h-11 lg:min-h-10 px-3'
-                            : `flex-col items-center justify-center gap-0.5 px-1 ${railLabels ? 'min-h-[60px] py-1' : 'min-h-[48px]'}`
-                        } ${
-                          active ? 'bg-primary-600 text-white shadow-sm ring-1 ring-white/10' : 'text-primary-100/80 hover:bg-primary-800 hover:text-white'
-                        }`}
-                        aria-label={item.label}
-                        title={item.label}
-                        aria-current={active ? 'page' : undefined}
-                        onMouseEnter={(event) => showNavTip(event, item.label)}
-                        onMouseLeave={() => setNavTip(null)}
-                        onFocus={(event) => showNavTip(event, item.label)}
-                        onBlur={() => setNavTip(null)}
-                      >
-                        <Icon className={`shrink-0 ${labelsVisible ? 'mr-3 h-[18px] w-[18px]' : 'mb-0.5 h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
-                        {labelsVisible && <span className="truncate">{item.label}</span>}
-                        {!labelsVisible && (railLabels ? <span className="w-full text-center text-xs font-medium leading-tight line-clamp-2 [overflow-wrap:normal] [word-break:keep-all] [hyphens:none]">{item.label}</span> : <span className="sr-only">{item.label}</span>)}
-                      </Link>
-                    )
-                  })}
+                  {open && (
+                    <div className="space-y-0.5">
+                      {group.items.map((item) => {
+                        const Icon = item.icon
+                        const active = isItemActive(location.pathname, item)
+                        return (
+                          <Link
+                            key={item.id}
+                            to={item.href}
+                            className={`group/nav relative flex transition-colors duration-150 motion-reduce:transition-none ${
+                              labelsVisible
+                                ? 'h-11 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium xl:h-9'
+                                : 'h-11 items-center justify-center rounded-xl'
+                            } ${
+                              active
+                                ? 'bg-white/[0.14] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
+                                : 'text-white/65 hover:bg-white/[0.07] hover:text-white'
+                            }`}
+                            aria-label={item.label}
+                            title={item.label}
+                            aria-current={active ? 'page' : undefined}
+                            onMouseEnter={(event) => showNavTip(event, item.label)}
+                            onMouseLeave={() => setNavTip(null)}
+                            onFocus={(event) => showNavTip(event, item.label)}
+                            onBlur={() => setNavTip(null)}
+                          >
+                            {active && labelsVisible && (
+                              <span className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary-300" aria-hidden />
+                            )}
+                            <Icon className={`shrink-0 ${labelsVisible ? 'h-[18px] w-[18px]' : 'h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
+                            {labelsVisible ? <span className="truncate">{item.label}</span> : <span className="sr-only">{item.label}</span>}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )
             })}
-            <Link
-              to="/more"
-              className={`group/nav relative flex rounded-lg text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${
- labelsVisible
- ? 'items-center min-h-11 lg:min-h-10 px-3'
-                  : `flex-col items-center justify-center gap-0.5 px-1 ${railLabels ? 'min-h-[60px] py-1' : 'min-h-[48px]'}`
-              } ${
-                location.pathname === '/more' ? 'bg-primary-600 text-white shadow-sm ring-1 ring-white/10' : 'border border-dashed border-primary-700 text-primary-100/80 hover:border-primary-500 hover:bg-primary-800 hover:text-white'
-              }`}
-              aria-label="More"
-              title="More tools"
-              aria-current={location.pathname === '/more' ? 'page' : undefined}
-              onMouseEnter={(event) => showNavTip(event, 'More')}
-              onMouseLeave={() => setNavTip(null)}
-              onFocus={(event) => showNavTip(event, 'More')}
-              onBlur={() => setNavTip(null)}
-            >
-              <MoreHorizontal className={`shrink-0 ${labelsVisible ? 'mr-3 h-[18px] w-[18px]' : 'mb-0.5 h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
-              {labelsVisible && <span className="truncate">More tools</span>}
-              {!labelsVisible && (railLabels ? <span className="w-full text-center text-xs font-medium leading-tight">More</span> : <span className="sr-only">More</span>)}
-            </Link>
+            <div className={`${labelsVisible ? 'mt-3 border-t border-white/10 pt-3' : 'mt-2 border-t border-white/10 pt-2'}`}>
+              <Link
+                to="/more"
+                className={`group/nav relative flex transition-colors duration-150 motion-reduce:transition-none ${
+                  labelsVisible
+                    ? 'h-11 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium xl:h-9'
+                    : 'h-11 items-center justify-center rounded-xl'
+                } ${
+                  location.pathname === '/more'
+                    ? 'bg-white/[0.14] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
+                    : 'text-white/65 hover:bg-white/[0.07] hover:text-white'
+                }`}
+                aria-label="More"
+                title="More tools"
+                aria-current={location.pathname === '/more' ? 'page' : undefined}
+                onMouseEnter={(event) => showNavTip(event, 'More')}
+                onMouseLeave={() => setNavTip(null)}
+                onFocus={(event) => showNavTip(event, 'More')}
+                onBlur={() => setNavTip(null)}
+              >
+                {location.pathname === '/more' && labelsVisible && (
+                  <span className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary-300" aria-hidden />
+                )}
+                <MoreHorizontal className={`shrink-0 ${labelsVisible ? 'h-[18px] w-[18px]' : 'h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
+                {labelsVisible ? <span className="truncate">More tools</span> : <span className="sr-only">More</span>}
+              </Link>
+            </div>
           </nav>
+          <div className="hidden shrink-0 border-t border-white/10 p-2 xl:block">
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className={`flex h-9 w-full items-center rounded-lg text-sm font-medium text-white/55 transition-colors hover:bg-white/[0.07] hover:text-white ${labelsVisible ? 'gap-2.5 px-2.5' : 'justify-center'}`}
+              title={isSidebarCollapsed ? 'Expand sidebar (Ctrl+\\)' : 'Collapse sidebar (Ctrl+\\)'}
+              aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {isSidebarCollapsed ? <ChevronRight className="h-[18px] w-[18px]" aria-hidden /> : <ChevronLeft className="h-[18px] w-[18px]" aria-hidden />}
+              {labelsVisible && <span>Collapse</span>}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Main content - Full viewport after sidebar; pt-10 when impersonation banner visible so content not covered */}
-      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none ${posCompact ? 'xl:pl-0' : sidebarCollapsed ? (railLabels ? 'xl:pl-24' : 'xl:pl-16') : 'xl:pl-56 2xl:pl-64'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
+      <div className={`flex ${isBoundedListRoute ? 'h-[100dvh]' : 'min-h-screen'} w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none xl:pl-[var(--hb-nav-w)] ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
         {backendUnavailable && (
           <div className="px-4 py-2 bg-warning-bg border-b border-warning-border text-warning-fg text-sm">
             Service temporarily unavailable. Try again in a moment, or contact your company administrator.
@@ -583,7 +593,7 @@ const Layout = () => {
         <CloudHostingCostReminder />
         {/* Desktop/tablet top bar — search, alerts, one account menu. Pages own their heading; tenant identity lives in the sidebar only. */}
         {!isPosRoute && (
-        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:left-0 md:block ${sidebarCollapsed ? (railLabels ? 'xl:left-24' : 'xl:left-16') : 'xl:left-56 2xl:left-64'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:left-0 md:block xl:left-[var(--hb-nav-w)] ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
           <div className="flex h-full items-center gap-3 px-4 lg:px-6">
             <button
               type="button"
@@ -713,7 +723,7 @@ const Layout = () => {
       {navTip && (
         <div
           role="tooltip"
-          className="pointer-events-none fixed z-[70] -translate-y-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white shadow-sm"
+          className="pointer-events-none fixed z-[90] -translate-y-1/2 whitespace-nowrap rounded-lg bg-neutral-900/95 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm ring-1 ring-white/10"
           style={{ top: navTip.top, left: navTip.left }}
         >
           {navTip.label}
