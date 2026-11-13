@@ -37,7 +37,7 @@ import { visibleSidebar, isItemActive } from '../navigation/moreMenuConfig'
 import { scheduler } from '../services/scheduler'
 
 // One width drives the rail, the content padding and the top-bar offset, so the three can never drift apart.
-const NAV_RAIL_PX = 76
+const NAV_RAIL_PX = 64
 const NAV_EXPANDED_PX = 216
 
 const Layout = () => {
@@ -46,9 +46,11 @@ const Layout = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-    // Tablets (<1024px) start as an icons-only rail until the user chooses otherwise; desktops start expanded.
+    // v2 reset: the labelled menu is the default now. The old `sidebar_collapsed` value was a
+    // leftover from the icon-only rail and left returning users stuck on a menu with no labels.
     try {
-      const saved = localStorage.getItem('sidebar_collapsed')
+      const saved = localStorage.getItem('sidebar_collapsed_v2')
+      localStorage.removeItem('sidebar_collapsed')
       if (saved === null) return typeof window !== 'undefined' && window.innerWidth < 1024
       return saved === 'true'
     } catch { return false }
@@ -115,7 +117,7 @@ const Layout = () => {
   const toggleSidebar = useCallback(() => {
     setIsSidebarCollapsed((prev) => {
       const newState = !prev
-      try { localStorage.setItem('sidebar_collapsed', String(newState)) } catch { /* Keep the preference in memory. */ }
+      try { localStorage.setItem('sidebar_collapsed_v2', String(newState)) } catch { /* Keep the preference in memory. */ }
       return newState
     })
   }, [])
@@ -512,7 +514,7 @@ const Layout = () => {
                             className={`group/nav relative flex transition-colors duration-150 motion-reduce:transition-none ${
                               labelsVisible
                                 ? 'h-11 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium xl:h-9'
-                                : 'h-11 items-center justify-center rounded-xl'
+                                : 'h-10 items-center justify-center rounded-xl'
                             } ${
                               active
                                 ? 'bg-white/[0.14] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
@@ -545,7 +547,7 @@ const Layout = () => {
                 className={`group/nav relative flex transition-colors duration-150 motion-reduce:transition-none ${
                   labelsVisible
                     ? 'h-11 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium xl:h-9'
-                    : 'h-11 items-center justify-center rounded-xl'
+                    : 'h-10 items-center justify-center rounded-xl'
                 } ${
                   location.pathname === '/more'
                     ? 'bg-white/[0.14] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
