@@ -16,7 +16,8 @@ namespace HexaBill.Api.Modules.Assistant;
 /// </summary>
 [ApiController]
 [Route("api/mcp")]
-[Authorize]
+// Accepts a normal login token or a company MCP token (hbmcp_...). Nothing else in the API accepts the MCP token.
+[Authorize(AuthenticationSchemes = McpTokenSecrets.EntryScheme)]
 public class McpController : TenantScopedController
 {
     private static readonly string[] SupportedVersions = { "2025-06-18", "2025-03-26", "2024-11-05" };
@@ -55,6 +56,8 @@ public class McpController : TenantScopedController
     public async Task<IActionResult> Handle([FromBody] JsonElement message, CancellationToken ct)
     {
         if (!TryCaller(out var caller)) return Forbid();
+        // Pin the database scope to the verified company, whichever token type was used.
+        _context.SetRequestTenantScope(caller.TenantId, isPlatformScope: false);
         Response.Headers["Cache-Control"] = "no-store";
 
         if (message.ValueKind != JsonValueKind.Object)

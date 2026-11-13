@@ -47,6 +47,16 @@ namespace HexaBill.Api.Core.Authorization
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddScheme<AuthenticationSchemeOptions, BackupAgentAuthenticationHandler>(BackupAgentAuthenticationHandler.AgentScheme, _ => { })
+                .AddScheme<AuthenticationSchemeOptions, McpTokenAuthenticationHandler>(HexaBill.Api.Models.McpTokenSecrets.Scheme, _ => { })
+                // One entry point for /api/mcp: a company MCP token goes to its handler, anything else to the normal JWT handler.
+                // A single scheme means a failed login produces one clean 401 challenge.
+                .AddPolicyScheme(HexaBill.Api.Models.McpTokenSecrets.EntryScheme, "MCP", options =>
+                {
+                    options.ForwardDefaultSelector = ctx =>
+                        ctx.Request.Headers.Authorization.ToString().StartsWith("Bearer " + HexaBill.Api.Models.McpTokenSecrets.TokenPrefix, StringComparison.Ordinal)
+                            ? HexaBill.Api.Models.McpTokenSecrets.Scheme
+                            : JwtBearerDefaults.AuthenticationScheme;
+                })
                 .AddJwtBearer(options =>
                 {
                     options.TokenValidationParameters = new TokenValidationParameters
