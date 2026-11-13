@@ -398,7 +398,7 @@ const AuditLogPage = () => {
 
         {logs.length > 0 && (
           <>
-            <div className={`md:hidden space-y-2 ${loading ? 'opacity-60' : ''}`}>
+            <div className={`xl:hidden space-y-2 ${loading ? 'opacity-60' : ''}`}>
               {logs.map((log) => {
                 const view = formatAuditDetails(log.action, log.details)
                 return (
@@ -424,7 +424,7 @@ const AuditLogPage = () => {
               })}
             </div>
 
-            <div className={`hidden md:block bg-white rounded-lg border border-neutral-200 overflow-hidden ${loading ? 'opacity-60' : ''}`}>
+            <div className={`hidden xl:block bg-white rounded-lg border border-neutral-200 overflow-hidden ${loading ? 'opacity-60' : ''}`}>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-neutral-50 border-b border-neutral-200">

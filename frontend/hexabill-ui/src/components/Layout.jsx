@@ -392,7 +392,7 @@ const Layout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 overflow-x-hidden" style={{ '--hb-bottom-nav-h': bottomNavVisible ? '4.75rem' : '0px', '--hb-nav-w': `${navWidthPx}px` }}>
+    <div className="min-h-screen bg-neutral-50 overflow-x-hidden" style={{ '--hb-bottom-nav-h': bottomNavVisible ? 'calc(5.25rem + env(safe-area-inset-bottom, 0px))' : '0px', '--hb-nav-w': `${navWidthPx}px` }}>
       <div key={location.pathname} aria-hidden="true" className="hb-route-bar pointer-events-none fixed inset-x-0 top-0 z-[70] h-0.5 bg-primary-600" />
       {/* Skip Link */}
       <a
@@ -696,7 +696,7 @@ const Layout = () => {
         </header>
         )}
         {/* Page content — POS has no top header padding for full viewport */}
-        <main id="main-content" data-shell-title={shellOwnsTitle ? 'page' : undefined} data-comfort={!isPosRoute && location.pathname !== '/dashboard' && !location.pathname.startsWith('/billing-history') ? 'on' : undefined} className={`flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC] ${routeShowsBottomNav ? 'pb-[4.75rem]' : 'pb-[env(safe-area-inset-bottom,0px)]'} md:pb-6 ${userIsSystemAdmin && selectedTenantId
+        <main id="main-content" data-shell-title={shellOwnsTitle ? 'page' : undefined} data-comfort={!isPosRoute && location.pathname !== '/dashboard' && !location.pathname.startsWith('/billing-history') ? 'on' : undefined} className={`flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC] ${routeShowsBottomNav ? 'pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] xl:pb-6' : 'pb-[env(safe-area-inset-bottom,0px)] md:pb-6'} ${userIsSystemAdmin && selectedTenantId
  ? (isPosRoute ? 'pt-24 md:pt-10' : 'pt-24 md:pt-[6.5rem]')
  : (isPosRoute ? 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-0' : 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-16')
           }`}>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, ShoppingCart, Wallet, Receipt, Truck, Banknote, UserPlus, PackagePlus, ChevronDown } from 'lucide-react'
+import { Plus, ShoppingCart, Wallet, Receipt, Truck, Banknote, UserPlus, PackagePlus, ChevronDown, ChevronRight } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { getQuickCreateActions } from '../navigation/quickCreate.js'
 import MobileSheet from './mobile/MobileSheet'
@@ -8,24 +8,32 @@ import MobileSheet from './mobile/MobileSheet'
 const ICONS = { ShoppingCart, Wallet, Receipt, Truck, Banknote, UserPlus, PackagePlus }
 
 function ActionList ({ actions, onPick, variant }) {
+  const sheet = variant !== 'menu'
   return (
-    <ul className={variant === 'menu' ? 'py-1' : 'divide-y divide-surface-border'} role={variant === 'menu' ? 'none' : undefined}>
+    <ul className={sheet ? 'divide-y divide-neutral-100' : 'py-1'} role={sheet ? undefined : 'none'}>
       {actions.map((a) => {
         const Icon = ICONS[a.icon] || Plus
         return (
-          <li key={a.id} role={variant === 'menu' ? 'none' : undefined}>
+          <li key={a.id} role={sheet ? undefined : 'none'}>
             <button
               type="button"
-              role={variant === 'menu' ? 'menuitem' : undefined}
+              role={sheet ? undefined : 'menuitem'}
               onClick={() => onPick(a)}
-              className="flex min-h-[48px] w-full items-center gap-3 px-4 py-2 text-left hover:bg-neutral-50 focus-visible:bg-neutral-50"
+              className={sheet
+                ? 'group flex min-h-[60px] w-full items-center gap-3.5 px-4 py-2.5 text-left transition-colors hover:bg-neutral-50 active:bg-neutral-100 focus-visible:bg-neutral-50'
+                : 'flex min-h-[48px] w-full items-center gap-3 px-4 py-2 text-left hover:bg-neutral-50 focus-visible:bg-neutral-50'}
               data-quick-create={a.id}
             >
-              <Icon className="h-5 w-5 shrink-0 text-neutral-500" strokeWidth={1.75} aria-hidden />
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-text-primary">{a.label}</span>
+              <span className={sheet
+                ? 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700 transition-colors group-hover:bg-white'
+                : 'shrink-0'}>
+                <Icon className={sheet ? 'h-5 w-5' : 'h-5 w-5 text-neutral-500'} strokeWidth={1.75} aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className={sheet ? 'block text-[15px] font-semibold leading-snug text-text-primary' : 'block text-sm font-medium text-text-primary'}>{a.label}</span>
                 <span className="block truncate text-xs text-neutral-500">{a.hint}</span>
               </span>
+              {sheet && <ChevronRight className="h-4 w-4 shrink-0 text-neutral-300" strokeWidth={2} aria-hidden />}
             </button>
           </li>
         )
@@ -42,7 +50,7 @@ export function QuickCreateSheet ({ open, onClose }) {
   const pick = (a) => { onClose(); navigate(a.href) }
   return (
     <MobileSheet open={open} onClose={onClose} title="Create" size="sm">
-      <div className="-mx-4 -my-2"><ActionList actions={actions} onPick={pick} variant="sheet" /></div>
+      <ActionList actions={actions} onPick={pick} variant="sheet" />
     </MobileSheet>
   )
 }

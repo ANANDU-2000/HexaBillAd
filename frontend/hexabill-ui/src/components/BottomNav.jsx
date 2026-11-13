@@ -64,15 +64,15 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore, onOpenCreate }) => {
         className="fixed bottom-0 left-0 right-0 z-50 xl:hidden bg-white border-t border-[#E5E7EB] safe-area-bottom shadow-[0_-1px_6px_rgba(15,23,42,0.06)]"
         aria-label="Main navigation"
       >
-        <div className="relative max-w-screen-sm mx-auto px-1 pt-2 pb-1">
+        <div className="relative max-w-screen-sm mx-auto px-1 pt-2.5 pb-1.5">
           <div
-            className="grid items-end min-h-[52px]"
+            className="grid items-end min-h-[56px]"
             style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
           >
             {navItems.map((item) => {
               const Icon = item.icon
-              const containerClass = 'flex flex-col items-center justify-end min-w-0 min-h-[44px] px-0.5 pb-1'
-              const linkClass = `relative ${containerClass} transition-colors duration-150 active:opacity-90`
+              const containerClass = 'relative flex flex-col items-center justify-end min-w-0 min-h-[56px] px-0.5 pb-1 gap-0.5'
+              const linkClass = `${containerClass} transition-colors duration-150 active:opacity-90`
 
               // More → button opening the sheet
               if (item.isMore) {
@@ -86,40 +86,39 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore, onOpenCreate }) => {
                     aria-expanded={moreOpen}
                     aria-current={moreActive ? 'page' : undefined}
                   >
-                    <Icon
-                      className={`w-[22px] h-[22px] shrink-0 ${moreActive ? 'text-primary-600' : 'text-[#64748B]'}`}
-                      strokeWidth={moreActive ? 2.25 : 2}
-                      aria-hidden
-                    />
+                    <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${moreActive ? 'bg-primary-50' : ''}`}>
+                      <Icon
+                        className={`h-6 w-6 shrink-0 ${moreActive ? 'text-primary-600' : 'text-[#64748B]'}`}
+                        strokeWidth={moreActive ? 2.2 : 1.9}
+                        aria-hidden
+                      />
+                    </span>
                     <span
-                      className={`text-micro leading-tight text-center truncate max-w-full ${
- moreActive ? 'font-semibold text-primary-700' : 'font-medium'
+                      className={`text-xs leading-tight text-center truncate max-w-full ${
+ moreActive ? 'font-semibold text-primary-700' : 'font-medium text-[#475569]'
  }`}
                     >
                       {item.name}
                     </span>
-                    {moreActive && (
-                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-7 h-0.5 bg-primary-600 rounded-full" aria-hidden />
-                    )}
                   </button>
                 )
               }
 
-              // Centre "New": filled pill flush with the bar; opens the quick-create sheet.
+              // Centre "New": filled circle flush with the bar; opens the quick-create sheet.
               if (item.center) {
                 return (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => { onCloseMore?.(); onOpenCreate?.() }}
-                    className="flex min-h-[44px] min-w-0 flex-col items-center justify-end gap-0.5 pb-1"
+                    className="flex min-h-[56px] min-w-0 flex-col items-center justify-end gap-0.5 pb-1"
                     aria-label="Create new"
                     aria-haspopup="dialog"
                   >
-                    <span className="flex h-8 w-12 items-center justify-center rounded-full bg-primary-600 text-white transition-colors duration-150 active:bg-primary-700">
-                      <Icon className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm transition-colors duration-150 active:bg-primary-700">
+                      <Icon className="h-6 w-6 shrink-0" strokeWidth={2.4} aria-hidden />
                     </span>
-                    <span className="max-w-full truncate px-0.5 text-micro font-medium leading-tight text-[#475569]">
+                    <span className="max-w-full truncate px-0.5 text-xs font-medium leading-tight text-[#475569]">
                       {item.name}
                     </span>
                   </button>
@@ -135,21 +134,20 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore, onOpenCreate }) => {
                   className={`${linkClass} active:text-primary-600 ${active ? 'text-primary-600' : 'text-[#475569]'}`}
                   aria-current={active ? 'page' : undefined}
                 >
-                  <Icon
-                    className={`w-[22px] h-[22px] shrink-0 ${active ? 'text-primary-600' : 'text-[#64748B]'}`}
-                    strokeWidth={active ? 2.25 : 2}
-                    aria-hidden
-                  />
+                  <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${active ? 'bg-primary-50' : ''}`}>
+                    <Icon
+                      className={`h-6 w-6 shrink-0 ${active ? 'text-primary-600' : 'text-[#64748B]'}`}
+                      strokeWidth={active ? 2.2 : 1.9}
+                      aria-hidden
+                    />
+                  </span>
                   <span
-                    className={`text-micro leading-tight text-center truncate max-w-full ${
- active ? 'font-semibold text-primary-700' : 'font-medium'
+                    className={`text-xs leading-tight text-center truncate max-w-full ${
+ active ? 'font-semibold text-primary-700' : 'font-medium text-[#475569]'
  }`}
                   >
                     {item.name}
                   </span>
-                  {active && (
-                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-7 h-0.5 bg-primary-600 rounded-full" aria-hidden />
-                  )}
                 </Link>
               )
             })}

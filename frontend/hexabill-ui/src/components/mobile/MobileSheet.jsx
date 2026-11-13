@@ -58,7 +58,7 @@ const MobileSheet = ({
     <div className="fixed inset-0 z-[70]" aria-modal="true" role="dialog" aria-label={ariaLabel || title}>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-neutral-900/50 transition-opacity"
+        className="fixed inset-0 bg-neutral-900/40 backdrop-blur-[2px] transition-opacity"
         onClick={closeOnOverlayClick ? onClose : undefined}
         aria-hidden="true"
       />
@@ -71,16 +71,16 @@ const MobileSheet = ({
         <div
           ref={panelRef}
           tabIndex={-1}
-          className={`relative w-full rounded-t-xl lg:rounded-lg bg-white outline-none shadow-sm flex flex-col max-h-[92dvh] lg:max-h-[88dvh] animate-slideUp ${sizeClasses[size]}`}
+          className={`relative w-full rounded-t-2xl bg-white outline-none shadow-[0_-8px_40px_rgba(15,23,42,0.16)] flex flex-col max-h-[86dvh] animate-slideUp sm:mx-auto sm:mb-3 sm:max-w-md sm:rounded-2xl lg:max-h-[88dvh] ${sizeClasses[size]}`}
         >
           {/* Grab handle (mobile hint) */}
           <div className="flex justify-center pt-2.5 lg:hidden" aria-hidden="true">
-            <div className="w-10 h-1 rounded-full bg-neutral-200" />
+            <div className="h-1 w-9 rounded-full bg-neutral-300" />
           </div>
 
           {/* Header */}
-          <div className="flex items-center justify-between gap-2 px-4 pt-2 pb-3 border-b border-neutral-100 shrink-0">
-            <h2 className="text-base font-semibold text-neutral-900 truncate">{title}</h2>
+          <div className="flex items-center justify-between gap-2 px-4 pt-1.5 pb-3 border-b border-neutral-100 shrink-0">
+            <h2 className="text-lg font-semibold text-neutral-900 truncate">{title}</h2>
             <button
               type="button"
               onClick={onClose}
@@ -91,8 +91,11 @@ const MobileSheet = ({
             </button>
           </div>
 
-          {/* Body — scrollable */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+          {/* Body — scrollable (never sideways) */}
+          <div
+            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain"
+            style={footer ? undefined : { paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
+          >
             {children}
           </div>
 
